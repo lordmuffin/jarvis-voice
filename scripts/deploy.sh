@@ -16,6 +16,22 @@ VENV_DIR="${VENV_DIR:-/home/lordmuffin/.whisper-venv}"
 VENV_PIP="${VENV_DIR}/bin/pip"
 PYTHON="${PYTHON:-python3}"
 
+PIPELINE_ENV="${PIPELINE_ENV:-/home/lordmuffin/.jarvis.env}"
+CAPTURE_ENV="${CAPTURE_ENV:-/home/lordmuffin/.jarvis-capture.env}"
+
+missing_env=()
+for f in "${PIPELINE_ENV}" "${CAPTURE_ENV}"; do
+    [[ -f "${f}" ]] || missing_env+=("${f}")
+done
+if (( ${#missing_env[@]} > 0 )); then
+    echo "✗ Required EnvironmentFile(s) missing on $(hostname):" >&2
+    for f in "${missing_env[@]}"; do echo "    ${f}" >&2; done
+    echo "  Populate them from ${REPO_ROOT}/.env.example, e.g.:" >&2
+    echo "    cp ${REPO_ROOT}/.env.example ${PIPELINE_ENV} && chmod 600 ${PIPELINE_ENV}" >&2
+    echo "    python3 -c \"import secrets; print('JARVIS_CAPTURE_KEY='+secrets.token_urlsafe(32))\" > ${CAPTURE_ENV} && chmod 600 ${CAPTURE_ENV}" >&2
+    exit 1
+fi
+
 echo "→ Deploying to ${REMOTE_ROOT} on $(hostname)"
 
 sudo mkdir -p "${REMOTE_ROOT}"
