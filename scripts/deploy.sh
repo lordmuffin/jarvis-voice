@@ -12,7 +12,9 @@ set -euo pipefail
 
 REMOTE_ROOT="/opt/jarvis-voice"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VENV_PIP="${VENV_PIP:-/home/lordmuffin/.whisper-venv/bin/pip}"
+VENV_DIR="${VENV_DIR:-/home/lordmuffin/.whisper-venv}"
+VENV_PIP="${VENV_DIR}/bin/pip"
+PYTHON="${PYTHON:-python3}"
 
 echo "→ Deploying to ${REMOTE_ROOT} on $(hostname)"
 
@@ -26,6 +28,12 @@ rsync -av --delete \
 
 rsync -av "${REPO_ROOT}/requirements.txt" "${REMOTE_ROOT}/requirements.txt"
 rsync -av "${REPO_ROOT}/systemd/" "${REMOTE_ROOT}/systemd/"
+
+if [[ ! -x "${VENV_PIP}" ]]; then
+    echo "→ Creating venv at ${VENV_DIR} (using ${PYTHON})"
+    "${PYTHON}" -m venv "${VENV_DIR}"
+    "${VENV_PIP}" install --upgrade pip
+fi
 
 echo "→ Installing Python deps via ${VENV_PIP}"
 "${VENV_PIP}" install -r "${REMOTE_ROOT}/requirements.txt"
