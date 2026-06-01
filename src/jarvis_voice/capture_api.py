@@ -12,6 +12,7 @@ Both paths share auth, frontmatter, and vault output via ``write_voice_note``.
 from __future__ import annotations
 
 import datetime as _dt
+import html as _html
 import os
 import pathlib
 import shutil
@@ -19,12 +20,30 @@ import tempfile
 import uuid
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
+from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from jarvis_voice import transcribe as transcribe_mod
 from jarvis_voice.vault import write_voice_note
 
 app = FastAPI(title="Jarvis Capture API", version="1.0")
+
+_STATIC_DIR = pathlib.Path(__file__).parent / "static"
+app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
+
+
+@app.get("/manifest.json", include_in_schema=False)
+def manifest() -> FileResponse:
+    return FileResponse(_STATIC_DIR / "manifest.json", media_type="application/manifest+json")
+
+
+@app.get("/capture", include_in_schema=False)
+def capture_page() -> HTMLResponse:
+    page = (_STATIC_DIR / "capture.html").read_text(encoding="utf-8")
+    key = os.environ.get("JARVIS_CAPTURE_KEY", "")
+    page = page.replace("__JARVIS_KEY__", _html.escape(key, quote=True))
+    return HTMLResponse(page)
 
 
 class VoiceCapture(BaseModel):
