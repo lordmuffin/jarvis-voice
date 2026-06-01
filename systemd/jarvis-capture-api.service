@@ -1,0 +1,16 @@
+[Unit]
+Description=Jarvis Capture API (POST /api/v1/capture/voice → vault)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lordmuffin
+WorkingDirectory=/opt/jarvis-voice/src
+EnvironmentFile=/home/lordmuffin/.jarvis-capture.env
+ExecStart=/home/lordmuffin/.whisper-venv/bin/python -m uvicorn jarvis_voice.capture_api:app --host 0.0.0.0 --port 8881
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
