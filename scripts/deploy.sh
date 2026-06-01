@@ -95,17 +95,13 @@ sudo install -m 644 "${REMOTE_ROOT}/systemd/jarvis-voice-pipeline.service" /etc/
 sudo install -m 644 "${REMOTE_ROOT}/systemd/jarvis-capture-api.service" /etc/systemd/system/jarvis-capture-api.service
 sudo systemctl daemon-reload
 
-echo "→ Restarting services (if enabled)"
-if sudo systemctl is-enabled jarvis-voice-pipeline >/dev/null 2>&1; then
-    sudo systemctl restart jarvis-voice-pipeline
-else
-    echo "  jarvis-voice-pipeline not yet enabled — run: sudo systemctl enable --now jarvis-voice-pipeline"
-fi
-
-if sudo systemctl is-enabled jarvis-capture-api >/dev/null 2>&1; then
-    sudo systemctl restart jarvis-capture-api
-else
-    echo "  jarvis-capture-api not yet enabled — run: sudo systemctl enable --now jarvis-capture-api"
-fi
+echo "→ Enabling and (re)starting services"
+for unit in jarvis-voice-pipeline jarvis-capture-api; do
+    if sudo systemctl is-enabled "${unit}" >/dev/null 2>&1; then
+        sudo systemctl restart "${unit}"
+    else
+        sudo systemctl enable --now "${unit}"
+    fi
+done
 
 echo "✓ Deploy complete."
