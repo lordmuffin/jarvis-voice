@@ -31,6 +31,20 @@ rsync -av "${REPO_ROOT}/systemd/" "${REMOTE_ROOT}/systemd/"
 
 if [[ ! -x "${VENV_PIP}" ]]; then
     echo "→ Creating venv at ${VENV_DIR} (using ${PYTHON})"
+
+    if ! "${PYTHON}" -c 'import ensurepip' >/dev/null 2>&1; then
+        py_minor="$("${PYTHON}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+        if command -v apt-get >/dev/null 2>&1; then
+            echo "  ensurepip missing — installing python${py_minor}-venv via apt"
+            sudo apt-get update -qq
+            sudo apt-get install -y "python${py_minor}-venv" || sudo apt-get install -y python3-venv
+        else
+            echo "ERROR: ${PYTHON} cannot create venvs (ensurepip missing) and apt-get is unavailable." >&2
+            echo "       Install the python venv package for your distro and re-run." >&2
+            exit 1
+        fi
+    fi
+
     "${PYTHON}" -m venv "${VENV_DIR}"
     "${VENV_PIP}" install --upgrade pip
 fi
