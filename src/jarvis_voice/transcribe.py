@@ -1,4 +1,4 @@
-"""faster-whisper wrapper shared by the Telegram bot (Gate 2) and capture API (Gate 3)."""
+"""faster-whisper wrapper used by the capture API audio endpoint."""
 from __future__ import annotations
 
 import os

@@ -1,6 +1,4 @@
-"""Shared markdown emitter. Both gates land notes in the same vault folder
-with identical frontmatter conventions — only `source:` differs.
-"""
+"""Markdown emitter for voice-capture notes. Caller supplies the `source` label."""
 from __future__ import annotations
 
 import datetime as _dt
