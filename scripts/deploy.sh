@@ -29,9 +29,61 @@ rsync -av --delete \
 rsync -av "${REPO_ROOT}/requirements.txt" "${REMOTE_ROOT}/requirements.txt"
 rsync -av "${REPO_ROOT}/systemd/" "${REMOTE_ROOT}/systemd/"
 
+venv_install_hint() {
+    local id=""
+    if [[ -r /etc/os-release ]]; then
+        id="$(. /etc/os-release 2>/dev/null && echo "${ID:-}${ID_LIKE:+ ${ID_LIKE}}")"
+    fi
+    case "${id}" in
+        *arch*|*cachyos*) echo "sudo pacman -S python python-pip" ;;
+        *debian*|*ubuntu*) echo "sudo apt install python3-venv python3-pip" ;;
+        *fedora*|*rhel*|*centos*) echo "sudo dnf install python3-pip" ;;
+        *) echo "install your distro's python venv + pip packages" ;;
+    esac
+}
+
+bootstrap_venv() {
+    local python_path
+    python_path="$(command -v "${PYTHON}" || echo "${PYTHON}")"
+    echo "→ Creating venv at ${VENV_DIR} (using ${python_path})"
+
+    rm -rf "${VENV_DIR}"
+    if "${PYTHON}" -m venv "${VENV_DIR}" 2>/dev/null; then
+        return 0
+    fi
+
+    echo "  venv auto-bootstrap failed; retrying with --without-pip"
+    rm -rf "${VENV_DIR}"
+    "${PYTHON}" -m venv --without-pip "${VENV_DIR}"
+
+    local venv_python="${VENV_DIR}/bin/python"
+    if "${venv_python}" -m ensurepip --upgrade --default-pip 2>/dev/null; then
+        return 0
+    fi
+
+    echo "  ensurepip unavailable; bootstrapping pip via get-pip.py"
+    local get_pip
+    if command -v curl >/dev/null 2>&1; then
+        get_pip=(curl -fsSL https://bootstrap.pypa.io/get-pip.py)
+    elif command -v wget >/dev/null 2>&1; then
+        get_pip=(wget -qO- https://bootstrap.pypa.io/get-pip.py)
+    else
+        echo "✗ Neither curl nor wget available to fetch get-pip.py" >&2
+        echo "  Interpreter: ${python_path} ($("${PYTHON}" --version 2>&1))" >&2
+        echo "  Fix: $(venv_install_hint)" >&2
+        return 1
+    fi
+
+    if ! "${get_pip[@]}" | "${venv_python}"; then
+        echo "✗ Failed to bootstrap pip into ${VENV_DIR}" >&2
+        echo "  Interpreter: ${python_path} ($("${PYTHON}" --version 2>&1))" >&2
+        echo "  Fix: $(venv_install_hint)" >&2
+        return 1
+    fi
+}
+
 if [[ ! -x "${VENV_PIP}" ]]; then
-    echo "→ Creating venv at ${VENV_DIR} (using ${PYTHON})"
-    "${PYTHON}" -m venv "${VENV_DIR}"
+    bootstrap_venv
     "${VENV_PIP}" install --upgrade pip
 fi
 
