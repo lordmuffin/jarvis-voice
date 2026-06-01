@@ -16,18 +16,11 @@ VENV_DIR="${VENV_DIR:-/home/lordmuffin/.whisper-venv}"
 VENV_PIP="${VENV_DIR}/bin/pip"
 PYTHON="${PYTHON:-python3}"
 
-PIPELINE_ENV="${PIPELINE_ENV:-/home/lordmuffin/.jarvis.env}"
 CAPTURE_ENV="${CAPTURE_ENV:-/home/lordmuffin/.jarvis-capture.env}"
 
-missing_env=()
-for f in "${PIPELINE_ENV}" "${CAPTURE_ENV}"; do
-    [[ -f "${f}" ]] || missing_env+=("${f}")
-done
-if (( ${#missing_env[@]} > 0 )); then
-    echo "✗ Required EnvironmentFile(s) missing on $(hostname):" >&2
-    for f in "${missing_env[@]}"; do echo "    ${f}" >&2; done
-    echo "  Populate them from ${REPO_ROOT}/.env.example, e.g.:" >&2
-    echo "    cp ${REPO_ROOT}/.env.example ${PIPELINE_ENV} && chmod 600 ${PIPELINE_ENV}" >&2
+if [[ ! -f "${CAPTURE_ENV}" ]]; then
+    echo "✗ Required EnvironmentFile missing on $(hostname): ${CAPTURE_ENV}" >&2
+    echo "  Generate it with:" >&2
     echo "    python3 -c \"import secrets; print('JARVIS_CAPTURE_KEY='+secrets.token_urlsafe(32))\" > ${CAPTURE_ENV} && chmod 600 ${CAPTURE_ENV}" >&2
     exit 1
 fi
@@ -106,18 +99,15 @@ fi
 echo "→ Installing Python deps via ${VENV_PIP}"
 "${VENV_PIP}" install -r "${REMOTE_ROOT}/requirements.txt"
 
-echo "→ Installing systemd units"
-sudo install -m 644 "${REMOTE_ROOT}/systemd/jarvis-voice-pipeline.service" /etc/systemd/system/jarvis-voice-pipeline.service
+echo "→ Installing systemd unit"
 sudo install -m 644 "${REMOTE_ROOT}/systemd/jarvis-capture-api.service" /etc/systemd/system/jarvis-capture-api.service
 sudo systemctl daemon-reload
 
-echo "→ Enabling and (re)starting services"
-for unit in jarvis-voice-pipeline jarvis-capture-api; do
-    if sudo systemctl is-enabled "${unit}" >/dev/null 2>&1; then
-        sudo systemctl restart "${unit}"
-    else
-        sudo systemctl enable --now "${unit}"
-    fi
-done
+echo "→ Enabling and (re)starting jarvis-capture-api"
+if sudo systemctl is-enabled jarvis-capture-api >/dev/null 2>&1; then
+    sudo systemctl restart jarvis-capture-api
+else
+    sudo systemctl enable --now jarvis-capture-api
+fi
 
 echo "✓ Deploy complete."
