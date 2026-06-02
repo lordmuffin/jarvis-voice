@@ -119,7 +119,10 @@ def capture_audio(
         shutil.copyfileobj(file.file, tmp)
 
     try:
-        transcript, duration = transcribe_mod.transcribe(tmp_path)
+        try:
+            transcript, duration = transcribe_mod.transcribe(tmp_path)
+        except transcribe_mod.TranscribeError as err:
+            raise HTTPException(status_code=503, detail=str(err)) from err
     finally:
         try:
             os.unlink(tmp_path)
@@ -147,4 +150,5 @@ def capture_audio(
         "id": str(uuid.uuid4()),
         "routed_to": f"00 Inbox/Voice Notes/{os.path.basename(path)}",
         "status": "received",
+        "transcript": transcript,
     }
