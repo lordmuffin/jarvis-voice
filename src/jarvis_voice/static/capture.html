@@ -127,6 +127,9 @@
   let recording = false;
   let startTs = 0;
   let finalText = '';
+  let manualStop = false;
+
+  const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'aborted']);
 
   function setStatus(s) { statusEl.textContent = s; }
   function setLog(s) { logEl.textContent = s; }
@@ -154,14 +157,21 @@
     }
   }
 
-  function start() {
-    finalText = '';
-    transcriptEl.textContent = '';
-    rec = new SR();
-    rec.lang = 'en-US';
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.onresult = (ev) => {
+  function finalize() {
+    recording = false;
+    micBtn.classList.remove('recording');
+    micBtn.textContent = 'Tap to talk';
+    const text = transcriptEl.textContent.trim();
+    if (text) send(text, (Date.now() - startTs) / 1000);
+    else setStatus('No speech detected');
+  }
+
+  function buildRecognizer() {
+    const r = new SR();
+    r.lang = 'en-US';
+    r.continuous = true;
+    r.interimResults = true;
+    r.onresult = (ev) => {
       let interim = '';
       for (let i = ev.resultIndex; i < ev.results.length; i++) {
         const t = ev.results[i][0].transcript;
@@ -170,15 +180,34 @@
       }
       transcriptEl.textContent = (finalText + interim).trim();
     };
-    rec.onerror = (e) => setStatus('Error: ' + e.error);
-    rec.onend = () => {
-      recording = false;
-      micBtn.classList.remove('recording');
-      micBtn.textContent = 'Tap to talk';
-      const text = transcriptEl.textContent.trim();
-      if (text) send(text, (Date.now() - startTs) / 1000);
-      else setStatus('No speech detected');
+    r.onerror = (e) => {
+      if (FATAL_ERRORS.has(e.error)) {
+        manualStop = true;
+        setStatus('Error: ' + e.error);
+      }
     };
+    r.onend = () => {
+      if (manualStop || !recording) {
+        finalize();
+        return;
+      }
+      try {
+        rec.start();
+        setStatus('Listening...');
+      } catch (err) {
+        manualStop = true;
+        setStatus('Restart failed: ' + (err && err.message ? err.message : err));
+        finalize();
+      }
+    };
+    return r;
+  }
+
+  function start() {
+    finalText = '';
+    manualStop = false;
+    transcriptEl.textContent = '';
+    rec = buildRecognizer();
     rec.start();
     recording = true;
     startTs = Date.now();
@@ -188,7 +217,11 @@
     setLog('');
   }
 
-  function stop() { if (rec) rec.stop(); }
+  function stop() {
+    if (!rec) return;
+    manualStop = true;
+    rec.stop();
+  }
 
   micBtn.addEventListener('click', () => {
     if (recording) stop(); else start();
