@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
+import time
 
 from faster_whisper import WhisperModel
 
@@ -23,11 +24,13 @@ def _get_model() -> WhisperModel:
     return _model
 
 
-def transcribe(audio_path: str) -> tuple[str, float]:
+def transcribe(audio_path: str) -> tuple[str, float, float]:
     """Convert audio at *audio_path* to 16 kHz mono WAV and transcribe it.
 
-    Returns (transcript, duration_seconds).
+    Returns (transcript, audio_duration_seconds, transcribe_seconds), where
+    transcribe_seconds is the wall-clock time spent in ffmpeg + Whisper.
     """
+    started = time.monotonic()
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         wav_path = tmp.name
     try:
@@ -49,7 +52,7 @@ def transcribe(audio_path: str) -> tuple[str, float]:
 
         segments, info = _get_model().transcribe(wav_path, beam_size=5)
         transcript = " ".join(s.text.strip() for s in segments).strip()
-        return transcript, float(info.duration)
+        return transcript, float(info.duration), time.monotonic() - started
     finally:
         try:
             os.unlink(wav_path)
