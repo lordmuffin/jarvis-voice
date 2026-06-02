@@ -7,7 +7,7 @@ from typing import Mapping
 
 VAULT_INBOX = os.environ.get(
     "VAULT_INBOX",
-    "/home/lordmuffin/Notes/00 Inbox/Voice Notes",
+    "/home/lordmuffin/Documents/Notes/00 Inbox/Voice Notes",
 )
 
 
