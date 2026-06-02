@@ -116,111 +116,128 @@
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyTranscript(); }
   });
 
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SR) {
-    statusEl.textContent = 'Web Speech API not supported. Use Chrome on Android.';
+  if (!navigator.mediaDevices || !window.MediaRecorder) {
+    statusEl.textContent = 'MediaRecorder not supported in this browser.';
     micBtn.disabled = true;
     return;
   }
 
-  let rec = null;
-  let recording = false;
-  let startTs = 0;
-  let finalText = '';
-  let manualStop = false;
+  const MIME_CANDIDATES = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4',
+  ];
 
-  const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture', 'network', 'aborted']);
+  function pickMime() {
+    return MIME_CANDIDATES.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  function extForMime(mime) {
+    if (mime.startsWith('audio/webm')) return 'webm';
+    if (mime.startsWith('audio/ogg')) return 'ogg';
+    if (mime.startsWith('audio/mp4')) return 'mp4';
+    return 'webm';
+  }
+
+  function deviceLabel() {
+    return 'pwa-' + (navigator.userAgent.match(/Android|iPhone|iPad/)?.[0] || 'web');
+  }
 
   function setStatus(s) { statusEl.textContent = s; }
   function setLog(s) { logEl.textContent = s; }
 
-  async function send(transcript, durationSec) {
-    setStatus('Sending...');
+  let mediaRecorder = null;
+  let stream = null;
+  let audioChunks = [];
+  let recording = false;
+  let startTs = 0;
+
+  async function send(blob, mime) {
+    setStatus('Transcribing...');
+    const fd = new FormData();
+    fd.append('file', blob, 'capture.' + extForMime(mime));
+    fd.append('device', deviceLabel());
+    fd.append('timestamp', new Date().toISOString());
     try {
-      const r = await fetch('/api/v1/capture/voice', {
+      const r = await fetch('/api/v1/capture/audio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Jarvis-Key': key },
-        body: JSON.stringify({
-          transcript: transcript.trim(),
-          timestamp: new Date().toISOString(),
-          device: 'pwa-' + (navigator.userAgent.match(/Android|iPhone|iPad/)?.[0] || 'web'),
-          duration_seconds: Math.round(durationSec),
-          model: 'web-speech-api',
-        }),
+        headers: { 'X-Jarvis-Key': key },
+        body: fd,
       });
-      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (!r.ok) {
+        let detail = 'HTTP ' + r.status;
+        try { const j = await r.json(); if (j && j.detail) detail = j.detail; } catch (_) {}
+        throw new Error(detail);
+      }
       const d = await r.json();
       setStatus('Saved');
+      transcriptEl.textContent = d.transcript || '';
       setLog(d.routed_to ? d.routed_to.split('/').pop() : 'ok');
     } catch (e) {
       setStatus('Send failed: ' + e.message);
     }
   }
 
-  function finalize() {
+  function teardown() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+    mediaRecorder = null;
     recording = false;
     micBtn.classList.remove('recording');
     micBtn.textContent = 'Tap to talk';
-    const text = transcriptEl.textContent.trim();
-    if (text) send(text, (Date.now() - startTs) / 1000);
-    else setStatus('No speech detected');
   }
 
-  function buildRecognizer() {
-    const r = new SR();
-    r.lang = 'en-US';
-    r.continuous = true;
-    r.interimResults = true;
-    r.onresult = (ev) => {
-      let interim = '';
-      for (let i = ev.resultIndex; i < ev.results.length; i++) {
-        const t = ev.results[i][0].transcript;
-        if (ev.results[i].isFinal) finalText += t + ' ';
-        else interim += t;
-      }
-      transcriptEl.textContent = (finalText + interim).trim();
-    };
-    r.onerror = (e) => {
-      if (FATAL_ERRORS.has(e.error)) {
-        manualStop = true;
-        setStatus('Error: ' + e.error);
-      }
-    };
-    r.onend = () => {
-      if (manualStop || !recording) {
-        finalize();
+  async function start() {
+    transcriptEl.textContent = '';
+    setLog('');
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      setStatus('Mic access denied: ' + (e.message || e.name));
+      return;
+    }
+
+    const mime = pickMime();
+    audioChunks = [];
+    try {
+      mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    } catch (e) {
+      setStatus('Recorder error: ' + e.message);
+      teardown();
+      return;
+    }
+
+    mediaRecorder.ondataavailable = (ev) => { if (ev.data && ev.data.size > 0) audioChunks.push(ev.data); };
+    mediaRecorder.onerror = (ev) => setStatus('Recorder error: ' + ((ev.error && ev.error.name) || 'unknown'));
+    mediaRecorder.onstop = async () => {
+      const usedMime = (mediaRecorder && mediaRecorder.mimeType) || mime || 'audio/webm';
+      teardown();
+      if (!audioChunks.length) {
+        setStatus('No audio captured');
         return;
       }
-      try {
-        rec.start();
-        setStatus('Listening...');
-      } catch (err) {
-        manualStop = true;
-        setStatus('Restart failed: ' + (err && err.message ? err.message : err));
-        finalize();
-      }
+      const blob = new Blob(audioChunks, { type: usedMime });
+      audioChunks = [];
+      await send(blob, usedMime);
     };
-    return r;
-  }
 
-  function start() {
-    finalText = '';
-    manualStop = false;
-    transcriptEl.textContent = '';
-    rec = buildRecognizer();
-    rec.start();
+    mediaRecorder.start();
     recording = true;
     startTs = Date.now();
     micBtn.classList.add('recording');
     micBtn.textContent = 'Stop';
-    setStatus('Listening...');
-    setLog('');
+    setStatus('Recording... tap to stop');
   }
 
   function stop() {
-    if (!rec) return;
-    manualStop = true;
-    rec.stop();
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    } else {
+      teardown();
+    }
   }
 
   micBtn.addEventListener('click', () => {
