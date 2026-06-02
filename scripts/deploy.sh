@@ -51,6 +51,26 @@ venv_install_hint() {
     esac
 }
 
+ensure_ffmpeg() {
+    if command -v ffmpeg >/dev/null 2>&1; then
+        return 0
+    fi
+    local id=""
+    if [[ -r /etc/os-release ]]; then
+        id="$(. /etc/os-release 2>/dev/null && echo "${ID:-}${ID_LIKE:+ ${ID_LIKE}}")"
+    fi
+    echo "→ Installing ffmpeg (required for server-side Whisper)"
+    case "${id}" in
+        *arch*|*cachyos*) sudo pacman -S --noconfirm ffmpeg ;;
+        *debian*|*ubuntu*) sudo apt update && sudo apt install -y ffmpeg ;;
+        *fedora*|*rhel*|*centos*) sudo dnf install -y ffmpeg ;;
+        *)
+            echo "✗ Unrecognised distro (${id:-unknown}); install ffmpeg manually and re-run." >&2
+            exit 1
+            ;;
+    esac
+}
+
 bootstrap_venv() {
     local python_path
     python_path="$(command -v "${PYTHON}" || echo "${PYTHON}")"
@@ -90,6 +110,8 @@ bootstrap_venv() {
         return 1
     fi
 }
+
+ensure_ffmpeg
 
 if [[ ! -x "${VENV_PIP}" ]]; then
     bootstrap_venv
