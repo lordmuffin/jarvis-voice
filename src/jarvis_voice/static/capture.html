@@ -171,7 +171,10 @@
         throw new Error(detail);
       }
       const d = await r.json();
-      setStatus('Saved');
+      const took = (typeof d.transcribe_seconds === 'number')
+        ? ' (transcribed in ' + d.transcribe_seconds.toFixed(1) + 's)'
+        : '';
+      setStatus('Saved' + took);
       transcriptEl.textContent = d.transcript || '';
       setLog(d.routed_to ? d.routed_to.split('/').pop() : 'ok');
     } catch (e) {
