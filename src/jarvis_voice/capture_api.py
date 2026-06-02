@@ -103,7 +103,7 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/api/v1/capture/voice")
+@app.post("/api/v1/capture/voice", response_model=None)
 def capture_voice(payload: VoiceCapture, _: str = Depends(verify_key)) -> dict[str, str]:
     ts = _parse_timestamp(payload.timestamp)
 
@@ -128,7 +128,7 @@ def capture_voice(payload: VoiceCapture, _: str = Depends(verify_key)) -> dict[s
     }
 
 
-@app.post("/api/v1/capture/audio")
+@app.post("/api/v1/capture/audio", response_model=None)
 def capture_audio(
     file: UploadFile = File(...),
     device: str = Form(...),
@@ -136,7 +136,7 @@ def capture_audio(
     intent_hint: str | None = Form(None),
     confidence: float | None = Form(None),
     _: str = Depends(verify_key),
-) -> dict[str, str]:
+) -> dict[str, object]:
     ts = _parse_timestamp(timestamp)
 
     suffix = pathlib.Path(file.filename or "").suffix or ".bin"
