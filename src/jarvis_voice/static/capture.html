@@ -22,16 +22,32 @@
   #status { font-size: 14px; opacity: .7; min-height: 1.4em; text-align: center; }
   #transcript { width: 100%; max-width: 480px; min-height: 80px; padding: 12px;
     background: #1a1a1a; border-radius: 12px; font-size: 15px; line-height: 1.4;
-    white-space: pre-wrap; overflow-wrap: anywhere; }
+    white-space: pre-wrap; overflow-wrap: anywhere;
+    cursor: pointer; transition: background 150ms ease, transform 150ms ease; }
+  #transcript:hover { background: #232323; }
+  #transcript:focus-visible { outline: 2px solid #3bc97a; outline-offset: 2px; }
+  #transcript.copied { background: #1f3a2a; animation: copyFlash 420ms ease; }
+  @keyframes copyFlash { 0% { transform: scale(1); } 40% { transform: scale(1.03); } 100% { transform: scale(1); } }
   #log { width: 100%; max-width: 480px; font-size: 12px; opacity: .6; min-height: 1.2em; text-align: center; }
+  #toast { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom) + 24px);
+    transform: translateX(-50%); background: #1a1a1a; color: #3bc97a;
+    padding: 10px 18px; border-radius: 999px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 4px 16px rgba(0,0,0,.4); pointer-events: none; z-index: 10; }
+  #toast.show { animation: toastIn 1400ms ease forwards; }
+  @keyframes toastIn {
+    0% { opacity: 0; transform: translate(-50%, 12px); }
+    15%, 75% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -8px); }
+  }
 </style>
 </head>
 <body>
 <main>
-  <div id="transcript" aria-live="polite"></div>
+  <div id="transcript" role="button" tabindex="0" aria-live="polite" title="Tap to copy"></div>
   <button id="mic" type="button">Tap to talk</button>
   <div id="status">Ready</div>
   <div id="log"></div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
 </main>
 <script>
 (() => {
@@ -40,6 +56,65 @@
   const statusEl = document.getElementById('status');
   const transcriptEl = document.getElementById('transcript');
   const logEl = document.getElementById('log');
+  const toastEl = document.getElementById('toast');
+
+  let toastTimer = 0;
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.hidden = false;
+    toastEl.classList.remove('show');
+    void toastEl.offsetWidth;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toastEl.classList.remove('show');
+      toastEl.hidden = true;
+    }, 1400);
+  }
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+
+  async function copyTranscript() {
+    const text = transcriptEl.textContent.trim();
+    if (!text) { showToast('Nothing to copy'); return; }
+    let ok = false;
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        ok = true;
+      } else {
+        ok = fallbackCopy(text);
+      }
+    } catch (_) {
+      ok = fallbackCopy(text);
+    }
+    if (ok) {
+      transcriptEl.classList.remove('copied');
+      void transcriptEl.offsetWidth;
+      transcriptEl.classList.add('copied');
+      setTimeout(() => transcriptEl.classList.remove('copied'), 420);
+      showToast('Copied!');
+    } else {
+      showToast('Copy failed');
+    }
+  }
+
+  transcriptEl.addEventListener('click', copyTranscript);
+  transcriptEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyTranscript(); }
+  });
 
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
