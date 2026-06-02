@@ -136,7 +136,7 @@ def capture_audio(
     intent_hint: str | None = Form(None),
     confidence: float | None = Form(None),
     _: str = Depends(verify_key),
-) -> dict[str, str]:
+) -> dict[str, object]:
     ts = _parse_timestamp(timestamp)
 
     suffix = pathlib.Path(file.filename or "").suffix or ".bin"
