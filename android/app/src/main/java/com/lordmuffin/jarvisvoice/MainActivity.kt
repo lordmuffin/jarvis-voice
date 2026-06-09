@@ -36,6 +36,7 @@ class MainActivity : AppCompatActivity() {
             !isAccessibilityEnabled() -> promptAccessibility()
             else -> {
                 startForegroundService(Intent(this, VoiceOverlayService::class.java))
+                startActivity(Intent(this, SettingsActivity::class.java))
                 finish()
             }
         }

@@ -31,9 +31,13 @@ enum class OverlayState { IDLE, RECORDING, DONE }
 class VoiceOverlayService : Service() {
 
     companion object {
-        const val CHANNEL_ID         = "jarvis_voice_overlay"
-        const val NOTIF_ID           = 1
-        const val ACTION_OPEN_SETTINGS = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
+        const val CHANNEL_ID              = "jarvis_voice_overlay"
+        const val CHANNEL_TRANSCRIPT_ID   = "jarvis_transcript"
+        const val NOTIF_ID                = 1
+        const val NOTIF_TRANSCRIPT_ID     = 2
+        const val ACTION_OPEN_SETTINGS    = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
+        const val PREF_FILE               = "jarvis_prefs"
+        const val KEY_CLIPBOARD_NOTIFY    = "clipboard_notify"
         var lastFocusedNode: AccessibilityNodeInfo? = null
         var instance: VoiceOverlayService? = null
     }
@@ -215,6 +219,12 @@ class VoiceOverlayService : Service() {
 
         TextInjector.inject(lastFocusedNode, processed)
 
+        // Clipboard notification (if enabled in settings)
+        val prefs = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_CLIPBOARD_NOTIFY, true)) {
+            fireTranscriptNotification(processed)
+        }
+
         // Metro: show WPM after every session
         val msg = when {
             lastFocusedNode == null && session.wordCount > 0 ->
@@ -255,6 +265,18 @@ class VoiceOverlayService : Service() {
         speechEngine = SpeechEngineFactory.create(this)
     }
 
+    private fun fireTranscriptNotification(text: String) {
+        val preview = if (text.length > 80) text.take(80) + "…" else text
+        val notif = NotificationCompat.Builder(this, CHANNEL_TRANSCRIPT_ID)
+            .setContentTitle("Copied to clipboard")
+            .setContentText(preview)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setAutoCancel(true)
+            .build()
+        getSystemService(NotificationManager::class.java).notify(NOTIF_TRANSCRIPT_ID, notif)
+    }
+
     private fun buildNotification(): Notification {
         val settingsPi = PendingIntent.getService(
             this, 0,
@@ -272,12 +294,14 @@ class VoiceOverlayService : Service() {
     }
 
     private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Jarvis Voice Overlay",
-            NotificationManager.IMPORTANCE_LOW
+        val nm = getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, "Jarvis Voice Overlay", NotificationManager.IMPORTANCE_LOW)
+                .also { it.description = "Persistent notification for dictation overlay" }
         )
-        channel.description = "Persistent notification for dictation overlay"
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        nm.createNotificationChannel(
+            NotificationChannel(CHANNEL_TRANSCRIPT_ID, "Dictation Clipboard Alerts", NotificationManager.IMPORTANCE_DEFAULT)
+                .also { it.description = "Shows when dictation text is copied to clipboard" }
+        )
     }
 }

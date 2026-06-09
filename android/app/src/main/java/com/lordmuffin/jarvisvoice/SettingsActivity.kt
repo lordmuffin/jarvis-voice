@@ -16,6 +16,7 @@ import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var offlineSwitch: SwitchCompat
+    private lateinit var clipboardNotifySwitch: SwitchCompat
     private lateinit var tvModelStatus: TextView
     private lateinit var btnDownload: Button
     private lateinit var progressBar: ProgressBar
@@ -35,8 +36,9 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         supportActionBar?.title = "Jarvis Voice Settings"
 
-        offlineSwitch    = findViewById(R.id.switch_offline_stt)
-        tvModelStatus    = findViewById(R.id.tv_model_status)
+        offlineSwitch         = findViewById(R.id.switch_offline_stt)
+        clipboardNotifySwitch = findViewById(R.id.switch_clipboard_notify)
+        tvModelStatus         = findViewById(R.id.tv_model_status)
         btnDownload      = findViewById(R.id.btn_download_model)
         progressBar      = findViewById(R.id.progress_download)
         tvDownloadStatus = findViewById(R.id.tv_download_status)
@@ -51,6 +53,12 @@ class SettingsActivity : AppCompatActivity() {
         offlineSwitch.setOnCheckedChangeListener { _, checked ->
             SpeechEngineFactory.setOfflineMode(this, checked)
             VoiceOverlayService.instance?.reloadSpeechEngine()
+        }
+
+        val prefs = getSharedPreferences(VoiceOverlayService.PREF_FILE, MODE_PRIVATE)
+        clipboardNotifySwitch.isChecked = prefs.getBoolean(VoiceOverlayService.KEY_CLIPBOARD_NOTIFY, true)
+        clipboardNotifySwitch.setOnCheckedChangeListener { _, checked ->
+            prefs.edit().putBoolean(VoiceOverlayService.KEY_CLIPBOARD_NOTIFY, checked).apply()
         }
 
         btnDownload.setOnClickListener { startDownload() }
