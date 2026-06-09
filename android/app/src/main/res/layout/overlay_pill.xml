@@ -14,10 +14,23 @@
         android:src="@drawable/ic_mic"
         android:tint="@color/accent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/settings_icon"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:contentDescription="@string/mic_desc" />
+
+    <ImageView
+        android:id="@+id/settings_icon"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
+        android:src="@drawable/ic_settings"
+        android:tint="@color/dim"
+        android:padding="2dp"
+        android:contentDescription="@string/settings_desc"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginEnd="6dp"
+        android:layout_marginTop="6dp" />
 
     <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
         android:id="@+id/waveform"

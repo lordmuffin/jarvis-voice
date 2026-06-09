@@ -21,8 +21,8 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import com.lordmuffin.jarvisvoice.speech.AndroidSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
+import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import com.lordmuffin.jarvisvoice.ui.AudioWaveformView
 
 enum class OverlayState { IDLE, RECORDING, DONE }
@@ -41,6 +41,7 @@ class VoiceOverlayService : Service() {
     private lateinit var waveformView: AudioWaveformView
     private lateinit var transcriptText: TextView
     private lateinit var micIcon: View
+    private lateinit var settingsIcon: View
     private var speechEngine: SpeechEngine? = null
     private var state = OverlayState.IDLE
 
@@ -63,7 +64,7 @@ class VoiceOverlayService : Service() {
         createNotificationChannel()
         startForeground(NOTIF_ID, buildNotification())
         setupOverlay()
-        speechEngine = AndroidSpeechEngine(this)
+        speechEngine = SpeechEngineFactory.create(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -85,6 +86,7 @@ class VoiceOverlayService : Service() {
         waveformView = overlayView.findViewById(R.id.waveform)
         transcriptText = overlayView.findViewById(R.id.transcript)
         micIcon = overlayView.findViewById(R.id.mic_icon)
+        settingsIcon = overlayView.findViewById(R.id.settings_icon)
 
         val displayMetrics = resources.displayMetrics
         val widthPx = (220 * displayMetrics.density).toInt()
@@ -141,10 +143,14 @@ class VoiceOverlayService : Service() {
             MotionEvent.ACTION_UP -> {
                 longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
                 if (!isDragging) {
-                    when (state) {
-                        OverlayState.IDLE -> startRecording()
-                        OverlayState.RECORDING -> stopRecording()
-                        OverlayState.DONE -> setIdleState()
+                    if (state == OverlayState.IDLE && isTouchOnView(event, settingsIcon)) {
+                        openSettings()
+                    } else {
+                        when (state) {
+                            OverlayState.IDLE -> startRecording()
+                            OverlayState.RECORDING -> stopRecording()
+                            OverlayState.DONE -> setIdleState()
+                        }
                     }
                 } else if (state == OverlayState.RECORDING) {
                     stopRecording()
@@ -154,6 +160,20 @@ class VoiceOverlayService : Service() {
         return true
     }
 
+    private fun isTouchOnView(event: MotionEvent, view: View): Boolean {
+        if (view.visibility != View.VISIBLE) return false
+        val loc = IntArray(2)
+        view.getLocationOnScreen(loc)
+        return event.rawX >= loc[0] && event.rawX <= loc[0] + view.width &&
+               event.rawY >= loc[1] && event.rawY <= loc[1] + view.height
+    }
+
+    private fun openSettings() {
+        val intent = Intent(this, SettingsActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        startActivity(intent)
+    }
+
     private fun startHoldToRecord() {
         if (state == OverlayState.IDLE) startRecording()
     }
@@ -161,6 +181,7 @@ class VoiceOverlayService : Service() {
     fun startRecording() {
         state = OverlayState.RECORDING
         micIcon.visibility = View.GONE
+        settingsIcon.visibility = View.GONE
         waveformView.visibility = View.VISIBLE
         waveformView.startAnimation()
         transcriptText.visibility = View.VISIBLE
@@ -228,6 +249,7 @@ class VoiceOverlayService : Service() {
     private fun setIdleState() {
         state = OverlayState.IDLE
         micIcon.visibility = View.VISIBLE
+        settingsIcon.visibility = View.VISIBLE
         waveformView.visibility = View.GONE
         waveformView.stopAnimation()
         transcriptText.visibility = View.GONE
@@ -243,6 +265,13 @@ class VoiceOverlayService : Service() {
     fun hideOverlay() {
         if (state == OverlayState.RECORDING) stopRecording()
         overlayView.visibility = View.GONE
+    }
+
+    fun reloadSpeechEngine() {
+        val wasRecording = state == OverlayState.RECORDING
+        if (wasRecording) stopRecording()
+        speechEngine?.destroy()
+        speechEngine = SpeechEngineFactory.create(this)
     }
 
     private fun buildNotification(): Notification {

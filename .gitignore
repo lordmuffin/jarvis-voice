@@ -6,3 +6,8 @@ venv/
 .env
 .env.local
 *.log
+
+# Phase 2 — downloaded at build time via download-models.sh, not committed
+android/app/src/main/assets/models/
+android/app/src/main/jniLibs/
+android/app/src/main/java/com/k2fsa/
