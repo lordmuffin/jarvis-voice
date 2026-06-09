@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Jarvis Voice</string>
+    <string name="accessibility_service_label">Jarvis Voice Overlay</string>
+    <string name="mic_desc">Tap to start dictation</string>
+    <string name="notif_channel_name">Jarvis Voice Overlay</string>
+</resources>

@@ -1,0 +1,17 @@
+#!/bin/sh
+# Gradle wrapper script for Unix
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+APP_HOME=$SCRIPT_DIR
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+# If wrapper jar doesn't exist, download it
+if [ ! -f "$CLASSPATH" ]; then
+    echo "Downloading gradle-wrapper.jar..."
+    curl -fsSL -o "$CLASSPATH" \
+        "https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar" 2>/dev/null \
+    || wget -q -O "$CLASSPATH" \
+        "https://raw.githubusercontent.com/gradle/gradle/v8.9.0/gradle/wrapper/gradle-wrapper.jar" 2>/dev/null \
+    || { echo "ERROR: Could not download gradle-wrapper.jar. Install Gradle 8.9 and run 'gradle wrapper'." >&2; exit 1; }
+fi
+
+exec java -cp "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"
