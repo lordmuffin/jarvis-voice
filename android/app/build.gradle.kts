@@ -21,6 +21,12 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    // Don't attempt to compress ONNX model files — they're already binary
+    // and compression wastes build memory on large model assets.
+    androidResources {
+        noCompress += listOf("onnx", "bin")
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
