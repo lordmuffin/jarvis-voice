@@ -185,7 +185,7 @@ class VoiceOverlayService : Service() {
         waveformView.barColor = Color.WHITE
         waveformView.visibility = View.VISIBLE
         waveformView.startAnimation()
-        overlayView.setBackgroundColor(0xFFFF4444.toInt())
+        overlayView.setBackgroundResource(R.drawable.pill_background_red)
 
         speechEngine?.startListening(
             onPartial = { /* compact mode — no partial visual */ },
@@ -227,7 +227,7 @@ class VoiceOverlayService : Service() {
         }
         msg?.let { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
 
-        overlayView.setBackgroundColor(0xFF00B4D8.toInt())
+        overlayView.setBackgroundResource(R.drawable.pill_background_accent)
         Handler(Looper.getMainLooper()).postDelayed({ setIdleState() }, 400)
     }
 
