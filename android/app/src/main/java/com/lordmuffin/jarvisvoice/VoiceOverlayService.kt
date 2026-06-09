@@ -70,6 +70,8 @@ class VoiceOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance       = this
+        DebugLog.init(this)
+        DebugLog.i("Service", "onCreate")
         historyManager = DictationHistoryManager(this)
         dictManager    = CustomDictionaryManager(this)
         createNotificationChannel()
@@ -89,6 +91,7 @@ class VoiceOverlayService : Service() {
     }
 
     override fun onDestroy() {
+        DebugLog.i("Service", "onDestroy — service is being killed")
         super.onDestroy()
         instance = null
         speechEngine?.destroy()
@@ -183,6 +186,7 @@ class VoiceOverlayService : Service() {
     }
 
     fun startRecording(holdMode: Boolean = false) {
+        DebugLog.i("Overlay", "startRecording holdMode=$holdMode engine=${speechEngine?.javaClass?.simpleName}")
         sessionStartMs = SystemClock.elapsedRealtime()
         state = OverlayState.RECORDING
         micIcon.visibility = View.GONE
@@ -209,6 +213,7 @@ class VoiceOverlayService : Service() {
 
     private fun handleFinalTranscript(text: String) {
         val elapsedMs = SystemClock.elapsedRealtime() - sessionStartMs
+        DebugLog.i("Overlay", "handleFinalTranscript elapsedMs=$elapsedMs textLen=${text.length} blank=${text.isBlank()}")
         if (text.isBlank()) { setIdleState(); return }
 
         val processed = dictManager.applyTo(text)
@@ -217,6 +222,7 @@ class VoiceOverlayService : Service() {
         state = OverlayState.DONE
         waveformView.stopAnimation()
 
+        DebugLog.i("Overlay", "inject node=${lastFocusedNode != null} processed=\"${processed.take(60)}\"")
         TextInjector.inject(lastFocusedNode, processed)
 
         // Clipboard notification (if enabled in settings)

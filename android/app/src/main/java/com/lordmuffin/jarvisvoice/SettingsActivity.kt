@@ -73,6 +73,9 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_open_dictionary).setOnClickListener {
             startActivity(Intent(this, DictionaryActivity::class.java))
         }
+        findViewById<Button>(R.id.btn_open_debug_log).setOnClickListener {
+            startActivity(Intent(this, DebugLogActivity::class.java))
+        }
 
         refreshModelStatus()
         refreshStats()

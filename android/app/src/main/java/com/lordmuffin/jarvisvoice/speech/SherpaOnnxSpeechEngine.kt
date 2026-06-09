@@ -12,6 +12,7 @@ import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
+import com.lordmuffin.jarvisvoice.DebugLog
 import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.Executors
@@ -22,36 +23,45 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     private var audioRecord: AudioRecord? = null
     private var recordingThread: Thread? = null
 
-    @Volatile private var isListening = false
+    @Volatile private var isListening  = false
     @Volatile private var pendingFinal = false
+    @Volatile private var holdMode     = false
 
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private val transcribeExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler       = Handler(Looper.getMainLooper())
+    private val transcribeExecutor = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "jarvis-transcribe")
+    }
 
-    private val sampleRate = 16000
-    // 300ms chunks at 16kHz mono
-    private val chunkSamples = sampleRate * 300 / 1000
+    private val sampleRate   = 16000
+    private val chunkSamples = sampleRate * 300 / 1000   // 300 ms per read
+
+    // VAD-flush thresholds
+    private val FLUSH_SILENCE_CHUNKS    = 5              // 5 × 300ms = 1.5s pause → commit
+    private val MAX_BUFFER_SAMPLES      = sampleRate * 15 // 15s without pause → force commit
+    private val MIN_CHUNK_SAMPLES       = sampleRate / 2  // 0.5s minimum to transcribe
+    private val AUTO_STOP_EMPTY_FLUSHES = 20             // 20 × ~1.5s = 30s pure silence
+
+    private val silenceRmsThreshold  = 200.0
+    private val partialIntervalMs    = 2_000L
+
+    private var silenceRunChunks     = 0
+    private var emptyFlushCount      = 0
+    private var lastPartialTimestamp = 0L
+
+    // Text accumulated from flushed chunks; only written from transcribeExecutor
+    @Volatile private var committedText = ""
+
+    private val bufferLock    = Any()
+    private val currentBuffer = ArrayList<Short>(sampleRate * 5)
 
     private var onPartialCallback: ((String) -> Unit)? = null
-    private var onFinalCallback: ((String) -> Unit)? = null
-    private var onErrorCallback: ((Int) -> Unit)? = null
-
-    private val bufferLock = Any()
-    private val allSamples = ArrayList<Short>(sampleRate * 30)  // pre-alloc 30s
-
-    private var consecutiveSilenceChunks = 0
-    private val silenceRmsThreshold = 200.0     // below this RMS → silence
-    // Set per-session: Int.MAX_VALUE = hold mode (never auto-stop); 100 = tap mode (30s silence)
-    @Volatile private var silenceChunksTarget = 100
-
-    private var lastPartialTimestamp = 0L
-    private val partialIntervalMs = 1500L       // interim result every 1.5s
+    private var onFinalCallback:   ((String) -> Unit)? = null
+    private var onErrorCallback:   ((Int)    -> Unit)? = null
 
     companion object {
         const val MODEL_SUBDIR_PUBLIC = "models/whisper-base-en"
         private const val MODEL_SUBDIR = MODEL_SUBDIR_PUBLIC
 
-        // Actual filenames used by sherpa-onnx whisper-base.en
         private val MODEL_FILES = listOf(
             "base.en-encoder.int8.onnx",
             "base.en-decoder.int8.onnx",
@@ -63,8 +73,6 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             return MODEL_FILES.all { File(dir, it).exists() }
         }
 
-        // Called in init{} — copies bundled assets to filesDir so ONNX Runtime can
-        // open them by file path (it cannot read from APK assets directly).
         private fun copyAssetsToFilesDir(context: Context) {
             val dest = File(context.filesDir, MODEL_SUBDIR).also { it.mkdirs() }
             MODEL_FILES.forEach { name ->
@@ -74,7 +82,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                     context.assets.open("$MODEL_SUBDIR/$name").use { src ->
                         FileOutputStream(target).use { src.copyTo(it) }
                     }
-                } catch (_: Exception) { /* model not bundled; isModelAvailable() returns false */ }
+                } catch (_: Exception) {}
             }
         }
     }
@@ -86,28 +94,26 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
     private fun initRecognizer() {
         val dir = File(context.filesDir, MODEL_SUBDIR).absolutePath
-
         val whisper = OfflineWhisperModelConfig(
             encoder = "$dir/base.en-encoder.int8.onnx",
             decoder = "$dir/base.en-decoder.int8.onnx",
             language = "en",
             task = "transcribe"
         )
-
         fun cfg(provider: String) = OfflineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = sampleRate, featureDim = 80),
+            featConfig  = FeatureConfig(sampleRate = sampleRate, featureDim = 80),
             modelConfig = OfflineModelConfig(
-                whisper = whisper,
-                tokens = "$dir/base.en-tokens.txt",
+                whisper    = whisper,
+                tokens     = "$dir/base.en-tokens.txt",
                 numThreads = 2,
-                provider = provider,
-                modelType = "whisper"
+                provider   = provider,
+                modelType  = "whisper"
             )
         )
-
-        // Prefer NNAPI (Tensor G5 NPU), fall back to CPU.
         recognizer = runCatching { OfflineRecognizer(config = cfg("nnapi")) }.getOrNull()
             ?: runCatching { OfflineRecognizer(config = cfg("cpu")) }.getOrNull()
+
+        DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"}")
     }
 
     override fun startListening(
@@ -116,20 +122,26 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         onError:   (Int)    -> Unit,
         holdMode:  Boolean
     ) {
-        if (recognizer == null) { onError(-1); return }
+        if (recognizer == null) {
+            DebugLog.e("STT", "startListening called but recognizer is null")
+            onError(-1)
+            return
+        }
 
         onPartialCallback = onPartial
         onFinalCallback   = onFinal
         onErrorCallback   = onError
+        this.holdMode     = holdMode
 
-        // Hold: disable auto-stop; Tap: auto-stop after 30s silence (100 × 300ms chunks)
-        silenceChunksTarget = if (holdMode) Int.MAX_VALUE else 100
-
-        isListening = true
-        pendingFinal = false
-        consecutiveSilenceChunks = 0
+        isListening      = true
+        pendingFinal     = false
+        silenceRunChunks = 0
+        emptyFlushCount  = 0
         lastPartialTimestamp = 0L
-        synchronized(bufferLock) { allSamples.clear() }
+        committedText    = ""
+        synchronized(bufferLock) { currentBuffer.clear() }
+
+        DebugLog.i("STT", "startListening holdMode=$holdMode")
 
         val minBuf = AudioRecord.getMinBufferSize(
             sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
@@ -150,50 +162,114 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                 if (read <= 0) continue
 
                 val samples = chunk.copyOf(read)
-                synchronized(bufferLock) {
-                    // Cap at 30s to bound memory; trim oldest 5s when full
-                    if (allSamples.size > sampleRate * 30) {
-                        val drop = sampleRate * 5
-                        repeat(drop) { allSamples.removeAt(0) }
-                    }
-                    samples.forEach { allSamples.add(it) }
+                val silent  = rms(samples) < silenceRmsThreshold
+
+                if (!silent) {
+                    silenceRunChunks = 0
+                    emptyFlushCount  = 0
+                } else {
+                    silenceRunChunks++
                 }
 
-                val silent = rms(samples) < silenceRmsThreshold
-                if (silent) consecutiveSilenceChunks++ else consecutiveSilenceChunks = 0
+                synchronized(bufferLock) { samples.forEach { currentBuffer.add(it) } }
 
-                val bufSize = synchronized(bufferLock) { allSamples.size }
-                val now = SystemClock.elapsedRealtime()
-                val dueForPartial = !pendingFinal &&
-                    bufSize > sampleRate &&   // at least 1s recorded
-                    (now - lastPartialTimestamp) >= partialIntervalMs
+                val bufSize = synchronized(bufferLock) { currentBuffer.size }
 
-                if (!pendingFinal && consecutiveSilenceChunks >= silenceChunksTarget) {
-                    pendingFinal = true
-                    isListening = false
-                    dispatchTranscription(isFinal = true)
-                } else if (dueForPartial) {
-                    lastPartialTimestamp = now
-                    dispatchTranscription(isFinal = false)
+                val vadFlush   = silenceRunChunks >= FLUSH_SILENCE_CHUNKS
+                val sizeFlush  = bufSize >= MAX_BUFFER_SAMPLES
+                val shouldFlush = !pendingFinal && (vadFlush || sizeFlush)
+
+                if (shouldFlush) {
+                    silenceRunChunks = 0
+                    val snapshot: ShortArray
+                    synchronized(bufferLock) {
+                        snapshot = currentBuffer.toShortArray()
+                        currentBuffer.clear()
+                    }
+                    if (snapshot.size >= MIN_CHUNK_SAMPLES) {
+                        emptyFlushCount = 0
+                        DebugLog.i("STT", "flush chunk ${snapshot.size} samples (${snapshot.size / sampleRate}s)")
+                        transcribeExecutor.submit { flushChunk(snapshot) }
+                    } else {
+                        emptyFlushCount++
+                        DebugLog.i("STT", "empty flush #$emptyFlushCount holdMode=$holdMode")
+                        if (!holdMode && emptyFlushCount >= AUTO_STOP_EMPTY_FLUSHES) {
+                            DebugLog.i("STT", "auto-stop: 30s silence reached")
+                            pendingFinal = true
+                            isListening  = false
+                            val committed = committedText
+                            mainHandler.post { onFinalCallback?.invoke(committed.trim()) }
+                        }
+                    }
+                } else if (!pendingFinal) {
+                    val now = SystemClock.elapsedRealtime()
+                    if (bufSize > MIN_CHUNK_SAMPLES &&
+                        (now - lastPartialTimestamp) >= partialIntervalMs
+                    ) {
+                        lastPartialTimestamp = now
+                        val snap: ShortArray
+                        synchronized(bufferLock) { snap = currentBuffer.toShortArray() }
+                        val committed = committedText
+                        transcribeExecutor.submit {
+                            val current = transcribe(snap)
+                            val full = buildString {
+                                if (committed.isNotEmpty()) append(committed).append(' ')
+                                if (current.isNotBlank()) append(current.trim())
+                            }.trim()
+                            if (full.isNotBlank()) mainHandler.post { onPartialCallback?.invoke(full) }
+                        }
+                    }
                 }
             }
+            DebugLog.i("STT", "recording loop exited isListening=$isListening")
         }.also { it.name = "jarvis-record"; it.start() }
     }
 
-    private fun dispatchTranscription(isFinal: Boolean) {
+    // Runs on transcribeExecutor — safe to mutate committedText
+    private fun flushChunk(snapshot: ShortArray) {
+        val text = transcribe(snapshot)
+        DebugLog.i("STT", "flushChunk result: \"${text.take(60)}\"")
+        if (text.isNotBlank()) {
+            val sep = if (committedText.isNotEmpty()) " " else ""
+            committedText += sep + text.trim()
+        }
+        val partial = committedText
+        mainHandler.post { onPartialCallback?.invoke(partial) }
+    }
+
+    override fun stopListening() {
+        DebugLog.i("STT", "stopListening pendingFinal=$pendingFinal committedLen=${committedText.length}")
+        isListening = false
+        audioRecord?.stop()
+        if (pendingFinal) return
+        pendingFinal = true
+
         val snapshot: ShortArray
-        synchronized(bufferLock) { snapshot = allSamples.toShortArray() }
-        if (snapshot.isEmpty()) {
-            if (isFinal) mainHandler.post { onFinalCallback?.invoke("") }
-            return
+        synchronized(bufferLock) {
+            snapshot = currentBuffer.toShortArray()
+            currentBuffer.clear()
         }
+        val committed = committedText
+
         transcribeExecutor.submit {
-            val text = transcribe(snapshot)
-            mainHandler.post {
-                if (isFinal) onFinalCallback?.invoke(text)
-                else if (text.isNotBlank()) onPartialCallback?.invoke(text)
-            }
+            val lastChunk = if (snapshot.size >= MIN_CHUNK_SAMPLES) transcribe(snapshot) else ""
+            DebugLog.i("STT", "stopListening lastChunk: \"${lastChunk.take(60)}\"")
+            val sep   = if (committed.isNotEmpty() && lastChunk.isNotBlank()) " " else ""
+            val final = (committed + sep + lastChunk).trim()
+            DebugLog.i("STT", "onFinal total words=${final.split(" ").size}")
+            mainHandler.post { onFinalCallback?.invoke(final) }
         }
+    }
+
+    override fun destroy() {
+        DebugLog.i("STT", "destroy")
+        isListening = false
+        audioRecord?.run { stop(); release() }
+        audioRecord = null
+        recordingThread = null
+        transcribeExecutor.shutdown()
+        recognizer?.release()
+        recognizer = null
     }
 
     private fun transcribe(samples: ShortArray): String {
@@ -206,26 +282,10 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             val text = rec.getResult(stream).text.trim()
             stream.release()
             text
-        } catch (_: Exception) { "" }
-    }
-
-    override fun stopListening() {
-        isListening = false
-        audioRecord?.stop()
-        if (!pendingFinal) {
-            pendingFinal = true
-            dispatchTranscription(isFinal = true)
+        } catch (e: Exception) {
+            DebugLog.e("STT", "transcribe error", e)
+            ""
         }
-    }
-
-    override fun destroy() {
-        isListening = false
-        audioRecord?.run { stop(); release() }
-        audioRecord = null
-        recordingThread = null
-        transcribeExecutor.shutdown()
-        recognizer?.release()
-        recognizer = null
     }
 
     private fun rms(samples: ShortArray): Double {
