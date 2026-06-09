@@ -1,4 +1,4 @@
-package dev.apj.jarvisvoice.speech
+package com.lordmuffin.jarvisvoice.speech
 
 import android.content.Context
 import android.content.Intent

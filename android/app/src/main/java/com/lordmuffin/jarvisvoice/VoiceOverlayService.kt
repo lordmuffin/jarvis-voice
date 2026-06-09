@@ -1,4 +1,4 @@
-package dev.apj.jarvisvoice
+package com.lordmuffin.jarvisvoice
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -21,9 +21,9 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
-import dev.apj.jarvisvoice.speech.AndroidSpeechEngine
-import dev.apj.jarvisvoice.speech.SpeechEngine
-import dev.apj.jarvisvoice.ui.AudioWaveformView
+import com.lordmuffin.jarvisvoice.speech.AndroidSpeechEngine
+import com.lordmuffin.jarvisvoice.speech.SpeechEngine
+import com.lordmuffin.jarvisvoice.ui.AudioWaveformView
 
 enum class OverlayState { IDLE, RECORDING, DONE }
 

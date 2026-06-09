@@ -1,4 +1,4 @@
-package dev.apj.jarvisvoice.ui
+package com.lordmuffin.jarvisvoice.ui
 
 import android.animation.ValueAnimator
 import android.content.Context

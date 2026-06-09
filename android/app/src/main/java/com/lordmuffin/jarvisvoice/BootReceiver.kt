@@ -1,4 +1,4 @@
-package dev.apj.jarvisvoice
+package com.lordmuffin.jarvisvoice
 
 import android.content.BroadcastReceiver
 import android.content.Context

@@ -1,4 +1,4 @@
-package dev.apj.jarvisvoice.speech
+package com.lordmuffin.jarvisvoice.speech
 
 interface SpeechEngine {
     fun startListening(

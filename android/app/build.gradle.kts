@@ -4,13 +4,13 @@ plugins {
 }
 
 android {
-    namespace = "dev.apj.jarvisvoice"
-    compileSdk = 35
+    namespace = "com.lordmuffin.jarvisvoice"
+    compileSdk = 34
 
     defaultConfig {
-        applicationId = "dev.apj.jarvisvoice"
-        minSdk = 33
-        targetSdk = 35
+        applicationId = "com.lordmuffin.jarvisvoice"
+        minSdk = 21
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0.0-phase1"
     }

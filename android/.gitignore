@@ -9,3 +9,6 @@ captures/
 .cxx/
 *.apk
 *.aab
+local.properties
+gradle-local.properties
+gradle.properties

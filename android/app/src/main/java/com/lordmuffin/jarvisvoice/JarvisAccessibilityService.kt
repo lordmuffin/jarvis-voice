@@ -1,4 +1,4 @@
-package dev.apj.jarvisvoice
+package com.lordmuffin.jarvisvoice
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
