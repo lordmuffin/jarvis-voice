@@ -1,65 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<!-- Compact 56dp circular mic button. pill_background.xml has 28dp corners = perfect circle. -->
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="220dp"
+    android:layout_width="56dp"
     android:layout_height="56dp"
     android:background="@drawable/pill_background"
     android:elevation="8dp">
 
     <ImageView
         android:id="@+id/mic_icon"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
         android:src="@drawable/ic_mic"
         android:tint="@color/accent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/settings_icon"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_gravity="center"
         android:contentDescription="@string/mic_desc" />
-
-    <ImageView
-        android:id="@+id/settings_icon"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:src="@drawable/ic_settings"
-        android:tint="@color/dim"
-        android:padding="2dp"
-        android:contentDescription="@string/settings_desc"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginEnd="6dp"
-        android:layout_marginTop="6dp" />
 
     <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
         android:id="@+id/waveform"
-        android:layout_width="60dp"
-        android:layout_height="32dp"
+        android:layout_width="36dp"
+        android:layout_height="28dp"
         android:visibility="gone"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginStart="12dp" />
+        android:layout_gravity="center" />
 
-    <TextView
-        android:id="@+id/transcript"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:textColor="@color/white"
-        android:textSize="12sp"
-        android:singleLine="true"
-        android:ellipsize="marquee"
-        android:marqueeRepeatLimit="marquee_forever"
-        android:focusable="true"
-        android:focusableInTouchMode="true"
-        android:scrollHorizontally="true"
-        android:visibility="gone"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="12dp"
-        app:layout_constraintStart_toEndOf="@id/waveform"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</FrameLayout>

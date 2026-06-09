@@ -3,8 +3,10 @@ package com.lordmuffin.jarvisvoice
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
@@ -16,7 +18,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.TextView
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
@@ -30,6 +32,7 @@ class VoiceOverlayService : Service() {
     companion object {
         const val CHANNEL_ID = "jarvis_voice_overlay"
         const val NOTIF_ID = 1
+        const val ACTION_OPEN_SETTINGS = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
         var lastFocusedNode: AccessibilityNodeInfo? = null
         var instance: VoiceOverlayService? = null
     }
@@ -37,9 +40,7 @@ class VoiceOverlayService : Service() {
     private lateinit var windowManager: WindowManager
     private lateinit var overlayView: View
     private lateinit var waveformView: AudioWaveformView
-    private lateinit var transcriptText: TextView
-    private lateinit var micIcon: View
-    private lateinit var settingsIcon: View
+    private lateinit var micIcon: ImageView
     private var speechEngine: SpeechEngine? = null
     private var state = OverlayState.IDLE
 
@@ -65,7 +66,15 @@ class VoiceOverlayService : Service() {
         speechEngine = SpeechEngineFactory.create(this)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_OPEN_SETTINGS) {
+            startActivity(
+                Intent(this, SettingsActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+        }
+        return START_STICKY
+    }
 
     override fun onDestroy() {
         super.onDestroy()
@@ -79,33 +88,30 @@ class VoiceOverlayService : Service() {
     private fun setupOverlay() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        val inflater = LayoutInflater.from(this)
-        overlayView = inflater.inflate(R.layout.overlay_pill, null)
+        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_pill, null)
         waveformView = overlayView.findViewById(R.id.waveform)
-        transcriptText = overlayView.findViewById(R.id.transcript)
         micIcon = overlayView.findViewById(R.id.mic_icon)
-        settingsIcon = overlayView.findViewById(R.id.settings_icon)
 
-        val displayMetrics = resources.displayMetrics
-        val widthPx = (220 * displayMetrics.density).toInt()
-        val heightPx = (56 * displayMetrics.density).toInt()
+        val density = resources.displayMetrics.density
+        val sizePx = (56 * density).toInt()
 
         params = WindowManager.LayoutParams(
-            widthPx,
-            heightPx,
+            sizePx,
+            sizePx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            y = (64 * displayMetrics.density).toInt()
+            gravity = Gravity.BOTTOM or Gravity.END
+            x = (16 * density).toInt()   // 16dp from right edge
+            y = (80 * density).toInt()   // 80dp above bottom
         }
 
         overlayView.setOnTouchListener(::handleTouch)
         windowManager.addView(overlayView, params)
         setIdleState()
-        overlayView.visibility = android.view.View.GONE  // hidden until keyboard appears
+        overlayView.visibility = View.GONE  // hidden until keyboard appears
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -117,9 +123,9 @@ class VoiceOverlayService : Service() {
                 initialY = params.y
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
+                // Hold-to-record: fire after long-press timeout
                 longPressRunnable = Runnable {
-                    isDragging = false
-                    startHoldToRecord()
+                    if (state == OverlayState.IDLE) startRecording()
                 }
                 longPressHandler.postDelayed(
                     longPressRunnable!!,
@@ -129,12 +135,12 @@ class VoiceOverlayService : Service() {
             MotionEvent.ACTION_MOVE -> {
                 val dx = (event.rawX - initialTouchX).toInt()
                 val dy = (event.rawY - initialTouchY).toInt()
-                if (!isDragging && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) {
+                if (!isDragging && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
                     isDragging = true
                     longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
                 }
                 if (isDragging) {
-                    params.x = initialX + dx
+                    params.x = initialX - dx   // END gravity: x is from right, so invert dx
                     params.y = initialY - dy
                     runCatching { windowManager.updateViewLayout(overlayView, params) }
                 }
@@ -142,16 +148,14 @@ class VoiceOverlayService : Service() {
             MotionEvent.ACTION_UP -> {
                 longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
                 if (!isDragging) {
-                    if (state == OverlayState.IDLE && isTouchOnView(event, settingsIcon)) {
-                        openSettings()
-                    } else {
-                        when (state) {
-                            OverlayState.IDLE -> startRecording()
-                            OverlayState.RECORDING -> stopRecording()
-                            OverlayState.DONE -> setIdleState()
-                        }
+                    // Tap-to-toggle (quick tap without long-press firing)
+                    when (state) {
+                        OverlayState.IDLE      -> startRecording()
+                        OverlayState.RECORDING -> stopRecording()
+                        OverlayState.DONE      -> setIdleState()
                     }
                 } else if (state == OverlayState.RECORDING) {
+                    // Released while dragging during a hold-to-record
                     stopRecording()
                 }
             }
@@ -159,48 +163,21 @@ class VoiceOverlayService : Service() {
         return true
     }
 
-    private fun isTouchOnView(event: MotionEvent, view: View): Boolean {
-        if (view.visibility != View.VISIBLE) return false
-        val loc = IntArray(2)
-        view.getLocationOnScreen(loc)
-        return event.rawX >= loc[0] && event.rawX <= loc[0] + view.width &&
-               event.rawY >= loc[1] && event.rawY <= loc[1] + view.height
-    }
-
-    private fun openSettings() {
-        val intent = Intent(this, SettingsActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        startActivity(intent)
-    }
-
-    private fun startHoldToRecord() {
-        if (state == OverlayState.IDLE) startRecording()
-    }
-
     fun startRecording() {
         state = OverlayState.RECORDING
         micIcon.visibility = View.GONE
-        settingsIcon.visibility = View.GONE
+        waveformView.barColor = Color.WHITE
         waveformView.visibility = View.VISIBLE
         waveformView.startAnimation()
-        transcriptText.visibility = View.VISIBLE
-        transcriptText.text = ""
+        overlayView.setBackgroundColor(0xFFFF4444.toInt())  // red = recording
 
         speechEngine?.startListening(
-            onPartial = { partial ->
-                Handler(Looper.getMainLooper()).post {
-                    transcriptText.text = partial
-                }
-            },
+            onPartial = { /* visual handled by clipboard/injection on final */ },
             onFinal = { final ->
-                Handler(Looper.getMainLooper()).post {
-                    handleFinalTranscript(final)
-                }
+                Handler(Looper.getMainLooper()).post { handleFinalTranscript(final) }
             },
-            onError = { _ ->
-                Handler(Looper.getMainLooper()).post {
-                    setIdleState()
-                }
+            onError = {
+                Handler(Looper.getMainLooper()).post { setIdleState() }
             }
         )
     }
@@ -217,26 +194,20 @@ class VoiceOverlayService : Service() {
         state = OverlayState.DONE
         waveformView.stopAnimation()
 
-        // Always copies to clipboard; also pastes into focused node when available.
         TextInjector.inject(lastFocusedNode, text)
-
         if (lastFocusedNode == null) {
             Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
         }
 
-        overlayView.setBackgroundColor(0xFF00B4D8.toInt())
-        Handler(Looper.getMainLooper()).postDelayed({ setIdleState() }, 500)
+        overlayView.setBackgroundColor(0xFF00B4D8.toInt())  // accent flash = done
+        Handler(Looper.getMainLooper()).postDelayed({ setIdleState() }, 400)
     }
 
     private fun setIdleState() {
         state = OverlayState.IDLE
         micIcon.visibility = View.VISIBLE
-        settingsIcon.visibility = View.VISIBLE
         waveformView.visibility = View.GONE
         waveformView.stopAnimation()
-        transcriptText.visibility = View.GONE
-        transcriptText.text = ""
-        transcriptText.setOnClickListener(null)
         overlayView.setBackgroundResource(R.drawable.pill_background)
     }
 
@@ -257,12 +228,18 @@ class VoiceOverlayService : Service() {
     }
 
     private fun buildNotification(): Notification {
+        val settingsPi = PendingIntent.getService(
+            this, 0,
+            Intent(this, VoiceOverlayService::class.java).setAction(ACTION_OPEN_SETTINGS),
+            PendingIntent.FLAG_IMMUTABLE
+        )
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Jarvis Voice")
-            .setContentText("Dictation overlay active")
+            .setContentText("Tap mic when keyboard appears to dictate")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setOngoing(true)
             .setSilent(true)
+            .addAction(android.R.drawable.ic_menu_preferences, "Settings", settingsPi)
             .build()
     }
 

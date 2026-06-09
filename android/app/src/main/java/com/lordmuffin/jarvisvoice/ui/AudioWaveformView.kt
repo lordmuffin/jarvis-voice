@@ -16,9 +16,11 @@ class AudioWaveformView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : View(context, attrs, defStyle) {
 
-    private val accentColor = Color.parseColor("#00B4D8")
+    var barColor: Int = Color.parseColor("#00B4D8")
+        set(value) { field = value; paint.color = value; invalidate() }
+
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = accentColor
+        color = Color.parseColor("#00B4D8")
         style = Paint.Style.FILL
     }
 
