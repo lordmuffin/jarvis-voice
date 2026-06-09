@@ -12,3 +12,4 @@ captures/
 local.properties
 gradle-local.properties
 gradle.properties
+*.hprof

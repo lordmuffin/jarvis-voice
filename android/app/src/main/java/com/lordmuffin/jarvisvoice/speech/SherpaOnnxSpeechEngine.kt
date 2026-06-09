@@ -47,7 +47,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     private val partialIntervalMs = 1500L       // interim result every 1.5s
 
     companion object {
-        private const val MODEL_SUBDIR = "models/whisper-base-en"
+        const val MODEL_SUBDIR_PUBLIC = "models/whisper-base-en"
+        private const val MODEL_SUBDIR = MODEL_SUBDIR_PUBLIC
 
         // Actual filenames used by sherpa-onnx whisper-base.en
         private val MODEL_FILES = listOf(

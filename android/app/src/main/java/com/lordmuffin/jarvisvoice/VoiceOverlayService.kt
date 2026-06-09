@@ -4,8 +4,6 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.PixelFormat
 import android.os.Handler
@@ -107,6 +105,7 @@ class VoiceOverlayService : Service() {
         overlayView.setOnTouchListener(::handleTouch)
         windowManager.addView(overlayView, params)
         setIdleState()
+        overlayView.visibility = android.view.View.GONE  // hidden until keyboard appears
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -218,32 +217,15 @@ class VoiceOverlayService : Service() {
         state = OverlayState.DONE
         waveformView.stopAnimation()
 
-        val node = lastFocusedNode
-        if (node != null) {
-            val injected = TextInjector.inject(node, text)
-            if (!injected) {
-                showCopyButton(text)
-                return
-            }
-        } else {
-            Toast.makeText(this, "No text field focused", Toast.LENGTH_SHORT).show()
+        // Always copies to clipboard; also pastes into focused node when available.
+        TextInjector.inject(lastFocusedNode, text)
+
+        if (lastFocusedNode == null) {
+            Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
         }
 
         overlayView.setBackgroundColor(0xFF00B4D8.toInt())
-        Handler(Looper.getMainLooper()).postDelayed({
-            setIdleState()
-        }, 500)
-    }
-
-    private fun showCopyButton(text: String) {
-        transcriptText.text = "Tap to copy: $text"
-        transcriptText.setOnClickListener {
-            val clipboard = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("transcript", text))
-            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
-            transcriptText.setOnClickListener(null)
-            setIdleState()
-        }
+        Handler(Looper.getMainLooper()).postDelayed({ setIdleState() }, 500)
     }
 
     private fun setIdleState() {

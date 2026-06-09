@@ -8,23 +8,24 @@ import android.view.accessibility.AccessibilityNodeInfo
 
 object TextInjector {
 
-    fun inject(node: AccessibilityNodeInfo, text: String): Boolean {
-        // Strategy 1: ACTION_SET_TEXT
+    // Always copies text to clipboard so it's accessible regardless of injection outcome.
+    // If a focused node is provided, also attempts to inject directly into it.
+    fun inject(node: AccessibilityNodeInfo?, text: String) {
+        // Step 1: clipboard — unconditional
+        VoiceOverlayService.instance?.let { ctx ->
+            val cb = ctx.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            cb.setPrimaryClip(ClipData.newPlainText("jarvis_transcript", text))
+        }
+
+        node ?: return
+
+        // Step 2: ACTION_SET_TEXT (replaces field content cleanly)
         val args = Bundle().apply {
             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text)
         }
-        if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) {
-            return true
-        }
+        if (node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)) return
 
-        // Strategy 2: clipboard + paste
-        return try {
-            val context = VoiceOverlayService.instance ?: return false
-            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(ClipData.newPlainText("jarvis_transcript", text))
-            node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
-        } catch (e: Exception) {
-            false
-        }
+        // Step 3: paste from clipboard we just set
+        node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
     }
 }
