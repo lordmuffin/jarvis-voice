@@ -38,8 +38,9 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
 
     override fun startListening(
         onPartial: (String) -> Unit,
-        onFinal: (String) -> Unit,
-        onError: (Int) -> Unit
+        onFinal:   (String) -> Unit,
+        onError:   (Int)    -> Unit,
+        holdMode:  Boolean
     ) {
         onPartialCallback = onPartial
         onFinalCallback = onFinal

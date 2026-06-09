@@ -11,6 +11,7 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -30,8 +31,8 @@ enum class OverlayState { IDLE, RECORDING, DONE }
 class VoiceOverlayService : Service() {
 
     companion object {
-        const val CHANNEL_ID = "jarvis_voice_overlay"
-        const val NOTIF_ID = 1
+        const val CHANNEL_ID         = "jarvis_voice_overlay"
+        const val NOTIF_ID           = 1
         const val ACTION_OPEN_SETTINGS = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
         var lastFocusedNode: AccessibilityNodeInfo? = null
         var instance: VoiceOverlayService? = null
@@ -44,12 +45,17 @@ class VoiceOverlayService : Service() {
     private var speechEngine: SpeechEngine? = null
     private var state = OverlayState.IDLE
 
+    private lateinit var historyManager: DictationHistoryManager
+    private lateinit var dictManager: CustomDictionaryManager
+
     // Drag state
     private var initialX = 0
     private var initialY = 0
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
+    private var holdModeActive = false
+    private var sessionStartMs = 0L
     private var longPressRunnable: Runnable? = null
     private val longPressHandler = Handler(Looper.getMainLooper())
 
@@ -59,7 +65,9 @@ class VoiceOverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
+        instance       = this
+        historyManager = DictationHistoryManager(this)
+        dictManager    = CustomDictionaryManager(this)
         createNotificationChannel()
         startForeground(NOTIF_ID, buildNotification())
         setupOverlay()
@@ -80,6 +88,7 @@ class VoiceOverlayService : Service() {
         super.onDestroy()
         instance = null
         speechEngine?.destroy()
+        historyManager.close()
         if (::overlayView.isInitialized) {
             runCatching { windowManager.removeView(overlayView) }
         }
@@ -88,12 +97,12 @@ class VoiceOverlayService : Service() {
     private fun setupOverlay() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_pill, null)
+        overlayView  = LayoutInflater.from(this).inflate(R.layout.overlay_pill, null)
         waveformView = overlayView.findViewById(R.id.waveform)
-        micIcon = overlayView.findViewById(R.id.mic_icon)
+        micIcon      = overlayView.findViewById(R.id.mic_icon)
 
         val density = resources.displayMetrics.density
-        val sizePx = (56 * density).toInt()
+        val sizePx  = (56 * density).toInt()
 
         params = WindowManager.LayoutParams(
             sizePx,
@@ -104,14 +113,14 @@ class VoiceOverlayService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.BOTTOM or Gravity.END
-            x = (16 * density).toInt()   // 16dp from right edge
-            y = (80 * density).toInt()   // 80dp above bottom
+            x = (16 * density).toInt()
+            y = (80 * density).toInt()
         }
 
         overlayView.setOnTouchListener(::handleTouch)
         windowManager.addView(overlayView, params)
         setIdleState()
-        overlayView.visibility = View.GONE  // hidden until keyboard appears
+        overlayView.visibility = View.GONE
     }
 
     @Suppress("UNUSED_PARAMETER")
@@ -123,9 +132,11 @@ class VoiceOverlayService : Service() {
                 initialY = params.y
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
-                // Hold-to-record: fire after long-press timeout
                 longPressRunnable = Runnable {
-                    if (state == OverlayState.IDLE) startRecording()
+                    if (state == OverlayState.IDLE) {
+                        holdModeActive = true
+                        startRecording(holdMode = true)
+                    }
                 }
                 longPressHandler.postDelayed(
                     longPressRunnable!!,
@@ -140,22 +151,26 @@ class VoiceOverlayService : Service() {
                     longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
                 }
                 if (isDragging) {
-                    params.x = initialX - dx   // END gravity: x is from right, so invert dx
+                    params.x = initialX - dx
                     params.y = initialY - dy
                     runCatching { windowManager.updateViewLayout(overlayView, params) }
                 }
             }
             MotionEvent.ACTION_UP -> {
                 longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
+                // Hold-to-record release: stop immediately, don't process as tap
+                if (holdModeActive) {
+                    holdModeActive = false
+                    if (state == OverlayState.RECORDING) stopRecording()
+                    return true
+                }
                 if (!isDragging) {
-                    // Tap-to-toggle (quick tap without long-press firing)
                     when (state) {
-                        OverlayState.IDLE      -> startRecording()
+                        OverlayState.IDLE      -> startRecording(holdMode = false)
                         OverlayState.RECORDING -> stopRecording()
                         OverlayState.DONE      -> setIdleState()
                     }
                 } else if (state == OverlayState.RECORDING) {
-                    // Released while dragging during a hold-to-record
                     stopRecording()
                 }
             }
@@ -163,22 +178,24 @@ class VoiceOverlayService : Service() {
         return true
     }
 
-    fun startRecording() {
+    fun startRecording(holdMode: Boolean = false) {
+        sessionStartMs = SystemClock.elapsedRealtime()
         state = OverlayState.RECORDING
         micIcon.visibility = View.GONE
         waveformView.barColor = Color.WHITE
         waveformView.visibility = View.VISIBLE
         waveformView.startAnimation()
-        overlayView.setBackgroundColor(0xFFFF4444.toInt())  // red = recording
+        overlayView.setBackgroundColor(0xFFFF4444.toInt())
 
         speechEngine?.startListening(
-            onPartial = { /* visual handled by clipboard/injection on final */ },
-            onFinal = { final ->
+            onPartial = { /* compact mode — no partial visual */ },
+            onFinal   = { final ->
                 Handler(Looper.getMainLooper()).post { handleFinalTranscript(final) }
             },
-            onError = {
+            onError   = {
                 Handler(Looper.getMainLooper()).post { setIdleState() }
-            }
+            },
+            holdMode  = holdMode
         )
     }
 
@@ -187,19 +204,30 @@ class VoiceOverlayService : Service() {
     }
 
     private fun handleFinalTranscript(text: String) {
-        if (text.isBlank()) {
-            setIdleState()
-            return
-        }
+        val elapsedMs = SystemClock.elapsedRealtime() - sessionStartMs
+        if (text.isBlank()) { setIdleState(); return }
+
+        val processed = dictManager.applyTo(text)
+        val session   = historyManager.saveSession(processed, elapsedMs)
+
         state = OverlayState.DONE
         waveformView.stopAnimation()
 
-        TextInjector.inject(lastFocusedNode, text)
-        if (lastFocusedNode == null) {
-            Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show()
-        }
+        TextInjector.inject(lastFocusedNode, processed)
 
-        overlayView.setBackgroundColor(0xFF00B4D8.toInt())  // accent flash = done
+        // Metro: show WPM after every session
+        val msg = when {
+            lastFocusedNode == null && session.wordCount > 0 ->
+                "Copied · ${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm"
+            lastFocusedNode == null ->
+                "Copied to clipboard"
+            session.wordCount > 0 ->
+                "${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm"
+            else -> null
+        }
+        msg?.let { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
+
+        overlayView.setBackgroundColor(0xFF00B4D8.toInt())
         Handler(Looper.getMainLooper()).postDelayed({ setIdleState() }, 400)
     }
 

@@ -41,7 +41,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
     private var consecutiveSilenceChunks = 0
     private val silenceRmsThreshold = 200.0     // below this RMS → silence
-    private val silenceChunksForFinal = 2       // 2 × 300ms = 600ms quiet → final
+    // Set per-session: Int.MAX_VALUE = hold mode (never auto-stop); 100 = tap mode (30s silence)
+    @Volatile private var silenceChunksTarget = 100
 
     private var lastPartialTimestamp = 0L
     private val partialIntervalMs = 1500L       // interim result every 1.5s
@@ -111,14 +112,18 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
     override fun startListening(
         onPartial: (String) -> Unit,
-        onFinal: (String) -> Unit,
-        onError: (Int) -> Unit
+        onFinal:   (String) -> Unit,
+        onError:   (Int)    -> Unit,
+        holdMode:  Boolean
     ) {
         if (recognizer == null) { onError(-1); return }
 
         onPartialCallback = onPartial
-        onFinalCallback = onFinal
-        onErrorCallback = onError
+        onFinalCallback   = onFinal
+        onErrorCallback   = onError
+
+        // Hold: disable auto-stop; Tap: auto-stop after 30s silence (100 × 300ms chunks)
+        silenceChunksTarget = if (holdMode) Int.MAX_VALUE else 100
 
         isListening = true
         pendingFinal = false
@@ -163,7 +168,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                     bufSize > sampleRate &&   // at least 1s recorded
                     (now - lastPartialTimestamp) >= partialIntervalMs
 
-                if (!pendingFinal && consecutiveSilenceChunks >= silenceChunksForFinal) {
+                if (!pendingFinal && consecutiveSilenceChunks >= silenceChunksTarget) {
                     pendingFinal = true
                     isListening = false
                     dispatchTranscription(isFinal = true)

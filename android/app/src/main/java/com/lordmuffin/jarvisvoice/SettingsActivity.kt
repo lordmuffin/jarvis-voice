@@ -1,5 +1,6 @@
 package com.lordmuffin.jarvisvoice
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -21,6 +22,12 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvDownloadStatus: TextView
     private lateinit var btnCancel: Button
 
+    // Stats views
+    private lateinit var tvLastWords: TextView
+    private lateinit var tvLastWpm: TextView
+    private lateinit var tvTotalWords: TextView
+    private lateinit var tvAvgWpm: TextView
+
     private var downloader: ModelDownloader? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,12 +35,17 @@ class SettingsActivity : AppCompatActivity() {
         setContentView(R.layout.activity_settings)
         supportActionBar?.title = "Jarvis Voice Settings"
 
-        offlineSwitch   = findViewById(R.id.switch_offline_stt)
-        tvModelStatus   = findViewById(R.id.tv_model_status)
-        btnDownload     = findViewById(R.id.btn_download_model)
-        progressBar     = findViewById(R.id.progress_download)
+        offlineSwitch    = findViewById(R.id.switch_offline_stt)
+        tvModelStatus    = findViewById(R.id.tv_model_status)
+        btnDownload      = findViewById(R.id.btn_download_model)
+        progressBar      = findViewById(R.id.progress_download)
         tvDownloadStatus = findViewById(R.id.tv_download_status)
-        btnCancel       = findViewById(R.id.btn_cancel_download)
+        btnCancel        = findViewById(R.id.btn_cancel_download)
+
+        tvLastWords  = findViewById(R.id.tv_stat_last_words)
+        tvLastWpm    = findViewById(R.id.tv_stat_last_wpm)
+        tvTotalWords = findViewById(R.id.tv_stat_total_words)
+        tvAvgWpm     = findViewById(R.id.tv_stat_avg_wpm)
 
         offlineSwitch.isChecked = SpeechEngineFactory.isOfflineModeEnabled(this)
         offlineSwitch.setOnCheckedChangeListener { _, checked ->
@@ -47,7 +59,32 @@ class SettingsActivity : AppCompatActivity() {
             resetDownloadUi()
         }
 
+        findViewById<Button>(R.id.btn_open_history).setOnClickListener {
+            startActivity(Intent(this, HistoryActivity::class.java))
+        }
+        findViewById<Button>(R.id.btn_open_dictionary).setOnClickListener {
+            startActivity(Intent(this, DictionaryActivity::class.java))
+        }
+
         refreshModelStatus()
+        refreshStats()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshStats()
+    }
+
+    private fun refreshStats() {
+        val db = DictationHistoryManager(this)
+        val last     = db.getLastSession()
+        val lifetime = db.getLifetimeStats()
+        db.close()
+
+        tvLastWords.text  = last?.wordCount?.toString() ?: "—"
+        tvLastWpm.text    = last?.let { "%.0f".format(it.wpm) } ?: "—"
+        tvTotalWords.text = lifetime.totalWords.toString()
+        tvAvgWpm.text     = "%.0f".format(lifetime.avgWpm)
     }
 
     private fun refreshModelStatus() {
@@ -74,19 +111,16 @@ class SettingsActivity : AppCompatActivity() {
                     progressBar.progress = pct
                     tvDownloadStatus.text = "${formatBytes(downloaded)} / ${formatBytes(total)}"
                 }
-
                 override fun onExtracting() {
                     progressBar.isIndeterminate = true
                     tvDownloadStatus.text = "Extracting…"
                 }
-
                 override fun onComplete() {
                     resetDownloadUi()
                     refreshModelStatus()
                     VoiceOverlayService.instance?.reloadSpeechEngine()
                     Toast.makeText(this@SettingsActivity, "Model ready", Toast.LENGTH_SHORT).show()
                 }
-
                 override fun onError(message: String) {
                     resetDownloadUi()
                     Toast.makeText(
@@ -108,10 +142,10 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun formatBytes(bytes: Long): String = when {
-        bytes <= 0       -> "0 B"
-        bytes < 1024     -> "$bytes B"
+        bytes <= 0        -> "0 B"
+        bytes < 1024      -> "$bytes B"
         bytes < 1_048_576 -> "${bytes / 1024} KB"
-        else             -> "%.1f MB".format(bytes.toDouble() / 1_048_576)
+        else              -> "%.1f MB".format(bytes.toDouble() / 1_048_576)
     }
 
     override fun onDestroy() {
