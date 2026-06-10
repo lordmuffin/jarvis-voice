@@ -7,6 +7,10 @@ venv/
 .env.local
 *.log
 
+# Signing keystores — never commit; use KEYSTORE_BASE64 GitHub secret instead
+*.jks
+*.keystore
+
 # Phase 2 — downloaded at build time via download-models.sh, not committed
 android/app/src/main/assets/models/
 android/app/src/main/jniLibs/

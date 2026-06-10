@@ -31,7 +31,7 @@ jobs:
           restore-keys: ${{ runner.os }}-gradle-
 
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d '[:space:]' | base64 -d > android/app/keystore.jks
 
       - name: Download sherpa-onnx bindings (no model)
         run: bash download-models.sh --no-model
