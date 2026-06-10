@@ -13,27 +13,30 @@ data class ModelConfig(
 
 object ModelRegistry {
 
-    // Update these URLs when Gemma 4 MediaPipe bundles are published to the model hub.
-    // Check: https://developers.google.com/mediapipe/solutions/genai/llm_inference
+    // MediaPipe LLM Inference .task models (Gemma 2 series).
+    // These URLs require a free Kaggle account and license acceptance:
+    //   https://www.kaggle.com/models/google/gemma/frameworks/tfLite
+    // If the in-app download returns HTTP 403, download the .task file manually from
+    // Kaggle and place it in Android/data/dev.apj.jarvis.voice/files/llm_models/.
     val MODELS = listOf(
         ModelConfig(
-            id = "gemma4-2b",
-            displayName = "Gemma 4 2B",
+            id = "gemma2-2b",
+            displayName = "Gemma 2 2B",
             description = "Fast · works on most phones · 4 GB RAM+",
-            fileSizeMb = 1500,
+            fileSizeMb = 1400,
             minRamGb = 4,
-            downloadUrl = "https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-2b-it-gpu-int4/1/gemma-4-2b-it-gpu-int4.task",
-            filename = "gemma4-2b.task",
+            downloadUrl = "https://storage.googleapis.com/mediapipe-models/llm_inference/gemma2-2b-it-gpu-int4/float16/1/gemma2-2b-it-gpu-int4.task",
+            filename = "gemma2-2b.task",
             isDefault = true
         ),
         ModelConfig(
-            id = "gemma4-12b",
-            displayName = "Gemma 4 12B",
+            id = "gemma2-9b",
+            displayName = "Gemma 2 9B",
             description = "Higher quality · requires 12 GB RAM",
-            fileSizeMb = 7000,
+            fileSizeMb = 5400,
             minRamGb = 12,
-            downloadUrl = "https://storage.googleapis.com/mediapipe-models/llm_inference/gemma-4-12b-it-gpu-int4/1/gemma-4-12b-it-gpu-int4.task",
-            filename = "gemma4-12b.task"
+            downloadUrl = "https://storage.googleapis.com/mediapipe-models/llm_inference/gemma2-9b-it-gpu-int4/float16/1/gemma2-9b-it-gpu-int4.task",
+            filename = "gemma2-9b.task"
         )
     )
 

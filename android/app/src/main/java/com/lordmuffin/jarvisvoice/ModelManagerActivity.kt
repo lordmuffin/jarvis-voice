@@ -1,5 +1,7 @@
 package com.lordmuffin.jarvisvoice
 
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,8 +11,10 @@ import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,6 +25,15 @@ class ModelManagerActivity : AppCompatActivity() {
 
     private lateinit var mgr: LlmModelManager
     private lateinit var adapter: ModelAdapter
+    private var pendingDownloadConfig: ModelConfig? = null
+
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            pendingDownloadConfig?.let { config ->
+                pendingDownloadConfig = null
+                ModelDownloadWorker.enqueue(this, config.id)
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,7 +86,15 @@ class ModelManagerActivity : AppCompatActivity() {
     }
 
     private fun onDownload(config: ModelConfig) {
-        ModelDownloadWorker.enqueue(this, config.id)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
+            pendingDownloadConfig = config
+            requestNotificationPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            ModelDownloadWorker.enqueue(this, config.id)
+        }
     }
 
     private fun onCancelDownload(config: ModelConfig) {
