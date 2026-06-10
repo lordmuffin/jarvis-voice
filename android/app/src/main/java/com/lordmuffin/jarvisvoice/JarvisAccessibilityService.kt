@@ -39,8 +39,15 @@ class JarvisAccessibilityService : AccessibilityService() {
                         VoiceOverlayService.instance?.showOverlay()
                     }
                 } else {
-                    VoiceOverlayService.lastFocusedNode = null
-                    VoiceOverlayService.instance?.hideOverlay()
+                    val service = VoiceOverlayService.instance
+                    // If the screen is off the IME window disappears but recording must continue.
+                    // screenOff flag is set by VoiceOverlayService's BroadcastReceiver; hideOverlay()
+                    // also guards internally, but we skip clearing lastFocusedNode here so injection
+                    // still works when recording finishes after screen-on.
+                    if (service == null || !service.isScreenOff()) {
+                        VoiceOverlayService.lastFocusedNode = null
+                    }
+                    service?.hideOverlay()
                 }
             }
 
@@ -56,6 +63,8 @@ class JarvisAccessibilityService : AccessibilityService() {
         windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
 
     override fun onInterrupt() {
+        // onInterrupt fires on screen-off among other events. hideOverlay() guards
+        // against stopping recording when screenOff=true, so safe to call here.
         VoiceOverlayService.instance?.hideOverlay()
     }
 }

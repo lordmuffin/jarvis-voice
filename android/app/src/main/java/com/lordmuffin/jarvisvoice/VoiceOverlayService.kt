@@ -5,7 +5,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
@@ -65,6 +68,33 @@ class VoiceOverlayService : Service() {
     private var longPressRunnable: Runnable? = null
     private val longPressHandler = Handler(Looper.getMainLooper())
 
+    // Screen-off recording continuity
+    @Volatile private var screenOff = false
+    private var hiddenWhileRecording = false
+    private val screenStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    screenOff = true
+                    DebugLog.i("Overlay", "screen OFF — screenOff=true recording=${state == OverlayState.RECORDING}")
+                    // Screen turned off: hide the overlay visually but keep recording
+                    if (state == OverlayState.RECORDING || state == OverlayState.PROCESSING) {
+                        hiddenWhileRecording = true
+                        overlayView.visibility = View.GONE
+                    }
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    screenOff = false
+                    DebugLog.i("Overlay", "screen ON — restoring overlay hiddenWhileRecording=$hiddenWhileRecording")
+                    if (hiddenWhileRecording) {
+                        hiddenWhileRecording = false
+                        overlayView.visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+    }
+
     private lateinit var params: WindowManager.LayoutParams
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -81,6 +111,13 @@ class VoiceOverlayService : Service() {
         setupOverlay()
         speechEngine = SpeechEngineFactory.create(this)
         loadLlmIfConfigured()
+        registerReceiver(
+            screenStateReceiver,
+            IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
+            }
+        )
     }
 
     private fun loadLlmIfConfigured() {
@@ -110,6 +147,7 @@ class VoiceOverlayService : Service() {
     override fun onDestroy() {
         DebugLog.i("Service", "onDestroy — service is being killed")
         super.onDestroy()
+        runCatching { unregisterReceiver(screenStateReceiver) }
         instance = null
         speechEngine?.destroy()
         historyManager.close()
@@ -299,12 +337,24 @@ class VoiceOverlayService : Service() {
         }
     }
 
+    fun isScreenOff(): Boolean = screenOff
+
     fun showOverlay() {
         overlayView.visibility = View.VISIBLE
     }
 
     fun hideOverlay() {
-        if (state == OverlayState.RECORDING || state == OverlayState.PROCESSING) stopRecording()
+        if (state == OverlayState.RECORDING || state == OverlayState.PROCESSING) {
+            if (screenOff) {
+                // Screen just went off — preserve recording, only hide visuals.
+                // screenStateReceiver.ACTION_SCREEN_OFF already set hiddenWhileRecording.
+                DebugLog.i("Overlay", "hideOverlay skipped stopRecording — screen is off, recording continues")
+                overlayView.visibility = View.GONE
+                return
+            }
+            // Keyboard dismissed by user action while screen is on — stop recording normally.
+            stopRecording()
+        }
         overlayView.visibility = View.GONE
     }
 
