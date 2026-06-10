@@ -35,8 +35,8 @@ object LlmEnhancer {
             loadedModelId = modelId
             DebugLog.i("LlmEnhancer", "loaded $modelId from ${modelFile.absolutePath}")
             true
-        } catch (e: Exception) {
-            DebugLog.e("LlmEnhancer", "failed to load $modelId", e)
+        } catch (t: Throwable) {
+            DebugLog.e("LlmEnhancer", "failed to load $modelId", t)
             false
         }
     }
@@ -54,8 +54,8 @@ object LlmEnhancer {
                 val response = runBlocking { conv.sendMessage(prompt) }
                 response.toString().trim().ifBlank { rawTranscript }
             }
-        } catch (ex: Exception) {
-            DebugLog.e("LlmEnhancer", "enhance failed", ex)
+        } catch (t: Throwable) {
+            DebugLog.e("LlmEnhancer", "enhance failed", t)
             rawTranscript
         }
     }

@@ -139,7 +139,8 @@ class VoiceOverlayService : Service() {
         val config  = llmMgr.getActiveConfig() ?: return
         if (!llmMgr.isInstalled(config)) return
         Thread {
-            LlmEnhancer.init(llmMgr.modelFile(config), config.id)
+            runCatching { LlmEnhancer.init(llmMgr.modelFile(config), config.id) }
+                .onFailure { DebugLog.e("Service", "LLM init failed on background thread", it) }
         }.start()
     }
 
