@@ -55,7 +55,6 @@ jobs:
           KEYSTORE_PATH: keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           cd android
           ./gradlew assembleRelease --no-daemon

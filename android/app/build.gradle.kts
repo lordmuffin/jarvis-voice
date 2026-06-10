@@ -20,11 +20,9 @@ android {
             storeFile     = System.getenv("KEYSTORE_PATH")?.let { file(it) }
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias      = System.getenv("KEY_ALIAS")
-            // PKCS12 keystores (Java 9+ default) don't have a separate key password —
-            // the key is protected by the store password. Fall back to KEYSTORE_PASSWORD
-            // so PKCS12 keystores work without a distinct KEY_PASSWORD secret.
-            keyPassword   = System.getenv("KEY_PASSWORD")
-                ?: System.getenv("KEYSTORE_PASSWORD")
+            // PKCS12 keystores (Java 9+ default) have no separate key password —
+            // the key is protected by the store password. Use KEYSTORE_PASSWORD for both.
+            keyPassword   = System.getenv("KEYSTORE_PASSWORD")
         }
     }
 
