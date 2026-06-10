@@ -48,14 +48,19 @@
             android:label="LLM Model" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".OnboardingActivity"
             android:exported="true"
-            android:theme="@style/Theme.JarvisVoice.Transparent">
+            android:theme="@style/Theme.JarvisVoice">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.JarvisVoice.Transparent" />
 
         <service
             android:name=".VoiceOverlayService"

@@ -23,7 +23,9 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.animation.AnimationUtils
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
@@ -50,6 +52,8 @@ class VoiceOverlayService : Service() {
     private lateinit var overlayView: View
     private lateinit var waveformView: AudioWaveformView
     private lateinit var micIcon: ImageView
+    private lateinit var dotIdle: View
+    private lateinit var progressSpinner: ProgressBar
     private var speechEngine: SpeechEngine? = null
     private var state = OverlayState.IDLE
 
@@ -164,16 +168,19 @@ class VoiceOverlayService : Service() {
     private fun setupOverlay() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
-        overlayView  = LayoutInflater.from(this).inflate(R.layout.overlay_pill, null)
-        waveformView = overlayView.findViewById(R.id.waveform)
-        micIcon      = overlayView.findViewById(R.id.mic_icon)
+        overlayView     = LayoutInflater.from(this).inflate(R.layout.overlay_pill, null)
+        waveformView    = overlayView.findViewById(R.id.waveform)
+        micIcon         = overlayView.findViewById(R.id.mic_icon)
+        dotIdle         = overlayView.findViewById(R.id.dot_idle)
+        progressSpinner = overlayView.findViewById(R.id.progress_spinner)
 
-        val density = resources.displayMetrics.density
-        val sizePx  = (56 * density).toInt()
+        val density    = resources.displayMetrics.density
+        val idleWidthPx = (120 * density).toInt()
+        val heightPx    = (40 * density).toInt()
 
         params = WindowManager.LayoutParams(
-            sizePx,
-            sizePx,
+            idleWidthPx,
+            heightPx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
@@ -255,11 +262,18 @@ class VoiceOverlayService : Service() {
                 .also { it.acquire(10 * 60 * 1000L) } // 10 min max
         }
         state = OverlayState.RECORDING
+        dotIdle.clearAnimation()
+        dotIdle.visibility = View.GONE
+        progressSpinner.visibility = View.GONE
         micIcon.visibility = View.GONE
-        waveformView.barColor = Color.WHITE
+        waveformView.barColor = Color.parseColor("#00F5D4")
         waveformView.visibility = View.VISIBLE
         waveformView.startAnimation()
         overlayView.setBackgroundResource(R.drawable.pill_background_red)
+        // Widen pill for recording state
+        val density = resources.displayMetrics.density
+        params.width = (144 * density).toInt()
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
 
         speechEngine?.startListening(
             onPartial = { /* compact mode — no partial visual */ },
@@ -278,8 +292,15 @@ class VoiceOverlayService : Service() {
         state = OverlayState.PROCESSING
         waveformView.stopAnimation()
         waveformView.visibility = View.GONE
-        micIcon.visibility = View.VISIBLE
+        dotIdle.clearAnimation()
+        dotIdle.visibility = View.GONE
+        micIcon.visibility = View.GONE
+        progressSpinner.visibility = View.VISIBLE
         overlayView.setBackgroundResource(R.drawable.pill_background)
+        // Restore idle width during processing
+        val density = resources.displayMetrics.density
+        params.width = (120 * density).toInt()
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
         DebugLog.i("Overlay", "stopRecording → PROCESSING (Whisper running in background)")
         speechEngine?.stopListening()
     }
@@ -312,6 +333,10 @@ class VoiceOverlayService : Service() {
 
         state = OverlayState.DONE
         waveformView.stopAnimation()
+        progressSpinner.visibility = View.GONE
+        dotIdle.clearAnimation()
+        dotIdle.visibility = View.VISIBLE
+        overlayView.setBackgroundResource(R.drawable.pill_background_accent)
 
         DebugLog.i("Overlay", "inject node=${lastFocusedNode != null} processed=\"${processed.take(60)}\"")
         TextInjector.inject(lastFocusedNode, processed)
@@ -332,15 +357,23 @@ class VoiceOverlayService : Service() {
         }
         msg?.let { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
 
-        overlayView.setBackgroundResource(R.drawable.pill_background_accent)
         Handler(Looper.getMainLooper()).postDelayed({ setIdleState() }, 400)
     }
 
     private fun setIdleState() {
         state = OverlayState.IDLE
-        micIcon.visibility = View.VISIBLE
+        micIcon.visibility = View.GONE
         waveformView.visibility = View.GONE
         waveformView.stopAnimation()
+        progressSpinner.visibility = View.GONE
+        // Restore idle width
+        val density = resources.displayMetrics.density
+        params.width = (120 * density).toInt()
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
+        // Show breathing dot
+        dotIdle.visibility = View.VISIBLE
+        val breatheAnim = AnimationUtils.loadAnimation(this, R.anim.breathe)
+        dotIdle.startAnimation(breatheAnim)
         overlayView.setBackgroundResource(R.drawable.pill_background)
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()

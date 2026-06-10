@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="pill_bg">#1A1A1A</color>
-    <color name="accent">#00B4D8</color>
+    <color name="jv_bg">#0D1117</color>
+    <color name="jv_surface">#161B22</color>
+    <color name="jv_surface2">#1C2230</color>
+    <color name="jv_accent">#00F5D4</color>
+    <color name="jv_violet">#7B2FD4</color>
+    <color name="jv_text">#E6EDF3</color>
+    <color name="jv_text2">#8B949E</color>
+    <color name="jv_success">#3FB950</color>
+    <color name="jv_warning">#D29922</color>
+    <color name="jv_error">#F85149</color>
+    <color name="jv_glass_border">#24FFFFFF</color>
+    <color name="jv_glass_bg">#C7161B22</color>
+    <!-- legacy aliases used by existing code -->
+    <color name="pill_bg">@color/jv_bg</color>
+    <color name="accent">@color/jv_accent</color>
     <color name="white">#FFFFFF</color>
     <color name="dim">#88FFFFFF</color>
 </resources>
