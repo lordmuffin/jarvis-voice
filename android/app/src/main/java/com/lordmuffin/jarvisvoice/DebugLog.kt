@@ -18,7 +18,7 @@ object DebugLog {
     private var logFile: File? = null
 
     fun init(context: Context) {
-        logFile = File(context.filesDir, "debug.log")
+        logFile = PersistentStorage.logFile(context)
     }
 
     fun i(tag: String, msg: String) = write("I", tag, msg)

@@ -1,9 +1,13 @@
 package com.lordmuffin.jarvisvoice
 
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
@@ -26,6 +30,10 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvTotalWords: TextView
     private lateinit var tvAvgWpm: TextView
 
+    // Storage views
+    private lateinit var tvStorageLocation: TextView
+    private lateinit var btnGrantStorage: Button
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -40,6 +48,18 @@ class SettingsActivity : AppCompatActivity() {
         tvAvgWpm          = findViewById(R.id.tv_stat_avg_wpm)
         tvActiveLlmModel  = findViewById(R.id.tv_active_llm_model)
         etHfToken         = findViewById(R.id.et_hf_token)
+        tvStorageLocation = findViewById(R.id.tv_storage_location)
+        btnGrantStorage   = findViewById(R.id.btn_grant_storage)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            btnGrantStorage.setOnClickListener {
+                startActivity(
+                    Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                        data = Uri.fromParts("package", packageName, null)
+                    }
+                )
+            }
+        }
 
         offlineSwitch.isChecked = SpeechEngineFactory.isOfflineModeEnabled(this)
         offlineSwitch.setOnCheckedChangeListener { _, checked ->
@@ -88,6 +108,7 @@ class SettingsActivity : AppCompatActivity() {
         refreshStats()
         refreshLlmLabel()
         refreshSttLabel()
+        refreshStorageLabel()
     }
 
     private fun refreshSttLabel() {
@@ -107,6 +128,15 @@ class SettingsActivity : AppCompatActivity() {
             "Enhancement: ${config.displayName}"
         } else {
             "Enhancement: Off"
+        }
+    }
+
+    private fun refreshStorageLabel() {
+        PersistentStorage.migrateIfNeeded(this)
+        tvStorageLocation.text = PersistentStorage.storageLabel(this)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            btnGrantStorage.visibility =
+                if (PersistentStorage.hasExternalAccess()) View.GONE else View.VISIBLE
         }
     }
 

@@ -106,8 +106,9 @@ class VoiceOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance       = this
+        PersistentStorage.migrateIfNeeded(this)
         DebugLog.init(this)
-        DebugLog.i("Service", "onCreate")
+        DebugLog.i("Service", "onCreate storage=${PersistentStorage.storageLabel(this)}")
         historyManager = DictationHistoryManager(this)
         dictManager    = CustomDictionaryManager(this)
         createNotificationChannel()

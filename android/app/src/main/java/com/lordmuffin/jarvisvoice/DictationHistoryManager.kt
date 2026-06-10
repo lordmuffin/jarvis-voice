@@ -6,11 +6,10 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 class DictationHistoryManager(context: Context) :
-    SQLiteOpenHelper(context, DB_NAME, null, 2) {
+    SQLiteOpenHelper(context, PersistentStorage.dbFile(context).absolutePath, null, 2) {
 
     companion object {
-        private const val DB_NAME = "jarvis_history.db"
-        private const val TABLE  = "sessions"
+        private const val TABLE = "sessions"
     }
 
     override fun onCreate(db: SQLiteDatabase) {

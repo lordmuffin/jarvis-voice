@@ -281,6 +281,53 @@
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp" />
 
+        <!-- ── Data Storage ─────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Data Storage"
+            android:textColor="#888888"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_storage_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#666666"
+            android:textSize="12sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_grant_storage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant All Files Access"
+            android:backgroundTint="#1A3A5C"
+            android:textColor="#00B4D8"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant once to store history and logs in /sdcard/Documents/JarvisVoice/. Existing data migrates automatically."
+            android:textColor="#444444"
+            android:textSize="11sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2A2A2A"
+            android:layout_marginBottom="20dp" />
+
         <!-- ── Notifications ────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"
