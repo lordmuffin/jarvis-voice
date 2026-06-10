@@ -134,7 +134,7 @@ class VoiceOverlayService : Service() {
         val config  = llmMgr.getActiveConfig() ?: return
         if (!llmMgr.isInstalled(config)) return
         Thread {
-            LlmEnhancer.init(this, llmMgr.modelFile(config), config.id)
+            LlmEnhancer.init(llmMgr.modelFile(config), config.id)
         }.start()
     }
 

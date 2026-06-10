@@ -13,30 +13,28 @@ data class ModelConfig(
 
 object ModelRegistry {
 
-    // MediaPipe LLM Inference .task models (Gemma 2 series).
-    // These URLs require a free Kaggle account and license acceptance:
-    //   https://www.kaggle.com/models/google/gemma/frameworks/tfLite
-    // If the in-app download returns HTTP 403, download the .task file manually from
-    // Kaggle and place it in Android/data/dev.apj.jarvis.voice/files/llm_models/.
+    // LiteRT-LM .litertlm models from litert-community on HuggingFace.
+    // Downloads require a HuggingFace account with Gemma license accepted
+    // (https://huggingface.co/litert-community) and a HF token entered in Settings.
     val MODELS = listOf(
         ModelConfig(
-            id = "gemma2-2b",
-            displayName = "Gemma 2 2B",
-            description = "Fast · works on most phones · 4 GB RAM+",
-            fileSizeMb = 1400,
-            minRamGb = 4,
-            downloadUrl = "https://storage.googleapis.com/mediapipe-models/llm_inference/gemma2-2b-it-gpu-int4/float16/1/gemma2-2b-it-gpu-int4.task",
-            filename = "gemma2-2b.task",
+            id = "gemma4-12b",
+            displayName = "Gemma 4 12B",
+            description = "Best quality · 6.5 GB download · 8+ GB RAM",
+            fileSizeMb = 6700,
+            minRamGb = 8,
+            downloadUrl = "https://huggingface.co/litert-community/gemma-4-12B-it-litert-lm/resolve/main/gemma-4-12B-it.litertlm",
+            filename = "gemma4-12b.litertlm",
             isDefault = true
         ),
         ModelConfig(
-            id = "gemma2-9b",
-            displayName = "Gemma 2 9B",
-            description = "Higher quality · requires 12 GB RAM",
-            fileSizeMb = 5400,
-            minRamGb = 12,
-            downloadUrl = "https://storage.googleapis.com/mediapipe-models/llm_inference/gemma2-9b-it-gpu-int4/float16/1/gemma2-9b-it-gpu-int4.task",
-            filename = "gemma2-9b.task"
+            id = "gemma3-1b",
+            displayName = "Gemma 3 1B",
+            description = "Fast · 530 MB download · 4 GB RAM+",
+            fileSizeMb = 530,
+            minRamGb = 4,
+            downloadUrl = "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/gemma3-1b-it-int4.litertlm",
+            filename = "gemma3-1b.litertlm"
         )
     )
 

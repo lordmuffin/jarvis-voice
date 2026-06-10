@@ -2,8 +2,11 @@ package com.lordmuffin.jarvisvoice
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
@@ -23,6 +26,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvDownloadStatus: TextView
     private lateinit var btnCancel: Button
     private lateinit var tvActiveLlmModel: TextView
+    private lateinit var etHfToken: EditText
 
     // Stats views
     private lateinit var tvLastWords: TextView
@@ -50,6 +54,7 @@ class SettingsActivity : AppCompatActivity() {
         tvTotalWords      = findViewById(R.id.tv_stat_total_words)
         tvAvgWpm          = findViewById(R.id.tv_stat_avg_wpm)
         tvActiveLlmModel  = findViewById(R.id.tv_active_llm_model)
+        etHfToken         = findViewById(R.id.et_hf_token)
 
         offlineSwitch.isChecked = SpeechEngineFactory.isOfflineModeEnabled(this)
         offlineSwitch.setOnCheckedChangeListener { _, checked ->
@@ -62,6 +67,15 @@ class SettingsActivity : AppCompatActivity() {
         clipboardNotifySwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(VoiceOverlayService.KEY_CLIPBOARD_NOTIFY, checked).apply()
         }
+
+        etHfToken.setText(prefs.getString("hf_token", ""))
+        etHfToken.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                prefs.edit().putString("hf_token", s?.toString()?.trim() ?: "").apply()
+            }
+        })
 
         btnDownload.setOnClickListener { startDownload() }
         btnCancel.setOnClickListener {

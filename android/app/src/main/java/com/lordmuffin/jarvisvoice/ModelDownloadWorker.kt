@@ -102,11 +102,21 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
 
     /** Returns null on success, error string on failure. Runs on IO dispatcher. */
     private suspend fun downloadFile(config: ModelConfig, tmpFile: File): String? {
+        val hfToken = applicationContext
+            .getSharedPreferences(VoiceOverlayService.PREF_FILE, android.content.Context.MODE_PRIVATE)
+            .getString("hf_token", null)
+
         val conn = URL(config.downloadUrl).openConnection() as HttpURLConnection
         conn.connectTimeout = 15_000
         conn.readTimeout    = 60_000
+        conn.instanceFollowRedirects = true
+        if (!hfToken.isNullOrBlank()) {
+            conn.setRequestProperty("Authorization", "Bearer $hfToken")
+        }
         conn.connect()
 
+        if (conn.responseCode == 401) return "HTTP 401 — add your HuggingFace token in Settings"
+        if (conn.responseCode == 403) return "HTTP 403 — accept the Gemma license at huggingface.co/litert-community"
         if (conn.responseCode !in 200..299) return "HTTP ${conn.responseCode}"
 
         val total      = conn.contentLengthLong
