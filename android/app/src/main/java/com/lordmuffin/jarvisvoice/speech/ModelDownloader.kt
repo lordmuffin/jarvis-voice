@@ -3,11 +3,13 @@ package com.lordmuffin.jarvisvoice.speech
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import com.lordmuffin.jarvisvoice.DebugLog
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -15,14 +17,13 @@ class ModelDownloader(private val context: Context) {
 
     interface Listener {
         fun onProgress(downloaded: Long, total: Long)
-        fun onExtracting()
+        fun onExtracting()   // kept for API compat; no longer called mid-process
         fun onComplete()
         fun onError(message: String)
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var thread: Thread? = null
-
     @Volatile private var cancelled = false
 
     companion object {
@@ -34,62 +35,65 @@ class ModelDownloader(private val context: Context) {
             "sherpa-onnx-whisper-base.en/base.en-decoder.int8.onnx",
             "sherpa-onnx-whisper-base.en/base.en-tokens.txt"
         )
+
+        // Update UI at most every 512 KB received (avoids flooding the main thread)
+        private const val NOTIFY_BYTES = 512 * 1024L
     }
 
     fun download(listener: Listener) {
         cancelled = false
         thread = Thread {
-            val tmpTarball = File(context.cacheDir, "sherpa-whisper.tar.bz2")
             try {
                 val modelDir = File(context.filesDir, SherpaOnnxSpeechEngine.MODEL_SUBDIR_PUBLIC)
                     .also { it.mkdirs() }
 
-                // ── Download ─────────────────────────────────────────────
                 val conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 15_000
                     readTimeout    = 60_000
                     connect()
                 }
-                val total = conn.contentLengthLong
-                var received = 0L
-                val buf = ByteArray(64 * 1024)
-
-                FileOutputStream(tmpTarball).use { out ->
-                    conn.inputStream.use { inp ->
-                        var n: Int
-                        while (inp.read(buf).also { n = it } != -1) {
-                            if (cancelled) return@Thread
-                            out.write(buf, 0, n)
-                            received += n
-                            val snap = received
-                            mainHandler.post { listener.onProgress(snap, total) }
-                        }
-                    }
+                if (conn.responseCode !in 200..299) {
+                    mainHandler.post { listener.onError("HTTP ${conn.responseCode}") }
+                    return@Thread
                 }
-                if (cancelled) return@Thread
 
-                // ── Extract ──────────────────────────────────────────────
-                mainHandler.post { listener.onExtracting() }
+                val total = conn.contentLengthLong
+                DebugLog.i("ModelDownloader", "starting download total=$total")
 
-                BZip2CompressorInputStream(tmpTarball.inputStream().buffered()).use { bzip ->
+                // Stream HTTP → bzip2 → tar → files in one pass.
+                // No intermediate .tar.bz2 on disk: avoids the multi-minute separate extraction step.
+                val counting = CountingInputStream(conn.inputStream.buffered(), total, listener)
+                BZip2CompressorInputStream(counting).use { bzip ->
                     TarArchiveInputStream(bzip).use { tar ->
                         var entry = tar.nextEntry as? TarArchiveEntry
-                        while (entry != null) {
-                            if (!cancelled && !entry.isDirectory && entry.name in TARGET_FILES) {
+                        while (entry != null && !cancelled) {
+                            if (!entry.isDirectory && entry.name in TARGET_FILES) {
                                 val dest = File(modelDir, File(entry.name).name)
+                                DebugLog.i("ModelDownloader", "extracting → ${dest.name}")
                                 FileOutputStream(dest).use { out -> tar.copyTo(out) }
+                                DebugLog.i("ModelDownloader", "wrote ${dest.length()} bytes")
                             }
                             entry = tar.nextEntry as? TarArchiveEntry
                         }
                     }
                 }
 
-                tmpTarball.delete()
+                if (cancelled) return@Thread
 
-                if (!cancelled) mainHandler.post { listener.onComplete() }
+                val allPresent = TARGET_FILES.all {
+                    File(modelDir, File(it).name).let { f -> f.exists() && f.length() > 0 }
+                }
+
+                if (allPresent) {
+                    DebugLog.i("ModelDownloader", "all model files present — complete")
+                    mainHandler.post { listener.onComplete() }
+                } else {
+                    DebugLog.e("ModelDownloader", "extraction finished but some files missing")
+                    mainHandler.post { listener.onError("Extraction incomplete — retry") }
+                }
 
             } catch (e: Exception) {
-                tmpTarball.delete()
+                DebugLog.e("ModelDownloader", "download/extract failed", e)
                 if (!cancelled) mainHandler.post { listener.onError(e.message ?: "Download failed") }
             }
         }.also { it.name = "jarvis-model-dl"; it.start() }
@@ -98,5 +102,32 @@ class ModelDownloader(private val context: Context) {
     fun cancel() {
         cancelled = true
         thread?.interrupt()
+    }
+
+    // Wraps an InputStream, counting bytes and throttling UI progress callbacks
+    private inner class CountingInputStream(
+        private val wrapped: InputStream,
+        private val total: Long,
+        private val listener: Listener
+    ) : InputStream() {
+
+        private var count = 0L
+        private var lastNotified = 0L
+
+        override fun read(): Int = wrapped.read().also { b -> if (b != -1) tick(1) }
+
+        override fun read(b: ByteArray, off: Int, len: Int): Int =
+            wrapped.read(b, off, len).also { n -> if (n > 0) tick(n.toLong()) }
+
+        override fun close() = wrapped.close()
+
+        private fun tick(n: Long) {
+            count += n
+            if (count - lastNotified >= NOTIFY_BYTES) {
+                lastNotified = count
+                val snap = count
+                mainHandler.post { listener.onProgress(snap, total) }
+            }
+        }
     }
 }
