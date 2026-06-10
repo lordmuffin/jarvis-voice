@@ -125,6 +125,44 @@
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp" />
 
+        <!-- ── LLM Model ────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LLM Enhancement"
+            android:textColor="#888888"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_open_model_manager"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LLM Model"
+            android:backgroundTint="#2A2A2A"
+            android:textColor="#FFFFFF"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_active_llm_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enhancement: Off"
+            android:textColor="#666666"
+            android:textSize="12sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#2A2A2A"
+            android:layout_marginBottom="20dp" />
+
         <!-- ── Features ─────────────────────────────────────────────── -->
         <TextView
             android:layout_width="match_parent"

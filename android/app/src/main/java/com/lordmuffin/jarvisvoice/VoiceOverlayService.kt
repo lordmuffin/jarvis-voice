@@ -80,6 +80,21 @@ class VoiceOverlayService : Service() {
         startForeground(NOTIF_ID, buildNotification())
         setupOverlay()
         speechEngine = SpeechEngineFactory.create(this)
+        loadLlmIfConfigured()
+    }
+
+    private fun loadLlmIfConfigured() {
+        val llmMgr  = LlmModelManager(this)
+        val config  = llmMgr.getActiveConfig() ?: return
+        if (!llmMgr.isInstalled(config)) return
+        Thread {
+            LlmEnhancer.init(this, llmMgr.modelFile(config), config.id)
+        }.start()
+    }
+
+    fun reloadLlmModel() {
+        LlmEnhancer.destroy()
+        loadLlmIfConfigured()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -235,8 +250,14 @@ class VoiceOverlayService : Service() {
             return
         }
 
-        val processed = dictManager.applyTo(filtered)
-        val session   = historyManager.saveSession(processed, elapsedMs)
+        val withDict  = dictManager.applyTo(filtered)
+        val processed = if (LlmEnhancer.isReady()) {
+            DebugLog.i("Overlay", "running LLM enhancement")
+            LlmEnhancer.enhance(withDict)
+        } else {
+            withDict
+        }
+        val session = historyManager.saveSession(processed, elapsedMs)
 
         state = OverlayState.DONE
         waveformView.stopAnimation()

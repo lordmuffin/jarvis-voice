@@ -22,6 +22,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var tvDownloadStatus: TextView
     private lateinit var btnCancel: Button
+    private lateinit var tvActiveLlmModel: TextView
 
     // Stats views
     private lateinit var tvLastWords: TextView
@@ -44,10 +45,11 @@ class SettingsActivity : AppCompatActivity() {
         tvDownloadStatus = findViewById(R.id.tv_download_status)
         btnCancel        = findViewById(R.id.btn_cancel_download)
 
-        tvLastWords  = findViewById(R.id.tv_stat_last_words)
-        tvLastWpm    = findViewById(R.id.tv_stat_last_wpm)
-        tvTotalWords = findViewById(R.id.tv_stat_total_words)
-        tvAvgWpm     = findViewById(R.id.tv_stat_avg_wpm)
+        tvLastWords       = findViewById(R.id.tv_stat_last_words)
+        tvLastWpm         = findViewById(R.id.tv_stat_last_wpm)
+        tvTotalWords      = findViewById(R.id.tv_stat_total_words)
+        tvAvgWpm          = findViewById(R.id.tv_stat_avg_wpm)
+        tvActiveLlmModel  = findViewById(R.id.tv_active_llm_model)
 
         offlineSwitch.isChecked = SpeechEngineFactory.isOfflineModeEnabled(this)
         offlineSwitch.setOnCheckedChangeListener { _, checked ->
@@ -67,6 +69,10 @@ class SettingsActivity : AppCompatActivity() {
             resetDownloadUi()
         }
 
+        findViewById<Button>(R.id.btn_open_model_manager).setOnClickListener {
+            startActivity(Intent(this, ModelManagerActivity::class.java))
+        }
+
         findViewById<Button>(R.id.btn_open_history).setOnClickListener {
             startActivity(Intent(this, HistoryActivity::class.java))
         }
@@ -84,6 +90,18 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         refreshStats()
+        refreshLlmLabel()
+    }
+
+    private fun refreshLlmLabel() {
+        val llmMgr  = LlmModelManager(this)
+        val activeId = llmMgr.getActiveModelId()
+        val config   = ModelRegistry.MODELS.find { it.id == activeId }
+        tvActiveLlmModel.text = if (config != null) {
+            "Enhancement: ${config.displayName}"
+        } else {
+            "Enhancement: Off"
+        }
     }
 
     private fun refreshStats() {
