@@ -218,26 +218,32 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
     override fun stopListening() {
         DebugLog.i("STT", "stopListening pendingFinal=$pendingFinal committedLen=${committedText.length}")
-        isListening = false
-        audioRecord?.stop()
         if (pendingFinal) return
         pendingFinal = true
+        isListening  = false
+        // Do NOT call audioRecord.stop() here — the recording thread may be mid-read (≤300ms).
+        // Stopping the hardware now truncates the tail of the utterance. Instead, signal the
+        // loop to exit via isListening=false, wait for the in-flight read to finish, then stop.
+        Thread({
+            recordingThread?.join(500)  // at most one 300ms chunk left to complete
+            audioRecord?.stop()
 
-        val snapshot: ShortArray
-        synchronized(bufferLock) {
-            snapshot = currentBuffer.toShortArray()
-            currentBuffer.clear()
-        }
-        val committed = committedText
+            val snapshot: ShortArray
+            synchronized(bufferLock) {
+                snapshot = currentBuffer.toShortArray()
+                currentBuffer.clear()
+            }
+            val committed = committedText
 
-        transcribeExecutor.submit {
-            val lastChunk = if (snapshot.size >= MIN_CHUNK_SAMPLES) transcribe(snapshot) else ""
-            DebugLog.i("STT", "stopListening lastChunk: \"${lastChunk.take(60)}\"")
-            val sep   = if (committed.isNotEmpty() && lastChunk.isNotBlank()) " " else ""
-            val final = (committed + sep + lastChunk).trim()
-            DebugLog.i("STT", "onFinal total words=${final.split(" ").size}")
-            mainHandler.post { onFinalCallback?.invoke(final) }
-        }
+            transcribeExecutor.submit {
+                val lastChunk = if (snapshot.size >= MIN_CHUNK_SAMPLES) transcribe(snapshot) else ""
+                DebugLog.i("STT", "stopListening lastChunk: \"${lastChunk.take(60)}\"")
+                val sep   = if (committed.isNotEmpty() && lastChunk.isNotBlank()) " " else ""
+                val final = (committed + sep + lastChunk).trim()
+                DebugLog.i("STT", "onFinal total words=${final.split(" ").size}")
+                mainHandler.post { onFinalCallback?.invoke(final) }
+            }
+        }, "jarvis-stop").start()
     }
 
     override fun destroy() {
