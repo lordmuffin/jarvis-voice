@@ -115,6 +115,37 @@ The project sets `org.gradle.jvmargs=-Xmx4g` in `gradle.properties` and marks `.
 
 ---
 
+## Installing a release APK
+
+Pre-built signed APKs are attached to each [GitHub Release](https://github.com/lordmuffin/jarvis-voice/releases). No build environment needed.
+
+### Steps
+
+1. On your Android device, open the release page and download `jarvis-voice-vX.X.X.apk`
+2. **Pause Play Protect** — Google Play Protect blocks APKs not distributed through the Play Store by default:
+   - Settings → Security → Google Play Protect → ⚙️ → turn off **Scan apps with Play Protect**
+   - (You can re-enable it after installation)
+3. Open the APK from your downloads folder (Files by Google or any file manager)
+4. Grant "Install unknown apps" permission to the file manager if prompted
+5. Tap **Install**
+
+### Install via ADB (alternative)
+
+ADB bypasses Play Protect entirely and is the fastest path if you have a dev setup:
+
+```bash
+adb install jarvis-voice-v1.1.0.apk
+```
+
+If you previously installed a debug build and get a signature conflict:
+
+```bash
+adb uninstall com.lordmuffin.jarvisvoice
+adb install jarvis-voice-v1.1.0.apk
+```
+
+---
+
 ## Repo layout
 
 ```
@@ -184,6 +215,8 @@ Access: tap the app icon, or pull down notification shade → Settings button.
 | Sherpa engine fails to init | Check `download-models.sh` ran successfully; model files in `assets/models/whisper-base-en/` |
 | Recording stops when screen turns off | Should be fixed in current build (PARTIAL_WAKE_LOCK). Check Debug Log for "wake lock released" |
 | Ambient noise transcribed | Expected behavior from Android STT fallback; Sherpa engine has better ambient filtering |
+| "App not installed" when tapping APK | Play Protect is blocking the sideload. Pause it: Settings → Security → Google Play Protect → ⚙️ → Scan apps off. Re-enable after install. |
+| Signature conflict / "App not installed" after debug install | Old debug-key registration is blocking the release key. Run `adb uninstall com.lordmuffin.jarvisvoice` then reinstall. |
 
 ---
 
