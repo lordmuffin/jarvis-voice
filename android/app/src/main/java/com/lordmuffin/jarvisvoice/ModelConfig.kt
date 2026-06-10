@@ -28,6 +28,15 @@ object ModelRegistry {
             isDefault = true
         ),
         ModelConfig(
+            id = "gemma4-1b",
+            displayName = "Gemma 4 1B",
+            description = "Fast · ~750 MB download · 2 GB RAM",
+            fileSizeMb = 750,
+            minRamGb = 2,
+            downloadUrl = "https://huggingface.co/litert-community/gemma-4-1B-it-litert-lm/resolve/main/gemma-4-1B-it.litertlm",
+            filename = "gemma4-1b.litertlm"
+        ),
+        ModelConfig(
             id = "gemma3-1b",
             displayName = "Gemma 3 1B",
             description = "Fast · 530 MB download · 4 GB RAM+",
