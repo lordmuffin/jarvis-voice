@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: jarvis-voice-runners
 
     steps:
       - uses: actions/checkout@v4
