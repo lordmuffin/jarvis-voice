@@ -1,11 +1,14 @@
 package com.lordmuffin.jarvisvoice
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.view.View
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 
 class OnboardingActivity : AppCompatActivity() {
 
@@ -22,9 +25,13 @@ class OnboardingActivity : AppCompatActivity() {
         showStep(0)
     }
 
+    override fun onResume() {
+        super.onResume()
+        if (step == 1) updatePermissionStates()
+    }
+
     private fun showStep(s: Int) {
         step = s
-        // Update dot indicators
         listOf(R.id.dot0, R.id.dot1, R.id.dot2).forEachIndexed { i, id ->
             val v = findViewById<View>(id)
             val lp = v.layoutParams
@@ -34,10 +41,49 @@ class OnboardingActivity : AppCompatActivity() {
                 if (i == s) getColor(R.color.jv_accent) else 0x598B949E.toInt()
             )
         }
-        // Show/hide step containers
         findViewById<View>(R.id.step_0).visibility = if (s == 0) View.VISIBLE else View.GONE
         findViewById<View>(R.id.step_1).visibility = if (s == 1) View.VISIBLE else View.GONE
         findViewById<View>(R.id.step_2).visibility = if (s == 2) View.VISIBLE else View.GONE
+
+        if (s == 1) updatePermissionStates()
+    }
+
+    private fun updatePermissionStates() {
+        val micGranted = ContextCompat.checkSelfPermission(
+            this, android.Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val enabledServices = Settings.Secure.getString(
+            contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: ""
+        val myA11yService = "$packageName/${JarvisAccessibilityService::class.java.name}"
+        val a11yGranted = enabledServices.contains(myA11yService, ignoreCase = true)
+
+        val overlayGranted = Settings.canDrawOverlays(this)
+
+        applyGrantedStyle(R.id.btn_grant_mic, micGranted, isOverlay = false)
+        applyGrantedStyle(R.id.btn_grant_a11y, a11yGranted, isOverlay = false)
+        applyGrantedStyle(R.id.btn_grant_overlay, overlayGranted, isOverlay = true)
+    }
+
+    private fun applyGrantedStyle(btnId: Int, granted: Boolean, isOverlay: Boolean) {
+        val btn = findViewById<Button>(btnId) ?: return
+        if (granted) {
+            btn.text = "✓ Granted"
+            btn.setTextColor(getColor(R.color.jv_bg))
+            btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_success)
+            btn.isEnabled = false
+        } else {
+            btn.text = "Grant"
+            if (isOverlay) {
+                btn.setTextColor(getColor(R.color.jv_text2))
+                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_surface2)
+            } else {
+                btn.setTextColor(getColor(android.R.color.black))
+                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_accent)
+            }
+            btn.isEnabled = true
+        }
     }
 
     fun onGetStarted(v: View) = showStep(1)
@@ -52,6 +98,11 @@ class OnboardingActivity : AppCompatActivity() {
 
     fun onGrantOverlay(v: View) {
         startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1) updatePermissionStates()
     }
 
     fun onContinue(v: View) = showStep(2)
