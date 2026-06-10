@@ -41,8 +41,11 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          echo "KEYSTORE_PASSWORD length: ${#KEYSTORE_PASSWORD}"
+          echo "KEY_PASSWORD length: ${#KEY_PASSWORD}"
           keytool -list -keystore android/app/keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -noprompt
-          keytool -certreq -keystore android/app/keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -keypass "$KEY_PASSWORD" -file /dev/null
+          keytool -certreq -keystore android/app/keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -keypass "$KEY_PASSWORD" -file /dev/null || \
+            keytool -certreq -keystore android/app/keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -keypass "$KEYSTORE_PASSWORD" -file /dev/null
 
       - name: Download sherpa-onnx bindings (no model)
         run: bash download-models.sh --no-model
