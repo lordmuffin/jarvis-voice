@@ -14,7 +14,6 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import com.lordmuffin.jarvisvoice.DebugLog
 import java.io.File
-import java.io.FileOutputStream
 import java.util.concurrent.Executors
 
 class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
@@ -59,44 +58,24 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     private var onErrorCallback:   ((Int)    -> Unit)? = null
 
     companion object {
-        const val MODEL_SUBDIR_PUBLIC = "models/whisper-base-en"
-        private const val MODEL_SUBDIR = MODEL_SUBDIR_PUBLIC
-
-        private val MODEL_FILES = listOf(
-            "base.en-encoder.int8.onnx",
-            "base.en-decoder.int8.onnx",
-            "base.en-tokens.txt"
-        )
-
-        fun isModelAvailable(context: Context): Boolean {
-            val dir = File(context.filesDir, MODEL_SUBDIR)
-            return MODEL_FILES.all { File(dir, it).exists() }
-        }
-
-        private fun copyAssetsToFilesDir(context: Context) {
-            val dest = File(context.filesDir, MODEL_SUBDIR).also { it.mkdirs() }
-            MODEL_FILES.forEach { name ->
-                val target = File(dest, name)
-                if (target.exists()) return@forEach
-                try {
-                    context.assets.open("$MODEL_SUBDIR/$name").use { src ->
-                        FileOutputStream(target).use { src.copyTo(it) }
-                    }
-                } catch (_: Exception) {}
-            }
-        }
+        fun isModelAvailable(context: Context): Boolean =
+            SttModelManager(context).getActiveConfig() != null
     }
 
     init {
-        copyAssetsToFilesDir(context)
         initRecognizer()
     }
 
     private fun initRecognizer() {
-        val dir = File(context.filesDir, MODEL_SUBDIR).absolutePath
+        val config = SttModelManager(context).getActiveConfig()
+        if (config == null) {
+            DebugLog.e("STT", "No STT model available — recognizer not initialized")
+            return
+        }
+        val dir = File(context.filesDir, config.subdir).absolutePath
         val whisper = OfflineWhisperModelConfig(
-            encoder = "$dir/base.en-encoder.int8.onnx",
-            decoder = "$dir/base.en-decoder.int8.onnx",
+            encoder = "$dir/${config.encoderFile}",
+            decoder = "$dir/${config.decoderFile}",
             language = "en",
             task = "transcribe"
         )
@@ -104,7 +83,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             featConfig  = FeatureConfig(sampleRate = sampleRate, featureDim = 80),
             modelConfig = OfflineModelConfig(
                 whisper    = whisper,
-                tokens     = "$dir/base.en-tokens.txt",
+                tokens     = "$dir/${config.tokensFile}",
                 numThreads = 2,
                 provider   = provider,
                 modelType  = "whisper"
@@ -113,7 +92,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         recognizer = runCatching { OfflineRecognizer(config = cfg("nnapi")) }.getOrNull()
             ?: runCatching { OfflineRecognizer(config = cfg("cpu")) }.getOrNull()
 
-        DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"}")
+        DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"} model=${config.id}")
     }
 
     override fun startListening(

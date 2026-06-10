@@ -51,6 +51,12 @@
             android:label="LLM Model" />
 
         <activity
+            android:name=".SttModelManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="STT Model" />
+
+        <activity
             android:name=".OnboardingActivity"
             android:exported="true"
             android:theme="@style/Theme.JarvisVoice">

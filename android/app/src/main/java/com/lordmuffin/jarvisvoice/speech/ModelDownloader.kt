@@ -17,7 +17,7 @@ class ModelDownloader(private val context: Context) {
 
     interface Listener {
         fun onProgress(downloaded: Long, total: Long)
-        fun onExtracting()   // kept for API compat; no longer called mid-process
+        fun onExtracting()
         fun onComplete()
         fun onError(message: String)
     }
@@ -27,29 +27,24 @@ class ModelDownloader(private val context: Context) {
     @Volatile private var cancelled = false
 
     companion object {
-        private const val MODEL_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-whisper-base.en.tar.bz2"
-
-        private val TARGET_FILES = setOf(
-            "sherpa-onnx-whisper-base.en/base.en-encoder.int8.onnx",
-            "sherpa-onnx-whisper-base.en/base.en-decoder.int8.onnx",
-            "sherpa-onnx-whisper-base.en/base.en-tokens.txt"
-        )
-
-        // Update UI at most every 512 KB received (avoids flooding the main thread)
         private const val NOTIFY_BYTES = 512 * 1024L
     }
 
-    fun download(listener: Listener) {
+    fun download(config: SttModelConfig, listener: Listener) {
         cancelled = false
         thread = Thread {
             try {
-                val modelDir = File(context.filesDir, SherpaOnnxSpeechEngine.MODEL_SUBDIR_PUBLIC)
-                    .also { it.mkdirs() }
+                val modelDir = File(context.filesDir, config.subdir).also { it.mkdirs() }
+                val targetFiles = setOf(
+                    "${config.tarSubdir}/${config.encoderFile}",
+                    "${config.tarSubdir}/${config.decoderFile}",
+                    "${config.tarSubdir}/${config.tokensFile}",
+                )
 
-                val conn = (URL(MODEL_URL).openConnection() as HttpURLConnection).apply {
+                val conn = (URL(config.tarUrl).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 15_000
                     readTimeout    = 60_000
+                    instanceFollowRedirects = true
                     connect()
                 }
                 if (conn.responseCode !in 200..299) {
@@ -58,16 +53,14 @@ class ModelDownloader(private val context: Context) {
                 }
 
                 val total = conn.contentLengthLong
-                DebugLog.i("ModelDownloader", "starting download total=$total")
+                DebugLog.i("ModelDownloader", "starting download model=${config.id} total=$total")
 
-                // Stream HTTP → bzip2 → tar → files in one pass.
-                // No intermediate .tar.bz2 on disk: avoids the multi-minute separate extraction step.
                 val counting = CountingInputStream(conn.inputStream.buffered(), total, listener)
                 BZip2CompressorInputStream(counting).use { bzip ->
                     TarArchiveInputStream(bzip).use { tar ->
                         var entry = tar.nextEntry as? TarArchiveEntry
                         while (entry != null && !cancelled) {
-                            if (!entry.isDirectory && entry.name in TARGET_FILES) {
+                            if (!entry.isDirectory && entry.name in targetFiles) {
                                 val dest = File(modelDir, File(entry.name).name)
                                 DebugLog.i("ModelDownloader", "extracting → ${dest.name}")
                                 FileOutputStream(dest).use { out -> tar.copyTo(out) }
@@ -80,12 +73,12 @@ class ModelDownloader(private val context: Context) {
 
                 if (cancelled) return@Thread
 
-                val allPresent = TARGET_FILES.all {
+                val allPresent = targetFiles.all {
                     File(modelDir, File(it).name).let { f -> f.exists() && f.length() > 0 }
                 }
 
                 if (allPresent) {
-                    DebugLog.i("ModelDownloader", "all model files present — complete")
+                    DebugLog.i("ModelDownloader", "model=${config.id} complete")
                     mainHandler.post { listener.onComplete() }
                 } else {
                     DebugLog.e("ModelDownloader", "extraction finished but some files missing")
@@ -104,7 +97,6 @@ class ModelDownloader(private val context: Context) {
         thread?.interrupt()
     }
 
-    // Wraps an InputStream, counting bytes and throttling UI progress callbacks
     private inner class CountingInputStream(
         private val wrapped: InputStream,
         private val total: Long,
