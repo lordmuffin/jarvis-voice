@@ -1,10 +1,13 @@
 package com.lordmuffin.jarvisvoice
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -60,6 +63,11 @@ class HistoryActivity : AppCompatActivity() {
             holder.tvTime.text       = sdf.format(Date(s.timestamp))
             holder.tvStats.text      = "${s.wordCount} words · ${"%.0f".format(s.wpm)} wpm"
             holder.tvTranscript.text = s.transcript
+            holder.itemView.setOnClickListener {
+                val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("dictation", s.transcript))
+                Toast.makeText(this@HistoryActivity, "Copied", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
