@@ -33,7 +33,13 @@ jobs:
       - name: Decode keystore
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: printf '%s' "$KEYSTORE_B64" | tr -d '[:space:]' | base64 --decode --ignore-garbage > android/app/keystore.jks
+        run: printf '%s' "$KEYSTORE_B64" | tr -d '[:space:]' | base64 --decode > android/app/keystore.jks
+
+      - name: Verify keystore
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: keytool -list -keystore android/app/keystore.jks -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" -noprompt
 
       - name: Download sherpa-onnx bindings (no model)
         run: bash download-models.sh --no-model
