@@ -26,7 +26,7 @@ import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import com.lordmuffin.jarvisvoice.ui.AudioWaveformView
 
-enum class OverlayState { IDLE, RECORDING, DONE }
+enum class OverlayState { IDLE, RECORDING, PROCESSING, DONE }
 
 class VoiceOverlayService : Service() {
 
@@ -173,9 +173,10 @@ class VoiceOverlayService : Service() {
                 }
                 if (!isDragging) {
                     when (state) {
-                        OverlayState.IDLE      -> startRecording(holdMode = false)
-                        OverlayState.RECORDING -> stopRecording()
-                        OverlayState.DONE      -> setIdleState()
+                        OverlayState.IDLE       -> startRecording(holdMode = false)
+                        OverlayState.RECORDING  -> stopRecording()
+                        OverlayState.PROCESSING -> { /* Whisper is working — ignore tap */ }
+                        OverlayState.DONE       -> setIdleState()
                     }
                 } else if (state == OverlayState.RECORDING) {
                     stopRecording()
@@ -208,6 +209,13 @@ class VoiceOverlayService : Service() {
     }
 
     private fun stopRecording() {
+        // Instant visual feedback — don't wait for Whisper to finish
+        state = OverlayState.PROCESSING
+        waveformView.stopAnimation()
+        waveformView.visibility = View.GONE
+        micIcon.visibility = View.VISIBLE
+        overlayView.setBackgroundResource(R.drawable.pill_background)
+        DebugLog.i("Overlay", "stopRecording → PROCESSING (Whisper running in background)")
         speechEngine?.stopListening()
     }
 
@@ -260,7 +268,7 @@ class VoiceOverlayService : Service() {
     }
 
     fun hideOverlay() {
-        if (state == OverlayState.RECORDING) stopRecording()
+        if (state == OverlayState.RECORDING || state == OverlayState.PROCESSING) stopRecording()
         overlayView.visibility = View.GONE
     }
 
