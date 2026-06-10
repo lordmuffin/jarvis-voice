@@ -11,6 +11,7 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.os.SystemClock
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -60,6 +61,7 @@ class VoiceOverlayService : Service() {
     private var isDragging = false
     private var holdModeActive = false
     private var sessionStartMs = 0L
+    private var wakeLock: PowerManager.WakeLock? = null
     private var longPressRunnable: Runnable? = null
     private val longPressHandler = Handler(Looper.getMainLooper())
 
@@ -189,6 +191,11 @@ class VoiceOverlayService : Service() {
     fun startRecording(holdMode: Boolean = false) {
         DebugLog.i("Overlay", "startRecording holdMode=$holdMode engine=${speechEngine?.javaClass?.simpleName}")
         sessionStartMs = SystemClock.elapsedRealtime()
+        if (wakeLock == null || wakeLock?.isHeld == false) {
+            wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "JarvisVoice::Recording")
+                .also { it.acquire(10 * 60 * 1000L) } // 10 min max
+        }
         state = OverlayState.RECORDING
         micIcon.visibility = View.GONE
         waveformView.barColor = Color.WHITE
@@ -222,9 +229,13 @@ class VoiceOverlayService : Service() {
     private fun handleFinalTranscript(text: String) {
         val elapsedMs = SystemClock.elapsedRealtime() - sessionStartMs
         DebugLog.i("Overlay", "handleFinalTranscript elapsedMs=$elapsedMs textLen=${text.length} blank=${text.isBlank()}")
-        if (text.isBlank()) { setIdleState(); return }
+        val filtered = TranscriptProcessor.process(text) ?: run {
+            DebugLog.i("Overlay", "transcript filtered/discarded — setIdleState")
+            setIdleState()
+            return
+        }
 
-        val processed = dictManager.applyTo(text)
+        val processed = dictManager.applyTo(filtered)
         val session   = historyManager.saveSession(processed, elapsedMs)
 
         state = OverlayState.DONE
@@ -261,6 +272,10 @@ class VoiceOverlayService : Service() {
         waveformView.visibility = View.GONE
         waveformView.stopAnimation()
         overlayView.setBackgroundResource(R.drawable.pill_background)
+        if (wakeLock?.isHeld == true) {
+            wakeLock?.release()
+            DebugLog.i("Overlay", "wake lock released")
+        }
     }
 
     fun showOverlay() {
