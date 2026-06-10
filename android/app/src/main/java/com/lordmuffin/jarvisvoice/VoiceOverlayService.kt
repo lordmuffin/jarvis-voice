@@ -293,13 +293,21 @@ class VoiceOverlayService : Service() {
             return
         }
 
-        val withDict  = dictManager.applyTo(filtered)
-        val processed = if (LlmEnhancer.isReady()) {
-            DebugLog.i("Overlay", "running LLM enhancement")
-            LlmEnhancer.enhance(withDict)
+        val withDict = dictManager.applyTo(filtered)
+
+        // LLM enhancement is blocking (seconds). Run on background thread, then rejoin main.
+        if (LlmEnhancer.isReady()) {
+            DebugLog.i("Overlay", "running LLM enhancement on background thread")
+            Thread {
+                val enhanced = LlmEnhancer.enhance(withDict)
+                Handler(Looper.getMainLooper()).post { finalizeAndInject(enhanced, elapsedMs) }
+            }.start()
         } else {
-            withDict
+            finalizeAndInject(withDict, elapsedMs)
         }
+    }
+
+    private fun finalizeAndInject(processed: String, elapsedMs: Long) {
         val session = historyManager.saveSession(processed, elapsedMs)
 
         state = OverlayState.DONE
@@ -308,13 +316,11 @@ class VoiceOverlayService : Service() {
         DebugLog.i("Overlay", "inject node=${lastFocusedNode != null} processed=\"${processed.take(60)}\"")
         TextInjector.inject(lastFocusedNode, processed)
 
-        // Clipboard notification (if enabled in settings)
         val prefs = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_CLIPBOARD_NOTIFY, true)) {
             fireTranscriptNotification(processed)
         }
 
-        // Metro: show WPM after every session
         val msg = when {
             lastFocusedNode == null && session.wordCount > 0 ->
                 "Copied · ${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm"

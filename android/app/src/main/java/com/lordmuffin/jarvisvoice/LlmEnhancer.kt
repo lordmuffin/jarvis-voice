@@ -4,20 +4,17 @@ import android.content.Context
 import java.io.File
 
 /**
- * On-device LLM transcript enhancement via MediaPipe Tasks GenAI.
+ * On-device LLM transcript enhancement via MediaPipe Tasks GenAI (tasks-genai:0.10.24+).
  *
- * The inference backend uses com.google.mediapipe:tasks-genai.
- * If the model isn't installed or inference fails, the raw transcript is returned unchanged.
- *
- * Update MEDIAPIPE_VERSION in build.gradle.kts if the SDK API changes.
+ * Loaded reflectively so the app keeps working if the model isn't installed.
+ * init() runs on a background thread (callers' responsibility).
+ * enhance() is blocking — callers must NOT call from the main thread.
  */
 object LlmEnhancer {
 
     private var loadedModelId: String? = null
 
-    // MediaPipe LlmInference is loaded reflectively to avoid hard compile dependency
-    // when the MediaPipe AAR is not on the classpath (e.g. CI --no-model builds).
-    // Replace with a direct import once the SDK version is confirmed stable.
+    // Reflective handles — populated on successful init(), nulled on destroy().
     private var inference: Any? = null
     private var generateResponseMethod: java.lang.reflect.Method? = null
 
@@ -28,13 +25,13 @@ object LlmEnhancer {
         destroy()
 
         return try {
+            // LlmInferenceOptions is a top-level class (not nested inside LlmInference).
+            // Its static builder() method returns LlmInferenceOptions.Builder.
             val optionsClass = Class.forName(
-                "com.google.mediapipe.tasks.genai.llminference.LlmInference\$LlmInferenceOptions"
+                "com.google.mediapipe.tasks.genai.llminference.LlmInferenceOptions"
             )
-            val builderClass = Class.forName(
-                "com.google.mediapipe.tasks.genai.llminference.LlmInference\$LlmInferenceOptions\$Builder"
-            )
-            val builder = builderClass.newInstance()
+            val builder = optionsClass.getMethod("builder").invoke(null)!!
+            val builderClass = builder.javaClass
             builderClass.getMethod("setModelPath", String::class.java)
                 .invoke(builder, modelFile.absolutePath)
             builderClass.getMethod("setMaxTokens", Int::class.java)
@@ -56,6 +53,7 @@ object LlmEnhancer {
         }
     }
 
+    /** Blocking. Must be called from a background thread. Returns rawTranscript on any failure. */
     fun enhance(rawTranscript: String): String {
         val llm    = inference ?: return rawTranscript
         val method = generateResponseMethod ?: return rawTranscript
@@ -76,9 +74,7 @@ Corrected:"""
 
     fun destroy() {
         try {
-            inference?.let {
-                it.javaClass.getMethod("close").invoke(it)
-            }
+            inference?.let { it.javaClass.getMethod("close").invoke(it) }
         } catch (_: Exception) {}
         inference = null
         generateResponseMethod = null

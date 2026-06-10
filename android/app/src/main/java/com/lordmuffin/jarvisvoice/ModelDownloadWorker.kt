@@ -34,8 +34,9 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                         .build()
                 )
                 .build()
+            // REPLACE: if a previous download is stuck/enqueued, cancel it and start fresh.
             WorkManager.getInstance(context)
-                .enqueueUniqueWork(workName(modelId), ExistingWorkPolicy.KEEP, req)
+                .enqueueUniqueWork(workName(modelId), ExistingWorkPolicy.REPLACE, req)
         }
 
         fun cancel(context: Context, modelId: String) {
