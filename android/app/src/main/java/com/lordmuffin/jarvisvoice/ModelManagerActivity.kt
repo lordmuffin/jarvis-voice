@@ -48,6 +48,11 @@ class ModelManagerActivity : AppCompatActivity() {
                 .getWorkInfosForUniqueWorkLiveData(ModelDownloadWorker.workName(config.id))
                 .observe(this, Observer { infos ->
                     val info = infos?.firstOrNull() ?: return@Observer
+                    if (info.state == WorkInfo.State.FAILED) {
+                        val error = info.outputData.getString(ModelDownloadWorker.KEY_ERROR)
+                            ?: "Download failed"
+                        Toast.makeText(this, "${config.displayName}: $error", Toast.LENGTH_LONG).show()
+                    }
                     adapter.updateDownloadState(config.id, info)
                 })
         }

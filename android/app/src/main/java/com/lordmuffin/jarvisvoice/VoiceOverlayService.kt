@@ -111,13 +111,18 @@ class VoiceOverlayService : Service() {
         setupOverlay()
         speechEngine = SpeechEngineFactory.create(this)
         loadLlmIfConfigured()
-        registerReceiver(
-            screenStateReceiver,
-            IntentFilter().apply {
-                addAction(Intent.ACTION_SCREEN_OFF)
-                addAction(Intent.ACTION_SCREEN_ON)
-            }
-        )
+        val screenFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        // Android 14 (API 34) requires RECEIVER_NOT_EXPORTED even for system broadcasts
+        // when the app targets API 34+. Without this the service crashes immediately on
+        // every start, causing a tight START_STICKY restart loop.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenStateReceiver, screenFilter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(screenStateReceiver, screenFilter)
+        }
     }
 
     private fun loadLlmIfConfigured() {

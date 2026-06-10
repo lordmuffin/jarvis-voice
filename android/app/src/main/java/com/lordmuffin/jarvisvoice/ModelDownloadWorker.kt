@@ -76,9 +76,20 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
             }
 
             when {
-                isStopped          -> { tmpFile.delete(); nm.cancel(notifId); Result.failure() }
-                result == null     -> { tmpFile.renameTo(destFile); nm.cancel(notifId); DebugLog.i("ModelDownload", "$modelId complete"); Result.success() }
-                else               -> { tmpFile.delete(); nm.cancel(notifId); Result.failure(workDataOf(KEY_ERROR to result)) }
+                isStopped      -> { tmpFile.delete(); nm.cancel(notifId); Result.failure() }
+                result == null -> {
+                    tmpFile.renameTo(destFile)
+                    nm.cancel(notifId)
+                    DebugLog.i("ModelDownload", "$modelId complete: ${destFile.length()} bytes")
+                    Result.success()
+                }
+                else           -> {
+                    tmpFile.delete()
+                    DebugLog.e("ModelDownload", "download failed for $modelId: $result")
+                    showErrorNotification(config.displayName, result)
+                    nm.cancel(notifId)
+                    Result.failure(workDataOf(KEY_ERROR to result))
+                }
             }
         } catch (e: Exception) {
             DebugLog.e("ModelDownload", "download failed for $modelId", e)
@@ -120,6 +131,17 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         }
 
         return if (isStopped) "cancelled" else null
+    }
+
+    private fun showErrorNotification(modelName: String, error: String) {
+        createChannel()
+        val notif = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setContentTitle("Download failed: $modelName")
+            .setContentText(error)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(notifId + 1, notif)
     }
 
     private fun createChannel() {
