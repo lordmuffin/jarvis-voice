@@ -316,20 +316,42 @@ class VoiceOverlayService : Service() {
 
         val withDict = dictManager.applyTo(filtered)
 
+        // ─── PASS 1 · Whisper STT ────────────────────────────────────────────────
+        val pass1Words = withDict.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        DebugLog.i("PASS1", "━━━ PASS 1 · Whisper STT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        DebugLog.i("PASS1", "  text  : \"${withDict.take(300)}${if (withDict.length > 300) "…" else ""}\"")
+        DebugLog.i("PASS1", "  words : ${pass1Words.size}  |  chars : ${withDict.length}")
+        DebugLog.i("PASS1", "  recMs : $elapsedMs ms  (recording + transcription combined)")
+        DebugLog.i("PASS1", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        // ────────────────────────────────────────────────────────────────────────
+
         // LLM enhancement is blocking (seconds). Run on background thread, then rejoin main.
         if (LlmEnhancer.isReady()) {
-            DebugLog.i("Overlay", "running LLM enhancement on background thread")
             Thread {
+                // ─── PASS 2 · YellowLab Enhancement ─────────────────────────────────
+                val tLlm = SystemClock.elapsedRealtime()
+                DebugLog.i("PASS2", "━━━ PASS 2 · YellowLab Enhancement ━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                DebugLog.i("PASS2", "  in   : \"${withDict.take(300)}${if (withDict.length > 300) "…" else ""}\"")
+                DebugLog.i("PASS2", "  inW  : ${pass1Words.size}  |  inC : ${withDict.length}")
                 val enhanced = LlmEnhancer.enhance(withDict)
-                Handler(Looper.getMainLooper()).post { finalizeAndInject(enhanced, elapsedMs) }
+                val llmMs = SystemClock.elapsedRealtime() - tLlm
+                val pass2Words = enhanced.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+                DebugLog.i("PASS2", "  out  : \"${enhanced.take(300)}${if (enhanced.length > 300) "…" else ""}\"")
+                DebugLog.i("PASS2", "  outW : ${pass2Words.size}  |  outC : ${enhanced.length}")
+                DebugLog.i("PASS2", "  ΔW   : ${pass2Words.size - pass1Words.size}  |  ΔC : ${enhanced.length - withDict.length}")
+                DebugLog.i("PASS2", "  llmMs: $llmMs ms")
+                DebugLog.i("PASS2", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                // ────────────────────────────────────────────────────────────────────
+                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs) }
             }.start()
         } else {
-            finalizeAndInject(withDict, elapsedMs)
+            DebugLog.i("PASS2", "━━━ PASS 2 · YellowLab Enhancement ━━━ SKIPPED (no model loaded)")
+            finalizeAndInject(withDict, withDict, elapsedMs)
         }
     }
 
-    private fun finalizeAndInject(processed: String, elapsedMs: Long) {
-        val session = historyManager.saveSession(processed, elapsedMs)
+    private fun finalizeAndInject(rawText: String, finalText: String, elapsedMs: Long) {
+        val session = historyManager.saveSession(rawText, finalText, elapsedMs)
 
         state = OverlayState.DONE
         waveformView.stopAnimation()
@@ -338,21 +360,22 @@ class VoiceOverlayService : Service() {
         dotIdle.visibility = View.VISIBLE
         overlayView.setBackgroundResource(R.drawable.pill_background_accent)
 
-        DebugLog.i("Overlay", "inject node=${lastFocusedNode != null} processed=\"${processed.take(60)}\"")
-        TextInjector.inject(lastFocusedNode, processed)
+        DebugLog.i("Overlay", "inject node=${lastFocusedNode != null} final=\"${finalText.take(60)}\"")
+        TextInjector.inject(lastFocusedNode, finalText)
 
         val prefs = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_CLIPBOARD_NOTIFY, true)) {
-            fireTranscriptNotification(processed)
+            fireTranscriptNotification(finalText)
         }
 
+        val wasEnhanced = rawText != finalText
         val msg = when {
             lastFocusedNode == null && session.wordCount > 0 ->
-                "Copied · ${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm"
+                "Copied · ${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm${if (wasEnhanced) " · Enhanced" else ""}"
             lastFocusedNode == null ->
                 "Copied to clipboard"
             session.wordCount > 0 ->
-                "${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm"
+                "${session.wordCount} words · ${"%.0f".format(session.wpm)} wpm${if (wasEnhanced) " · Enhanced" else ""}"
             else -> null
         }
         msg?.let { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }

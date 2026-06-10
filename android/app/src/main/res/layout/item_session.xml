@@ -10,6 +10,7 @@
     android:focusable="true"
     android:layout_marginBottom="4dp">
 
+    <!-- Time + stats row -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,6 +32,54 @@
             android:textSize="11sp" />
     </LinearLayout>
 
+    <!-- Dual-pass section: shown only when LLM enhancement ran (raw ≠ final) -->
+    <LinearLayout
+        android:id="@+id/layout_dual_pass"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="WHISPER"
+            android:textColor="#666666"
+            android:textSize="9sp"
+            android:letterSpacing="0.1"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:id="@+id/tv_raw_transcript"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#777777"
+            android:textSize="13sp"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:layout_marginTop="1dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="2dp"
+            android:background="#333333" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ENHANCED"
+            android:textColor="#00B4D8"
+            android:textSize="9sp"
+            android:letterSpacing="0.1"
+            android:textAllCaps="true"
+            android:layout_marginBottom="1dp" />
+
+    </LinearLayout>
+
+    <!-- Final transcript (always visible) -->
     <TextView
         android:id="@+id/tv_session_transcript"
         android:layout_width="match_parent"
