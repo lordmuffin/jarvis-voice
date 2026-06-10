@@ -1,10 +1,13 @@
 package com.lordmuffin.jarvisvoice
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -47,6 +50,8 @@ class HistoryActivity : AppCompatActivity() {
             val tvTime:       TextView = v.findViewById(R.id.tv_session_time)
             val tvStats:      TextView = v.findViewById(R.id.tv_session_stats)
             val tvTranscript: TextView = v.findViewById(R.id.tv_session_transcript)
+            val tvRaw:        TextView = v.findViewById(R.id.tv_raw_transcript)
+            val layoutDual:   View    = v.findViewById(R.id.layout_dual_pass)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
@@ -60,6 +65,22 @@ class HistoryActivity : AppCompatActivity() {
             holder.tvTime.text       = sdf.format(Date(s.timestamp))
             holder.tvStats.text      = "${s.wordCount} words · ${"%.0f".format(s.wpm)} wpm"
             holder.tvTranscript.text = s.transcript
+
+            // Show the dual-pass section only when LLM actually changed the text
+            val wasEnhanced = s.rawTranscript.isNotBlank() && s.rawTranscript != s.transcript
+            if (wasEnhanced) {
+                holder.layoutDual.visibility = View.VISIBLE
+                holder.tvRaw.text = s.rawTranscript
+            } else {
+                holder.layoutDual.visibility = View.GONE
+            }
+
+            // Tap to copy the final (enhanced) transcript
+            holder.itemView.setOnClickListener {
+                val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                cm.setPrimaryClip(ClipData.newPlainText("dictation", s.transcript))
+                Toast.makeText(this@HistoryActivity, "Copied", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }

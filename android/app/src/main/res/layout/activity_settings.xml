@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1A1A1A">
+    android:background="@color/jv_bg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Metro"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -25,7 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="#222222"
+            android:background="@color/jv_surface"
             android:padding="12dp">
 
             <LinearLayout
@@ -39,14 +39,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="—"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="last words"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -61,14 +61,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="—"
-                    android:textColor="#00B4D8"
+                    android:textColor="@color/jv_accent"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="last wpm"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -83,14 +83,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="total words"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -105,14 +105,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="#00B4D8"
+                    android:textColor="@color/jv_accent"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="avg wpm"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -121,8 +121,114 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp" />
+
+        <!-- ── STT Model ─────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Speech Recognition"
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_open_stt_model_manager"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="STT Model"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_active_stt_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="No model downloaded"
+            android:textColor="@color/jv_text2"
+            android:textSize="12sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="12dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/jv_surface2"
+            android:layout_marginBottom="20dp" />
+
+        <!-- ── LLM Model ────────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LLM Enhancement"
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_open_model_manager"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="LLM Model"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_active_llm_model"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Enhancement: Off"
+            android:textColor="@color/jv_text2"
+            android:textSize="12sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="HuggingFace Token"
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:layout_marginBottom="4dp" />
+
+        <EditText
+            android:id="@+id/et_hf_token"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="hf_xxxxxxxxxxxxxxxx"
+            android:inputType="textPassword"
+            android:textColor="@color/jv_text"
+            android:textColorHint="@color/jv_text2"
+            android:background="@drawable/permission_card_bg"
+            android:padding="12dp"
+            android:textSize="13sp"
+            android:fontFamily="monospace"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Required for Gemma model downloads. Accept the license at huggingface.co/litert-community first."
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/jv_surface2"
             android:layout_marginBottom="20dp" />
 
         <!-- ── Features ─────────────────────────────────────────────── -->
@@ -130,7 +236,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Features"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -141,8 +247,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Dictation History"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp"
             android:layout_marginBottom="8dp" />
@@ -152,16 +258,130 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Custom Dictionary"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_open_debug_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Debug Log"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text2"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp" />
+
+        <!-- ── Data Storage ─────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Data Storage"
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tv_storage_location"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/jv_text2"
+            android:textSize="12sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="8dp" />
+
+        <Button
+            android:id="@+id/btn_grant_storage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant All Files Access"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_accent"
+            android:gravity="start|center_vertical"
+            android:paddingHorizontal="16dp"
+            android:layout_marginBottom="4dp"
+            android:visibility="gone" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant once to store history and logs in /sdcard/Documents/JarvisVoice/. Existing data migrates automatically."
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:paddingHorizontal="4dp"
+            android:layout_marginBottom="16dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/jv_surface2"
+            android:layout_marginBottom="20dp" />
+
+        <!-- ── Notifications ────────────────────────────────────────── -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Notifications"
+            android:textColor="@color/jv_text2"
+            android:textSize="11sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.08"
+            android:layout_marginBottom="8dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Clipboard notification"
+                    android:textColor="@color/jv_text"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Show in tray when dictation is copied to clipboard"
+                    android:textColor="@color/jv_text2"
+                    android:textSize="12sp"
+                    android:layout_marginTop="2dp" />
+
+            </LinearLayout>
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/switch_clipboard_notify"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/jv_surface2"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="20dp" />
 
         <!-- ── STT Backend ──────────────────────────────────────────── -->
@@ -169,7 +389,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="STT Backend"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -193,14 +413,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="On-device STT (Offline)"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Uses local Whisper model, no internet required"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp" />
 
@@ -216,64 +436,10 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="24dp" />
 
-        <!-- ── Offline Model ────────────────────────────────────────── -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Offline Model"
-            android:textColor="#888888"
-            android:textSize="11sp"
-            android:textAllCaps="true"
-            android:letterSpacing="0.08"
-            android:layout_marginBottom="8dp" />
-
-        <TextView
-            android:id="@+id/tv_model_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:layout_marginBottom="16dp" />
-
-        <Button
-            android:id="@+id/btn_download_model"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Download whisper-base.en  (~145 MB)"
-            android:backgroundTint="#00B4D8"
-            android:textColor="#FFFFFF"
-            android:visibility="gone" />
-
-        <ProgressBar
-            android:id="@+id/progress_download"
-            style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:progressTint="#00B4D8"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/tv_download_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="#888888"
-            android:textSize="12sp"
-            android:layout_marginTop="6dp"
-            android:visibility="gone" />
-
-        <Button
-            android:id="@+id/btn_cancel_download"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cancel"
-            android:backgroundTint="#333333"
-            android:textColor="#FFFFFF"
-            android:layout_marginTop="8dp"
-            android:visibility="gone" />
 
     </LinearLayout>
 </ScrollView>

@@ -1,10 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.JarvisVoice" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/accent</item>
-        <item name="colorPrimaryDark">#001A2E</item>
-        <item name="colorAccent">@color/accent</item>
-        <item name="android:windowBackground">@color/pill_bg</item>
+        <item name="colorPrimary">@color/jv_accent</item>
+        <item name="colorPrimaryDark">@color/jv_bg</item>
+        <item name="colorAccent">@color/jv_accent</item>
+        <item name="android:windowBackground">@color/jv_bg</item>
+        <item name="android:statusBarColor">@color/jv_bg</item>
+        <item name="android:navigationBarColor">@color/jv_bg</item>
+        <item name="android:textColorPrimary">@color/jv_text</item>
+        <item name="android:textColorSecondary">@color/jv_text2</item>
+        <item name="actionBarStyle">@style/JV.ActionBar</item>
+    </style>
+    <style name="JV.ActionBar" parent="Widget.AppCompat.ActionBar">
+        <item name="background">@color/jv_surface</item>
+        <item name="titleTextStyle">@style/JV.ActionBar.Title</item>
+        <item name="elevation">0dp</item>
+    </style>
+    <style name="JV.ActionBar.Title" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:textColor">@color/jv_text</item>
+        <item name="android:textSize">18sp</item>
     </style>
     <style name="Theme.JarvisVoice.Transparent" parent="Theme.JarvisVoice">
         <item name="android:windowBackground">@android:color/transparent</item>

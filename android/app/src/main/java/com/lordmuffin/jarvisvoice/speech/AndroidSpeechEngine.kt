@@ -8,8 +8,13 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import com.lordmuffin.jarvisvoice.DebugLog
 
 class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
+
+    companion object {
+        private const val CONFIDENCE_THRESHOLD = 0.65f
+    }
 
     private var recognizer: SpeechRecognizer? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -93,10 +98,17 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
         }
         override fun onResults(results: Bundle?) {
             mainHandler.removeCallbacks(silenceRunnable)
-            val text = results
-                ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                ?.firstOrNull() ?: ""
-            onFinalCallback?.invoke(text)
+            val texts      = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+            val scores     = results?.getFloatArray(SpeechRecognizer.CONFIDENCE_SCORES)
+            val text       = texts?.firstOrNull() ?: ""
+            val confidence = scores?.firstOrNull() ?: 1f
+            if (confidence < CONFIDENCE_THRESHOLD && text.isNotBlank()) {
+                DebugLog.i("AndroidSTT", "low-confidence discard (${"%.2f".format(confidence)}): \"${text.take(40)}\"")
+                onFinalCallback?.invoke("")
+            } else {
+                DebugLog.i("AndroidSTT", "result accepted confidence=${"%.2f".format(confidence)} len=${text.length}")
+                onFinalCallback?.invoke(text)
+            }
             // Recreate recognizer for next use
             recognizer?.destroy()
             recognizer = null

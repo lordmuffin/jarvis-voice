@@ -1,15 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Required on Android 13+ to show download progress notifications -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- External storage for persistent data (history, logs) that survives uninstall.
+         MANAGE_EXTERNAL_STORAGE is the API 30+ path (user grants via All Files Access).
+         WRITE_EXTERNAL_STORAGE + requestLegacyExternalStorage covers API 29 and below. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
 
     <application
+        android:name=".JarvisApp"
         android:allowBackup="false"
+        android:requestLegacyExternalStorage="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.JarvisVoice"
@@ -34,14 +50,37 @@
             android:label="Custom Dictionary" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".DebugLogActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Debug Log" />
+
+        <activity
+            android:name=".ModelManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="LLM Model" />
+
+        <activity
+            android:name=".SttModelManagerActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="STT Model" />
+
+        <activity
+            android:name=".OnboardingActivity"
             android:exported="true"
-            android:theme="@style/Theme.JarvisVoice.Transparent">
+            android:theme="@style/Theme.JarvisVoice">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.JarvisVoice.Transparent" />
 
         <service
             android:name=".VoiceOverlayService"
@@ -68,6 +107,13 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- WorkManager's SystemForegroundService needs foregroundServiceType declared on
+             Android 14+ or setForeground(FOREGROUND_SERVICE_TYPE_DATA_SYNC) throws. -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="shortService|dataSync"
+            tools:node="merge" />
 
     </application>
 </manifest>

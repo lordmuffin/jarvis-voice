@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# Phase 2 setup: downloads sherpa-onnx Kotlin bindings, native libs, and whisper-base.en model.
+# Downloads sherpa-onnx Kotlin bindings, native libs, and whisper-base.en model.
 # Run from the repo root before first build.
+# Flags:
+#   --no-model   Skip the 145 MB whisper model download (CI use only)
 set -euo pipefail
+
+SKIP_MODEL=false
+for arg in "$@"; do
+  [[ "$arg" == "--no-model" ]] && SKIP_MODEL=true
+done
 
 SHERPA_VERSION="1.13.2"
 MODEL_NAME="sherpa-onnx-whisper-base.en"
@@ -56,17 +63,21 @@ fi
 
 # ── whisper-base.en model ────────────────────────────────────────────────────
 echo ""
-echo "=== whisper-base.en model ==="
-MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/${MODEL_NAME}.tar.bz2"
-if [ -f "$ASSETS_DIR/base.en-encoder.int8.onnx" ] && [ -f "$ASSETS_DIR/base.en-tokens.txt" ]; then
-  echo "  Model already present, skipping."
+if [ "$SKIP_MODEL" = "true" ]; then
+  echo "=== whisper-base.en model SKIPPED (--no-model) ==="
 else
-  dl "$MODEL_URL" "$TMP_DIR/model.tar.bz2"
-  tar -xjf "$TMP_DIR/model.tar.bz2" -C "$TMP_DIR/"
-  cp "$TMP_DIR/${MODEL_NAME}/base.en-encoder.int8.onnx" "$ASSETS_DIR/"
-  cp "$TMP_DIR/${MODEL_NAME}/base.en-decoder.int8.onnx" "$ASSETS_DIR/"
-  cp "$TMP_DIR/${MODEL_NAME}/base.en-tokens.txt"        "$ASSETS_DIR/"
-  echo "  Model saved to $ASSETS_DIR (~145 MB, git-ignored)"
+  echo "=== whisper-base.en model ==="
+  MODEL_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/${MODEL_NAME}.tar.bz2"
+  if [ -f "$ASSETS_DIR/base.en-encoder.int8.onnx" ] && [ -f "$ASSETS_DIR/base.en-tokens.txt" ]; then
+    echo "  Model already present, skipping."
+  else
+    dl "$MODEL_URL" "$TMP_DIR/model.tar.bz2"
+    tar -xjf "$TMP_DIR/model.tar.bz2" -C "$TMP_DIR/"
+    cp "$TMP_DIR/${MODEL_NAME}/base.en-encoder.int8.onnx" "$ASSETS_DIR/"
+    cp "$TMP_DIR/${MODEL_NAME}/base.en-decoder.int8.onnx" "$ASSETS_DIR/"
+    cp "$TMP_DIR/${MODEL_NAME}/base.en-tokens.txt"        "$ASSETS_DIR/"
+    echo "  Model saved to $ASSETS_DIR (~145 MB, git-ignored)"
+  fi
 fi
 
 echo ""

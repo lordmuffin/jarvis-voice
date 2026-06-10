@@ -1,26 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Compact 56dp circular mic button. pill_background.xml has 28dp corners = perfect circle. -->
 <FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="56dp"
-    android:layout_height="56dp"
+    android:layout_width="120dp"
+    android:layout_height="40dp"
     android:background="@drawable/pill_background"
-    android:elevation="8dp">
+    android:elevation="12dp">
 
-    <ImageView
-        android:id="@+id/mic_icon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@drawable/ic_mic"
-        android:tint="@color/accent"
+    <!-- Idle: breathing teal dot -->
+    <View
+        android:id="@+id/dot_idle"
+        android:layout_width="8dp"
+        android:layout_height="8dp"
         android:layout_gravity="center"
-        android:contentDescription="@string/mic_desc" />
+        android:background="@drawable/dot_teal"
+        android:visibility="visible" />
 
+    <!-- Recording: animated waveform bars -->
     <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
         android:id="@+id/waveform"
-        android:layout_width="36dp"
-        android:layout_height="28dp"
+        android:layout_width="64dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <!-- Processing: spinner -->
+    <ProgressBar
+        android:id="@+id/progress_spinner"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_gravity="center"
+        android:indeterminate="true"
         android:visibility="gone"
-        android:layout_gravity="center" />
+        android:indeterminateTint="@color/jv_accent" />
+
+    <!-- Keep mic_icon for code compatibility (hidden in new design - dot_idle replaces it) -->
+    <ImageView
+        android:id="@+id/mic_icon"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:src="@drawable/ic_mic"
+        android:visibility="gone"
+        android:contentDescription="@string/mic_desc" />
 
 </FrameLayout>

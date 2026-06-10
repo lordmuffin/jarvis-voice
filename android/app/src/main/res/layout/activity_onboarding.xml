@@ -1,0 +1,525 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/jv_bg">
+
+    <!-- Step indicator dots (persistent across all steps) -->
+    <LinearLayout
+        android:id="@+id/dot_row"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_marginTop="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <View
+            android:id="@+id/dot0"
+            android:layout_width="22dp"
+            android:layout_height="7dp"
+            android:background="@color/jv_accent"
+            android:layout_marginEnd="6dp" />
+
+        <View
+            android:id="@+id/dot1"
+            android:layout_width="7dp"
+            android:layout_height="7dp"
+            android:layout_marginEnd="6dp" />
+
+        <View
+            android:id="@+id/dot2"
+            android:layout_width="7dp"
+            android:layout_height="7dp" />
+
+    </LinearLayout>
+
+    <!-- ===== STEP 0: Welcome ===== -->
+    <LinearLayout
+        android:id="@+id/step_0"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="32dp"
+        android:visibility="visible">
+
+        <!-- App logo mark: teal circle with breathing dot -->
+        <FrameLayout
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_marginBottom="32dp">
+
+            <View
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:background="@drawable/logo_circle_bg" />
+
+            <View
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_gravity="center"
+                android:background="@drawable/dot_teal" />
+
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Jarvis Voice"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:textColor="@color/jv_text"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dictate anywhere. No cloud required."
+            android:textSize="16sp"
+            android:textColor="@color/jv_text2"
+            android:gravity="center"
+            android:layout_marginBottom="48dp" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Get Started"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#04130F"
+            android:backgroundTint="@color/jv_accent"
+            android:stateListAnimator="@null"
+            android:onClick="onGetStarted" />
+
+    </LinearLayout>
+
+    <!-- ===== STEP 1: Permissions (ScrollView so storage card doesn't overflow) ===== -->
+    <ScrollView
+        android:id="@+id/step_1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingTop="96dp"
+            android:paddingBottom="24dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Permissions"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:textColor="@color/jv_text"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Jarvis needs these to show up when you need it."
+                android:textSize="14sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginBottom="28dp" />
+
+            <!-- Mic permission card -->
+            <LinearLayout
+                android:id="@+id/card_mic"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/permission_card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical">
+
+                <FrameLayout
+                    android:id="@+id/icon_mic"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/perm_icon_bg_teal"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_mic"
+                        android:tint="@color/jv_accent"
+                        android:contentDescription="Microphone" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Microphone"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/jv_text" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Required to capture your voice"
+                        android:textSize="12sp"
+                        android:textColor="@color/jv_text2" />
+
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_grant_mic"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="Grant"
+                    android:textSize="13sp"
+                    android:textColor="#04130F"
+                    android:backgroundTint="@color/jv_accent"
+                    android:stateListAnimator="@null"
+                    android:paddingHorizontal="16dp"
+                    android:onClick="onGrantMic" />
+
+            </LinearLayout>
+
+            <!-- Accessibility permission card -->
+            <LinearLayout
+                android:id="@+id/card_a11y"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/permission_card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical">
+
+                <FrameLayout
+                    android:id="@+id/icon_a11y"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/perm_icon_bg_teal"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_settings"
+                        android:tint="@color/jv_accent"
+                        android:contentDescription="Accessibility" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Accessibility"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/jv_text" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Detects focused text fields"
+                        android:textSize="12sp"
+                        android:textColor="@color/jv_text2" />
+
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_grant_a11y"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="Grant"
+                    android:textSize="13sp"
+                    android:textColor="#04130F"
+                    android:backgroundTint="@color/jv_accent"
+                    android:stateListAnimator="@null"
+                    android:paddingHorizontal="16dp"
+                    android:onClick="onGrantAccessibility" />
+
+            </LinearLayout>
+
+            <!-- Overlay permission card (optional) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/permission_card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="12dp"
+                android:gravity="center_vertical">
+
+                <FrameLayout
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/perm_icon_bg_dim"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_settings"
+                        android:tint="@color/jv_text2"
+                        android:contentDescription="Overlay" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Draw over apps"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/jv_text"
+                            android:layout_marginEnd="6dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="optional"
+                            android:textSize="11sp"
+                            android:textColor="@color/jv_text2" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Shows pill over keyboard"
+                        android:textSize="12sp"
+                        android:textColor="@color/jv_text2" />
+
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_grant_overlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="Grant"
+                    android:textSize="13sp"
+                    android:textColor="@color/jv_text2"
+                    android:backgroundTint="@color/jv_surface2"
+                    android:stateListAnimator="@null"
+                    android:paddingHorizontal="16dp"
+                    android:onClick="onGrantOverlay" />
+
+            </LinearLayout>
+
+            <!-- All Files Access card (optional, API 30+ only — hidden below that) -->
+            <LinearLayout
+                android:id="@+id/card_storage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="@drawable/permission_card_bg"
+                android:padding="16dp"
+                android:layout_marginBottom="32dp"
+                android:gravity="center_vertical"
+                android:visibility="gone">
+
+                <FrameLayout
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/perm_icon_bg_dim"
+                    android:layout_marginEnd="14dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_settings"
+                        android:tint="@color/jv_text2"
+                        android:contentDescription="Storage" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="All Files Access"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/jv_text"
+                            android:layout_marginEnd="6dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="optional"
+                            android:textSize="11sp"
+                            android:textColor="@color/jv_text2" />
+
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Keeps history after reinstall"
+                        android:textSize="12sp"
+                        android:textColor="@color/jv_text2" />
+
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_grant_storage_onboard"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="Grant"
+                    android:textSize="13sp"
+                    android:textColor="@color/jv_text2"
+                    android:backgroundTint="@color/jv_surface2"
+                    android:stateListAnimator="@null"
+                    android:paddingHorizontal="16dp"
+                    android:onClick="onGrantStorage" />
+
+            </LinearLayout>
+
+            <Button
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Continue"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#04130F"
+                android:backgroundTint="@color/jv_accent"
+                android:stateListAnimator="@null"
+                android:onClick="onContinue" />
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ===== STEP 2: All Set ===== -->
+    <LinearLayout
+        android:id="@+id/step_2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingHorizontal="32dp"
+        android:visibility="gone">
+
+        <!-- Animated checkmark circle -->
+        <FrameLayout
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:layout_marginBottom="28dp">
+
+            <View
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:background="@drawable/check_circle_bg" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="✓"
+                android:textSize="36sp"
+                android:textColor="@color/jv_accent"
+                android:textStyle="bold" />
+
+        </FrameLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="You're all set"
+            android:textSize="28sp"
+            android:textStyle="bold"
+            android:textColor="@color/jv_text"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="The pill appears whenever your keyboard is open. Tap it to start dictating."
+            android:textSize="15sp"
+            android:textColor="@color/jv_text2"
+            android:gravity="center"
+            android:layout_marginBottom="40dp" />
+
+        <!-- Mini pill illustration -->
+        <FrameLayout
+            android:layout_width="120dp"
+            android:layout_height="40dp"
+            android:background="@drawable/pill_background"
+            android:layout_marginBottom="48dp"
+            android:layout_gravity="center_horizontal">
+
+            <View
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_gravity="center"
+                android:background="@drawable/dot_teal" />
+
+        </FrameLayout>
+
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="Start dictating"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#04130F"
+            android:backgroundTint="@color/jv_accent"
+            android:stateListAnimator="@null"
+            android:layout_marginBottom="16dp"
+            android:onClick="onFinish" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="Open Settings"
+            android:textSize="14sp"
+            android:textColor="@color/jv_accent"
+            android:padding="8dp"
+            android:onClick="onOpenSettings" />
+
+    </LinearLayout>
+
+</FrameLayout>

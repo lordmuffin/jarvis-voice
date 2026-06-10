@@ -21,12 +21,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val prefs = getSharedPreferences(VoiceOverlayService.PREF_FILE, MODE_PRIVATE)
+        if (!prefs.getBoolean("onboarding_done", false)) {
+            startActivity(Intent(this, OnboardingActivity::class.java))
+            finish()
+            return
+        }
         checkAndProceed()
     }
 
     override fun onResume() {
         super.onResume()
         checkAndProceed()
+        // App is alive and interactive — clear the crash guard flag
+        (application as JarvisApp).markCleanLaunch()
     }
 
     private fun checkAndProceed() {
@@ -36,6 +44,7 @@ class MainActivity : AppCompatActivity() {
             !isAccessibilityEnabled() -> promptAccessibility()
             else -> {
                 startForegroundService(Intent(this, VoiceOverlayService::class.java))
+                startActivity(Intent(this, SettingsActivity::class.java))
                 finish()
             }
         }
