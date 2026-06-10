@@ -11,9 +11,12 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.lordmuffin.jarvisvoice.speech.ModelDownloader
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import com.lordmuffin.jarvisvoice.speech.SttDownloadWorker
 import com.lordmuffin.jarvisvoice.speech.SttModelConfig
 import com.lordmuffin.jarvisvoice.speech.SttModelManager
 import com.lordmuffin.jarvisvoice.speech.SttModelRegistry
@@ -22,7 +25,8 @@ class SttModelManagerActivity : AppCompatActivity() {
 
     private lateinit var sttMgr: SttModelManager
     private lateinit var adapter: SttModelAdapter
-    private var activeDownloader: ModelDownloader? = null
+
+    // Tracks which model is currently being downloaded (one at a time)
     private var downloadingId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,6 +40,57 @@ class SttModelManagerActivity : AppCompatActivity() {
         rv.layoutManager = LinearLayoutManager(this)
         adapter = SttModelAdapter()
         rv.adapter = adapter
+
+        observeDownloads()
+    }
+
+    /**
+     * Observe WorkManager state for each known STT model. WorkManager LiveData
+     * delivers the last known state immediately on observe(), so the UI restores
+     * correctly after the activity is recreated mid-download.
+     */
+    private fun observeDownloads() {
+        for (config in SttModelRegistry.MODELS) {
+            WorkManager.getInstance(this)
+                .getWorkInfosForUniqueWorkLiveData(SttDownloadWorker.workName(config.id))
+                .observe(this, Observer { infos ->
+                    val info = infos.firstOrNull() ?: return@Observer
+                    when (info.state) {
+                        WorkInfo.State.ENQUEUED,
+                        WorkInfo.State.RUNNING -> {
+                            downloadingId = config.id
+                            val pct        = info.progress.getInt(SttDownloadWorker.KEY_PROGRESS, -1)
+                            val extracting = info.progress.getBoolean(SttDownloadWorker.KEY_EXTRACTING, false)
+                            val speedBps   = info.progress.getLong(SttDownloadWorker.KEY_SPEED_BPS, 0L)
+                            val etaSec     = info.progress.getLong(SttDownloadWorker.KEY_ETA_SEC, -1L)
+                            if (extracting) adapter.updateExtracting(config.id)
+                            else adapter.updateProgress(config.id, pct, speedBps, etaSec)
+                        }
+                        WorkInfo.State.SUCCEEDED -> {
+                            if (downloadingId == config.id) downloadingId = null
+                            adapter.clearProgress(config.id)
+                            if (!sttMgr.isInstalled(config)) return@Observer
+                            sttMgr.setActiveModel(config.id)
+                            VoiceOverlayService.instance?.reloadSpeechEngine()
+                            adapter.notifyDataSetChanged()
+                            Toast.makeText(this, "${config.displayName} ready", Toast.LENGTH_SHORT).show()
+                        }
+                        WorkInfo.State.FAILED -> {
+                            if (downloadingId == config.id) downloadingId = null
+                            adapter.clearProgress(config.id)
+                            adapter.notifyDataSetChanged()
+                            val err = info.outputData.getString(SttDownloadWorker.KEY_ERROR) ?: "Unknown error"
+                            Toast.makeText(this, "Download failed: $err", Toast.LENGTH_LONG).show()
+                        }
+                        WorkInfo.State.CANCELLED -> {
+                            if (downloadingId == config.id) downloadingId = null
+                            adapter.clearProgress(config.id)
+                            adapter.notifyDataSetChanged()
+                        }
+                        else -> { /* BLOCKED — no UI action needed */ }
+                    }
+                })
+        }
     }
 
     override fun onResume() {
@@ -43,10 +98,7 @@ class SttModelManagerActivity : AppCompatActivity() {
         adapter.notifyDataSetChanged()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        activeDownloader?.cancel()
-    }
+    // No cancel in onDestroy — WorkManager download runs until completion or explicit cancel
 
     private fun onSelectModel(config: SttModelConfig) {
         sttMgr.setActiveModel(config.id)
@@ -59,46 +111,12 @@ class SttModelManagerActivity : AppCompatActivity() {
         if (downloadingId != null) return
         downloadingId = config.id
         adapter.notifyDataSetChanged()
-
-        activeDownloader = ModelDownloader(this).also { dl ->
-            dl.download(config, object : ModelDownloader.Listener {
-                override fun onProgress(downloaded: Long, total: Long) {
-                    adapter.updateProgress(config.id, downloaded, total)
-                }
-                override fun onExtracting() {
-                    adapter.updateExtracting(config.id)
-                }
-                override fun onComplete() {
-                    downloadingId = null
-                    activeDownloader = null
-                    sttMgr.setActiveModel(config.id)
-                    VoiceOverlayService.instance?.reloadSpeechEngine()
-                    adapter.notifyDataSetChanged()
-                    Toast.makeText(
-                        this@SttModelManagerActivity,
-                        "${config.displayName} ready",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-                override fun onError(message: String) {
-                    downloadingId = null
-                    activeDownloader = null
-                    adapter.notifyDataSetChanged()
-                    Toast.makeText(
-                        this@SttModelManagerActivity,
-                        "Download failed: $message",
-                        Toast.LENGTH_LONG
-                    ).show()
-                }
-            })
-        }
+        SttDownloadWorker.enqueue(this, config.id)
     }
 
-    private fun onCancelDownload() {
-        activeDownloader?.cancel()
-        activeDownloader = null
-        downloadingId = null
-        adapter.notifyDataSetChanged()
+    private fun onCancelDownload(config: SttModelConfig) {
+        SttDownloadWorker.cancel(this, config.id)
+        // Observer will clear downloadingId and update adapter when CANCELLED state arrives
     }
 
     private fun onDelete(config: SttModelConfig) {
@@ -114,22 +132,34 @@ class SttModelManagerActivity : AppCompatActivity() {
             .show()
     }
 
+    internal data class Progress(val pct: Int, val speedBps: Long, val etaSec: Long)
+
     // ── Adapter ──────────────────────────────────────────────────────────────
 
     inner class SttModelAdapter : RecyclerView.Adapter<SttModelAdapter.SttModelVH>() {
 
-        private val progressMap = mutableMapOf<String, Pair<Long, Long>>()
+        private val progressMap   = mutableMapOf<String, Progress>()
         private val extractingSet = mutableSetOf<String>()
 
-        fun updateProgress(id: String, downloaded: Long, total: Long) {
-            progressMap[id] = downloaded to total
-            val idx = SttModelRegistry.MODELS.indexOfFirst { it.id == id }
-            if (idx >= 0) notifyItemChanged(idx)
+        fun updateProgress(id: String, pct: Int, speedBps: Long = 0L, etaSec: Long = -1L) {
+            extractingSet.remove(id)
+            progressMap[id] = Progress(pct, speedBps, etaSec)
+            notifyItem(id)
         }
 
         fun updateExtracting(id: String) {
             extractingSet.add(id)
             progressMap.remove(id)
+            notifyItem(id)
+        }
+
+        fun clearProgress(id: String) {
+            progressMap.remove(id)
+            extractingSet.remove(id)
+            notifyItem(id)
+        }
+
+        private fun notifyItem(id: String) {
             val idx = SttModelRegistry.MODELS.indexOfFirst { it.id == id }
             if (idx >= 0) notifyItemChanged(idx)
         }
@@ -146,10 +176,9 @@ class SttModelManagerActivity : AppCompatActivity() {
             val config       = SttModelRegistry.MODELS[position]
             val isInstalled  = sttMgr.isInstalled(config)
             val isActive     = sttMgr.getActiveModelId() == config.id && isInstalled
-            val isDl         = downloadingId == config.id
-            val isExtracting = extractingSet.contains(config.id)
-            val progress     = progressMap[config.id]
-            holder.bind(config, isActive, isInstalled, isDl, isExtracting, progress)
+            val isDownloading = downloadingId == config.id
+            val isExtracting  = extractingSet.contains(config.id)
+            holder.bind(config, isActive, isInstalled, isDownloading, isExtracting, progressMap[config.id])
         }
 
         inner class SttModelVH(view: View) : RecyclerView.ViewHolder(view) {
@@ -162,14 +191,15 @@ class SttModelManagerActivity : AppCompatActivity() {
             val progressBar: ProgressBar = view.findViewById(R.id.progress_download)
             val tvProgress:  TextView    = view.findViewById(R.id.tv_progress_label)
 
-            fun bind(
+            internal fun bind(
                 config: SttModelConfig,
                 isActive: Boolean,
                 isInstalled: Boolean,
                 isDownloading: Boolean,
                 isExtracting: Boolean,
-                progress: Pair<Long, Long>?
+                prog: Progress?
             ) {
+                val pct = prog?.pct
                 tvName.text  = config.displayName
                 tvDesc.text  = config.description
                 tvDefault.visibility = if (config.isDefault) View.VISIBLE else View.GONE
@@ -187,21 +217,22 @@ class SttModelManagerActivity : AppCompatActivity() {
                 val busy = isDownloading || isExtracting
                 progressBar.visibility = if (busy) View.VISIBLE else View.GONE
                 tvProgress.visibility  = if (busy) View.VISIBLE else View.GONE
-                if (isExtracting) {
-                    progressBar.isIndeterminate = true
-                    tvProgress.text = "Extracting…"
-                } else if (isDownloading && progress != null) {
-                    val pct = if (progress.second > 0)
-                        (progress.first * 100 / progress.second).toInt() else -1
-                    progressBar.isIndeterminate = pct < 0
-                    progressBar.max = 100
-                    if (pct >= 0) progressBar.progress = pct
-                    val dl  = formatBytes(progress.first)
-                    val tot = if (progress.second > 0) " / ${formatBytes(progress.second)}" else ""
-                    tvProgress.text = "$dl$tot"
-                } else if (isDownloading) {
-                    progressBar.isIndeterminate = true
-                    tvProgress.text = "Connecting…"
+                when {
+                    isExtracting -> {
+                        progressBar.isIndeterminate = true
+                        tvProgress.text = "Extracting…"
+                    }
+                    isDownloading -> {
+                        progressBar.max = 100
+                        if (pct != null && pct >= 0) {
+                            progressBar.isIndeterminate = false
+                            progressBar.progress = pct
+                            tvProgress.text = buildProgressLabel(pct, prog.speedBps, prog.etaSec)
+                        } else {
+                            progressBar.isIndeterminate = true
+                            tvProgress.text = "Connecting…"
+                        }
+                    }
                 }
 
                 when {
@@ -210,7 +241,7 @@ class SttModelManagerActivity : AppCompatActivity() {
                         btnAction.backgroundTintList =
                             android.content.res.ColorStateList.valueOf(0xFF333333.toInt())
                         btnAction.isEnabled = true
-                        btnAction.setOnClickListener { onCancelDownload() }
+                        btnAction.setOnClickListener { onCancelDownload(config) }
                     }
                     isInstalled -> {
                         btnAction.text = if (isActive) "Remove" else "Delete"
@@ -222,7 +253,8 @@ class SttModelManagerActivity : AppCompatActivity() {
                     else -> {
                         btnAction.text = "Download"
                         btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF00B4D8.toInt())
+                            android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())
+                        btnAction.setTextColor(0xFF04130F.toInt())
                         btnAction.isEnabled = downloadingId == null
                         btnAction.setOnClickListener { onDownload(config) }
                     }
@@ -235,8 +267,22 @@ class SttModelManagerActivity : AppCompatActivity() {
         }
     }
 
-    private fun formatBytes(bytes: Long): String = when {
-        bytes < 1_048_576 -> "${bytes / 1024} KB"
-        else              -> "%.1f MB".format(bytes.toDouble() / 1_048_576)
+    private fun buildProgressLabel(pct: Int, speedBps: Long, etaSec: Long): String {
+        val sb = StringBuilder("$pct%")
+        if (speedBps > 0) sb.append("  ·  ").append(formatSpeed(speedBps))
+        if (etaSec >= 0) sb.append("  ·  ETA ").append(formatEta(etaSec))
+        return sb.toString()
+    }
+
+    private fun formatSpeed(bps: Long): String = when {
+        bps < 1_024         -> "$bps B/s"
+        bps < 1_048_576     -> "${bps / 1_024} KB/s"
+        else                -> "%.1f MB/s".format(bps.toDouble() / 1_048_576)
+    }
+
+    private fun formatEta(sec: Long): String = when {
+        sec < 60    -> "${sec}s"
+        sec < 3_600 -> "${sec / 60}m ${sec % 60}s"
+        else        -> "${sec / 3_600}h ${(sec % 3_600) / 60}m"
     }
 }

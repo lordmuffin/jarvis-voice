@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#1A1A1A">
+    android:background="@color/jv_bg">
 
     <!-- Stats header: Last session | Lifetime -->
     <LinearLayout
@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
-        android:background="#222222">
+        android:background="@color/jv_surface">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -24,14 +24,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="—"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/jv_text"
                 android:textSize="28sp"
                 android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="last words"
-                android:textColor="#888888"
+                android:textColor="@color/jv_text2"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -46,14 +46,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="—"
-                android:textColor="#00B4D8"
+                android:textColor="@color/jv_accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="last wpm"
-                android:textColor="#888888"
+                android:textColor="@color/jv_text2"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -68,14 +68,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0"
-                android:textColor="#FFFFFF"
+                android:textColor="@color/jv_text"
                 android:textSize="28sp"
                 android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="total words"
-                android:textColor="#888888"
+                android:textColor="@color/jv_text2"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -90,14 +90,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0"
-                android:textColor="#00B4D8"
+                android:textColor="@color/jv_accent"
                 android:textSize="28sp"
                 android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="avg wpm"
-                android:textColor="#888888"
+                android:textColor="@color/jv_text2"
                 android:textSize="11sp" />
         </LinearLayout>
 

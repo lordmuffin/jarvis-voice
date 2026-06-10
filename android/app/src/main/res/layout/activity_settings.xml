@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1A1A1A">
+    android:background="@color/jv_bg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -15,7 +15,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Metro"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -25,7 +25,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:background="#222222"
+            android:background="@color/jv_surface"
             android:padding="12dp">
 
             <LinearLayout
@@ -39,14 +39,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="—"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="last words"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -61,14 +61,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="—"
-                    android:textColor="#00B4D8"
+                    android:textColor="@color/jv_accent"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="last wpm"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -83,14 +83,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="total words"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -105,14 +105,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
-                    android:textColor="#00B4D8"
+                    android:textColor="@color/jv_accent"
                     android:textSize="22sp"
                     android:textStyle="bold" />
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="avg wpm"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="10sp" />
             </LinearLayout>
 
@@ -121,7 +121,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp" />
 
@@ -130,7 +130,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Speech Recognition"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -141,8 +141,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="STT Model"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp"
             android:layout_marginBottom="4dp" />
@@ -152,7 +152,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="No model downloaded"
-            android:textColor="#666666"
+            android:textColor="@color/jv_text2"
             android:textSize="12sp"
             android:paddingHorizontal="4dp"
             android:layout_marginBottom="12dp" />
@@ -160,7 +160,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginBottom="20dp" />
 
         <!-- ── LLM Model ────────────────────────────────────────────── -->
@@ -168,7 +168,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="LLM Enhancement"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -179,8 +179,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="LLM Model"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp"
             android:layout_marginBottom="4dp" />
@@ -190,7 +190,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Enhancement: Off"
-            android:textColor="#666666"
+            android:textColor="@color/jv_text2"
             android:textSize="12sp"
             android:paddingHorizontal="4dp"
             android:layout_marginBottom="12dp" />
@@ -199,7 +199,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="HuggingFace Token"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:layout_marginBottom="4dp" />
 
@@ -209,8 +209,8 @@
             android:layout_height="wrap_content"
             android:hint="hf_xxxxxxxxxxxxxxxx"
             android:inputType="textPassword"
-            android:textColor="#E6EDF3"
-            android:textColorHint="#444444"
+            android:textColor="@color/jv_text"
+            android:textColorHint="@color/jv_text2"
             android:background="@drawable/permission_card_bg"
             android:padding="12dp"
             android:textSize="13sp"
@@ -221,14 +221,14 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Required for Gemma model downloads. Accept the license at huggingface.co/litert-community first."
-            android:textColor="#555555"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:layout_marginBottom="16dp" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginBottom="20dp" />
 
         <!-- ── Features ─────────────────────────────────────────────── -->
@@ -236,7 +236,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Features"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -247,8 +247,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Dictation History"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp"
             android:layout_marginBottom="8dp" />
@@ -258,8 +258,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Custom Dictionary"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#FFFFFF"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp"
             android:layout_marginBottom="8dp" />
@@ -269,15 +269,15 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Debug Log"
-            android:backgroundTint="#2A2A2A"
-            android:textColor="#888888"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text2"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="20dp"
             android:layout_marginBottom="20dp" />
 
@@ -286,7 +286,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Data Storage"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -296,7 +296,7 @@
             android:id="@+id/tv_storage_location"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#666666"
+            android:textColor="@color/jv_text2"
             android:textSize="12sp"
             android:paddingHorizontal="4dp"
             android:layout_marginBottom="8dp" />
@@ -306,8 +306,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Grant All Files Access"
-            android:backgroundTint="#1A3A5C"
-            android:textColor="#00B4D8"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_accent"
             android:gravity="start|center_vertical"
             android:paddingHorizontal="16dp"
             android:layout_marginBottom="4dp"
@@ -317,7 +317,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Grant once to store history and logs in /sdcard/Documents/JarvisVoice/. Existing data migrates automatically."
-            android:textColor="#444444"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:paddingHorizontal="4dp"
             android:layout_marginBottom="16dp" />
@@ -325,7 +325,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginBottom="20dp" />
 
         <!-- ── Notifications ────────────────────────────────────────── -->
@@ -333,7 +333,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Notifications"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -357,14 +357,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Clipboard notification"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Show in tray when dictation is copied to clipboard"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp" />
 
@@ -380,7 +380,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="20dp" />
 
@@ -389,7 +389,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="STT Backend"
-            android:textColor="#888888"
+            android:textColor="@color/jv_text2"
             android:textSize="11sp"
             android:textAllCaps="true"
             android:letterSpacing="0.08"
@@ -413,14 +413,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="On-device STT (Offline)"
-                    android:textColor="#FFFFFF"
+                    android:textColor="@color/jv_text"
                     android:textSize="16sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Uses local Whisper model, no internet required"
-                    android:textColor="#666666"
+                    android:textColor="@color/jv_text2"
                     android:textSize="12sp"
                     android:layout_marginTop="2dp" />
 
@@ -436,7 +436,7 @@
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:background="#2A2A2A"
+            android:background="@color/jv_surface2"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="24dp" />
 

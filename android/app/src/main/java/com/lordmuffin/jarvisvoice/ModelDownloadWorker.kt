@@ -19,6 +19,8 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
     companion object {
         const val KEY_MODEL_ID  = "model_id"
         const val KEY_PROGRESS  = "progress"
+        const val KEY_SPEED_BPS = "speed_bps"   // Long bytes/sec
+        const val KEY_ETA_SEC   = "eta_sec"      // Long seconds, -1 if unknown
         const val KEY_ERROR     = "error"
         const val CHANNEL_ID    = "jarvis_model_download"
         const val NOTIF_BASE_ID = 200
@@ -28,6 +30,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         fun enqueue(context: Context, modelId: String) {
             val req = OneTimeWorkRequestBuilder<ModelDownloadWorker>()
                 .setInputData(workDataOf(KEY_MODEL_ID to modelId))
+                .addTag(JarvisApp.TAG_DOWNLOAD)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
@@ -122,6 +125,10 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         val total      = conn.contentLengthLong
         var downloaded = 0L
 
+        // Rolling speed window
+        data class Sample(val bytes: Long, val ms: Long)
+        val speedWin = ArrayDeque<Sample>()
+
         val input  = conn.inputStream
         val output = FileOutputStream(tmpFile)
 
@@ -131,9 +138,16 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
             while (!isStopped && input.read(buf).also { n = it } != -1) {
                 output.write(buf, 0, n)
                 downloaded += n
-                val pct = if (total > 0) (downloaded * 100 / total).toInt() else 0
-                setProgress(workDataOf(KEY_PROGRESS to pct))
-                nm.notify(notifId, buildNotif(config.displayName, pct, false))
+                val pct    = if (total > 0) (downloaded * 100 / total).toInt() else 0
+                val nowMs  = System.currentTimeMillis()
+                speedWin.addLast(Sample(downloaded, nowMs))
+                while (speedWin.size > 1 && nowMs - speedWin.first().ms > 3_000L)
+                    speedWin.removeFirst()
+                val winMs    = maxOf(1L, speedWin.last().ms - speedWin.first().ms)
+                val speedBps = (speedWin.last().bytes - speedWin.first().bytes) * 1000 / winMs
+                val etaSec   = if (speedBps > 0 && total > 0) (total - downloaded) / speedBps else -1L
+                setProgress(workDataOf(KEY_PROGRESS to pct, KEY_SPEED_BPS to speedBps, KEY_ETA_SEC to etaSec))
+                nm.notify(notifId, buildNotif(config.displayName, pct, false, speedBps, etaSec))
             }
         } finally {
             output.flush()
@@ -162,13 +176,36 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         )
     }
 
-    private fun buildNotif(label: String, progress: Int, indeterminate: Boolean) =
+    private fun buildNotif(label: String, progress: Int, indeterminate: Boolean,
+                           speedBps: Long = 0, etaSec: Long = -1) =
         NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle("Downloading $label")
-            .setContentText(if (indeterminate) "Starting…" else "$progress%")
+            .setContentText(when {
+                indeterminate -> "Starting…"
+                else -> buildProgressText(progress, speedBps, etaSec)
+            })
             .setProgress(100, progress, indeterminate)
             .setOngoing(true)
             .setSilent(true)
             .build()
+
+    private fun buildProgressText(pct: Int, speedBps: Long, etaSec: Long): String {
+        val sb = StringBuilder("$pct%")
+        if (speedBps > 0) sb.append("  ·  ").append(formatSpeed(speedBps))
+        if (etaSec >= 0) sb.append("  ·  ETA ").append(formatEta(etaSec))
+        return sb.toString()
+    }
+
+    private fun formatSpeed(bps: Long): String = when {
+        bps < 1_024         -> "$bps B/s"
+        bps < 1_048_576     -> "${bps / 1_024} KB/s"
+        else                -> "%.1f MB/s".format(bps.toDouble() / 1_048_576)
+    }
+
+    private fun formatEta(sec: Long): String = when {
+        sec < 60    -> "${sec}s"
+        sec < 3_600 -> "${sec / 60}m ${sec % 60}s"
+        else        -> "${sec / 3_600}h ${(sec % 3_600) / 60}m"
+    }
 }

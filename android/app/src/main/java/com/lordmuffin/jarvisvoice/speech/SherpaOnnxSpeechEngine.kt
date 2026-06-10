@@ -13,6 +13,7 @@ import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
 import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import com.lordmuffin.jarvisvoice.DebugLog
+import com.lordmuffin.jarvisvoice.PersistentStorage
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -72,7 +73,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             DebugLog.e("STT", "No STT model available — recognizer not initialized")
             return
         }
-        val dir = File(context.filesDir, config.subdir).absolutePath
+        val dir = PersistentStorage.sttModelDir(context, config.subdir).absolutePath
         val whisper = OfflineWhisperModelConfig(
             encoder = "$dir/${config.encoderFile}",
             decoder = "$dir/${config.decoderFile}",
@@ -233,11 +234,14 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                 snapshot = currentBuffer.toShortArray()
                 currentBuffer.clear()
             }
-            val committed = committedText
 
+            // Read committedText INSIDE the executor so this job runs after any in-flight
+            // flushChunk jobs finish. Reading it outside would race — the captured value
+            // would be stale if a flush was still processing when stopListening() was called.
             transcribeExecutor.submit {
                 val lastChunk = if (snapshot.size >= MIN_CHUNK_SAMPLES) transcribe(snapshot) else ""
                 DebugLog.i("STT", "stopListening lastChunk: \"${lastChunk.take(60)}\"")
+                val committed = committedText
                 val sep   = if (committed.isNotEmpty() && lastChunk.isNotBlank()) " " else ""
                 val final = (committed + sep + lastChunk).trim()
                 DebugLog.i("STT", "onFinal total words=${final.split(" ").size}")

@@ -10,11 +10,7 @@ class LlmModelManager(private val context: Context) {
         private const val KEY_ACTIVE_MODEL = "active_model"
     }
 
-    fun modelsDir(): File {
-        // getExternalFilesDir() returns null if external storage is unavailable
-        val base = context.getExternalFilesDir(null) ?: context.filesDir
-        return File(base, "llm_models").also { it.mkdirs() }
-    }
+    fun modelsDir(): File = PersistentStorage.llmModelsDir(context)
 
     fun modelFile(config: ModelConfig): File = File(modelsDir(), config.filename)
 

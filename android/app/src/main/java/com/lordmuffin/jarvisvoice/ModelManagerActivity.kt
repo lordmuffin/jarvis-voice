@@ -115,6 +115,25 @@ class ModelManagerActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun buildProgressLabel(pct: Int, speedBps: Long, etaSec: Long): String {
+        val sb = StringBuilder("$pct%")
+        if (speedBps > 0) sb.append("  ·  ").append(formatSpeed(speedBps))
+        if (etaSec >= 0) sb.append("  ·  ETA ").append(formatEta(etaSec))
+        return sb.toString()
+    }
+
+    private fun formatSpeed(bps: Long): String = when {
+        bps < 1_024         -> "$bps B/s"
+        bps < 1_048_576     -> "${bps / 1_024} KB/s"
+        else                -> "%.1f MB/s".format(bps.toDouble() / 1_048_576)
+    }
+
+    private fun formatEta(sec: Long): String = when {
+        sec < 60    -> "${sec}s"
+        sec < 3_600 -> "${sec / 60}m ${sec % 60}s"
+        else        -> "${sec / 3_600}h ${(sec % 3_600) / 60}m"
+    }
+
     // ── Adapter ──────────────────────────────────────────────────────────────
 
     inner class ModelAdapter : RecyclerView.Adapter<ModelAdapter.ModelVH>() {
@@ -175,13 +194,16 @@ class ModelManagerActivity : AppCompatActivity() {
 
                 // Download progress bar
                 val progress = workInfo?.progress?.getInt(ModelDownloadWorker.KEY_PROGRESS, -1) ?: -1
+                val speedBps = workInfo?.progress?.getLong(ModelDownloadWorker.KEY_SPEED_BPS, 0L) ?: 0L
+                val etaSec   = workInfo?.progress?.getLong(ModelDownloadWorker.KEY_ETA_SEC, -1L) ?: -1L
                 progressBar.visibility = if (isDownloading) View.VISIBLE else View.GONE
                 tvProgress.visibility  = if (isDownloading) View.VISIBLE else View.GONE
                 if (isDownloading) {
                     progressBar.isIndeterminate = progress < 0
                     progressBar.max = 100
                     progressBar.progress = progress.coerceIn(0, 100)
-                    tvProgress.text = if (progress >= 0) "$progress%" else "Connecting…"
+                    tvProgress.text = if (progress >= 0) buildProgressLabel(progress, speedBps, etaSec)
+                                      else "Connecting…"
                 }
 
                 // Primary action button
@@ -201,7 +223,8 @@ class ModelManagerActivity : AppCompatActivity() {
                     else -> {
                         btnAction.text = "Download"
                         btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF00B4D8.toInt())
+                            android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())
+                        btnAction.setTextColor(0xFF04130F.toInt())
                         btnAction.setOnClickListener { onDownload(config) }
                     }
                 }

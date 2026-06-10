@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.lordmuffin.jarvisvoice.DebugLog
+import com.lordmuffin.jarvisvoice.PersistentStorage
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
@@ -34,7 +35,7 @@ class ModelDownloader(private val context: Context) {
         cancelled = false
         thread = Thread {
             try {
-                val modelDir = File(context.filesDir, config.subdir).also { it.mkdirs() }
+                val modelDir = PersistentStorage.sttModelDir(context, config.subdir)
                 val targetFiles = setOf(
                     "${config.tarSubdir}/${config.encoderFile}",
                     "${config.tarSubdir}/${config.decoderFile}",

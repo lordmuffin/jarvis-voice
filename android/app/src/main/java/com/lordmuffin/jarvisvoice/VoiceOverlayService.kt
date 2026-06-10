@@ -106,7 +106,8 @@ class VoiceOverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance       = this
-        PersistentStorage.migrateIfNeeded(this)
+        runCatching { PersistentStorage.migrateIfNeeded(this) }
+            .onFailure { DebugLog.e("Service", "migration failed (non-fatal)", it) }
         DebugLog.init(this)
         DebugLog.i("Service", "onCreate storage=${PersistentStorage.storageLabel(this)}")
         historyManager = DictationHistoryManager(this)

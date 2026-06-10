@@ -33,6 +33,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         checkAndProceed()
+        // App is alive and interactive — clear the crash guard flag
+        (application as JarvisApp).markCleanLaunch()
     }
 
     private fun checkAndProceed() {

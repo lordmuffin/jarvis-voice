@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0D0D0D">
+    android:background="@color/jv_bg">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,8 +17,8 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Copy all"
-            android:backgroundTint="#222222"
-            android:textColor="#00B4D8"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_accent"
             android:layout_marginEnd="4dp" />
 
         <Button
@@ -27,8 +27,8 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Clear"
-            android:backgroundTint="#222222"
-            android:textColor="#FF4444"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_error"
             android:layout_marginStart="4dp" />
 
     </LinearLayout>
@@ -44,7 +44,7 @@
             android:id="@+id/tv_log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#CCCCCC"
+            android:textColor="@color/jv_text"
             android:textSize="11sp"
             android:fontFamily="monospace"
             android:lineSpacingMultiplier="1.3" />

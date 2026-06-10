@@ -25,6 +25,9 @@ object TranscriptProcessor {
     fun isAmbientNoise(text: String): Boolean {
         if (text.isBlank()) return true
         val lower = text.lowercase().trim()
+        // Whisper/sherpa-onnx silence tokens — may be truncated (e.g. "[BLANK_AUD" without
+        // closing bracket), so check prefix rather than relying on BRACKET_PATTERN.
+        if (lower.startsWith("[blank")) return true
         // Strip all bracket patterns — if nothing meaningful remains, it's ambient
         val stripped = BRACKET_PATTERN.replace(lower, "").replace(Regex("\\s+"), " ").trim()
         if (stripped.isEmpty()) return true

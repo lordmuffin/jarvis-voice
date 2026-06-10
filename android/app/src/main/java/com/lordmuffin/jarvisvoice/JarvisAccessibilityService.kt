@@ -8,12 +8,18 @@ import android.view.accessibility.AccessibilityWindowInfo
 
 class JarvisAccessibilityService : AccessibilityService() {
 
-    // True while an editable field has been focused since the last app switch.
-    // Survives transient WINDOWS_CHANGED events during keyboard animation so the
-    // pill appears even when VIEW_FOCUSED fires before the IME window is visible.
+    companion object {
+        var instance: JarvisAccessibilityService? = null
+    }
+
+    // Tracks whether an accessible editable field has focus. Used to capture
+    // lastFocusedNode for direct injection. NOT used to gate showOverlay() —
+    // keyboard visibility is the authoritative trigger (handles Electron/WebView
+    // apps whose inputs don't surface editable accessibility nodes).
     private var hasEditableFocus = false
 
     override fun onServiceConnected() {
+        instance = this
         serviceInfo = serviceInfo.apply {
             eventTypes = AccessibilityEvent.TYPE_VIEW_FOCUSED or
                     AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
@@ -24,6 +30,11 @@ class JarvisAccessibilityService : AccessibilityService() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        instance = null
+    }
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_FOCUSED -> {
@@ -31,8 +42,7 @@ class JarvisAccessibilityService : AccessibilityService() {
                 if (node.isEditable) {
                     hasEditableFocus = true
                     VoiceOverlayService.lastFocusedNode = AccessibilityNodeInfo.obtain(node)
-                    // Show immediately if keyboard is already up; otherwise WINDOWS_CHANGED
-                    // will fire once the IME window appears and trigger showOverlay() then.
+                    // Keyboard may already be visible when focus moves between fields
                     if (isKeyboardVisible()) {
                         VoiceOverlayService.instance?.showOverlay()
                     }
@@ -42,30 +52,19 @@ class JarvisAccessibilityService : AccessibilityService() {
                 }
             }
 
-            // API 28+ — fires when any window appears/disappears, including IME.
-            // May fire multiple times during keyboard slide-in animation, so we must
-            // not clear lastFocusedNode here — it races with TYPE_VIEW_FOCUSED.
+            // Fires when any window appears/disappears, including the IME.
+            // Show the overlay whenever the keyboard is up — this covers Electron
+            // and WebView-based apps that don't emit editable focus events.
             AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
                 if (isKeyboardVisible()) {
-                    // Use hasEditableFocus, not lastFocusedNode: the node may have been
-                    // captured in VIEW_FOCUSED before the IME window was registered, and
-                    // a transient WINDOWS_CHANGED(keyboard=false) during animation would
-                    // have cleared lastFocusedNode, preventing the pill from ever showing.
-                    if (hasEditableFocus) {
-                        VoiceOverlayService.instance?.showOverlay()
-                    }
+                    VoiceOverlayService.instance?.showOverlay()
                 } else {
-                    val service = VoiceOverlayService.instance
-                    // Screen-off: IME window disappears but recording must continue.
-                    if (service == null || !service.isScreenOff()) {
-                        // Keyboard is genuinely gone — keep lastFocusedNode so a long
-                        // dictation session can still inject when it finishes.
-                    }
-                    service?.hideOverlay()
+                    VoiceOverlayService.instance?.hideOverlay()
                 }
             }
 
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
+                // App switched / activity changed — reset editable focus tracking
                 if (event.source == null) {
                     hasEditableFocus = false
                     VoiceOverlayService.lastFocusedNode = null
@@ -78,8 +77,6 @@ class JarvisAccessibilityService : AccessibilityService() {
         windows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
 
     override fun onInterrupt() {
-        // onInterrupt fires on screen-off among other events. hideOverlay() guards
-        // against stopping recording when screenOff=true, so safe to call here.
         VoiceOverlayService.instance?.hideOverlay()
     }
 }
