@@ -35,10 +35,15 @@ object PersistentStorage {
         return dir(context).absolutePath.startsWith(extRoot.absolutePath)
     }
 
-    fun storageLabel(context: Context): String = if (isOnExternalStorage(context)) {
-        "/sdcard/Documents/JarvisVoice/ — survives reinstalls"
-    } else {
-        "Internal app storage — deleted on uninstall (grant All Files Access to persist)"
+    fun storageLabel(context: Context): String {
+        val extRoot = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+        val actualPath = if (extRoot != null) File(extRoot, DIR_NAME).absolutePath else ""
+        return if (isOnExternalStorage(context)) {
+            "$actualPath — survives reinstalls"
+        } else {
+            "Internal app storage — deleted on uninstall\n" +
+            "Grant All Files Access to store data at:\n$actualPath"
+        }
     }
 
     /** True when the app can write to external public storage. */

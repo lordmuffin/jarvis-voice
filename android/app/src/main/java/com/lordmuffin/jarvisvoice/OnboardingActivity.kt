@@ -3,7 +3,9 @@ package com.lordmuffin.jarvisvoice
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.provider.Settings
 import android.view.View
 import android.widget.Button
@@ -64,6 +66,15 @@ class OnboardingActivity : AppCompatActivity() {
         applyGrantedStyle(R.id.btn_grant_mic, micGranted, isOverlay = false)
         applyGrantedStyle(R.id.btn_grant_a11y, a11yGranted, isOverlay = false)
         applyGrantedStyle(R.id.btn_grant_overlay, overlayGranted, isOverlay = true)
+
+        // Show the All Files Access card only on Android 11+ where it requires explicit grant
+        val cardStorage = findViewById<View>(R.id.card_storage)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            cardStorage.visibility = View.VISIBLE
+            applyGrantedStyle(R.id.btn_grant_storage_onboard, Environment.isExternalStorageManager(), isOverlay = true)
+        } else {
+            cardStorage.visibility = View.GONE
+        }
     }
 
     private fun applyGrantedStyle(btnId: Int, granted: Boolean, isOverlay: Boolean) {
@@ -98,6 +109,16 @@ class OnboardingActivity : AppCompatActivity() {
 
     fun onGrantOverlay(v: View) {
         startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
+    }
+
+    fun onGrantStorage(v: View) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            startActivity(
+                Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+            )
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
