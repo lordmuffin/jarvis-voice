@@ -3,6 +3,8 @@ package com.lordmuffin.jarvisvoice
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.work.*
 import kotlinx.coroutines.Dispatchers
@@ -46,7 +48,12 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
 
     override suspend fun getForegroundInfo(): ForegroundInfo {
         createChannel()
-        return ForegroundInfo(notifId, buildNotif("Starting…", 0, true))
+        val notif = buildNotif("Starting…", 0, true)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ForegroundInfo(notifId, notif, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(notifId, notif)
+        }
     }
 
     override suspend fun doWork(): Result {
@@ -103,9 +110,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 output.write(buf, 0, n)
                 downloaded += n
                 val pct = if (total > 0) (downloaded * 100 / total).toInt() else 0
-                withContext(Dispatchers.Main) {
-                    setProgress(workDataOf(KEY_PROGRESS to pct))
-                }
+                setProgress(workDataOf(KEY_PROGRESS to pct))
                 nm.notify(notifId, buildNotif(config.displayName, pct, false))
             }
         } finally {
