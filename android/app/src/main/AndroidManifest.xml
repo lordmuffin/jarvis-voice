@@ -68,6 +68,12 @@
             android:label="STT Model" />
 
         <activity
+            android:name=".VaultCaptureActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Voice to Vault" />
+
+        <activity
             android:name=".OnboardingActivity"
             android:exported="true"
             android:theme="@style/Theme.JarvisVoice">

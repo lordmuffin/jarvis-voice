@@ -117,6 +117,9 @@ class VoiceOverlayService : Service() {
         setupOverlay()
         speechEngine = SpeechEngineFactory.create(this)
         loadLlmIfConfigured()
+        // Service started cleanly — tell the crash guard so the next app launch doesn't
+        // cancel all WorkManager jobs unnecessarily.
+        (application as JarvisApp).markCleanLaunch()
         val screenFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -253,6 +256,13 @@ class VoiceOverlayService : Service() {
             }
         }
         return true
+    }
+
+    /** Release the microphone so another component (e.g. VaultCaptureActivity) can use it. */
+    fun cancelActiveRecording() {
+        if (state == OverlayState.RECORDING) {
+            stopRecording()
+        }
     }
 
     fun startRecording(holdMode: Boolean = false) {

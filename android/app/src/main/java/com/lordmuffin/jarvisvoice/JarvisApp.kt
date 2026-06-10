@@ -6,46 +6,35 @@ import androidx.work.WorkManager
 class JarvisApp : Application() {
 
     companion object {
-        private const val PREFS      = "jarvis_crash_guard"
-        private const val KEY_CLEAN  = "launched_cleanly"
-        const val TAG_DOWNLOAD       = "jarvis_download"
+        const val TAG_DOWNLOAD = "jarvis_download"
     }
 
     override fun onCreate() {
         super.onCreate()
+        DebugLog.init(this)
 
-        val prefs = getSharedPreferences(PREFS, MODE_PRIVATE)
+        // Cancel all WorkManager jobs on every cold start. This handles:
+        //   - adb install -r  (am force-stop doesn't trigger UncaughtExceptionHandler,
+        //     so RUNNING jobs stay in the DB across installs)
+        //   - OOM kills / force-stop from Settings
+        //   - Any non-graceful process death
+        // Downloads are user-initiated — they just tap Download again if interrupted.
+        runCatching { WorkManager.getInstance(this).cancelAllWork() }
 
-        if (!prefs.getBoolean(KEY_CLEAN, true)) {
-            // Previous launch did not complete cleanly (crash or force-kill before
-            // markCleanLaunch() was called). Cancel all download jobs so a stuck
-            // WorkManager job can't restart and crash the process before the UI renders.
-            WorkManager.getInstance(this).cancelAllWorkByTag(TAG_DOWNLOAD)
-            DebugLog.i("CrashGuard", "Prior crash detected — cancelled download jobs")
-        }
-        // Assume not-clean until MainActivity confirms a successful start.
-        prefs.edit().putBoolean(KEY_CLEAN, false).apply()
-
-        installCrashHandler(prefs.getBoolean(KEY_CLEAN, false))
+        installCrashHandler()
     }
 
-    private fun installCrashHandler(wasClean: Boolean) {
+    private fun installCrashHandler() {
         val default = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
             try {
-                // .commit() is synchronous — must complete before the process is killed.
-                getSharedPreferences(PREFS, MODE_PRIVATE)
-                    .edit().putBoolean(KEY_CLEAN, false).commit()
-                WorkManager.getInstance(this).cancelAllWorkByTag(TAG_DOWNLOAD)
-                DebugLog.e("CrashGuard", "Crash on $thread — download jobs cancelled", ex)
+                DebugLog.e("CrashGuard", "Crash on $thread", ex)
+                WorkManager.getInstance(this).cancelAllWork()
             } catch (_: Exception) { /* best effort */ }
             default?.uncaughtException(thread, ex)
         }
     }
 
-    /** Call from MainActivity.onResume() once the app is confirmed functional. */
-    fun markCleanLaunch() {
-        getSharedPreferences(PREFS, MODE_PRIVATE)
-            .edit().putBoolean(KEY_CLEAN, true).apply()
-    }
+    /** No-op — kept so callers in Service/Activity don't need to change. */
+    fun markCleanLaunch() = Unit
 }

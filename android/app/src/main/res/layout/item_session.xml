@@ -10,11 +10,12 @@
     android:focusable="true"
     android:layout_marginBottom="4dp">
 
-    <!-- Time + stats row -->
+    <!-- Time + stats + expand chevron -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
         <TextView
             android:id="@+id/tv_session_time"
@@ -29,7 +30,17 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/jv_accent"
-            android:textSize="11sp" />
+            android:textSize="11sp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/tv_expand_chevron"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▼"
+            android:textColor="@color/jv_text2"
+            android:textSize="10sp" />
+
     </LinearLayout>
 
     <!-- Dual-pass section: shown only when LLM enhancement ran (raw ≠ final) -->
@@ -79,7 +90,7 @@
 
     </LinearLayout>
 
-    <!-- Final transcript (always visible) -->
+    <!-- Final transcript — always visible; maxLines toggled in adapter -->
     <TextView
         android:id="@+id/tv_session_transcript"
         android:layout_width="match_parent"
@@ -89,5 +100,40 @@
         android:layout_marginTop="4dp"
         android:maxLines="2"
         android:ellipsize="end" />
+
+    <!-- Expanded action row — GONE until item is tapped -->
+    <LinearLayout
+        android:id="@+id/layout_expanded_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp"
+        android:visibility="gone">
+
+        <!-- Copy the final (enhanced) transcript -->
+        <Button
+            android:id="@+id/btn_copy_final"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:text="Copy"
+            android:textSize="12sp"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text"
+            android:layout_marginEnd="6dp" />
+
+        <!-- Only visible when LLM ran: copy the raw Whisper transcript -->
+        <Button
+            android:id="@+id/btn_copy_raw"
+            android:layout_width="0dp"
+            android:layout_height="36dp"
+            android:layout_weight="1"
+            android:text="Copy Whisper"
+            android:textSize="12sp"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_text2"
+            android:visibility="gone" />
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -13,10 +13,14 @@ import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
-import com.lordmuffin.jarvisvoice.speech.SttModelManager
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
+import com.lordmuffin.jarvisvoice.speech.SttModelManager
 
 class SettingsActivity : AppCompatActivity() {
+
+    companion object {
+        private const val REQ_VAULT_FOLDER = 44
+    }
 
     private lateinit var offlineSwitch: SwitchCompat
     private lateinit var clipboardNotifySwitch: SwitchCompat
@@ -34,6 +38,9 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var tvStorageLocation: TextView
     private lateinit var btnGrantStorage: Button
 
+    // Vault capture
+    private lateinit var tvVaultFolder: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -50,6 +57,7 @@ class SettingsActivity : AppCompatActivity() {
         etHfToken         = findViewById(R.id.et_hf_token)
         tvStorageLocation = findViewById(R.id.tv_storage_location)
         btnGrantStorage   = findViewById(R.id.btn_grant_storage)
+        tvVaultFolder     = findViewById(R.id.tv_vault_folder)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             btnGrantStorage.setOnClickListener {
@@ -100,15 +108,54 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, DebugLogActivity::class.java))
         }
 
-        refreshStats()
+        findViewById<Button>(R.id.fab_vault).setOnClickListener {
+            startActivity(Intent(this, VaultCaptureActivity::class.java))
+        }
+
+        findViewById<Button>(R.id.btn_pick_vault_folder).setOnClickListener {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                addFlags(
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                )
+            }
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, REQ_VAULT_FOLDER)
+        }
+
+        runCatching { refreshStats() }
     }
 
     override fun onResume() {
         super.onResume()
-        refreshStats()
+        runCatching { refreshStats() }
         refreshLlmLabel()
         refreshSttLabel()
-        refreshStorageLabel()
+        runCatching { refreshStorageLabel() }
+        refreshVaultFolderLabel()
+    }
+
+    @Deprecated("Using deprecated API for compatibility with minSdk 24")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_VAULT_FOLDER && resultCode == RESULT_OK) {
+            data?.data?.let { uri ->
+                VaultNoteWriter.saveFolderUri(this, uri)
+                refreshVaultFolderLabel()
+            }
+        }
+    }
+
+    private fun refreshVaultFolderLabel() {
+        if (VaultNoteWriter.isConfigured(this)) {
+            tvVaultFolder.text = "Folder: ${VaultNoteWriter.displayPath(this)}"
+            tvVaultFolder.setTextColor(getColor(R.color.jv_success))
+        } else {
+            tvVaultFolder.text = "No folder selected"
+            tvVaultFolder.setTextColor(getColor(R.color.jv_text2))
+        }
     }
 
     private fun refreshSttLabel() {
@@ -132,7 +179,8 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun refreshStorageLabel() {
-        PersistentStorage.migrateIfNeeded(this)
+        // Migration already runs in VoiceOverlayService.onCreate(); don't re-run it on
+        // every onResume — it does real file I/O on the main thread.
         tvStorageLocation.text = PersistentStorage.storageLabel(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             btnGrantStorage.visibility =
