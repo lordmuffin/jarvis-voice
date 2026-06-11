@@ -197,6 +197,7 @@ class VoiceOverlayService : Service() {
 
     fun reloadLlmModel() {
         LlmEnhancer.destroy()
+        LlmEnhancer.clearCrashSentinel()
         loadLlmIfConfigured()
     }
 

@@ -137,4 +137,10 @@ object LlmEnhancer {
         loadedModelId = null
         activeBackend = "none"
     }
+
+    /** Clear the crash sentinel so NPU will be retried on next init(). Call only on explicit user action. */
+    fun clearCrashSentinel() {
+        prefs?.edit()?.remove(KEY_LOADING)?.apply()
+        DebugLog.i("LlmEnhancer", "crash sentinel cleared — NPU will be retried on next load")
+    }
 }
