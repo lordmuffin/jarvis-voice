@@ -189,7 +189,11 @@ class ModelManagerActivity : AppCompatActivity() {
 
                 tvStatus.text = when {
                     isDownloading -> "Downloading…"
-                    isInstalled   -> mgr.getStatusLabel(config)
+                    isInstalled   -> {
+                        val base = mgr.getStatusLabel(config)
+                        val backend = LlmEnhancer.activeBackend.takeIf { it != "none" && isActive }
+                        if (backend != null) "$base  [$backend]" else base
+                    }
                     else          -> "${config.fileSizeMb} MB · min ${config.minRamGb} GB RAM"
                 }
 
