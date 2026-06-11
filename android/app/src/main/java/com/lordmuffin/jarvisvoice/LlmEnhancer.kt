@@ -55,9 +55,9 @@ object LlmEnhancer {
                 "crash sentinel present (model=$prevCrashModel) — skipping NPU/GPU, going straight to CPU")
         }
 
-        // Write sentinel before any hardware init. Cleared on any outcome we observe.
-        // If the process dies natively mid-init, the sentinel remains and protects next launch.
-        if (!skipHardware) p?.edit()?.putString(KEY_LOADING, modelId)?.apply()
+        // Write sentinel synchronously (commit, not apply) before any hardware init.
+        // If the process dies natively mid-init, the sentinel is guaranteed on disk.
+        if (!skipHardware) p?.edit()?.putString(KEY_LOADING, modelId)?.commit()
 
         val hardwareCandidates = listOf(
             "npu" to { Backend.NPU(nativeLibraryDir) },
