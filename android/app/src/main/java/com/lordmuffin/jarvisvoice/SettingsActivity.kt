@@ -130,10 +130,10 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         runCatching { refreshStats() }
-        refreshLlmLabel()
-        refreshSttLabel()
+        runCatching { refreshLlmLabel() }
+        runCatching { refreshSttLabel() }
         runCatching { refreshStorageLabel() }
-        refreshVaultFolderLabel()
+        runCatching { refreshVaultFolderLabel() }
     }
 
     @Deprecated("Using deprecated API for compatibility with minSdk 24")
