@@ -219,7 +219,9 @@ class SettingsActivity : AppCompatActivity() {
         val activeId = llmMgr.getActiveModelId()
         val config   = ModelRegistry.MODELS.find { it.id == activeId }
         tvActiveLlmModel.text = if (config != null) {
-            "Enhancement: ${config.displayName}"
+            val backend = LlmEnhancer.activeBackend.takeIf { it != "none" }
+            if (backend != null) "Enhancement: ${config.displayName} [$backend]"
+            else "Enhancement: ${config.displayName}"
         } else {
             "Enhancement: Off"
         }
