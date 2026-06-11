@@ -226,7 +226,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 FileOutputStream(partFile, append).use { out ->
                     val buf = ByteArray(BUFFER_SIZE)
                     response.body!!.byteStream().use { input ->
-                        var n: Int
+                        var n = 0
                         while (!isStopped && input.read(buf).also { n = it } != -1) {
                             out.write(buf, 0, n)
                             totalDownloaded.addAndGet(n.toLong())
@@ -271,7 +271,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
             FileOutputStream(tmpFile).use { out ->
                 val buf = ByteArray(BUFFER_SIZE)
                 response.body!!.byteStream().use { input ->
-                    var n: Int
+                    var n = 0
                     while (!isStopped && input.read(buf).also { n = it } != -1) {
                         out.write(buf, 0, n)
                         downloaded += n
