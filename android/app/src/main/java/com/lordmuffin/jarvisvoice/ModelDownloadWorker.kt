@@ -31,8 +31,8 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         const val CHANNEL_ID    = "jarvis_model_download"
         const val NOTIF_BASE_ID = 200
 
-        private const val PARALLEL_CHUNKS = 4
-        private const val BUFFER_SIZE     = 256 * 1024   // 256 KB
+        private const val PARALLEL_CHUNKS = 8
+        private const val BUFFER_SIZE     = 256 * 1024        // 256 KB
         private const val PARALLEL_MIN    = 10 * 1024 * 1024L  // only parallel for files > 10 MB
 
         fun workName(modelId: String) = "llm_download_$modelId"
@@ -111,14 +111,14 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
     }
 
     private suspend fun downloadFile(config: ModelConfig, tmpFile: File): String? {
-        val hfToken   = getHfToken()
-        val totalSize = probeSize(config.downloadUrl, hfToken)
+        val hfToken = getHfToken()
+        val probe   = probeSize(config.downloadUrl, hfToken)
 
-        return if (totalSize != null && totalSize >= PARALLEL_MIN) {
-            DebugLog.i("ModelDownload", "parallel download: $PARALLEL_CHUNKS streams, ${totalSize / 1_048_576} MB")
-            downloadParallel(config, tmpFile, hfToken, totalSize)
+        return if (probe != null && probe.totalSize >= PARALLEL_MIN) {
+            DebugLog.i("ModelDownload", "parallel download: $PARALLEL_CHUNKS streams, ${probe.totalSize / 1_048_576} MB, cdn=${probe.resolvedUrl.take(60)}…")
+            downloadParallel(config, tmpFile, hfToken, probe.resolvedUrl, probe.totalSize)
         } else {
-            DebugLog.i("ModelDownload", "single-stream download (size probe: $totalSize)")
+            DebugLog.i("ModelDownload", "single-stream download (probe: $probe)")
             downloadSingleStream(config, tmpFile, hfToken)
         }
     }
@@ -129,6 +129,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         config: ModelConfig,
         tmpFile: File,
         hfToken: String?,
+        resolvedUrl: String,
         totalSize: Long,
     ): String? = coroutineScope {
 
@@ -167,7 +168,8 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 val rangeEnd   = minOf(rangeStart + chunkSize - 1, totalSize - 1)
                 val partFile   = partFiles[i]
                 val existing   = if (partFile.exists()) partFile.length() else 0L
-                downloadChunk(config.downloadUrl, hfToken, rangeStart + existing, rangeEnd, partFile, existing > 0, totalDownloaded)
+                // Use the already-resolved CDN URL so chunks skip the HF→CDN redirect chain
+                downloadChunk(resolvedUrl, hfToken, rangeStart + existing, rangeEnd, partFile, existing > 0, totalDownloaded)
             }
         }.map { it.await() }
 
@@ -289,8 +291,10 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    /** HEAD request to get total size and verify Range support. Returns null if not supported. */
-    private suspend fun probeSize(url: String, hfToken: String?): Long? = withContext(Dispatchers.IO) {
+    data class ProbeResult(val totalSize: Long, val resolvedUrl: String)
+
+    /** HEAD request to get total size, verify Range support, and capture the post-redirect CDN URL. */
+    private suspend fun probeSize(url: String, hfToken: String?): ProbeResult? = withContext(Dispatchers.IO) {
         try {
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "HEAD"
@@ -302,8 +306,9 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
             val code         = conn.responseCode
             val acceptsRange = conn.getHeaderField("Accept-Ranges")?.contains("bytes") == true
             val size         = conn.contentLengthLong
+            val resolvedUrl  = conn.url.toString()  // post-redirect CDN URL — skip per-chunk redirects
             conn.disconnect()
-            if (code in 200..299 && acceptsRange && size > 0) size else null
+            if (code in 200..299 && acceptsRange && size > 0) ProbeResult(size, resolvedUrl) else null
         } catch (_: Exception) { null }
     }
 
