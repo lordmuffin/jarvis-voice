@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.view.WindowManager
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -18,6 +19,7 @@ class VaultCaptureActivity : AppCompatActivity() {
 
     private enum class State { IDLE, RECORDING, CONFIRMING }
 
+    private lateinit var scrollView:     ScrollView
     private lateinit var idleGroup:      View
     private lateinit var recordingGroup: View
     private lateinit var confirmGroup:   View
@@ -27,46 +29,62 @@ class VaultCaptureActivity : AppCompatActivity() {
     private lateinit var etTranscript:   EditText
     private lateinit var tvStatus:       TextView
     private lateinit var btnSave:        Button
+    private lateinit var fabStop:        Button
 
     private var engine: SpeechEngine? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var currentState = State.IDLE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_vault_capture)
         supportActionBar?.title = "Voice to Vault"
 
-        idleGroup      = findViewById(R.id.group_idle)
+        scrollView    = findViewById(R.id.vault_scroll)
+        idleGroup     = findViewById(R.id.group_idle)
         recordingGroup = findViewById(R.id.group_recording)
-        confirmGroup   = findViewById(R.id.group_confirm)
-        waveform       = findViewById(R.id.vault_waveform)
-        tvInterim      = findViewById(R.id.tv_interim)
-        tvFolderHint   = findViewById(R.id.tv_folder_hint)
-        etTranscript   = findViewById(R.id.et_transcript)
-        tvStatus       = findViewById(R.id.tv_status)
-        btnSave        = findViewById(R.id.btn_save)
+        confirmGroup  = findViewById(R.id.group_confirm)
+        waveform      = findViewById(R.id.vault_waveform)
+        tvInterim     = findViewById(R.id.tv_interim)
+        tvFolderHint  = findViewById(R.id.tv_folder_hint)
+        etTranscript  = findViewById(R.id.et_transcript)
+        tvStatus      = findViewById(R.id.tv_status)
+        btnSave       = findViewById(R.id.btn_save)
+        fabStop       = findViewById(R.id.fab_stop)
 
         waveform.barColor = getColor(R.color.jv_accent)
+        fabStop.setOnClickListener { onStop(it) }
         applyState(State.IDLE)
     }
 
     override fun onResume() {
         super.onResume()
         refreshFolderHint()
+        // Auto-start recording when the screen opens, if conditions are met
+        if (currentState == State.IDLE) attemptAutoStart()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         engine?.destroy()
         engine = null
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     // ── UI state ─────────────────────────────────────────────────────────────
 
     private fun applyState(s: State) {
+        currentState = s
         idleGroup.visibility      = if (s == State.IDLE)       View.VISIBLE else View.GONE
         recordingGroup.visibility = if (s == State.RECORDING)  View.VISIBLE else View.GONE
         confirmGroup.visibility   = if (s == State.CONFIRMING) View.VISIBLE else View.GONE
+        fabStop.visibility        = if (s == State.RECORDING)  View.VISIBLE else View.GONE
+
+        if (s == State.RECORDING) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun refreshFolderHint() {
@@ -76,6 +94,18 @@ class VaultCaptureActivity : AppCompatActivity() {
         } else {
             tvFolderHint.text = "No folder selected — tap below to pick one"
             tvFolderHint.setTextColor(getColor(R.color.jv_warning))
+        }
+    }
+
+    // ── Auto-start ────────────────────────────────────────────────────────────
+
+    private fun attemptAutoStart() {
+        if (!VaultNoteWriter.isConfigured(this)) return  // stay on IDLE so user sees folder prompt
+        when {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                    != PackageManager.PERMISSION_GRANTED ->
+                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+            else -> startCapture()
         }
     }
 
@@ -178,7 +208,12 @@ class VaultCaptureActivity : AppCompatActivity() {
 
         engine?.startListening(
             holdMode  = false,
-            onPartial = { partial -> mainHandler.post { tvInterim.text = partial } },
+            onPartial = { partial ->
+                mainHandler.post {
+                    tvInterim.text = partial
+                    scrollToBottom()
+                }
+            },
             onFinal   = { final ->
                 mainHandler.post {
                     waveform.stopAnimation()
@@ -186,6 +221,7 @@ class VaultCaptureActivity : AppCompatActivity() {
                     etTranscript.setText(text)
                     etTranscript.setSelection(text.length)
                     applyState(if (text.isEmpty()) State.IDLE else State.CONFIRMING)
+                    if (text.isNotEmpty()) scrollToBottom()
                 }
             },
             onError = { _ ->
@@ -196,6 +232,10 @@ class VaultCaptureActivity : AppCompatActivity() {
                 }
             },
         )
+    }
+
+    private fun scrollToBottom() {
+        scrollView.post { scrollView.fullScroll(View.FOCUS_DOWN) }
     }
 
     private fun showStatus(msg: String, colorRes: Int) {

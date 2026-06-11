@@ -44,6 +44,7 @@ class VoiceOverlayService : Service() {
         const val ACTION_OPEN_SETTINGS    = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
         const val PREF_FILE               = "jarvis_prefs"
         const val KEY_CLIPBOARD_NOTIFY    = "clipboard_notify"
+        const val KEY_SCREEN_ALWAYS_ON    = "screen_always_on"
         var lastFocusedNode: AccessibilityNodeInfo? = null
         var instance: VoiceOverlayService? = null
     }
@@ -208,6 +209,12 @@ class VoiceOverlayService : Service() {
 
         overlayView.setOnTouchListener(::handleTouch)
         windowManager.addView(overlayView, params)
+        // Apply screen-always-on flag immediately if the user has it enabled
+        val prefs = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
+        if (prefs.getBoolean(KEY_SCREEN_ALWAYS_ON, false)) {
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            runCatching { windowManager.updateViewLayout(overlayView, params) }
+        }
         setIdleState()
         overlayView.visibility = View.GONE
     }
@@ -424,9 +431,13 @@ class VoiceOverlayService : Service() {
         val breatheAnim = AnimationUtils.loadAnimation(this, R.anim.breathe)
         dotIdle.startAnimation(breatheAnim)
         overlayView.setBackgroundResource(R.drawable.pill_background)
-        // Release screen-on hold — allow normal auto-lock to resume
-        params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
-        runCatching { windowManager.updateViewLayout(overlayView, params) }
+        // Release screen-on hold unless the user wants the screen always on
+        val screenAlwaysOn = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
+            .getBoolean(KEY_SCREEN_ALWAYS_ON, false)
+        if (!screenAlwaysOn) {
+            params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+            runCatching { windowManager.updateViewLayout(overlayView, params) }
+        }
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
             DebugLog.i("Overlay", "wake lock released")
@@ -452,6 +463,17 @@ class VoiceOverlayService : Service() {
             stopRecording()
         }
         overlayView.visibility = View.GONE
+    }
+
+    fun setScreenAlwaysOn(on: Boolean) {
+        getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_SCREEN_ALWAYS_ON, on).apply()
+        if (on) {
+            params.flags = params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        } else if (state == OverlayState.IDLE) {
+            params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+        }
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
     }
 
     fun reloadSpeechEngine() {

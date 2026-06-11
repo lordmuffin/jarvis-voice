@@ -24,6 +24,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private lateinit var offlineSwitch: SwitchCompat
     private lateinit var clipboardNotifySwitch: SwitchCompat
+    private lateinit var screenAlwaysOnSwitch: SwitchCompat
     private lateinit var tvActiveSttModel: TextView
     private lateinit var tvActiveLlmModel: TextView
     private lateinit var etHfToken: EditText
@@ -48,6 +49,7 @@ class SettingsActivity : AppCompatActivity() {
 
         offlineSwitch         = findViewById(R.id.switch_offline_stt)
         clipboardNotifySwitch = findViewById(R.id.switch_clipboard_notify)
+        screenAlwaysOnSwitch  = findViewById(R.id.switch_screen_always_on)
         tvActiveSttModel  = findViewById(R.id.tv_active_stt_model)
         tvLastWords       = findViewById(R.id.tv_stat_last_words)
         tvLastWpm         = findViewById(R.id.tv_stat_last_wpm)
@@ -79,6 +81,12 @@ class SettingsActivity : AppCompatActivity() {
         clipboardNotifySwitch.isChecked = prefs.getBoolean(VoiceOverlayService.KEY_CLIPBOARD_NOTIFY, true)
         clipboardNotifySwitch.setOnCheckedChangeListener { _, checked ->
             prefs.edit().putBoolean(VoiceOverlayService.KEY_CLIPBOARD_NOTIFY, checked).apply()
+        }
+
+        screenAlwaysOnSwitch.isChecked = prefs.getBoolean(VoiceOverlayService.KEY_SCREEN_ALWAYS_ON, false)
+        screenAlwaysOnSwitch.setOnCheckedChangeListener { _, checked ->
+            VoiceOverlayService.instance?.setScreenAlwaysOn(checked)
+                ?: prefs.edit().putBoolean(VoiceOverlayService.KEY_SCREEN_ALWAYS_ON, checked).apply()
         }
 
         etHfToken.setText(prefs.getString("hf_token", ""))

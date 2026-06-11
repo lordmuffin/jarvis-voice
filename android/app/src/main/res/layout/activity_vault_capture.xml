@@ -1,187 +1,210 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/jv_bg">
 
-    <LinearLayout
+    <ScrollView
+        android:id="@+id/vault_scroll"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="24dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <!-- ── IDLE state ──────────────────────────────────────────────── -->
         <LinearLayout
-            android:id="@+id/group_idle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:paddingTop="24dp">
+            android:padding="24dp"
+            android:paddingBottom="96dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+            <!-- ── IDLE state ─────────────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/group_idle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Record to Vault"
-                android:textColor="@color/jv_text"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="6dp" />
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:paddingTop="24dp">
 
-            <TextView
-                android:layout_width="wrap_content"
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Record to Vault"
+                    android:textColor="@color/jv_text"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Appends to today's daily note — no network needed."
+                    android:textColor="@color/jv_text2"
+                    android:textSize="13sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="20dp" />
+
+                <TextView
+                    android:id="@+id/tv_folder_hint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:layout_marginBottom="8dp" />
+
+                <Button
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:text="Change Folder"
+                    android:backgroundTint="@color/jv_surface2"
+                    android:textColor="@color/jv_text2"
+                    android:textSize="13sp"
+                    android:onClick="onPickFolder"
+                    android:layout_marginBottom="40dp" />
+
+                <Button
+                    android:layout_width="96dp"
+                    android:layout_height="96dp"
+                    android:background="@color/jv_accent"
+                    android:text="🎙"
+                    android:textSize="32sp"
+                    android:onClick="onMicTap"
+                    android:contentDescription="Start recording" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tap to record"
+                    android:textColor="@color/jv_text2"
+                    android:textSize="13sp"
+                    android:layout_marginTop="12dp" />
+
+            </LinearLayout>
+
+            <!-- ── RECORDING state ────────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/group_recording"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Appends to today's daily note — no network needed."
-                android:textColor="@color/jv_text2"
+                android:orientation="vertical"
+                android:paddingTop="16dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="16dp">
+
+                    <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
+                        android:id="@+id/vault_waveform"
+                        android:layout_width="80dp"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Listening…"
+                        android:textColor="@color/jv_accent"
+                        android:textSize="16sp" />
+
+                </LinearLayout>
+
+                <!-- Live transcript — grows as you talk, auto-scrolls with it -->
+                <TextView
+                    android:id="@+id/tv_interim"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/jv_text"
+                    android:textSize="17sp"
+                    android:lineSpacingMultiplier="1.4"
+                    android:gravity="start" />
+
+            </LinearLayout>
+
+            <!-- ── CONFIRMING state ───────────────────────────────────── -->
+            <LinearLayout
+                android:id="@+id/group_confirm"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingTop="16dp"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="REVIEW"
+                    android:textColor="@color/jv_text2"
+                    android:textSize="11sp"
+                    android:textAllCaps="true"
+                    android:letterSpacing="0.08"
+                    android:layout_marginBottom="8dp" />
+
+                <EditText
+                    android:id="@+id/et_transcript"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minLines="4"
+                    android:gravity="top|start"
+                    android:background="@color/jv_surface"
+                    android:padding="12dp"
+                    android:textColor="@color/jv_text"
+                    android:textSize="16sp"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:layout_marginBottom="24dp" />
+
+                <Button
+                    android:id="@+id/btn_save"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="Save to Today's Note"
+                    android:backgroundTint="@color/jv_accent"
+                    android:textColor="@color/jv_bg"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"
+                    android:onClick="onSave" />
+
+                <Button
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Discard"
+                    android:backgroundTint="@color/jv_surface2"
+                    android:textColor="@color/jv_text2"
+                    android:onClick="onDiscard" />
+
+            </LinearLayout>
+
+            <!-- ── Status (all states) ────────────────────────────────── -->
+            <TextView
+                android:id="@+id/tv_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:textSize="13sp"
                 android:gravity="center"
-                android:layout_marginBottom="20dp" />
-
-            <!-- Folder status line -->
-            <TextView
-                android:id="@+id/tv_folder_hint"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:gravity="center"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="Change Folder"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:textSize="13sp"
-                android:onClick="onPickFolder"
-                android:layout_marginBottom="40dp" />
-
-            <!-- Big mic button -->
-            <Button
-                android:layout_width="96dp"
-                android:layout_height="96dp"
-                android:background="@color/jv_accent"
-                android:text="🎙"
-                android:textSize="32sp"
-                android:onClick="onMicTap"
-                android:contentDescription="Start recording" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Tap to record"
-                android:textColor="@color/jv_text2"
-                android:textSize="13sp"
-                android:layout_marginTop="12dp" />
+                android:layout_marginTop="16dp"
+                android:visibility="gone" />
 
         </LinearLayout>
+    </ScrollView>
 
-        <!-- ── RECORDING state ────────────────────────────────────────── -->
-        <LinearLayout
-            android:id="@+id/group_recording"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center_horizontal"
-            android:paddingTop="48dp"
-            android:visibility="gone">
+    <!-- Pinned stop button — floats over content, only visible while recording -->
+    <Button
+        android:id="@+id/fab_stop"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/fab_stop_bg"
+        android:text="■"
+        android:textSize="22sp"
+        android:textColor="@android:color/white"
+        android:elevation="6dp"
+        android:stateListAnimator="@null"
+        android:visibility="gone"
+        android:contentDescription="Stop recording" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Listening…"
-                android:textColor="@color/jv_accent"
-                android:textSize="18sp"
-                android:layout_marginBottom="24dp" />
-
-            <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
-                android:id="@+id/vault_waveform"
-                android:layout_width="120dp"
-                android:layout_height="48dp"
-                android:layout_marginBottom="24dp" />
-
-            <TextView
-                android:id="@+id/tv_interim"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/jv_text2"
-                android:textSize="15sp"
-                android:gravity="center"
-                android:minLines="3"
-                android:layout_marginBottom="32dp" />
-
-            <Button
-                android:layout_width="160dp"
-                android:layout_height="48dp"
-                android:text="Stop"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text"
-                android:onClick="onStop" />
-
-        </LinearLayout>
-
-        <!-- ── CONFIRMING state ───────────────────────────────────────── -->
-        <LinearLayout
-            android:id="@+id/group_confirm"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingTop="16dp"
-            android:visibility="gone">
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="REVIEW"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <EditText
-                android:id="@+id/et_transcript"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minLines="4"
-                android:gravity="top|start"
-                android:background="@color/jv_surface"
-                android:padding="12dp"
-                android:textColor="@color/jv_text"
-                android:textSize="16sp"
-                android:inputType="textMultiLine|textCapSentences"
-                android:layout_marginBottom="24dp" />
-
-            <Button
-                android:id="@+id/btn_save"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:text="Save to Today's Note"
-                android:backgroundTint="@color/jv_accent"
-                android:textColor="@color/jv_bg"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"
-                android:onClick="onSave" />
-
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:text="Discard"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:onClick="onDiscard" />
-
-        </LinearLayout>
-
-        <!-- ── Status (all states) ────────────────────────────────────── -->
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="13sp"
-            android:gravity="center"
-            android:layout_marginTop="16dp"
-            android:visibility="gone" />
-
-    </LinearLayout>
-</ScrollView>
+</FrameLayout>
