@@ -80,11 +80,20 @@ class VoiceOverlayService : Service() {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
                     screenOff = true
-                    DebugLog.i("Overlay", "screen OFF — screenOff=true recording=${state == OverlayState.RECORDING}")
-                    // Screen turned off: hide the overlay visually but keep recording
-                    if (state == OverlayState.RECORDING || state == OverlayState.PROCESSING) {
-                        hiddenWhileRecording = true
-                        overlayView.visibility = View.GONE
+                    DebugLog.i("Overlay", "screen OFF — screenOff=true state=$state")
+                    when (state) {
+                        OverlayState.RECORDING -> {
+                            // FLAG_KEEP_SCREEN_ON prevents timeout-off, so this is a power-button press.
+                            // Stop the recording and note why — we cannot continue recording on a locked screen.
+                            DebugLog.i("Overlay", "screen locked by user during recording — stopping and processing partial transcript")
+                            Handler(Looper.getMainLooper()).post { stopRecording() }
+                        }
+                        OverlayState.PROCESSING -> {
+                            // Whisper is still running after a stop — hide overlay, let it finish.
+                            hiddenWhileRecording = true
+                            overlayView.visibility = View.GONE
+                        }
+                        else -> { /* IDLE/DONE — nothing to do */ }
                     }
                 }
                 Intent.ACTION_SCREEN_ON -> {
@@ -272,8 +281,12 @@ class VoiceOverlayService : Service() {
         if (wakeLock == null || wakeLock?.isHeld == false) {
             wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "JarvisVoice::Recording")
-                .also { it.acquire(10 * 60 * 1000L) } // 10 min max
+                .also { it.acquire(10 * 60 * 1000L) } // 10 min max — keeps CPU alive if screen forced off
         }
+        // Keep screen on and suppress auto-lock for the duration of recording + processing.
+        // Power-button press WILL still turn the screen off; that case is handled in screenStateReceiver.
+        params.flags = params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
         state = OverlayState.RECORDING
         dotIdle.clearAnimation()
         dotIdle.visibility = View.GONE
@@ -411,6 +424,9 @@ class VoiceOverlayService : Service() {
         val breatheAnim = AnimationUtils.loadAnimation(this, R.anim.breathe)
         dotIdle.startAnimation(breatheAnim)
         overlayView.setBackgroundResource(R.drawable.pill_background)
+        // Release screen-on hold — allow normal auto-lock to resume
+        params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
             DebugLog.i("Overlay", "wake lock released")
