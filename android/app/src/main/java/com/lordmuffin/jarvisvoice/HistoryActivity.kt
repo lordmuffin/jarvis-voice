@@ -102,9 +102,14 @@ class HistoryActivity : AppCompatActivity() {
                 holder.tvRaw.text = s.rawTranscript
                 val sttTime = fmtMs(s.durationMs)
                 val llmTime = fmtMs(s.llmMs)
-                holder.tvWhisperLabel.text = if (sttTime.isNotEmpty()) "WHISPER  $sttTime" else "WHISPER"
+                holder.tvWhisperLabel.text = buildString {
+                    append("WHISPER")
+                    if (s.sttBackend.isNotBlank()) append("  [${s.sttBackend}]")
+                    if (sttTime.isNotEmpty()) append("  $sttTime")
+                }
                 holder.tvEnhancedLabel.text = buildString {
                     append(if (s.llmModel.isNotBlank()) s.llmModel else "Enhanced")
+                    if (s.llmBackend.isNotBlank() && s.llmBackend != "none") append("  [${s.llmBackend}]")
                     if (llmTime.isNotEmpty()) append("  $llmTime")
                 }
             } else {

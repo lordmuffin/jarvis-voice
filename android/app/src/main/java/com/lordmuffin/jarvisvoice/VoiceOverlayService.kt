@@ -28,6 +28,7 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import com.lordmuffin.jarvisvoice.ui.AudioWaveformView
@@ -343,6 +344,7 @@ class VoiceOverlayService : Service() {
         }
 
         val withDict = dictManager.applyTo(filtered)
+        val sttBackend = (speechEngine as? SherpaOnnxSpeechEngine)?.activeProvider ?: ""
 
         // ─── PASS 1 · Whisper STT ────────────────────────────────────────────────
         val pass1Words = withDict.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
@@ -371,17 +373,19 @@ class VoiceOverlayService : Service() {
                 DebugLog.i("PASS2", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 // ────────────────────────────────────────────────────────────────────
                 val modelName = LlmModelManager(this@VoiceOverlayService).getActiveConfig()?.displayName ?: ""
-                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs, modelName, llmMs) }
+                val llmBackend = LlmEnhancer.activeBackend
+                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs, modelName, llmMs, sttBackend, llmBackend) }
             }.start()
         } else {
             DebugLog.i("PASS2", "━━━ PASS 2 · YellowLab Enhancement ━━━ SKIPPED (no model loaded)")
-            finalizeAndInject(withDict, withDict, elapsedMs)
+            finalizeAndInject(withDict, withDict, elapsedMs, sttBackend = sttBackend)
         }
     }
 
     private fun finalizeAndInject(rawText: String, finalText: String, elapsedMs: Long,
-                                   llmModel: String = "", llmMs: Long = 0L) {
-        val session = historyManager.saveSession(rawText, finalText, elapsedMs, llmModel, llmMs)
+                                   llmModel: String = "", llmMs: Long = 0L,
+                                   sttBackend: String = "", llmBackend: String = "") {
+        val session = historyManager.saveSession(rawText, finalText, elapsedMs, llmModel, llmMs, sttBackend, llmBackend)
 
         state = OverlayState.DONE
         waveformView.stopAnimation()

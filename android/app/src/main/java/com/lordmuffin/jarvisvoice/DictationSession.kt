@@ -10,4 +10,6 @@ data class DictationSession(
     val wpm: Float,
     val llmModel: String = "",    // display name of the LLM model used, empty if base run
     val llmMs: Long = 0L,         // LLM enhancement wall-clock time in ms, 0 if no enhancement
+    val sttBackend: String = "",  // STT hardware backend: "nnapi" or "cpu"
+    val llmBackend: String = "",  // LLM hardware backend: "npu", "gpu", or "cpu"
 )

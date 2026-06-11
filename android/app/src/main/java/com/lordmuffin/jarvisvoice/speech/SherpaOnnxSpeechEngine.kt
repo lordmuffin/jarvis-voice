@@ -21,6 +21,9 @@ import java.util.concurrent.Executors
 
 class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
+    var activeProvider: String = "cpu"
+        private set
+
     private var recognizer: OfflineRecognizer? = null
     private var audioRecord: AudioRecord? = null
     private var recordingThread: Thread? = null
@@ -94,10 +97,17 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                 modelType  = "whisper"
             )
         )
-        recognizer = runCatching { OfflineRecognizer(config = cfg("nnapi")) }.getOrNull()
-            ?: runCatching { OfflineRecognizer(config = cfg("cpu")) }.getOrNull()
+        val nnapiResult = runCatching { OfflineRecognizer(config = cfg("nnapi")) }
+        if (nnapiResult.isSuccess) {
+            recognizer     = nnapiResult.getOrThrow()
+            activeProvider = "nnapi"
+        } else {
+            DebugLog.i("STT", "nnapi unavailable — ${nnapiResult.exceptionOrNull()?.message}")
+            recognizer     = runCatching { OfflineRecognizer(config = cfg("cpu")) }.getOrNull()
+            activeProvider = "cpu"
+        }
 
-        DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"} model=${config.id}")
+        DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"} provider=$activeProvider model=${config.id}")
     }
 
     override fun startListening(

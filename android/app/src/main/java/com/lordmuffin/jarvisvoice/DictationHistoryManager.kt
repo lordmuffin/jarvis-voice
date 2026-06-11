@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 class DictationHistoryManager(context: Context) :
-    SQLiteOpenHelper(context, PersistentStorage.dbFile(context).absolutePath, null, 4) {
+    SQLiteOpenHelper(context, PersistentStorage.dbFile(context).absolutePath, null, 5) {
 
     companion object {
         private const val TABLE = "sessions"
@@ -23,29 +23,36 @@ class DictationHistoryManager(context: Context) :
                 duration_ms     INTEGER NOT NULL,
                 wpm             REAL    NOT NULL,
                 llm_model       TEXT    NOT NULL DEFAULT '',
-                llm_ms          INTEGER NOT NULL DEFAULT 0
+                llm_ms          INTEGER NOT NULL DEFAULT 0,
+                stt_backend     TEXT    NOT NULL DEFAULT '',
+                llm_backend     TEXT    NOT NULL DEFAULT ''
             )
         """.trimIndent())
     }
 
     override fun onUpgrade(db: SQLiteDatabase, old: Int, new: Int) {
-        if (old < 2) {
-            db.execSQL("ALTER TABLE $TABLE ADD COLUMN raw_transcript TEXT NOT NULL DEFAULT ''")
-        }
-        if (old < 3) {
-            db.execSQL("ALTER TABLE $TABLE ADD COLUMN llm_model TEXT NOT NULL DEFAULT ''")
-        }
-        if (old < 4) {
-            db.execSQL("ALTER TABLE $TABLE ADD COLUMN llm_ms INTEGER NOT NULL DEFAULT 0")
+        if (old < 2) db.execSQL("ALTER TABLE $TABLE ADD COLUMN raw_transcript TEXT NOT NULL DEFAULT ''")
+        if (old < 3) db.execSQL("ALTER TABLE $TABLE ADD COLUMN llm_model TEXT NOT NULL DEFAULT ''")
+        if (old < 4) db.execSQL("ALTER TABLE $TABLE ADD COLUMN llm_ms INTEGER NOT NULL DEFAULT 0")
+        if (old < 5) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN stt_backend TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN llm_backend TEXT NOT NULL DEFAULT ''")
         }
     }
 
-    fun saveSession(rawTranscript: String, transcript: String, durationMs: Long,
-                    llmModel: String = "", llmMs: Long = 0L): DictationSession {
-        val words = transcript.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    fun saveSession(
+        rawTranscript: String,
+        transcript:    String,
+        durationMs:    Long,
+        llmModel:      String = "",
+        llmMs:         Long   = 0L,
+        sttBackend:    String = "",
+        llmBackend:    String = "",
+    ): DictationSession {
+        val words     = transcript.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
         val wordCount = words.size
-        val wpm = if (durationMs >= 1_000) wordCount * 60_000f / durationMs else 0f
-        val ts = System.currentTimeMillis()
+        val wpm       = if (durationMs >= 1_000) wordCount * 60_000f / durationMs else 0f
+        val ts        = System.currentTimeMillis()
         val cv = ContentValues().apply {
             put("timestamp",      ts)
             put("transcript",     transcript)
@@ -55,20 +62,25 @@ class DictationHistoryManager(context: Context) :
             put("wpm",            wpm)
             put("llm_model",      llmModel)
             put("llm_ms",         llmMs)
+            put("stt_backend",    sttBackend)
+            put("llm_backend",    llmBackend)
         }
         val id = writableDatabase.insert(TABLE, null, cv)
-        return DictationSession(id, ts, transcript, rawTranscript, wordCount, durationMs, wpm, llmModel, llmMs)
+        return DictationSession(id, ts, transcript, rawTranscript, wordCount, durationMs, wpm,
+                                llmModel, llmMs, sttBackend, llmBackend)
     }
 
     fun getRecentSessions(limit: Int = 100): List<DictationSession> {
         val list = mutableListOf<DictationSession>()
         readableDatabase.rawQuery(
-            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm,llm_model,llm_ms FROM $TABLE ORDER BY timestamp DESC LIMIT ?",
+            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm," +
+            "llm_model,llm_ms,stt_backend,llm_backend FROM $TABLE ORDER BY timestamp DESC LIMIT ?",
             arrayOf(limit.toString())
         ).use { c ->
             while (c.moveToNext()) list += DictationSession(
                 c.getLong(0), c.getLong(1), c.getString(2), c.getString(3),
-                c.getInt(4), c.getLong(5), c.getFloat(6), c.getString(7), c.getLong(8)
+                c.getInt(4), c.getLong(5), c.getFloat(6),
+                c.getString(7), c.getLong(8), c.getString(9), c.getString(10)
             )
         }
         return list
@@ -86,12 +98,14 @@ class DictationHistoryManager(context: Context) :
 
     fun getLastSession(): DictationSession? =
         readableDatabase.rawQuery(
-            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm,llm_model,llm_ms FROM $TABLE ORDER BY timestamp DESC LIMIT 1",
+            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm," +
+            "llm_model,llm_ms,stt_backend,llm_backend FROM $TABLE ORDER BY timestamp DESC LIMIT 1",
             null
         ).use { c ->
             if (c.moveToFirst()) DictationSession(
                 c.getLong(0), c.getLong(1), c.getString(2), c.getString(3),
-                c.getInt(4), c.getLong(5), c.getFloat(6), c.getString(7), c.getLong(8)
+                c.getInt(4), c.getLong(5), c.getFloat(6),
+                c.getString(7), c.getLong(8), c.getString(9), c.getString(10)
             ) else null
         }
 
