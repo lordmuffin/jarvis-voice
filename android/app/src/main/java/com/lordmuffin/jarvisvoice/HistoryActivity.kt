@@ -54,6 +54,12 @@ class HistoryActivity : AppCompatActivity() {
 
         private val sdf = SimpleDateFormat("MMM d, h:mm a", Locale.getDefault())
 
+        private fun fmtMs(ms: Long): String = when {
+            ms <= 0   -> ""
+            ms < 1000 -> "${ms}ms"
+            else      -> "${"%.1f".format(ms / 1000.0)}s"
+        }
+
         // Tracks which session timestamps are expanded
         private val expandedIds = HashSet<Long>()
 
@@ -63,6 +69,7 @@ class HistoryActivity : AppCompatActivity() {
             val tvChevron:          TextView = v.findViewById(R.id.tv_expand_chevron)
             val tvTranscript:       TextView = v.findViewById(R.id.tv_session_transcript)
             val tvRaw:              TextView = v.findViewById(R.id.tv_raw_transcript)
+            val tvWhisperLabel:     TextView = v.findViewById(R.id.tv_whisper_label)
             val tvEnhancedLabel:    TextView = v.findViewById(R.id.tv_enhanced_label)
             val layoutDual:         View    = v.findViewById(R.id.layout_dual_pass)
             val layoutActions:      View    = v.findViewById(R.id.layout_expanded_actions)
@@ -82,7 +89,10 @@ class HistoryActivity : AppCompatActivity() {
             val wasEnhanced = s.rawTranscript.isNotBlank() && s.rawTranscript != s.transcript
 
             holder.tvTime.text       = sdf.format(Date(s.timestamp))
-            holder.tvStats.text      = "${s.wordCount} words · ${"%.0f".format(s.wpm)} wpm"
+            holder.tvStats.text      = buildString {
+                append("${s.wordCount} words · ${"%.0f".format(s.wpm)} wpm")
+                if (!wasEnhanced && s.durationMs > 0) append(" · STT ${fmtMs(s.durationMs)}")
+            }
             holder.tvTranscript.text = s.transcript
             holder.tvChevron.text    = if (isExpanded) "▲" else "▼"
 
@@ -90,7 +100,13 @@ class HistoryActivity : AppCompatActivity() {
             if (wasEnhanced) {
                 holder.layoutDual.visibility = View.VISIBLE
                 holder.tvRaw.text = s.rawTranscript
-                holder.tvEnhancedLabel.text = if (s.llmModel.isNotBlank()) s.llmModel else "Enhanced"
+                val sttTime = fmtMs(s.durationMs)
+                val llmTime = fmtMs(s.llmMs)
+                holder.tvWhisperLabel.text = if (sttTime.isNotEmpty()) "WHISPER  $sttTime" else "WHISPER"
+                holder.tvEnhancedLabel.text = buildString {
+                    append(if (s.llmModel.isNotBlank()) s.llmModel else "Enhanced")
+                    if (llmTime.isNotEmpty()) append("  $llmTime")
+                }
             } else {
                 holder.layoutDual.visibility = View.GONE
             }

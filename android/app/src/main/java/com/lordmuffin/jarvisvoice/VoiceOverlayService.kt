@@ -376,7 +376,7 @@ class VoiceOverlayService : Service() {
                 DebugLog.i("PASS2", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 // ────────────────────────────────────────────────────────────────────
                 val modelName = LlmModelManager(this@VoiceOverlayService).getActiveConfig()?.displayName ?: ""
-                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs, modelName) }
+                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs, modelName, llmMs) }
             }.start()
         } else {
             DebugLog.i("PASS2", "━━━ PASS 2 · YellowLab Enhancement ━━━ SKIPPED (no model loaded)")
@@ -385,8 +385,8 @@ class VoiceOverlayService : Service() {
     }
 
     private fun finalizeAndInject(rawText: String, finalText: String, elapsedMs: Long,
-                                   llmModel: String = "") {
-        val session = historyManager.saveSession(rawText, finalText, elapsedMs, llmModel)
+                                   llmModel: String = "", llmMs: Long = 0L) {
+        val session = historyManager.saveSession(rawText, finalText, elapsedMs, llmModel, llmMs)
 
         state = OverlayState.DONE
         waveformView.stopAnimation()
