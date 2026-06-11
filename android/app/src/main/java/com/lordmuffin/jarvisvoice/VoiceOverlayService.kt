@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -125,7 +126,22 @@ class VoiceOverlayService : Service() {
         historyManager = DictationHistoryManager(this)
         dictManager    = CustomDictionaryManager(this)
         createNotificationChannel()
-        startForeground(NOTIF_ID, buildNotification())
+        // Android 14 blocks FGS type=microphone when the app is not in an eligible foreground
+        // state (no visible activity, no bound foreground client). This happens on system-
+        // initiated restarts (START_STICKY, OOM recovery). Catch and stop cleanly — the
+        // accessibility service or the user opening the app will restart us in valid state.
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(NOTIF_ID, buildNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+            } else {
+                startForeground(NOTIF_ID, buildNotification())
+            }
+        } catch (e: SecurityException) {
+            DebugLog.e("Service", "startForeground blocked — not in eligible state, stopping", e)
+            stopSelf()
+            return
+        }
         setupOverlay()
         speechEngine = SpeechEngineFactory.create(this)
         loadLlmIfConfigured()
