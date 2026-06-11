@@ -209,12 +209,6 @@ class VoiceOverlayService : Service() {
 
         overlayView.setOnTouchListener(::handleTouch)
         windowManager.addView(overlayView, params)
-        // Apply screen-always-on flag immediately if the user has it enabled
-        val prefs = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
-        if (prefs.getBoolean(KEY_SCREEN_ALWAYS_ON, false)) {
-            params.flags = params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-            runCatching { windowManager.updateViewLayout(overlayView, params) }
-        }
         setIdleState()
         overlayView.visibility = View.GONE
     }
@@ -433,13 +427,9 @@ class VoiceOverlayService : Service() {
         val breatheAnim = AnimationUtils.loadAnimation(this, R.anim.breathe)
         dotIdle.startAnimation(breatheAnim)
         overlayView.setBackgroundResource(R.drawable.pill_background)
-        // Release screen-on hold unless the user wants the screen always on
-        val screenAlwaysOn = getSharedPreferences(PREF_FILE, android.content.Context.MODE_PRIVATE)
-            .getBoolean(KEY_SCREEN_ALWAYS_ON, false)
-        if (!screenAlwaysOn) {
-            params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
-            runCatching { windowManager.updateViewLayout(overlayView, params) }
-        }
+        // Screen-on is only held during active recording — always release on idle.
+        params.flags = params.flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON.inv()
+        runCatching { windowManager.updateViewLayout(overlayView, params) }
         if (wakeLock?.isHeld == true) {
             wakeLock?.release()
             DebugLog.i("Overlay", "wake lock released")
