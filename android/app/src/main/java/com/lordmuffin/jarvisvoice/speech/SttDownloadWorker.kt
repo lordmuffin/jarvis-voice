@@ -142,7 +142,7 @@ class SttDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorke
                             val dest = File(modelDir, File(entry.name).name)
                             DebugLog.i("SttDL", "extracting → ${dest.name}")
                             FileOutputStream(dest).use { out ->
-                                val buf = ByteArray(65_536)
+                                val buf = ByteArray(256 * 1024)
                                 var n: Int
                                 // Read in chunks to report progress mid-file
                                 while (tar.read(buf).also { n = it } > 0 && !isStopped) {
