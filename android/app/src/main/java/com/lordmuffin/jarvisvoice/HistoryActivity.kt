@@ -63,6 +63,7 @@ class HistoryActivity : AppCompatActivity() {
             val tvChevron:          TextView = v.findViewById(R.id.tv_expand_chevron)
             val tvTranscript:       TextView = v.findViewById(R.id.tv_session_transcript)
             val tvRaw:              TextView = v.findViewById(R.id.tv_raw_transcript)
+            val tvEnhancedLabel:    TextView = v.findViewById(R.id.tv_enhanced_label)
             val layoutDual:         View    = v.findViewById(R.id.layout_dual_pass)
             val layoutActions:      View    = v.findViewById(R.id.layout_expanded_actions)
             val btnCopyFinal:       Button  = v.findViewById(R.id.btn_copy_final)
@@ -89,6 +90,7 @@ class HistoryActivity : AppCompatActivity() {
             if (wasEnhanced) {
                 holder.layoutDual.visibility = View.VISIBLE
                 holder.tvRaw.text = s.rawTranscript
+                holder.tvEnhancedLabel.text = if (s.llmModel.isNotBlank()) s.llmModel else "Enhanced"
             } else {
                 holder.layoutDual.visibility = View.GONE
             }

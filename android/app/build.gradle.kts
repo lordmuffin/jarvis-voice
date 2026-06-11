@@ -3,6 +3,11 @@ plugins {
     alias(libs.plugins.kotlin.android)
 }
 
+val gitCommit: String = runCatching {
+    providers.exec { commandLine("git", "rev-parse", "--short", "HEAD") }
+        .standardOutput.asText.get().trim()
+}.getOrDefault("unknown")
+
 android {
     namespace = "com.lordmuffin.jarvisvoice"
     compileSdk = 34
@@ -11,8 +16,9 @@ android {
         applicationId = "com.lordmuffin.jarvisvoice"
         minSdk = 24
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.1.9"
+        versionCode = 12
+        versionName = "1.1.10"
+        buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
     }
 
     signingConfigs {

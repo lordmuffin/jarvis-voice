@@ -6,7 +6,7 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 class DictationHistoryManager(context: Context) :
-    SQLiteOpenHelper(context, PersistentStorage.dbFile(context).absolutePath, null, 2) {
+    SQLiteOpenHelper(context, PersistentStorage.dbFile(context).absolutePath, null, 3) {
 
     companion object {
         private const val TABLE = "sessions"
@@ -21,7 +21,8 @@ class DictationHistoryManager(context: Context) :
                 raw_transcript  TEXT    NOT NULL DEFAULT '',
                 word_count      INTEGER NOT NULL,
                 duration_ms     INTEGER NOT NULL,
-                wpm             REAL    NOT NULL
+                wpm             REAL    NOT NULL,
+                llm_model       TEXT    NOT NULL DEFAULT ''
             )
         """.trimIndent())
     }
@@ -30,9 +31,13 @@ class DictationHistoryManager(context: Context) :
         if (old < 2) {
             db.execSQL("ALTER TABLE $TABLE ADD COLUMN raw_transcript TEXT NOT NULL DEFAULT ''")
         }
+        if (old < 3) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN llm_model TEXT NOT NULL DEFAULT ''")
+        }
     }
 
-    fun saveSession(rawTranscript: String, transcript: String, durationMs: Long): DictationSession {
+    fun saveSession(rawTranscript: String, transcript: String, durationMs: Long,
+                    llmModel: String = ""): DictationSession {
         val words = transcript.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
         val wordCount = words.size
         val wpm = if (durationMs >= 1_000) wordCount * 60_000f / durationMs else 0f
@@ -44,20 +49,21 @@ class DictationHistoryManager(context: Context) :
             put("word_count",     wordCount)
             put("duration_ms",    durationMs)
             put("wpm",            wpm)
+            put("llm_model",      llmModel)
         }
         val id = writableDatabase.insert(TABLE, null, cv)
-        return DictationSession(id, ts, transcript, rawTranscript, wordCount, durationMs, wpm)
+        return DictationSession(id, ts, transcript, rawTranscript, wordCount, durationMs, wpm, llmModel)
     }
 
     fun getRecentSessions(limit: Int = 100): List<DictationSession> {
         val list = mutableListOf<DictationSession>()
         readableDatabase.rawQuery(
-            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm FROM $TABLE ORDER BY timestamp DESC LIMIT ?",
+            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm,llm_model FROM $TABLE ORDER BY timestamp DESC LIMIT ?",
             arrayOf(limit.toString())
         ).use { c ->
             while (c.moveToNext()) list += DictationSession(
                 c.getLong(0), c.getLong(1), c.getString(2), c.getString(3),
-                c.getInt(4), c.getLong(5), c.getFloat(6)
+                c.getInt(4), c.getLong(5), c.getFloat(6), c.getString(7)
             )
         }
         return list
@@ -75,12 +81,12 @@ class DictationHistoryManager(context: Context) :
 
     fun getLastSession(): DictationSession? =
         readableDatabase.rawQuery(
-            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm FROM $TABLE ORDER BY timestamp DESC LIMIT 1",
+            "SELECT id,timestamp,transcript,raw_transcript,word_count,duration_ms,wpm,llm_model FROM $TABLE ORDER BY timestamp DESC LIMIT 1",
             null
         ).use { c ->
             if (c.moveToFirst()) DictationSession(
                 c.getLong(0), c.getLong(1), c.getString(2), c.getString(3),
-                c.getInt(4), c.getLong(5), c.getFloat(6)
+                c.getInt(4), c.getLong(5), c.getFloat(6), c.getString(7)
             ) else null
         }
 

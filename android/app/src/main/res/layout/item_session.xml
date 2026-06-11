@@ -79,6 +79,7 @@
             android:background="@color/jv_surface2" />
 
         <TextView
+            android:id="@+id/tv_enhanced_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="ENHANCED"

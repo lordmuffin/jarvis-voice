@@ -177,7 +177,7 @@ class SettingsActivity : AppCompatActivity() {
         runCatching { refreshStats() }
 
         findViewById<TextView>(R.id.tv_version)?.text =
-            "Jarvis Voice  v${BuildConfig.VERSION_NAME}"
+            "Jarvis Voice  v${BuildConfig.VERSION_NAME}  (${BuildConfig.GIT_COMMIT})"
 
         BottomNav.wire(this, BottomNav.Tab.SETTINGS)
     }

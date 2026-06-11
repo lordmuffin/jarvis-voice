@@ -7,5 +7,6 @@ data class DictationSession(
     val rawTranscript: String,    // Whisper+dict output before LLM pass
     val wordCount: Int,
     val durationMs: Long,
-    val wpm: Float
+    val wpm: Float,
+    val llmModel: String = "",    // display name of the LLM model used, empty if base run
 )

@@ -247,7 +247,7 @@ class VoiceOverlayService : Service() {
                     longPressRunnable?.let { longPressHandler.removeCallbacks(it) }
                 }
                 if (isDragging) {
-                    params.x = initialX - dx
+                    params.x = initialX + dx
                     params.y = initialY - dy
                     runCatching { windowManager.updateViewLayout(overlayView, params) }
                 }
@@ -375,7 +375,8 @@ class VoiceOverlayService : Service() {
                 DebugLog.i("PASS2", "  llmMs: $llmMs ms")
                 DebugLog.i("PASS2", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 // ────────────────────────────────────────────────────────────────────
-                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs) }
+                val modelName = LlmModelManager(this@VoiceOverlayService).getActiveConfig()?.displayName ?: ""
+                Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs, modelName) }
             }.start()
         } else {
             DebugLog.i("PASS2", "━━━ PASS 2 · YellowLab Enhancement ━━━ SKIPPED (no model loaded)")
@@ -383,8 +384,9 @@ class VoiceOverlayService : Service() {
         }
     }
 
-    private fun finalizeAndInject(rawText: String, finalText: String, elapsedMs: Long) {
-        val session = historyManager.saveSession(rawText, finalText, elapsedMs)
+    private fun finalizeAndInject(rawText: String, finalText: String, elapsedMs: Long,
+                                   llmModel: String = "") {
+        val session = historyManager.saveSession(rawText, finalText, elapsedMs, llmModel)
 
         state = OverlayState.DONE
         waveformView.stopAnimation()
