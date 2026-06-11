@@ -1,5 +1,7 @@
 package com.lordmuffin.jarvisvoice
 
+import android.content.Context
+import android.content.SharedPreferences
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
@@ -10,20 +12,33 @@ import kotlinx.coroutines.runBlocking
  * On-device LLM transcript enhancement via LiteRT-LM (litertlm-android:0.13.1).
  *
  * Hardware acceleration priority: NPU → GPU → CPU
- *   NPU  — Google Tensor G5 via system Tensor SDK (Pixel 9+). No bundled .so needed;
- *           LiteRT discovers the plugin through the system library path.
+ *   NPU  — Google Tensor G5 via system Tensor SDK (Pixel 9+).
  *   GPU  — OpenCL/OpenGL via libLiteRtClGlAccelerator.so (bundled in the AAR).
  *   CPU  — Always available fallback.
+ *
+ * Crash sentinel: a SharedPreferences key is written before each NPU/GPU init attempt
+ * and cleared on any outcome we can observe (success or caught exception). If the
+ * process is killed by an uncatchable native abort during init, the key survives and
+ * the next startup skips hardware backends to avoid a crash loop.
  *
  * init() runs on a background thread (callers' responsibility).
  * enhance() is blocking — callers must NOT call from the main thread.
  */
 object LlmEnhancer {
 
+    private const val PREFS_NAME  = "llm_crash_guard"
+    private const val KEY_LOADING = "hw_init_model"
+
     private var engine: Engine? = null
     private var loadedModelId: String? = null
     var activeBackend: String = "none"
         private set
+
+    private var prefs: SharedPreferences? = null
+
+    fun bindContext(ctx: Context) {
+        prefs = ctx.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
     fun isReady(): Boolean = engine != null
 
@@ -31,14 +46,32 @@ object LlmEnhancer {
         if (loadedModelId == modelId && isReady()) return true
         destroy()
 
-        // Try each backend in priority order; first one that loads wins.
-        val candidates = listOf(
-            "npu"  to { Backend.NPU(nativeLibraryDir) },
-            "gpu"  to { Backend.GPU() },
-            "cpu"  to { Backend.CPU() },
+        val p = prefs
+        val prevCrashModel = p?.getString(KEY_LOADING, null)
+        val skipHardware   = (prevCrashModel != null)
+
+        if (skipHardware) {
+            DebugLog.w("LlmEnhancer",
+                "crash sentinel present (model=$prevCrashModel) — skipping NPU/GPU, going straight to CPU")
+        }
+
+        // Write sentinel before any hardware init. Cleared on any outcome we observe.
+        // If the process dies natively mid-init, the sentinel remains and protects next launch.
+        if (!skipHardware) p?.edit()?.putString(KEY_LOADING, modelId)?.apply()
+
+        val hardwareCandidates = listOf(
+            "npu" to { Backend.NPU(nativeLibraryDir) },
+            "gpu" to { Backend.GPU() },
         )
+        val cpuCandidate = "cpu" to { Backend.CPU() }
+
+        val candidates = if (skipHardware) listOf(cpuCandidate)
+                         else hardwareCandidates + cpuCandidate
 
         for ((label, makeBackend) in candidates) {
+            // Clear sentinel just before CPU so a CPU-level crash doesn't leave a stale key.
+            if (label == "cpu") p?.edit()?.remove(KEY_LOADING)?.apply()
+
             val result = runCatching {
                 val config = EngineConfig(
                     modelPath = modelFile.absolutePath,
@@ -49,9 +82,10 @@ object LlmEnhancer {
                 e
             }
             if (result.isSuccess) {
-                engine          = result.getOrThrow()
-                loadedModelId   = modelId
-                activeBackend   = label
+                engine        = result.getOrThrow()
+                loadedModelId = modelId
+                activeBackend = label
+                p?.edit()?.remove(KEY_LOADING)?.apply()
                 DebugLog.i("LlmEnhancer", "loaded $modelId via $label backend nativeLibDir=$nativeLibraryDir")
                 return true
             } else {
@@ -59,6 +93,7 @@ object LlmEnhancer {
             }
         }
 
+        p?.edit()?.remove(KEY_LOADING)?.apply()
         DebugLog.e("LlmEnhancer", "all backends failed for $modelId")
         return false
     }

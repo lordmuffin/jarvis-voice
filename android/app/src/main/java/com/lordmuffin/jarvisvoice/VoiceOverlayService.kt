@@ -125,6 +125,7 @@ class VoiceOverlayService : Service() {
         DebugLog.i("Service", "onCreate storage=${PersistentStorage.storageLabel(this)}")
         historyManager = DictationHistoryManager(this)
         dictManager    = CustomDictionaryManager(this)
+        LlmEnhancer.bindContext(this)
         createNotificationChannel()
         // Android 14 blocks FGS type=microphone when the app is not in an eligible foreground
         // state (no visible activity, no bound foreground client). This happens on system-
