@@ -10,6 +10,7 @@ import androidx.work.*
 import com.lordmuffin.jarvisvoice.DebugLog
 import com.lordmuffin.jarvisvoice.JarvisApp
 import com.lordmuffin.jarvisvoice.ModelDownloadWorker
+import com.lordmuffin.jarvisvoice.ModelServerConfig
 import com.lordmuffin.jarvisvoice.PersistentStorage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -105,10 +106,14 @@ class SttDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorke
             "${config.tarSubdir}/${config.tokensFile}",
         )
 
-        val conn = (URL(config.tarUrl).openConnection() as HttpURLConnection).apply {
+        val (url, authHeader) = ModelServerConfig.resolveStt(applicationContext, config)
+        DebugLog.i("SttDL", "source=${if (ModelServerConfig.isCustomSttConfigured(applicationContext)) "custom" else "github"} url=$url")
+
+        val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
             readTimeout    = 60_000
             instanceFollowRedirects = true
+            authHeader?.let { setRequestProperty("Authorization", it) }
             connect()
         }
         if (conn.responseCode !in 200..299)

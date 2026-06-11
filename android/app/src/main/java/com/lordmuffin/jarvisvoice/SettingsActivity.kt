@@ -46,6 +46,11 @@ class SettingsActivity : AppCompatActivity() {
     // Audio input device
     private lateinit var tvInputDevice: TextView
 
+    // Custom model server
+    private lateinit var etLlmBaseUrl: EditText
+    private lateinit var etSttBaseUrl: EditText
+    private lateinit var etServerToken: EditText
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -65,6 +70,9 @@ class SettingsActivity : AppCompatActivity() {
         btnGrantStorage   = findViewById(R.id.btn_grant_storage)
         tvVaultFolder     = findViewById(R.id.tv_vault_folder)
         tvInputDevice     = findViewById(R.id.tv_input_device)
+        etLlmBaseUrl      = findViewById(R.id.et_llm_base_url)
+        etSttBaseUrl      = findViewById(R.id.et_stt_base_url)
+        etServerToken     = findViewById(R.id.et_server_token)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             btnGrantStorage.setOnClickListener {
@@ -106,6 +114,33 @@ class SettingsActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
                 prefs.edit().putString("hf_token", s?.toString()?.trim() ?: "").apply()
+            }
+        })
+
+        etLlmBaseUrl.setText(prefs.getString(ModelServerConfig.KEY_LLM_BASE_URL, ""))
+        etLlmBaseUrl.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                prefs.edit().putString(ModelServerConfig.KEY_LLM_BASE_URL, s?.toString()?.trim() ?: "").apply()
+            }
+        })
+
+        etSttBaseUrl.setText(prefs.getString(ModelServerConfig.KEY_STT_BASE_URL, ""))
+        etSttBaseUrl.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                prefs.edit().putString(ModelServerConfig.KEY_STT_BASE_URL, s?.toString()?.trim() ?: "").apply()
+            }
+        })
+
+        etServerToken.setText(prefs.getString(ModelServerConfig.KEY_SERVER_TOKEN, ""))
+        etServerToken.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                prefs.edit().putString(ModelServerConfig.KEY_SERVER_TOKEN, s?.toString()?.trim() ?: "").apply()
             }
         })
 

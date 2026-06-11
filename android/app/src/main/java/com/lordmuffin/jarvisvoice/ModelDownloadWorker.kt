@@ -123,15 +123,16 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
     }
 
     private suspend fun downloadFile(config: ModelConfig, tmpFile: File): String? {
-        val hfToken = getHfToken()
-        val probe   = probeSize(config.downloadUrl, hfToken)
+        val (url, authHeader) = ModelServerConfig.resolveLlm(applicationContext, config)
+        DebugLog.i("ModelDownload", "source=${if (ModelServerConfig.isCustomLlmConfigured(applicationContext)) "custom" else "hf"} url=$url")
 
+        val probe = probeSize(url, authHeader)
         return if (probe != null && probe.totalSize >= PARALLEL_MIN) {
             DebugLog.i("ModelDownload", "parallel: $PARALLEL_CHUNKS streams, ${probe.totalSize / 1_048_576} MB")
-            downloadParallel(config, tmpFile, hfToken, probe.resolvedUrl, probe.totalSize)
+            downloadParallel(config, tmpFile, authHeader, probe.resolvedUrl, probe.totalSize)
         } else {
             DebugLog.i("ModelDownload", "single-stream fallback (probe: $probe)")
-            downloadSingleStream(config, tmpFile, hfToken, config.downloadUrl)
+            downloadSingleStream(config, tmpFile, authHeader, url)
         }
     }
 
@@ -140,7 +141,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
     private suspend fun downloadParallel(
         config: ModelConfig,
         tmpFile: File,
-        hfToken: String?,
+        authHeader: String?,
         resolvedUrl: String,
         totalSize: Long,
     ): String? = coroutineScope {
@@ -178,7 +179,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 val rangeEnd   = minOf(rangeStart + chunkSize - 1, totalSize - 1)
                 val partFile   = partFiles[i]
                 val existing   = if (partFile.exists()) partFile.length() else 0L
-                downloadChunk(resolvedUrl, hfToken, rangeStart + existing, rangeEnd, partFile, existing > 0, totalDownloaded)
+                downloadChunk(resolvedUrl, authHeader, rangeStart + existing, rangeEnd, partFile, existing > 0, totalDownloaded)
             }
         }.map { it.await() }
 
@@ -204,7 +205,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
 
     private fun downloadChunk(
         url: String,
-        hfToken: String?,
+        authHeader: String?,
         rangeStart: Long,
         rangeEnd: Long,
         partFile: File,
@@ -216,7 +217,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         val request = Request.Builder()
             .url(url)
             .addHeader("Range", "bytes=$rangeStart-$rangeEnd")
-            .apply { if (!hfToken.isNullOrBlank()) addHeader("Authorization", "Bearer $hfToken") }
+            .apply { if (!authHeader.isNullOrBlank()) addHeader("Authorization", authHeader) }
             .build()
 
         return try {
@@ -247,18 +248,18 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
     private suspend fun downloadSingleStream(
         config: ModelConfig,
         tmpFile: File,
-        hfToken: String?,
+        authHeader: String?,
         url: String,
     ): String? = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(url)
-            .apply { if (!hfToken.isNullOrBlank()) addHeader("Authorization", "Bearer $hfToken") }
+            .apply { if (!authHeader.isNullOrBlank()) addHeader("Authorization", authHeader) }
             .build()
 
         httpClient.newCall(request).execute().use { response ->
             when (response.code) {
-                401  -> return@withContext "HTTP 401 — add your HuggingFace token in Settings"
-                403  -> return@withContext "HTTP 403 — accept the Gemma license at huggingface.co/litert-community"
+                401  -> return@withContext "HTTP 401 — check your auth token in Settings"
+                403  -> return@withContext "HTTP 403 — access denied (check token or bucket permissions)"
             }
             if (!response.isSuccessful) return@withContext "HTTP ${response.code}"
 
@@ -297,12 +298,12 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
 
     data class ProbeResult(val totalSize: Long, val resolvedUrl: String)
 
-    private suspend fun probeSize(url: String, hfToken: String?): ProbeResult? = withContext(Dispatchers.IO) {
+    private suspend fun probeSize(url: String, authHeader: String?): ProbeResult? = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(url)
                 .head()
-                .apply { if (!hfToken.isNullOrBlank()) addHeader("Authorization", "Bearer $hfToken") }
+                .apply { if (!authHeader.isNullOrBlank()) addHeader("Authorization", authHeader) }
                 .build()
 
             httpClient.newCall(request).execute().use { response ->
@@ -314,11 +315,6 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
             }
         } catch (_: Exception) { null }
     }
-
-    private fun getHfToken(): String? =
-        applicationContext
-            .getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
-            .getString("hf_token", null)
 
     private fun cleanupParts(config: ModelConfig, tmpFile: File) {
         tmpFile.delete()

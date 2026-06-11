@@ -226,9 +226,101 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Required for Gemma model downloads. Accept the license at huggingface.co/litert-community first."
+                android:text="Only needed when using HuggingFace (no custom URL set below)."
                 android:textColor="@color/jv_text2"
                 android:textSize="11sp"
+                android:layout_marginBottom="16dp" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/jv_surface2"
+                android:layout_marginBottom="20dp" />
+
+            <!-- ── Custom Model Server ─────────────────────────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Custom Model Server"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="LLM Models URL"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/et_llm_base_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="https://your-bucket/models/llm/"
+                android:inputType="textUri"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:background="@drawable/permission_card_bg"
+                android:padding="12dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="STT Models URL"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/et_stt_base_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="https://your-bucket/models/stt/"
+                android:inputType="textUri"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:background="@drawable/permission_card_bg"
+                android:padding="12dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Auth Token (optional)"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/et_server_token"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Bearer abc123..."
+                android:inputType="textPassword"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:background="@drawable/permission_card_bg"
+                android:padding="12dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Sent as the Authorization header. Leave blank for public buckets. LLM bucket expects: gemma4-12b.litertlm, gemma4-2b.litertlm, gemma3-1b.litertlm. STT bucket expects: sherpa-onnx-whisper-{tiny,base,small,medium}.en.tar.bz2"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:paddingHorizontal="4dp"
                 android:layout_marginBottom="16dp" />
 
             <View
