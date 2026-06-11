@@ -52,10 +52,10 @@ object LlmEnhancer {
                 engine          = result.getOrThrow()
                 loadedModelId   = modelId
                 activeBackend   = label
-                DebugLog.i("LlmEnhancer", "loaded $modelId via $label backend")
+                DebugLog.i("LlmEnhancer", "loaded $modelId via $label backend nativeLibDir=$nativeLibraryDir")
                 return true
             } else {
-                DebugLog.i("LlmEnhancer", "$label backend unavailable — ${result.exceptionOrNull()?.message}")
+                DebugLog.e("LlmEnhancer", "$label backend failed for $modelId", result.exceptionOrNull())
             }
         }
 

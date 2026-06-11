@@ -102,9 +102,11 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             recognizer     = nnapiResult.getOrThrow()
             activeProvider = "nnapi"
         } else {
-            DebugLog.i("STT", "nnapi unavailable — ${nnapiResult.exceptionOrNull()?.message}")
-            recognizer     = runCatching { OfflineRecognizer(config = cfg("cpu")) }.getOrNull()
+            DebugLog.e("STT", "nnapi backend failed", nnapiResult.exceptionOrNull())
+            val cpuResult = runCatching { OfflineRecognizer(config = cfg("cpu")) }
+            recognizer     = cpuResult.getOrNull()
             activeProvider = "cpu"
+            if (cpuResult.isFailure) DebugLog.e("STT", "cpu backend also failed", cpuResult.exceptionOrNull())
         }
 
         DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"} provider=$activeProvider model=${config.id}")

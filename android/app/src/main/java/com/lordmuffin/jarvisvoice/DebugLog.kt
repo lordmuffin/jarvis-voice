@@ -24,7 +24,16 @@ object DebugLog {
     fun i(tag: String, msg: String) = write("I", tag, msg)
     fun w(tag: String, msg: String) = write("W", tag, msg)
     fun e(tag: String, msg: String, t: Throwable? = null) =
-        write("E", tag, if (t != null) "$msg — ${t.javaClass.simpleName}: ${t.message}" else msg)
+        write("E", tag, if (t != null) "$msg — ${causeChain(t)}" else msg)
+
+    private fun causeChain(t: Throwable): String = buildString {
+        var cur: Throwable? = t
+        while (cur != null) {
+            if (isNotEmpty()) append(" → ")
+            append("${cur.javaClass.name}: ${cur.message}")
+            cur = cur.cause
+        }
+    }
 
     private fun write(level: String, tag: String, msg: String) {
         val line = "${sdf.format(Date())} $level/$tag: $msg\n"
