@@ -56,7 +56,8 @@ class VoiceOverlayService : Service() {
     private lateinit var micIcon: ImageView
     private lateinit var dotIdle: View
     private lateinit var progressSpinner: ProgressBar
-    private var speechEngine: SpeechEngine? = null
+    var speechEngine: SpeechEngine? = null
+        private set
     private var state = OverlayState.IDLE
 
     private lateinit var historyManager: DictationHistoryManager

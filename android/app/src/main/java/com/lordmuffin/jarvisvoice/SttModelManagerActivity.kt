@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SttDownloadWorker
 import com.lordmuffin.jarvisvoice.speech.SttModelConfig
 import com.lordmuffin.jarvisvoice.speech.SttModelManager
@@ -210,7 +211,12 @@ class SttModelManagerActivity : AppCompatActivity() {
                 tvStatus.text = when {
                     isExtracting  -> "Extracting…"
                     isDownloading -> "Downloading…"
-                    isInstalled   -> sttMgr.getStatusLabel(config)
+                    isInstalled   -> {
+                        val base = sttMgr.getStatusLabel(config)
+                        val sttBackend = (VoiceOverlayService.instance?.speechEngine as? SherpaOnnxSpeechEngine)
+                            ?.activeProvider?.takeIf { isActive }
+                        if (sttBackend != null) "$base  [$sttBackend]" else base
+                    }
                     else          -> "${config.fileSizeMb} MB"
                 }
 
