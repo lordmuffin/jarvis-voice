@@ -165,11 +165,18 @@ class VoiceOverlayService : Service() {
 
     private fun loadLlmIfConfigured() {
         val llmMgr  = LlmModelManager(this)
-        val config  = llmMgr.getActiveConfig() ?: return
-        if (!llmMgr.isInstalled(config)) return
+        val config  = llmMgr.getActiveConfig()
+        if (config == null) {
+            DebugLog.i("LlmInit", "no active model (model=none)")
+            return
+        }
+        val modelFile = llmMgr.modelFile(config)
+        val installed = llmMgr.isInstalled(config)
+        DebugLog.i("LlmInit", "active=${config.id} path=${modelFile.absolutePath} exists=${modelFile.exists()} size=${modelFile.length()} installed=$installed")
+        if (!installed) return
         val nativeLibDir = applicationInfo.nativeLibraryDir
         Thread {
-            runCatching { LlmEnhancer.init(llmMgr.modelFile(config), config.id, nativeLibDir) }
+            runCatching { LlmEnhancer.init(modelFile, config.id, nativeLibDir) }
                 .onFailure { DebugLog.e("Service", "LLM init failed on background thread", it) }
         }.start()
     }
