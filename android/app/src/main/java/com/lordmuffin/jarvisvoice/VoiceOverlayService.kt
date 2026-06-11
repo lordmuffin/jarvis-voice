@@ -172,12 +172,26 @@ class VoiceOverlayService : Service() {
         }
         val modelFile = llmMgr.modelFile(config)
         val installed = llmMgr.isInstalled(config)
-        DebugLog.i("LlmInit", "active=${config.id} path=${modelFile.absolutePath} exists=${modelFile.exists()} size=${modelFile.length()} installed=$installed")
+        DebugLog.i("LlmInit", "active=${config.id} path=${modelFile.absolutePath} exists=${modelFile.exists()} size=${modelFile.length()} installed=$installed npuOnly=${config.npuOnly}")
         if (!installed) return
         val nativeLibDir = applicationInfo.nativeLibraryDir
+        val npuOnly = config.npuOnly
         Thread {
-            runCatching { LlmEnhancer.init(modelFile, config.id, nativeLibDir) }
-                .onFailure { DebugLog.e("Service", "LLM init failed on background thread", it) }
+            val ok = runCatching {
+                LlmEnhancer.init(modelFile, config.id, nativeLibDir, npuOnly)
+            }.getOrElse { t ->
+                DebugLog.e("Service", "LLM init failed on background thread", t)
+                false
+            }
+            if (!ok) {
+                val msg = if (npuOnly)
+                    "${config.displayName} requires NPU hardware — not available. Switch to a CPU model in Settings → LLM Model."
+                else
+                    "${config.displayName} failed to load. Switch to another model in Settings → LLM Model."
+                Handler(Looper.getMainLooper()).post {
+                    Toast.makeText(this@VoiceOverlayService, msg, Toast.LENGTH_LONG).show()
+                }
+            }
         }.start()
     }
 

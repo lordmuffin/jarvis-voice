@@ -8,7 +8,10 @@ data class ModelConfig(
     val minRamGb: Int,
     val downloadUrl: String,
     val filename: String,
-    val isDefault: Boolean = false
+    val isDefault: Boolean = false,
+    // NPU-compiled models have no standard LiteRT tensors — CPU/GPU backends will
+    // always fail with "Input tensor not found". Only attempt NPU for these.
+    val npuOnly: Boolean = false
 )
 
 object ModelRegistry {
@@ -28,7 +31,8 @@ object ModelRegistry {
             minRamGb = 4,
             downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it_Google_Tensor_G5.litertlm",
             filename = "gemma4-e2b-tensor-g5.litertlm",
-            isDefault = true
+            isDefault = true,
+            npuOnly = true
         ),
         ModelConfig(
             id = "gemma4-12b",

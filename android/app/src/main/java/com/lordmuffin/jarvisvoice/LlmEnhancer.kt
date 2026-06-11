@@ -42,7 +42,8 @@ object LlmEnhancer {
 
     fun isReady(): Boolean = engine != null
 
-    fun init(modelFile: File, modelId: String, nativeLibraryDir: String = ""): Boolean {
+    fun init(modelFile: File, modelId: String, nativeLibraryDir: String = "",
+             npuOnly: Boolean = false): Boolean {
         if (loadedModelId == modelId && isReady()) return true
         destroy()
 
@@ -51,6 +52,15 @@ object LlmEnhancer {
         val skipHardware   = (prevCrashModel != null)
 
         if (skipHardware) {
+            if (npuOnly) {
+                // NPU-only model: CPU/GPU have no standard LiteRT tensors to run.
+                // Leave the sentinel so we don't retry NPU on every startup. The user
+                // must switch to a CPU model or wait for a library/model update.
+                DebugLog.w("LlmEnhancer",
+                    "crash sentinel present for NPU-only model $modelId — NPU unavailable, " +
+                    "CPU not supported by this model. Sentinel preserved. Switch to a CPU model.")
+                return false
+            }
             DebugLog.w("LlmEnhancer",
                 "crash sentinel present (model=$prevCrashModel) — skipping NPU/GPU, going straight to CPU")
         }
@@ -63,10 +73,14 @@ object LlmEnhancer {
             "npu" to { Backend.NPU(nativeLibraryDir) },
             "gpu" to { Backend.GPU() },
         )
+        // NPU-only models have no standard tensor graphs — CPU/GPU will always fail.
         val cpuCandidate = "cpu" to { Backend.CPU() }
 
-        val candidates = if (skipHardware) listOf(cpuCandidate)
-                         else hardwareCandidates + cpuCandidate
+        val candidates = when {
+            skipHardware -> listOf(cpuCandidate)
+            npuOnly      -> hardwareCandidates  // no CPU fallback
+            else         -> hardwareCandidates + cpuCandidate
+        }
 
         for ((label, makeBackend) in candidates) {
             // Clear sentinel just before CPU so a CPU-level crash doesn't leave a stale key.
@@ -93,8 +107,8 @@ object LlmEnhancer {
             }
         }
 
-        p?.edit()?.remove(KEY_LOADING)?.apply()
-        DebugLog.e("LlmEnhancer", "all backends failed for $modelId")
+        if (!npuOnly) p?.edit()?.remove(KEY_LOADING)?.apply()
+        DebugLog.e("LlmEnhancer", "all backends failed for $modelId (npuOnly=$npuOnly)")
         return false
     }
 
