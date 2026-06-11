@@ -8,6 +8,7 @@ import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import com.lordmuffin.jarvisvoice.AudioDeviceRouter
 import com.lordmuffin.jarvisvoice.DebugLog
 
 class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
@@ -21,6 +22,8 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
     private var onPartialCallback: ((String) -> Unit)? = null
     private var onFinalCallback: ((String) -> Unit)? = null
     private var onErrorCallback: ((Int) -> Unit)? = null
+    private val deviceRouter = AudioDeviceRouter(context)
+    private var scoStarted = false
 
     private val silenceTimeoutMs = 10_000L
     private val silenceRunnable = Runnable {
@@ -50,6 +53,14 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
         onPartialCallback = onPartial
         onFinalCallback = onFinal
         onErrorCallback = onError
+
+        // Start Bluetooth SCO if user selected a Bluetooth input device
+        val preferredDevice = deviceRouter.getPreferredDevice()
+        if (preferredDevice != null && deviceRouter.isBluetoothSco(preferredDevice)) {
+            deviceRouter.startBluetoothSco()
+            scoStarted = true
+            DebugLog.i("AndroidSTT", "Bluetooth SCO started for ${deviceRouter.deviceLabel(preferredDevice)}")
+        }
 
         mainHandler.post {
             if (recognizer == null) createRecognizer()
@@ -82,6 +93,10 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
             recognizer?.destroy()
             recognizer = null
         }
+        if (scoStarted) {
+            deviceRouter.stopBluetoothSco()
+            scoStarted = false
+        }
     }
 
     private val listener = object : RecognitionListener {
@@ -108,6 +123,10 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
             } else {
                 DebugLog.i("AndroidSTT", "result accepted confidence=${"%.2f".format(confidence)} len=${text.length}")
                 onFinalCallback?.invoke(text)
+            }
+            if (scoStarted) {
+                deviceRouter.stopBluetoothSco()
+                scoStarted = false
             }
             // Recreate recognizer for next use
             recognizer?.destroy()

@@ -4,9 +4,11 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import com.lordmuffin.jarvisvoice.AudioDeviceRouter
 import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -22,6 +24,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     private var recognizer: OfflineRecognizer? = null
     private var audioRecord: AudioRecord? = null
     private var recordingThread: Thread? = null
+    private val deviceRouter = AudioDeviceRouter(context)
+    @Volatile private var scoStarted = false
 
     @Volatile private var isListening  = false
     @Volatile private var pendingFinal = false
@@ -123,6 +127,14 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
         DebugLog.i("STT", "startListening holdMode=$holdMode")
 
+        // Route to preferred microphone (earbuds, USB, etc.)
+        val preferredDevice = deviceRouter.getPreferredDevice()
+        if (preferredDevice != null && deviceRouter.isBluetoothSco(preferredDevice)) {
+            deviceRouter.startBluetoothSco()
+            scoStarted = deviceRouter.waitForSco(2_000L)
+            DebugLog.i("STT", "Bluetooth SCO ready=$scoStarted")
+        }
+
         val minBuf = AudioRecord.getMinBufferSize(
             sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
         )
@@ -133,6 +145,10 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             AudioFormat.ENCODING_PCM_16BIT,
             maxOf(minBuf, chunkSamples * 4)
         )
+        if (preferredDevice != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            audioRecord?.preferredDevice = preferredDevice
+            DebugLog.i("STT", "preferred input device: ${deviceRouter.deviceLabel(preferredDevice)}")
+        }
         audioRecord?.startRecording()
 
         recordingThread = Thread {
@@ -246,6 +262,10 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                 val final = (committed + sep + lastChunk).trim()
                 DebugLog.i("STT", "onFinal total words=${final.split(" ").size}")
                 mainHandler.post { onFinalCallback?.invoke(final) }
+                if (scoStarted) {
+                    deviceRouter.stopBluetoothSco()
+                    scoStarted = false
+                }
             }
         }, "jarvis-stop").start()
     }
@@ -259,6 +279,10 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         transcribeExecutor.shutdown()
         recognizer?.release()
         recognizer = null
+        if (scoStarted) {
+            deviceRouter.stopBluetoothSco()
+            scoStarted = false
+        }
     }
 
     private fun transcribe(samples: ShortArray): String {

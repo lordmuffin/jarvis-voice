@@ -1,5 +1,6 @@
 package com.lordmuffin.jarvisvoice
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -42,6 +43,9 @@ class SettingsActivity : AppCompatActivity() {
     // Vault capture
     private lateinit var tvVaultFolder: TextView
 
+    // Audio input device
+    private lateinit var tvInputDevice: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -60,6 +64,7 @@ class SettingsActivity : AppCompatActivity() {
         tvStorageLocation = findViewById(R.id.tv_storage_location)
         btnGrantStorage   = findViewById(R.id.btn_grant_storage)
         tvVaultFolder     = findViewById(R.id.tv_vault_folder)
+        tvInputDevice     = findViewById(R.id.tv_input_device)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             btnGrantStorage.setOnClickListener {
@@ -87,6 +92,12 @@ class SettingsActivity : AppCompatActivity() {
         screenAlwaysOnSwitch.setOnCheckedChangeListener { _, checked ->
             VoiceOverlayService.instance?.setScreenAlwaysOn(checked)
                 ?: prefs.edit().putBoolean(VoiceOverlayService.KEY_SCREEN_ALWAYS_ON, checked).apply()
+        }
+
+        val deviceRouter = AudioDeviceRouter(this)
+        tvInputDevice.text = deviceRouter.currentLabel()
+        findViewById<Button>(R.id.btn_pick_input_device).setOnClickListener {
+            showInputDevicePicker(deviceRouter)
         }
 
         etHfToken.setText(prefs.getString("hf_token", ""))
@@ -194,6 +205,28 @@ class SettingsActivity : AppCompatActivity() {
             btnGrantStorage.visibility =
                 if (PersistentStorage.hasExternalAccess()) View.GONE else View.VISIBLE
         }
+    }
+
+    private fun showInputDevicePicker(deviceRouter: AudioDeviceRouter) {
+        val devices = deviceRouter.getInputDevices()
+        val labels  = listOf("System Default") + devices.map { deviceRouter.deviceLabel(it) }
+        val savedId = deviceRouter.getSavedDeviceId()
+        val currentIndex = if (savedId == AudioDeviceRouter.DEVICE_DEFAULT) 0
+                           else devices.indexOfFirst { it.id == savedId }.let { if (it < 0) 0 else it + 1 }
+
+        AlertDialog.Builder(this)
+            .setTitle("Microphone")
+            .setSingleChoiceItems(labels.toTypedArray(), currentIndex) { dialog, which ->
+                if (which == 0) {
+                    deviceRouter.saveDeviceId(AudioDeviceRouter.DEVICE_DEFAULT)
+                } else {
+                    deviceRouter.saveDeviceId(devices[which - 1].id)
+                }
+                tvInputDevice.text = deviceRouter.currentLabel()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun refreshStats() {
