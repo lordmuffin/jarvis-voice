@@ -2,7 +2,6 @@ package com.lordmuffin.jarvisvoice
 
 import android.app.AlertDialog
 import android.content.Intent
-import com.lordmuffin.jarvisvoice.BuildConfig
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle

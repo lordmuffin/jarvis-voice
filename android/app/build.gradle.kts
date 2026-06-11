@@ -37,6 +37,9 @@ android {
             }
         }
     }
+    buildFeatures {
+        buildConfig = true
+    }
     // Don't attempt to compress ONNX model files — they're already binary
     // and compression wastes build memory on large model assets.
     androidResources {
