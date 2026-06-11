@@ -14,10 +14,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.ConnectionPool
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
@@ -31,9 +33,19 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         const val CHANNEL_ID    = "jarvis_model_download"
         const val NOTIF_BASE_ID = 200
 
-        private const val PARALLEL_CHUNKS = 8
+        private const val PARALLEL_CHUNKS = 16
         private const val BUFFER_SIZE     = 256 * 1024        // 256 KB
         private const val PARALLEL_MIN    = 10 * 1024 * 1024L  // only parallel for files > 10 MB
+
+        // Shared client — connection pool sized for PARALLEL_CHUNKS + headroom.
+        // OkHttp negotiates HTTP/2 via ALPN when the CDN supports it (Cloudflare does),
+        // which reduces per-connection overhead vs raw HttpURLConnection.
+        private val httpClient = OkHttpClient.Builder()
+            .connectionPool(ConnectionPool(PARALLEL_CHUNKS + 4, 5, TimeUnit.MINUTES))
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .build()
 
         fun workName(modelId: String) = "llm_download_$modelId"
 
@@ -96,14 +108,14 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 }
                 else          -> {
                     tmpFile.delete()
-                    DebugLog.e("ModelDownload", "download failed for $modelId: $error")
+                    DebugLog.e("ModelDownload", "failed for $modelId: $error")
                     showErrorNotification(config.displayName, error)
                     nm.cancel(notifId)
                     Result.failure(workDataOf(KEY_ERROR to error))
                 }
             }
         } catch (e: Exception) {
-            DebugLog.e("ModelDownload", "download failed for $modelId", e)
+            DebugLog.e("ModelDownload", "failed for $modelId", e)
             tmpFile.delete()
             nm.cancel(notifId)
             Result.failure(workDataOf(KEY_ERROR to (e.message ?: "unknown error")))
@@ -115,11 +127,11 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         val probe   = probeSize(config.downloadUrl, hfToken)
 
         return if (probe != null && probe.totalSize >= PARALLEL_MIN) {
-            DebugLog.i("ModelDownload", "parallel download: $PARALLEL_CHUNKS streams, ${probe.totalSize / 1_048_576} MB, cdn=${probe.resolvedUrl.take(60)}…")
+            DebugLog.i("ModelDownload", "parallel: $PARALLEL_CHUNKS streams, ${probe.totalSize / 1_048_576} MB")
             downloadParallel(config, tmpFile, hfToken, probe.resolvedUrl, probe.totalSize)
         } else {
-            DebugLog.i("ModelDownload", "single-stream download (probe: $probe)")
-            downloadSingleStream(config, tmpFile, hfToken)
+            DebugLog.i("ModelDownload", "single-stream fallback (probe: $probe)")
+            downloadSingleStream(config, tmpFile, hfToken, config.downloadUrl)
         }
     }
 
@@ -133,15 +145,13 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         totalSize: Long,
     ): String? = coroutineScope {
 
-        val chunkSize  = (totalSize + PARALLEL_CHUNKS - 1) / PARALLEL_CHUNKS
-        val partFiles  = (0 until PARALLEL_CHUNKS).map { i ->
+        val chunkSize = (totalSize + PARALLEL_CHUNKS - 1) / PARALLEL_CHUNKS
+        val partFiles = (0 until PARALLEL_CHUNKS).map { i ->
             File(tmpFile.parent, "${config.filename}.part$i")
         }
 
-        // Pre-count bytes already on disk (resume support)
         val totalDownloaded = AtomicLong(partFiles.sumOf { if (it.exists()) it.length() else 0L })
 
-        // Progress ticker
         data class Sample(val bytes: Long, val ms: Long)
         val speedWin = ArrayDeque<Sample>()
 
@@ -168,7 +178,6 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 val rangeEnd   = minOf(rangeStart + chunkSize - 1, totalSize - 1)
                 val partFile   = partFiles[i]
                 val existing   = if (partFile.exists()) partFile.length() else 0L
-                // Use the already-resolved CDN URL so chunks skip the HF→CDN redirect chain
                 downloadChunk(resolvedUrl, hfToken, rangeStart + existing, rangeEnd, partFile, existing > 0, totalDownloaded)
             }
         }.map { it.await() }
@@ -181,7 +190,6 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
             return@coroutineScope error
         }
 
-        // Concatenate parts into tmp file
         withContext(Dispatchers.IO) {
             FileOutputStream(tmpFile).use { out ->
                 partFiles.forEach { part ->
@@ -203,38 +211,35 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         append: Boolean,
         totalDownloaded: AtomicLong,
     ): String? {
-        if (rangeStart > rangeEnd) return null  // chunk already complete
+        if (rangeStart > rangeEnd) return null
 
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 15_000
-        conn.readTimeout    = 60_000
-        conn.instanceFollowRedirects = true
-        conn.setRequestProperty("Range", "bytes=$rangeStart-$rangeEnd")
-        if (!hfToken.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $hfToken")
-        conn.connect()
+        val request = Request.Builder()
+            .url(url)
+            .addHeader("Range", "bytes=$rangeStart-$rangeEnd")
+            .apply { if (!hfToken.isNullOrBlank()) addHeader("Authorization", "Bearer $hfToken") }
+            .build()
 
-        if (conn.responseCode !in 200..299) {
-            conn.disconnect()
-            return "HTTP ${conn.responseCode} (chunk)"
-        }
+        return try {
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return "HTTP ${response.code} (chunk)"
 
-        try {
-            FileOutputStream(partFile, append).use { out ->
-                val buf = ByteArray(BUFFER_SIZE)
-                conn.inputStream.use { input ->
-                    var n: Int
-                    while (!isStopped && input.read(buf).also { n = it } != -1) {
-                        out.write(buf, 0, n)
-                        totalDownloaded.addAndGet(n.toLong())
+                FileOutputStream(partFile, append).use { out ->
+                    val buf = ByteArray(BUFFER_SIZE)
+                    response.body!!.byteStream().use { input ->
+                        var n: Int
+                        while (!isStopped && input.read(buf).also { n = it } != -1) {
+                            out.write(buf, 0, n)
+                            totalDownloaded.addAndGet(n.toLong())
+                        }
                     }
+                    out.flush()
                 }
-                out.flush()
-            }
-        } finally {
-            conn.disconnect()
-        }
 
-        return if (isStopped) "cancelled" else null
+                if (isStopped) "cancelled" else null
+            }
+        } catch (e: Exception) {
+            "chunk error: ${e.message}"
+        }
     }
 
     // ── Single-stream fallback ────────────────────────────────────────────────
@@ -243,28 +248,29 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
         config: ModelConfig,
         tmpFile: File,
         hfToken: String?,
+        url: String,
     ): String? = withContext(Dispatchers.IO) {
-        val conn = URL(config.downloadUrl).openConnection() as HttpURLConnection
-        conn.connectTimeout = 15_000
-        conn.readTimeout    = 60_000
-        conn.instanceFollowRedirects = true
-        if (!hfToken.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $hfToken")
-        conn.connect()
+        val request = Request.Builder()
+            .url(url)
+            .apply { if (!hfToken.isNullOrBlank()) addHeader("Authorization", "Bearer $hfToken") }
+            .build()
 
-        if (conn.responseCode == 401) return@withContext "HTTP 401 — add your HuggingFace token in Settings"
-        if (conn.responseCode == 403) return@withContext "HTTP 403 — accept the Gemma license at huggingface.co/litert-community"
-        if (conn.responseCode !in 200..299) return@withContext "HTTP ${conn.responseCode}"
+        httpClient.newCall(request).execute().use { response ->
+            when (response.code) {
+                401  -> return@withContext "HTTP 401 — add your HuggingFace token in Settings"
+                403  -> return@withContext "HTTP 403 — accept the Gemma license at huggingface.co/litert-community"
+            }
+            if (!response.isSuccessful) return@withContext "HTTP ${response.code}"
 
-        val total      = conn.contentLengthLong
-        var downloaded = 0L
+            val total      = response.header("Content-Length")?.toLongOrNull() ?: -1L
+            var downloaded = 0L
 
-        data class Sample(val bytes: Long, val ms: Long)
-        val speedWin = ArrayDeque<Sample>()
+            data class Sample(val bytes: Long, val ms: Long)
+            val speedWin = ArrayDeque<Sample>()
 
-        try {
             FileOutputStream(tmpFile).use { out ->
                 val buf = ByteArray(BUFFER_SIZE)
-                conn.inputStream.use { input ->
+                response.body!!.byteStream().use { input ->
                     var n: Int
                     while (!isStopped && input.read(buf).also { n = it } != -1) {
                         out.write(buf, 0, n)
@@ -274,7 +280,7 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                         speedWin.addLast(Sample(downloaded, nowMs))
                         while (speedWin.size > 1 && nowMs - speedWin.first().ms > 3_000L) speedWin.removeFirst()
                         val winMs    = maxOf(1L, speedWin.last().ms - speedWin.first().ms)
-                        val speedBps = (speedWin.last().bytes - speedWin.first().bytes) * 1000 / winMs
+                        val speedBps = (speedWin.last().bytes - speedWin.first().bytes) * 1000L / winMs
                         val etaSec   = if (speedBps > 0 && total > 0) (total - downloaded) / speedBps else -1L
                         setProgress(workDataOf(KEY_PROGRESS to pct, KEY_SPEED_BPS to speedBps, KEY_ETA_SEC to etaSec))
                         nm.notify(notifId, buildNotif(config.displayName, pct, false, speedBps, etaSec))
@@ -282,33 +288,30 @@ class ModelDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWor
                 }
                 out.flush()
             }
-        } finally {
-            conn.disconnect()
-        }
 
-        if (isStopped) "cancelled" else null
+            if (isStopped) "cancelled" else null
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     data class ProbeResult(val totalSize: Long, val resolvedUrl: String)
 
-    /** HEAD request to get total size, verify Range support, and capture the post-redirect CDN URL. */
     private suspend fun probeSize(url: String, hfToken: String?): ProbeResult? = withContext(Dispatchers.IO) {
         try {
-            val conn = URL(url).openConnection() as HttpURLConnection
-            conn.requestMethod = "HEAD"
-            conn.connectTimeout = 10_000
-            conn.readTimeout    = 10_000
-            conn.instanceFollowRedirects = true
-            if (!hfToken.isNullOrBlank()) conn.setRequestProperty("Authorization", "Bearer $hfToken")
-            conn.connect()
-            val code         = conn.responseCode
-            val acceptsRange = conn.getHeaderField("Accept-Ranges")?.contains("bytes") == true
-            val size         = conn.contentLengthLong
-            val resolvedUrl  = conn.url.toString()  // post-redirect CDN URL — skip per-chunk redirects
-            conn.disconnect()
-            if (code in 200..299 && acceptsRange && size > 0) ProbeResult(size, resolvedUrl) else null
+            val request = Request.Builder()
+                .url(url)
+                .head()
+                .apply { if (!hfToken.isNullOrBlank()) addHeader("Authorization", "Bearer $hfToken") }
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext null
+                val acceptsRange = response.header("Accept-Ranges")?.contains("bytes") == true
+                val size         = response.header("Content-Length")?.toLongOrNull() ?: -1L
+                val resolvedUrl  = response.request.url.toString()
+                if (acceptsRange && size > 0) ProbeResult(size, resolvedUrl) else null
+            }
         } catch (_: Exception) { null }
     }
 

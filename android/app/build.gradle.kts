@@ -11,8 +11,8 @@ android {
         applicationId = "com.lordmuffin.jarvisvoice"
         minSdk = 24
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.1.1"
+        versionCode = 4
+        versionName = "1.1.2"
     }
 
     signingConfigs {
@@ -63,4 +63,5 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.litertlm.android)
     implementation(libs.androidx.documentfile)
+    implementation(libs.okhttp)
 }
