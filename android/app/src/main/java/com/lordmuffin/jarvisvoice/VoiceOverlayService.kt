@@ -59,6 +59,9 @@ class VoiceOverlayService : Service() {
     private lateinit var progressSpinner: ProgressBar
     var speechEngine: SpeechEngine? = null
         private set
+    // Set true when startForeground fails with SecurityException so onStartCommand
+    // returns START_NOT_STICKY and Android doesn't immediately restart us in a loop.
+    private var fgsBlocked = false
     private var state = OverlayState.IDLE
 
     private lateinit var historyManager: DictationHistoryManager
@@ -139,6 +142,7 @@ class VoiceOverlayService : Service() {
             }
         } catch (e: SecurityException) {
             DebugLog.e("Service", "startForeground blocked — not in eligible state, stopping", e)
+            fgsBlocked = true
             stopSelf()
             return
         }
@@ -185,7 +189,7 @@ class VoiceOverlayService : Service() {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
         }
-        return START_STICKY
+        return if (fgsBlocked) START_NOT_STICKY else START_STICKY
     }
 
     override fun onDestroy() {
