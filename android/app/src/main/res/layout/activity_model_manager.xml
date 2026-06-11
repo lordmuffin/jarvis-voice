@@ -35,4 +35,6 @@
         android:paddingHorizontal="16dp"
         android:paddingBottom="24dp" />
 
+    <include layout="@layout/bottom_nav" />
+
 </LinearLayout>

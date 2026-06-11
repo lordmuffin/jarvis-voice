@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/bottom_nav_root"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/jv_surface"
+    android:elevation="8dp">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/jv_surface2" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="63dp"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/nav_tab_record"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <TextView
+                android:id="@+id/nav_icon_record"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🎙"
+                android:textSize="20sp"
+                android:textColor="@color/jv_text2" />
+
+            <TextView
+                android:id="@+id/nav_label_record"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Record"
+                android:textSize="10sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_tab_history"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <TextView
+                android:id="@+id/nav_icon_history"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📋"
+                android:textSize="20sp"
+                android:textColor="@color/jv_text2" />
+
+            <TextView
+                android:id="@+id/nav_label_history"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="History"
+                android:textSize="10sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_tab_settings"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <TextView
+                android:id="@+id/nav_icon_settings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚙️"
+                android:textSize="20sp"
+                android:textColor="@color/jv_text2" />
+
+            <TextView
+                android:id="@+id/nav_label_settings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Settings"
+                android:textSize="10sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/nav_tab_models"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <TextView
+                android:id="@+id/nav_icon_models"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📦"
+                android:textSize="20sp"
+                android:textColor="@color/jv_text2" />
+
+            <TextView
+                android:id="@+id/nav_label_models"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Models"
+                android:textSize="10sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

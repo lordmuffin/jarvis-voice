@@ -8,6 +8,7 @@
         android:id="@+id/vault_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginBottom="64dp"
         android:fillViewport="true">
 
         <LinearLayout
@@ -197,14 +198,20 @@
         android:layout_height="64dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
+        android:layout_marginBottom="84dp"
         android:background="@drawable/fab_stop_bg"
         android:text="■"
         android:textSize="22sp"
         android:textColor="@android:color/white"
-        android:elevation="6dp"
+        android:elevation="8dp"
         android:stateListAnimator="@null"
         android:visibility="gone"
         android:contentDescription="Stop recording" />
+
+    <include
+        layout="@layout/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
 
 </FrameLayout>

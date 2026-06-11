@@ -2,6 +2,7 @@ package com.lordmuffin.jarvisvoice
 
 import android.app.AlertDialog
 import android.content.Intent
+import com.lordmuffin.jarvisvoice.BuildConfig
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -162,10 +163,6 @@ class SettingsActivity : AppCompatActivity() {
             startActivity(Intent(this, DebugLogActivity::class.java))
         }
 
-        findViewById<Button>(R.id.fab_vault).setOnClickListener {
-            startActivity(Intent(this, VaultCaptureActivity::class.java))
-        }
-
         findViewById<Button>(R.id.btn_pick_vault_folder).setOnClickListener {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
                 addFlags(
@@ -179,6 +176,11 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         runCatching { refreshStats() }
+
+        findViewById<TextView>(R.id.tv_version)?.text =
+            "Jarvis Voice  v${BuildConfig.VERSION_NAME}"
+
+        BottomNav.wire(this, BottomNav.Tab.SETTINGS)
     }
 
     override fun onResume() {

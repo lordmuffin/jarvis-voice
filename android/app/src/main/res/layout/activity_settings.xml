@@ -7,14 +7,27 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:layout_marginBottom="64dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="24dp"
-            android:paddingBottom="96dp">
+            android:paddingBottom="16dp">
+
+            <!-- ── Version ─────────────────────────────────────────────── -->
+            <TextView
+                android:id="@+id/tv_version"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Jarvis Voice"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:layout_marginBottom="20dp" />
 
             <!-- ── Metro Stats ──────────────────────────────────────────── -->
             <TextView
@@ -688,20 +701,10 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Floating record button — always visible regardless of scroll position -->
-    <Button
-        android:id="@+id/fab_vault"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/fab_bg"
-        android:text="🎙"
-        android:textSize="24sp"
-        android:textColor="@color/jv_bg"
-        android:elevation="6dp"
-        android:stateListAnimator="@null"
-        android:contentDescription="Record to Vault" />
+    <include
+        layout="@layout/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
 
 </FrameLayout>

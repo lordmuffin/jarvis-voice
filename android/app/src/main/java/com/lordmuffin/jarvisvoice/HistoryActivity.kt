@@ -22,6 +22,7 @@ class HistoryActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
         supportActionBar?.title = "Dictation History"
+        BottomNav.wire(this, BottomNav.Tab.HISTORY)
 
         val db       = DictationHistoryManager(this)
         val sessions = db.getRecentSessions()

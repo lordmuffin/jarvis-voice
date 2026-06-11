@@ -39,6 +39,7 @@ class ModelManagerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_model_manager)
         supportActionBar?.title = "LLM Model"
+        BottomNav.wire(this, BottomNav.Tab.MODELS)
 
         mgr = LlmModelManager(this)
 

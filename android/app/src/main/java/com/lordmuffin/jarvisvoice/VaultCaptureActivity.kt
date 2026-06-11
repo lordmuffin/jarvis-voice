@@ -39,6 +39,7 @@ class VaultCaptureActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_vault_capture)
         supportActionBar?.title = "Voice to Vault"
+        BottomNav.wire(this, BottomNav.Tab.RECORD)
 
         scrollView    = findViewById(R.id.vault_scroll)
         idleGroup     = findViewById(R.id.group_idle)
