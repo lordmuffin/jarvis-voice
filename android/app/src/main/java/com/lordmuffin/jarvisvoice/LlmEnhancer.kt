@@ -103,7 +103,13 @@ object LlmEnhancer {
                 DebugLog.i("LlmEnhancer", "loaded $modelId via $label backend nativeLibDir=$nativeLibraryDir")
                 return true
             } else {
-                DebugLog.e("LlmEnhancer", "$label backend failed for $modelId", result.exceptionOrNull())
+                if (label == "cpu") {
+                    DebugLog.e("LlmEnhancer", "$label backend failed for $modelId", result.exceptionOrNull())
+                } else {
+                    // NPU/GPU negotiation failures are expected on CPU-only models — warn, not error.
+                    val reason = result.exceptionOrNull()?.message?.take(120) ?: "unknown"
+                    DebugLog.w("LlmEnhancer", "$label backend unavailable for $modelId — $reason — trying next")
+                }
             }
         }
 
