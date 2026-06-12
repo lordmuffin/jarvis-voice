@@ -24,17 +24,6 @@
     <!-- Required for startBluetoothSco() to route audio to Bluetooth headset mic -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- System libraries required for hardware acceleration backends.
-         Android 12+ (API 32+) restricts loading non-SDK native libraries; apps must
-         declare each one with uses-native-library (required="false" so the app still
-         installs on devices that don't have the library, e.g. non-Pixel, non-Qualcomm).
-         libedgetpu_litert.so  — Google Tensor NPU dispatch (Pixel 6+ / Tensor G1+)
-         libOpenCL.so          — OpenCL for GPU backend (most modern Android devices)
-         libcdsprpc.so         — Qualcomm DSP RPC for Snapdragon NPU (non-Pixel devices) -->
-    <uses-native-library android:name="libedgetpu_litert.so" android:required="false"/>
-    <uses-native-library android:name="libOpenCL.so" android:required="false"/>
-    <uses-native-library android:name="libcdsprpc.so" android:required="false"/>
-
     <application
         android:name=".JarvisApp"
         android:allowBackup="false"
@@ -43,6 +32,18 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.JarvisVoice"
         android:supportsRtl="true">
+
+        <!-- System libraries required for hardware acceleration backends.
+             Android 12+ (API 32+) restricts loading non-SDK native libraries; apps must
+             declare each one with uses-native-library (required="false" so the app still
+             installs on devices that don't have the library, e.g. non-Pixel, non-Qualcomm).
+             uses-native-library must be a child of <application>, not <manifest>.
+             libedgetpu_litert.so  — Google Tensor NPU dispatch (Pixel 6+ / Tensor G1+)
+             libOpenCL.so          — OpenCL for GPU backend (most modern Android devices)
+             libcdsprpc.so         — Qualcomm DSP RPC for Snapdragon NPU (non-Pixel devices) -->
+        <uses-native-library android:name="libedgetpu_litert.so" android:required="false"/>
+        <uses-native-library android:name="libOpenCL.so" android:required="false"/>
+        <uses-native-library android:name="libcdsprpc.so" android:required="false"/>
 
         <activity
             android:name=".SettingsActivity"
