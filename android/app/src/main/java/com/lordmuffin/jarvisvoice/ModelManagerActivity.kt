@@ -16,16 +16,24 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Observer
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.google.mlkit.genai.common.DownloadStatus
+import com.google.mlkit.genai.common.FeatureStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ModelManagerActivity : AppCompatActivity() {
 
     private lateinit var mgr: LlmModelManager
     private lateinit var adapter: ModelAdapter
     private var pendingDownloadConfig: ModelConfig? = null
+    private var aiCoreDownloadJob: Job? = null
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -54,6 +62,11 @@ class ModelManagerActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         adapter.notifyDataSetChanged()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        aiCoreDownloadJob?.cancel()
     }
 
     private fun observeAllDownloads() {
@@ -116,6 +129,62 @@ class ModelManagerActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun onDownloadAiCore() {
+        aiCoreDownloadJob?.cancel()
+        adapter.setAiCoreDownloading(true, 0L, 0L)
+        var totalBytes = 0L
+        aiCoreDownloadJob = lifecycleScope.launch {
+            try {
+                val flow = withContext(Dispatchers.IO) { AiCoreEnhancer.downloadFlow() }
+                if (flow == null) {
+                    adapter.setAiCoreDownloading(false)
+                    Toast.makeText(this@ModelManagerActivity,
+                        "Could not start download — try again.", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+                flow.collect { status ->
+                    when (status) {
+                        is DownloadStatus.DownloadStarted -> {
+                            totalBytes = status.bytesToDownload
+                            adapter.setAiCoreDownloading(true, 0L, totalBytes)
+                        }
+                        is DownloadStatus.DownloadProgress -> {
+                            adapter.setAiCoreDownloading(true, status.totalBytesDownloaded, totalBytes)
+                        }
+                        is DownloadStatus.DownloadCompleted -> {
+                            adapter.setAiCoreDownloading(false)
+                            // Re-init on background thread — status should now be AVAILABLE
+                            withContext(Dispatchers.IO) { AiCoreEnhancer.initialize() }
+                            adapter.notifyDataSetChanged()
+                            if (AiCoreEnhancer.isReady()) {
+                                VoiceOverlayService.instance?.reloadLlmModel()
+                                Toast.makeText(this@ModelManagerActivity,
+                                    "Gemini Nano ready!", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        is DownloadStatus.DownloadFailed -> {
+                            adapter.setAiCoreDownloading(false)
+                            Toast.makeText(this@ModelManagerActivity,
+                                "Download failed: ${status.e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                adapter.setAiCoreDownloading(false)
+                if (e !is kotlinx.coroutines.CancellationException) {
+                    Toast.makeText(this@ModelManagerActivity,
+                        "Download error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun onCancelAiCoreDownload() {
+        aiCoreDownloadJob?.cancel()
+        aiCoreDownloadJob = null
+        adapter.setAiCoreDownloading(false)
+    }
+
     private fun buildProgressLabel(pct: Int, speedBps: Long, etaSec: Long): String {
         val sb = StringBuilder("$pct%")
         if (speedBps > 0) sb.append("  ·  ").append(formatSpeed(speedBps))
@@ -141,6 +210,19 @@ class ModelManagerActivity : AppCompatActivity() {
 
         private val downloadStates = mutableMapOf<String, WorkInfo?>()
 
+        // AI Core download state (separate from WorkManager-based downloads)
+        private var aiCoreDownloading = false
+        private var aiCoreBytesDownloaded = 0L
+        private var aiCoreBytesTotal = 0L
+
+        fun setAiCoreDownloading(downloading: Boolean, downloaded: Long = 0L, total: Long = 0L) {
+            aiCoreDownloading = downloading
+            aiCoreBytesDownloaded = downloaded
+            aiCoreBytesTotal = total
+            val idx = ModelRegistry.MODELS.indexOfFirst { it.isAiCore }
+            if (idx >= 0) notifyItemChanged(idx)
+        }
+
         fun updateDownloadState(modelId: String, info: WorkInfo) {
             downloadStates[modelId] = info
             val idx = ModelRegistry.MODELS.indexOfFirst { it.id == modelId }
@@ -153,12 +235,12 @@ class ModelManagerActivity : AppCompatActivity() {
             ModelVH(LayoutInflater.from(parent.context).inflate(R.layout.item_llm_model, parent, false))
 
         override fun onBindViewHolder(holder: ModelVH, position: Int) {
-            val config     = ModelRegistry.MODELS[position]
-            val isActive   = mgr.getActiveModelId() == config.id
+            val config      = ModelRegistry.MODELS[position]
+            val isActive    = mgr.getActiveModelId() == config.id
             val isInstalled = mgr.isInstalled(config)
-            val workInfo   = downloadStates[config.id]
-            val isRunning  = workInfo?.state == WorkInfo.State.RUNNING
-                          || workInfo?.state == WorkInfo.State.ENQUEUED
+            val workInfo    = downloadStates[config.id]
+            val isRunning   = workInfo?.state == WorkInfo.State.RUNNING
+                           || workInfo?.state == WorkInfo.State.ENQUEUED
 
             holder.bind(config, isActive, isInstalled, isRunning, workInfo)
         }
@@ -180,12 +262,16 @@ class ModelManagerActivity : AppCompatActivity() {
                 isDownloading: Boolean,
                 workInfo: WorkInfo?
             ) {
-                tvName.text    = config.displayName
-                tvDesc.text    = config.description
+                tvName.text = config.displayName
+                tvDesc.text = config.description
                 tvDefault.visibility = if (config.isDefault) View.VISIBLE else View.GONE
-
                 rbSelect.isChecked = isActive
                 rbSelect.isEnabled = isInstalled
+
+                if (config.isAiCore) {
+                    bindAiCore(isActive)
+                    return
+                }
 
                 tvStatus.text = when {
                     isDownloading -> "Downloading…"
@@ -197,7 +283,6 @@ class ModelManagerActivity : AppCompatActivity() {
                     else          -> "${config.fileSizeMb} MB · min ${config.minRamGb} GB RAM"
                 }
 
-                // Download progress bar
                 val progress = workInfo?.progress?.getInt(ModelDownloadWorker.KEY_PROGRESS, -1) ?: -1
                 val speedBps = workInfo?.progress?.getLong(ModelDownloadWorker.KEY_SPEED_BPS, 0L) ?: 0L
                 val etaSec   = workInfo?.progress?.getLong(ModelDownloadWorker.KEY_ETA_SEC, -1L) ?: -1L
@@ -211,13 +296,7 @@ class ModelManagerActivity : AppCompatActivity() {
                                       else "Connecting…"
                 }
 
-                // Primary action button
                 when {
-                    config.isAiCore -> {
-                        btnAction.visibility = View.GONE
-                        progressBar.visibility = View.GONE
-                        tvProgress.visibility = View.GONE
-                    }
                     isDownloading -> {
                         btnAction.visibility = View.VISIBLE
                         btnAction.text = "Cancel"
@@ -246,6 +325,66 @@ class ModelManagerActivity : AppCompatActivity() {
                     if (isInstalled) {
                         if (isActive) onClearModel() else onSelectModel(config)
                     }
+                }
+            }
+
+            private fun bindAiCore(isActive: Boolean) {
+                val status = AiCoreEnhancer.lastStatus
+                val isDownloading = aiCoreDownloading
+
+                tvStatus.text = when {
+                    isDownloading -> {
+                        if (aiCoreBytesTotal > 0) {
+                            val pct = ((aiCoreBytesDownloaded.toFloat() / aiCoreBytesTotal) * 100).toInt()
+                            val mb = aiCoreBytesDownloaded / (1024 * 1024)
+                            val totalMb = aiCoreBytesTotal / (1024 * 1024)
+                            "Downloading $pct%  ·  ${mb} MB / ${totalMb} MB"
+                        } else "Downloading…"
+                    }
+                    AiCoreEnhancer.isReady() -> {
+                        val backend = if (isActive) "  [aicore]" else ""
+                        "Ready · Gemini Nano · AI Core$backend"
+                    }
+                    status == FeatureStatus.UNAVAILABLE -> "Not available on this device"
+                    status == -1 -> "Checking availability…"
+                    else -> "Download required · tap Download to install Gemini Nano"
+                }
+
+                progressBar.visibility = if (isDownloading) View.VISIBLE else View.GONE
+                tvProgress.visibility  = View.GONE
+                if (isDownloading) {
+                    val pct = if (aiCoreBytesTotal > 0)
+                        ((aiCoreBytesDownloaded.toFloat() / aiCoreBytesTotal) * 100).toInt()
+                    else -1
+                    progressBar.isIndeterminate = pct < 0
+                    progressBar.max = 100
+                    progressBar.progress = pct.coerceIn(0, 100)
+                }
+
+                when {
+                    isDownloading -> {
+                        btnAction.visibility = View.VISIBLE
+                        btnAction.text = "Cancel"
+                        btnAction.backgroundTintList =
+                            android.content.res.ColorStateList.valueOf(0xFF333333.toInt())
+                        btnAction.setOnClickListener { onCancelAiCoreDownload() }
+                    }
+                    AiCoreEnhancer.isReady() || status == FeatureStatus.UNAVAILABLE || status == -1 -> {
+                        btnAction.visibility = View.GONE
+                    }
+                    else -> {
+                        // DOWNLOADABLE state
+                        btnAction.visibility = View.VISIBLE
+                        btnAction.text = "Download"
+                        btnAction.backgroundTintList =
+                            android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())
+                        btnAction.setTextColor(0xFF04130F.toInt())
+                        btnAction.setOnClickListener { onDownloadAiCore() }
+                    }
+                }
+
+                rbSelect.setOnClickListener {
+                    if (isActive) onClearModel() else onSelectModel(ModelRegistry.MODELS.first { it.isAiCore })
                 }
             }
         }
