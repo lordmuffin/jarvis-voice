@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
@@ -12,6 +14,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
@@ -42,6 +45,10 @@ class SettingsActivity : AppCompatActivity() {
     // Vault capture
     private lateinit var tvVaultFolder: TextView
 
+    // Overlay status
+    private lateinit var tvOverlayStatus: TextView
+    private lateinit var btnRestartOverlay: Button
+
     // Audio input device
     private lateinit var tvInputDevice: TextView
 
@@ -54,6 +61,10 @@ class SettingsActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
         supportActionBar?.title = "Jarvis Voice Settings"
+
+        tvOverlayStatus   = findViewById(R.id.tv_overlay_status)
+        btnRestartOverlay = findViewById(R.id.btn_restart_overlay)
+        btnRestartOverlay.setOnClickListener { restartOverlay() }
 
         offlineSwitch         = findViewById(R.id.switch_offline_stt)
         clipboardNotifySwitch = findViewById(R.id.switch_clipboard_notify)
@@ -176,11 +187,28 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        runCatching { refreshOverlayStatus() }
         runCatching { refreshStats() }
         runCatching { refreshLlmLabel() }
         runCatching { refreshSttLabel() }
         runCatching { refreshStorageLabel() }
         runCatching { refreshVaultFolderLabel() }
+    }
+
+    private fun refreshOverlayStatus() {
+        val running = VoiceOverlayService.instance != null
+        tvOverlayStatus.text = if (running) "● Running" else "○ Not running"
+        tvOverlayStatus.setTextColor(
+            getColor(if (running) R.color.jv_success else R.color.jv_error)
+        )
+        btnRestartOverlay.text = if (running) "Restart" else "Start"
+    }
+
+    private fun restartOverlay() {
+        stopService(Intent(this, VoiceOverlayService::class.java))
+        startForegroundService(Intent(this, VoiceOverlayService::class.java))
+        Toast.makeText(this, "Overlay restarting…", Toast.LENGTH_SHORT).show()
+        Handler(Looper.getMainLooper()).postDelayed({ runCatching { refreshOverlayStatus() } }, 600)
     }
 
     @Deprecated("Using deprecated API for compatibility with minSdk 24")
