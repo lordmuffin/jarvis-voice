@@ -88,7 +88,13 @@ object AiCoreEnhancer {
             val response = runBlocking { m.generateContent(prompt) }
             response.candidates.firstOrNull()?.text?.trim()?.ifBlank { rawTranscript } ?: rawTranscript
         } catch (e: Exception) {
-            DebugLog.e("AiCore", "enhance failed", e)
+            // BACKGROUND_USE_BLOCKED (ErrorCode 30) is expected when the overlay runs over
+            // another app — log as debug since the raw transcript is a valid fallback.
+            if (e.message?.contains("BACKGROUND_USE_BLOCKED") == true) {
+                DebugLog.d("AiCore", "enhance skipped — foreground required")
+            } else {
+                DebugLog.e("AiCore", "enhance failed", e)
+            }
             rawTranscript
         }
     }

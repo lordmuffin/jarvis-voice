@@ -28,12 +28,12 @@ object ModelRegistry {
         ModelConfig(
             id = "aicore",
             displayName = "Gemini Nano (AI Core)",
-            description = "NPU · System model · No download · Pixel 8+ / Android 14+",
+            description = "NPU · Foreground-only · No download · Pixel 8+ / Android 14+",
             fileSizeMb = 0,
             minRamGb = 0,
             downloadUrl = "",
             filename = "",
-            isDefault = true,
+            isDefault = false,
             isAiCore = true
         ),
         ModelConfig(
@@ -86,5 +86,5 @@ object ModelRegistry {
     )
 
     const val NO_LLM = "none"
-    val DEFAULT = MODELS.first { it.isDefault }
+    val DEFAULT = MODELS.firstOrNull { it.isDefault }
 }
