@@ -91,7 +91,7 @@ object AiCoreEnhancer {
             // BACKGROUND_USE_BLOCKED (ErrorCode 30) is expected when the overlay runs over
             // another app — log as debug since the raw transcript is a valid fallback.
             if (e.message?.contains("BACKGROUND_USE_BLOCKED") == true) {
-                DebugLog.d("AiCore", "enhance skipped — foreground required")
+                DebugLog.i("AiCore", "enhance skipped — foreground required (BACKGROUND_USE_BLOCKED)")
             } else {
                 DebugLog.e("AiCore", "enhance failed", e)
             }
