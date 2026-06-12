@@ -170,6 +170,22 @@ class VoiceOverlayService : Service() {
             DebugLog.i("LlmInit", "no active model (model=none)")
             return
         }
+
+        if (config.isAiCore) {
+            DebugLog.i("LlmInit", "active=aicore — initializing Android AI Core (Gemini Nano)")
+            Thread {
+                val ok = AiCoreEnhancer.initialize()
+                if (!ok) {
+                    Handler(Looper.getMainLooper()).post {
+                        Toast.makeText(this@VoiceOverlayService,
+                            "Gemini Nano not available — open device AI settings to check AI Core status.",
+                            Toast.LENGTH_LONG).show()
+                    }
+                }
+            }.start()
+            return
+        }
+
         val modelFile = llmMgr.modelFile(config)
         val installed = llmMgr.isInstalled(config)
         DebugLog.i("LlmInit", "active=${config.id} path=${modelFile.absolutePath} exists=${modelFile.exists()} size=${modelFile.length()} installed=$installed npuOnly=${config.npuOnly}")
@@ -185,7 +201,7 @@ class VoiceOverlayService : Service() {
             }
             if (!ok) {
                 val msg = if (npuOnly)
-                    "${config.displayName} requires NPU hardware — not available. Switch to a CPU model in Settings → LLM Model."
+                    "${config.displayName} requires NPU — not available on this device/OS. Switch to AI Core or a CPU model in Settings → LLM Model."
                 else
                     "${config.displayName} failed to load. Switch to another model in Settings → LLM Model."
                 Handler(Looper.getMainLooper()).post {
@@ -198,6 +214,7 @@ class VoiceOverlayService : Service() {
     fun reloadLlmModel() {
         LlmEnhancer.destroy()
         LlmEnhancer.clearCrashSentinel()
+        AiCoreEnhancer.destroy()
         loadLlmIfConfigured()
     }
 
@@ -399,24 +416,26 @@ class VoiceOverlayService : Service() {
         // ────────────────────────────────────────────────────────────────────────
 
         // LLM enhancement is blocking (seconds). Run on background thread, then rejoin main.
-        if (LlmEnhancer.isReady()) {
+        if (AiCoreEnhancer.isReady() || LlmEnhancer.isReady()) {
             Thread {
                 // ─── PASS 2 · YellowLab Enhancement ─────────────────────────────────
                 val tLlm = SystemClock.elapsedRealtime()
                 DebugLog.i("PASS2", "━━━ PASS 2 · YellowLab Enhancement ━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 DebugLog.i("PASS2", "  in   : \"${withDict.take(300)}${if (withDict.length > 300) "…" else ""}\"")
                 DebugLog.i("PASS2", "  inW  : ${pass1Words.size}  |  inC : ${withDict.length}")
-                val enhanced = LlmEnhancer.enhance(withDict)
+                val (enhanced, llmBackend) = when {
+                    AiCoreEnhancer.isReady() -> AiCoreEnhancer.enhance(withDict) to "aicore"
+                    else -> LlmEnhancer.enhance(withDict) to LlmEnhancer.activeBackend
+                }
                 val llmMs = SystemClock.elapsedRealtime() - tLlm
                 val pass2Words = enhanced.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
                 DebugLog.i("PASS2", "  out  : \"${enhanced.take(300)}${if (enhanced.length > 300) "…" else ""}\"")
                 DebugLog.i("PASS2", "  outW : ${pass2Words.size}  |  outC : ${enhanced.length}")
                 DebugLog.i("PASS2", "  ΔW   : ${pass2Words.size - pass1Words.size}  |  ΔC : ${enhanced.length - withDict.length}")
-                DebugLog.i("PASS2", "  llmMs: $llmMs ms")
+                DebugLog.i("PASS2", "  llmMs: $llmMs ms  backend: $llmBackend")
                 DebugLog.i("PASS2", "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
                 // ────────────────────────────────────────────────────────────────────
                 val modelName = LlmModelManager(this@VoiceOverlayService).getActiveConfig()?.displayName ?: ""
-                val llmBackend = LlmEnhancer.activeBackend
                 Handler(Looper.getMainLooper()).post { finalizeAndInject(withDict, enhanced, elapsedMs, modelName, llmMs, sttBackend, llmBackend) }
             }.start()
         } else {

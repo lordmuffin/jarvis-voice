@@ -213,19 +213,27 @@ class ModelManagerActivity : AppCompatActivity() {
 
                 // Primary action button
                 when {
+                    config.isAiCore -> {
+                        btnAction.visibility = View.GONE
+                        progressBar.visibility = View.GONE
+                        tvProgress.visibility = View.GONE
+                    }
                     isDownloading -> {
+                        btnAction.visibility = View.VISIBLE
                         btnAction.text = "Cancel"
                         btnAction.backgroundTintList =
                             android.content.res.ColorStateList.valueOf(0xFF333333.toInt())
                         btnAction.setOnClickListener { onCancelDownload(config) }
                     }
                     isInstalled -> {
+                        btnAction.visibility = View.VISIBLE
                         btnAction.text = if (isActive) "Remove" else "Delete"
                         btnAction.backgroundTintList =
                             android.content.res.ColorStateList.valueOf(0xFF442222.toInt())
                         btnAction.setOnClickListener { onDelete(config) }
                     }
                     else -> {
+                        btnAction.visibility = View.VISIBLE
                         btnAction.text = "Download"
                         btnAction.backgroundTintList =
                             android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())

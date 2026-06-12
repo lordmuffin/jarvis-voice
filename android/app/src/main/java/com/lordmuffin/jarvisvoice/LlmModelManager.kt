@@ -14,10 +14,14 @@ class LlmModelManager(private val context: Context) {
 
     fun modelFile(config: ModelConfig): File = File(modelsDir(), config.filename)
 
-    fun isInstalled(config: ModelConfig): Boolean = modelFile(config).let { it.exists() && it.length() > 0 }
+    fun isInstalled(config: ModelConfig): Boolean = when {
+        config.isAiCore -> true  // system model, always "installed"
+        else -> modelFile(config).let { it.exists() && it.length() > 0 }
+    }
 
     fun installedSizeMb(config: ModelConfig): Long =
-        if (isInstalled(config)) modelFile(config).length() / (1024 * 1024) else 0L
+        if (config.isAiCore || !isInstalled(config)) 0L
+        else modelFile(config).length() / (1024 * 1024)
 
     fun getActiveModelId(): String =
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
@@ -35,12 +39,14 @@ class LlmModelManager(private val context: Context) {
     }
 
     fun deleteModel(config: ModelConfig) {
+        if (config.isAiCore) return
         modelFile(config).delete()
         if (getActiveModelId() == config.id) setActiveModel(ModelRegistry.NO_LLM)
         DebugLog.i("LlmModelManager", "deleted ${config.id}")
     }
 
     fun getStatusLabel(config: ModelConfig): String = when {
+        config.isAiCore     -> "System model · Gemini Nano · AI Core"
         isInstalled(config) -> "Installed · ${installedSizeMb(config)} MB"
         else                -> "${config.fileSizeMb} MB download"
     }

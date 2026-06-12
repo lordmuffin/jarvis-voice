@@ -11,7 +11,9 @@ data class ModelConfig(
     val isDefault: Boolean = false,
     // NPU-compiled models have no standard LiteRT tensors — CPU/GPU backends will
     // always fail with "Input tensor not found". Only attempt NPU for these.
-    val npuOnly: Boolean = false
+    val npuOnly: Boolean = false,
+    // System-managed model via Android AI Core (Gemini Nano). No file to download or delete.
+    val isAiCore: Boolean = false
 )
 
 object ModelRegistry {
@@ -24,6 +26,17 @@ object ModelRegistry {
     // CPU models: universal fallback, run on any device.
     val MODELS = listOf(
         ModelConfig(
+            id = "aicore",
+            displayName = "Gemini Nano (AI Core)",
+            description = "NPU · System model · No download · Pixel 8+ / Android 14+",
+            fileSizeMb = 0,
+            minRamGb = 0,
+            downloadUrl = "",
+            filename = "",
+            isDefault = true,
+            isAiCore = true
+        ),
+        ModelConfig(
             id = "gemma4-e2b-tensor-g5",
             displayName = "Gemma 4 E2B (Tensor G5)",
             description = "NPU · QAT optimized · 3.95 GB download · 4 GB RAM · Pixel 9+",
@@ -31,7 +44,7 @@ object ModelRegistry {
             minRamGb = 4,
             downloadUrl = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it_Google_Tensor_G5.litertlm",
             filename = "gemma4-e2b-tensor-g5.litertlm",
-            isDefault = true,
+            isDefault = false,
             npuOnly = true
         ),
         ModelConfig(

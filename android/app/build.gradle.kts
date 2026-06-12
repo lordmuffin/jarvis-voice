@@ -16,8 +16,8 @@ android {
         applicationId = "com.lordmuffin.jarvisvoice"
         minSdk = 24
         targetSdk = 34
-        versionCode = 31
-        versionName = "1.1.29"
+        versionCode = 32
+        versionName = "1.1.30"
         buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
     }
 
@@ -73,4 +73,5 @@ dependencies {
     implementation(libs.litertlm.android)
     implementation(libs.androidx.documentfile)
     implementation(libs.okhttp)
+    implementation(libs.mlkit.genai.prompt)
 }
