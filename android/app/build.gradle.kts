@@ -14,7 +14,7 @@ android {
 
     defaultConfig {
         applicationId = "com.lordmuffin.jarvisvoice"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 32
         versionName = "1.1.30"
