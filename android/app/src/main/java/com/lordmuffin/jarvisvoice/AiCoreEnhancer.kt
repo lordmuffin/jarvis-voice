@@ -1,26 +1,31 @@
 package com.lordmuffin.jarvisvoice
 
 import android.os.Build
+import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
 import com.google.mlkit.genai.prompt.Generation
 import com.google.mlkit.genai.prompt.GenerativeModel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.runBlocking
 
 /**
  * On-device LLM enhancement via Android AI Core (Gemini Nano).
  *
  * Uses the ML Kit GenAI Prompt API to run Gemini Nano through the OS-managed AI Core service.
- * No model file download — the model is installed and managed by the system.
+ * No model file — the model is installed and managed by the system.
  *
- * Requires Android 14+ (API 34) and a compatible device (Pixel 8+ / other AI Core-capable hardware).
- * Returns the raw transcript unchanged on any failure so the caller always gets usable output.
- *
- * initialize() and enhance() are both blocking — call from a background thread.
+ * Requires Android 14+ (API 34). Returns the raw transcript unchanged on any failure.
+ * initialize() and enhance() are blocking — call from a background thread.
  */
 object AiCoreEnhancer {
 
     private var model: GenerativeModel? = null
     @Volatile private var ready = false
+
+    // Last status from checkStatus() — exposed so the UI can show Download/Ready/Unavailable.
+    // -1 = not checked yet, otherwise a FeatureStatus int constant.
+    @Volatile var lastStatus: Int = -1
+        private set
 
     fun isReady(): Boolean = ready && model != null
 
@@ -30,29 +35,47 @@ object AiCoreEnhancer {
             return false
         }
         return try {
-            val m = Generation.getClient()
+            // Re-use existing model object when already created (e.g. after download completes).
+            val m = model ?: Generation.getClient().also { model = it }
             val status = runBlocking { m.checkStatus() }
+            lastStatus = status
             when (status) {
                 FeatureStatus.AVAILABLE -> {
-                    model = m
                     ready = true
                     DebugLog.i("AiCore", "Gemini Nano ready")
                     true
                 }
                 FeatureStatus.UNAVAILABLE -> {
                     DebugLog.w("AiCore", "Gemini Nano unavailable on this device")
+                    ready = false
                     try { m.close() } catch (_: Exception) {}
+                    model = null
                     false
                 }
                 else -> {
-                    DebugLog.i("AiCore", "Gemini Nano not yet downloaded (status=$status) — open device AI settings to download")
-                    try { m.close() } catch (_: Exception) {}
+                    // DOWNLOADABLE or DOWNLOADING — keep model alive so downloadFlow() works.
+                    DebugLog.i("AiCore", "Gemini Nano not yet downloaded (status=$status)")
+                    ready = false
                     false
                 }
             }
         } catch (e: Exception) {
             DebugLog.e("AiCore", "initialization failed", e)
             false
+        }
+    }
+
+    /**
+     * Returns a Flow that drives the Gemini Nano download. Collect on a coroutine scope.
+     * After DownloadCompleted, call initialize() again — status will be AVAILABLE.
+     */
+    fun downloadFlow(): Flow<DownloadStatus>? {
+        return try {
+            val m = model ?: Generation.getClient().also { model = it }
+            m.download()
+        } catch (e: Exception) {
+            DebugLog.e("AiCore", "downloadFlow() failed", e)
+            null
         }
     }
 
@@ -74,5 +97,6 @@ object AiCoreEnhancer {
         try { model?.close() } catch (_: Exception) {}
         model = null
         ready = false
+        lastStatus = -1
     }
 }

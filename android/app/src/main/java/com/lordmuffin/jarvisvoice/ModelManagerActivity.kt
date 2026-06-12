@@ -25,6 +25,7 @@ import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -135,7 +136,7 @@ class ModelManagerActivity : AppCompatActivity() {
         var totalBytes = 0L
         aiCoreDownloadJob = lifecycleScope.launch {
             try {
-                val flow = withContext(Dispatchers.IO) { AiCoreEnhancer.downloadFlow() }
+                val flow: Flow<DownloadStatus>? = withContext(Dispatchers.IO) { AiCoreEnhancer.downloadFlow() }
                 if (flow == null) {
                     adapter.setAiCoreDownloading(false)
                     Toast.makeText(this@ModelManagerActivity,
