@@ -43,6 +43,7 @@ class VoiceOverlayService : Service() {
         const val CHANNEL_TRANSCRIPT_ID   = "jarvis_transcript"
         const val NOTIF_ID                = 1
         const val NOTIF_TRANSCRIPT_ID     = 2
+        const val NOTIF_RESTORE_ID        = 3
         const val ACTION_OPEN_SETTINGS    = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
         const val PREF_FILE               = "jarvis_prefs"
         const val KEY_CLIPBOARD_NOTIFY    = "clipboard_notify"
@@ -140,6 +141,7 @@ class VoiceOverlayService : Service() {
             }
         } catch (e: SecurityException) {
             DebugLog.e("Service", "startForeground blocked — not in eligible state, stopping", e)
+            postRestoreNotification()
             stopSelf()
             return
         }
@@ -552,6 +554,24 @@ class VoiceOverlayService : Service() {
             .setAutoCancel(true)
             .build()
         getSystemService(NotificationManager::class.java).notify(NOTIF_TRANSCRIPT_ID, notif)
+    }
+
+    private fun postRestoreNotification() {
+        val pi = PendingIntent.getActivity(
+            this, 0,
+            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        val nm = getSystemService(NotificationManager::class.java)
+        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Jarvis Voice stopped")
+            .setContentText("Tap to restart the dictation overlay")
+            .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+        nm.notify(NOTIF_RESTORE_ID, notif)
     }
 
     private fun buildNotification(): Notification {
