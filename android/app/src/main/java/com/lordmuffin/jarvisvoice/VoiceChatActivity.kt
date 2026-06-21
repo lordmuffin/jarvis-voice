@@ -3,8 +3,9 @@ package com.lordmuffin.jarvisvoice
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.FrameLayout
@@ -23,7 +24,6 @@ import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -38,8 +38,14 @@ class VoiceChatActivity : AppCompatActivity() {
 
     private val adapter = MessageAdapter()
     private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private var engine: SpeechEngine? = null
+
+    // Tracks whether we're in continuous conversation mode.
+    // When true, mic auto-restarts after each assistant response.
+    private var conversationActive = false
+    private var prevStatus = ChatStatus.IDLE
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -60,11 +66,12 @@ class VoiceChatActivity : AppCompatActivity() {
         viewModel = ViewModelProvider(this)[VoiceChatViewModel::class.java]
 
         observeViewModel()
-        wireTalkButton()
+        btnTalk.setOnClickListener { onTalkTapped() }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        conversationActive = false
         uiScope.cancel()
         engine?.destroy()
         engine = null
@@ -91,54 +98,89 @@ class VoiceChatActivity : AppCompatActivity() {
         }
         uiScope.launch {
             viewModel.status.collect { status ->
+                updateTalkButton(status)
                 tvStatus.text = when (status) {
-                    ChatStatus.IDLE      -> ""
+                    ChatStatus.IDLE      -> if (conversationActive) "" else ""
                     ChatStatus.LISTENING -> "Listening…"
                     ChatStatus.THINKING  -> "Thinking…"
                     ChatStatus.SPEAKING  -> "Speaking…"
                 }
-                btnTalk.isEnabled = status == ChatStatus.IDLE || status == ChatStatus.LISTENING
-                btnTalk.alpha = if (status == ChatStatus.LISTENING) 0.6f else 1.0f
+
+                // Auto-restart mic after assistant finishes speaking
+                if (prevStatus == ChatStatus.SPEAKING && status == ChatStatus.IDLE && conversationActive) {
+                    mainHandler.postDelayed({ startListening() }, 300)
+                }
+                prevStatus = status
             }
         }
     }
 
-    // ── Push-to-talk ──────────────────────────────────────────────────────────
-
-    private fun wireTalkButton() {
-        btnTalk.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        startListening()
-                    } else {
-                        requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> stopListening()
+    private fun updateTalkButton(status: ChatStatus) {
+        when (status) {
+            ChatStatus.IDLE -> {
+                btnTalk.text = "🎙  Tap to Talk"
+                btnTalk.alpha = 1.0f
+                btnTalk.isEnabled = true
             }
-            true
+            ChatStatus.LISTENING -> {
+                btnTalk.text = "⏹  Tap to Send"
+                btnTalk.alpha = 1.0f
+                btnTalk.isEnabled = true
+            }
+            ChatStatus.THINKING -> {
+                btnTalk.text = "⏳  Thinking…"
+                btnTalk.alpha = 0.6f
+                btnTalk.isEnabled = true  // allow tap to cancel
+            }
+            ChatStatus.SPEAKING -> {
+                btnTalk.text = "🔊  Speaking…  (tap to stop)"
+                btnTalk.alpha = 0.8f
+                btnTalk.isEnabled = true  // allow tap to interrupt
+            }
+        }
+    }
+
+    // ── Tap handler ───────────────────────────────────────────────────────────
+
+    private fun onTalkTapped() {
+        when (viewModel.status.value) {
+            ChatStatus.IDLE -> {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    startListening()
+                } else {
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+                }
+            }
+            ChatStatus.LISTENING -> {
+                // Commit what was heard
+                engine?.stopListening()
+            }
+            ChatStatus.THINKING, ChatStatus.SPEAKING -> {
+                // Interrupt and go back to IDLE (no auto-restart)
+                conversationActive = false
+                viewModel.cancelActive()
+            }
         }
     }
 
     private fun startListening() {
-        viewModel.cancelActive()
-        viewModel.setStatus(ChatStatus.LISTENING)
+        conversationActive = true
         if (engine == null) engine = SpeechEngineFactory.create(this)
+        viewModel.setStatus(ChatStatus.LISTENING)
         engine?.startListening(
             holdMode  = true,
-            onPartial = { /* could show in tvStatus */ },
+            onPartial = { },
             onFinal   = { text ->
-                if (text.isNotBlank()) viewModel.sendText(text)
-                else viewModel.setStatus(ChatStatus.IDLE)
+                if (text.isNotBlank()) {
+                    viewModel.sendText(text)
+                } else {
+                    // Nothing heard — back to IDLE, auto-restart will fire
+                    viewModel.setStatus(ChatStatus.IDLE)
+                }
             },
             onError   = { viewModel.setStatus(ChatStatus.IDLE) }
         )
-    }
-
-    private fun stopListening() {
-        engine?.stopListening()
     }
 
     // ── Permission ────────────────────────────────────────────────────────────

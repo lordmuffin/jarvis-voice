@@ -31,7 +31,8 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/Theme.JarvisVoice"
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <!-- System libraries required for hardware acceleration backends.
              Android 12+ (API 32+) restricts loading non-SDK native libraries; apps must

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext HTTP to homelab LAN services (LiteLLM + Kokoro TTS).
+         These IPs are LAN-only and never route to the internet. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">192.168.1.93</domain>
+        <domain includeSubdomains="false">192.168.1.43</domain>
+    </domain-config>
+</network-security-config>
