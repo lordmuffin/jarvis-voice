@@ -15,6 +15,10 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
 
     companion object {
         private const val CONFIDENCE_THRESHOLD = 0.65f
+        private const val SILENCE_TIMEOUT_MS   = 10_000L
+        // When holdMode=true, pass a large silence window so the recognizer never
+        // auto-terminates on a pause. The user stops explicitly via stopListening().
+        private const val SILENCE_HOLDMODE_MS  = 5 * 60 * 1000L  // 5 min
     }
 
     private var recognizer: SpeechRecognizer? = null
@@ -24,8 +28,8 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
     private var onErrorCallback: ((Int) -> Unit)? = null
     private val deviceRouter = AudioDeviceRouter(context)
     private var scoStarted = false
+    private var holdModeActive = false
 
-    private val silenceTimeoutMs = 10_000L
     private val silenceRunnable = Runnable {
         recognizer?.stopListening()
     }
@@ -53,6 +57,7 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
         onPartialCallback = onPartial
         onFinalCallback = onFinal
         onErrorCallback = onError
+        holdModeActive = holdMode
 
         // Start Bluetooth SCO if user selected a Bluetooth input device
         val preferredDevice = deviceRouter.getPreferredDevice()
@@ -62,6 +67,9 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
             DebugLog.i("AndroidSTT", "Bluetooth SCO started for ${deviceRouter.deviceLabel(preferredDevice)}")
         }
 
+        val silenceMs = if (holdMode) SILENCE_HOLDMODE_MS else SILENCE_TIMEOUT_MS
+        DebugLog.i("AndroidSTT", "startListening holdMode=$holdMode silenceMs=$silenceMs")
+
         mainHandler.post {
             if (recognizer == null) createRecognizer()
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -69,16 +77,19 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
                 putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
                 putExtra(
                     RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
-                    silenceTimeoutMs
+                    silenceMs
                 )
                 putExtra(
                     RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
-                    silenceTimeoutMs
+                    silenceMs
                 )
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
             recognizer?.startListening(intent)
-            mainHandler.postDelayed(silenceRunnable, silenceTimeoutMs + 2000)
+            // In holdMode, don't post the fallback watchdog — the user stops explicitly.
+            if (!holdMode) {
+                mainHandler.postDelayed(silenceRunnable, silenceMs + 2000)
+            }
         }
     }
 
