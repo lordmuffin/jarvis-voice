@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/jv_bg">
+
+    <!-- Conversation list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_messages"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="148dp"
+        android:clipToPadding="false"
+        android:paddingTop="12dp"
+        android:paddingBottom="8dp" />
+
+    <!-- Controls pinned above bottom nav -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="64dp"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp"
+        android:background="@color/jv_bg">
+
+        <!-- Streaming preview (visible while assistant responds) -->
+        <TextView
+            android:id="@+id/tv_streaming"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxLines="3"
+            android:ellipsize="end"
+            android:textSize="13sp"
+            android:textColor="@color/jv_accent"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="6dp"
+            android:visibility="gone" />
+
+        <!-- Status label -->
+        <TextView
+            android:id="@+id/tv_chat_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:textSize="11sp"
+            android:textColor="@color/jv_text2"
+            android:layout_marginBottom="6dp" />
+
+        <!-- Push-to-talk pill -->
+        <Button
+            android:id="@+id/btn_talk"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:background="@drawable/pill_background_accent"
+            android:text="🎙  Hold to Talk"
+            android:textColor="@color/jv_text"
+            android:textSize="16sp"
+            android:stateListAnimator="@null" />
+
+    </LinearLayout>
+
+    <include
+        layout="@layout/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
+
+</FrameLayout>
