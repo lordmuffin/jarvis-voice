@@ -208,7 +208,7 @@ class VaultCaptureActivity : AppCompatActivity() {
         applyState(State.RECORDING)
 
         engine?.startListening(
-            holdMode  = false,
+            holdMode  = true,   // user stops explicitly via the stop button
             onPartial = { partial ->
                 mainHandler.post {
                     tvInterim.text = partial
