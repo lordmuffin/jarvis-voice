@@ -20,8 +20,13 @@ import java.util.concurrent.TimeUnit
 
 private const val LLM_BASE      = "http://192.168.1.93:4000"
 private const val DEFAULT_MODEL  = "local-default"
+
+// /no_think disables Qwen3's chain-of-thought output so the model
+// replies directly without showing its reasoning process.
 private const val SYSTEM_PROMPT  =
-    "You are Kai, Andrew's AI chief of staff. Be concise and direct."
+    "/no_think\n\nYou are Kai, Andrew's AI chief of staff. " +
+    "Reply in 1-3 sentences or a short list — nothing more. " +
+    "No preamble, no thinking steps, no analysis. Answer directly."
 
 class LlmRepository {
 
@@ -44,6 +49,8 @@ class LlmRepository {
             .put("model", model)
             .put("messages", messages)
             .put("stream", true)
+            // Disable Qwen3 chain-of-thought at the vLLM chat template level
+            .put("chat_template_kwargs", JSONObject().put("enable_thinking", false))
             .toString()
             .toRequestBody("application/json".toMediaType())
 
