@@ -71,21 +71,25 @@ class VoiceChatActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        // Stop listening immediately when backgrounded — mic should never
-        // stay open when the Chat tab isn't visible.
+        // Stop the mic immediately — mic must not stay open when off-screen.
+        // Do NOT cancel TTS/LLM here: screen auto-dim triggers onPause and
+        // would cut off audio mid-sentence. TTS cancellation happens in onStop.
+        conversationActive = false
+        if (viewModel.status.value == ChatStatus.LISTENING) {
+            engine?.stopListening()
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Activity is now fully hidden — cancel in-flight LLM/TTS jobs and
+        // destroy the SpeechEngine to free Whisper model weights (~300MB).
+        // Engine is recreated lazily on the next tap (startListening).
         conversationActive = false
         if (viewModel.status.value == ChatStatus.LISTENING) {
             engine?.stopListening()
         }
         viewModel.cancelActive()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        // Destroy the SpeechEngine to free Whisper model weights from memory.
-        // SherpaOnnxSpeechEngine holds ~300MB; leaving it loaded while another
-        // tab or the overlay is active causes OOM pressure and sustained CPU heat.
-        // Engine is recreated lazily on the next tap (startListening).
         engine?.destroy()
         engine = null
     }
