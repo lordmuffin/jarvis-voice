@@ -17,6 +17,7 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "→ Syncing source to ${REMOTE_ROOT}"
 sudo mkdir -p "${REMOTE_ROOT}/src"
+sudo chown -R "$(id -u):$(id -g)" "${REMOTE_ROOT}"
 rsync -avz --delete \
     --exclude '__pycache__' --exclude '*.pyc' \
     "${REPO}/src/" "${REMOTE_ROOT}/src/"
