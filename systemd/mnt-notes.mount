@@ -1,0 +1,13 @@
+[Unit]
+Description=SSHFS vault mount — GamingPC:/home/lordmuffin/Notes → /mnt/notes
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=lordmuffin@192.168.1.183:/home/lordmuffin/Notes
+Where=/mnt/notes
+Type=fuse.sshfs
+Options=allow_other,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,IdentityFile=/home/lordmuffin/.ssh/id_ed25519,_netdev
+
+[Install]
+WantedBy=multi-user.target
