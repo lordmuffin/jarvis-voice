@@ -15,7 +15,7 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
 
     companion object {
         private const val CONFIDENCE_THRESHOLD = 0.65f
-        private const val SILENCE_TIMEOUT_MS   = 10_000L
+        private const val SILENCE_TIMEOUT_MS   = 2_500L
         // When holdMode=true, pass a large silence window so the recognizer never
         // auto-terminates on a pause. The user stops explicitly via stopListening().
         private const val SILENCE_HOLDMODE_MS  = 5 * 60 * 1000L  // 5 min

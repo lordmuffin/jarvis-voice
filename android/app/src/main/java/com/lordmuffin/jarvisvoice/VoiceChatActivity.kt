@@ -38,7 +38,6 @@ class VoiceChatActivity : AppCompatActivity() {
 
     private lateinit var viewModel: VoiceChatViewModel
 
-    // UI refs
     private lateinit var rvMessages:   RecyclerView
     private lateinit var tvStreaming:  TextView
     private lateinit var tvStatus:     TextView
@@ -55,9 +54,17 @@ class VoiceChatActivity : AppCompatActivity() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var engine: SpeechEngine? = null
+    private var voiceMode = true
 
-    private var voiceMode = true          // true = voice input, false = text input
-    private var conversationActive = false
+    // true while the conversation loop is running. Mic auto-restarts after
+    // each assistant response until the user taps "End Conversation".
+    @Volatile private var conversationActive = false
+
+    // Set before calling stopListening() when the user explicitly stops the
+    // conversation mid-utterance. Prevents onFinal from sending the partial
+    // speech to the LLM.
+    @Volatile private var discardNextResult = false
+
     private var prevStatus = ChatStatus.IDLE
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -92,12 +99,10 @@ class VoiceChatActivity : AppCompatActivity() {
         btnTalk.setOnClickListener      { onTalkTapped() }
         btnSendText.setOnClickListener  { sendTypedMessage() }
 
-        // IME "send" action from soft keyboard also triggers send
         etMessage.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEND ||
                 (event?.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)) {
-                sendTypedMessage()
-                true
+                sendTypedMessage(); true
             } else false
         }
 
@@ -106,14 +111,12 @@ class VoiceChatActivity : AppCompatActivity() {
 
     override fun onPause() {
         super.onPause()
-        conversationActive = false
-        if (viewModel.status.value == ChatStatus.LISTENING) engine?.stopListening()
+        if (conversationActive) stopConversation()
     }
 
     override fun onStop() {
         super.onStop()
-        conversationActive = false
-        if (viewModel.status.value == ChatStatus.LISTENING) engine?.stopListening()
+        stopConversation()
         viewModel.cancelActive()
         engine?.destroy()
         engine = null
@@ -121,23 +124,85 @@ class VoiceChatActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        conversationActive = false
         uiScope.cancel()
         engine?.destroy()
         engine = null
+    }
+
+    // ── Conversation control ──────────────────────────────────────────────────
+
+    private fun onTalkTapped() {
+        if (!conversationActive) {
+            // OFF → ON: start the conversation loop
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED) {
+                startConversation()
+            } else {
+                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+            }
+        } else {
+            // ON → OFF: stop everything cleanly
+            stopConversation()
+            viewModel.cancelActive()
+        }
+    }
+
+    private fun startConversation() {
+        conversationActive = true
+        discardNextResult = false
+        updateTalkButton()
+        startListening()
+    }
+
+    private fun stopConversation() {
+        conversationActive = false
+        mainHandler.removeCallbacksAndMessages(null)
+        // If currently listening, signal onFinal to discard its result before
+        // stopping the engine — otherwise stopListening() fires onFinal which
+        // sends the partial utterance to the LLM.
+        if (viewModel.status.value == ChatStatus.LISTENING) {
+            discardNextResult = true
+            engine?.stopListening()
+        }
+        viewModel.setStatus(ChatStatus.IDLE)
+        updateTalkButton()
+    }
+
+    private fun startListening() {
+        if (!conversationActive) return
+        if (engine == null) engine = SpeechEngineFactory.create(this)
+        viewModel.setStatus(ChatStatus.LISTENING)
+
+        // holdMode=false: silence auto-fires onFinal.
+        // SherpaOnnx fires after 1.5s of silence; AndroidSTT after 2.5s.
+        engine?.startListening(
+            holdMode  = false,
+            onPartial = { },
+            onFinal   = { text ->
+                val discard = discardNextResult
+                discardNextResult = false
+                when {
+                    discard        -> viewModel.setStatus(ChatStatus.IDLE)
+                    text.isNotBlank() -> viewModel.sendText(text)
+                    else -> {
+                        // Silence / low-confidence — stay in loop, restart mic
+                        viewModel.setStatus(ChatStatus.IDLE)
+                        if (conversationActive) mainHandler.postDelayed({ startListening() }, 300)
+                    }
+                }
+            },
+            onError = {
+                viewModel.setStatus(ChatStatus.IDLE)
+                if (conversationActive) mainHandler.postDelayed({ startListening() }, 500)
+            }
+        )
     }
 
     // ── Mode toggle ───────────────────────────────────────────────────────────
 
     private fun setVoiceMode(voice: Boolean) {
         voiceMode = voice
-
-        // Cancel any active voice turn when switching to type mode
-        if (!voice && viewModel.status.value != ChatStatus.IDLE) {
-            conversationActive = false
-            viewModel.cancelActive()
-        }
-
+        if (!voice && conversationActive) stopConversation()
         applyModeUi()
     }
 
@@ -147,7 +212,7 @@ class VoiceChatActivity : AppCompatActivity() {
             btnModeVoice.setTextColor(getColor(R.color.jv_text))
             btnModeType.setBackgroundResource(R.drawable.pill_background_dim)
             btnModeType.setTextColor(getColor(R.color.jv_text2))
-            btnTalk.visibility    = View.VISIBLE
+            btnTalk.visibility     = View.VISIBLE
             llTypeInput.visibility = View.GONE
             dismissKeyboard()
         } else {
@@ -155,7 +220,7 @@ class VoiceChatActivity : AppCompatActivity() {
             btnModeType.setTextColor(getColor(R.color.jv_text))
             btnModeVoice.setBackgroundResource(R.drawable.pill_background_dim)
             btnModeVoice.setTextColor(getColor(R.color.jv_text2))
-            btnTalk.visibility    = View.GONE
+            btnTalk.visibility     = View.GONE
             llTypeInput.visibility = View.VISIBLE
         }
     }
@@ -171,12 +236,9 @@ class VoiceChatActivity : AppCompatActivity() {
     private fun showModelMenu() {
         val models = viewModel.availableModels.value
         if (models.isEmpty()) return
-
         val popup = PopupMenu(this, btnModel)
         models.forEachIndexed { i, name ->
-            val item = popup.menu.add(0, i, i, name)
-            // Checkmark the currently selected model
-            item.isChecked = (name == viewModel.selectedModel.value)
+            popup.menu.add(0, i, i, name).isChecked = (name == viewModel.selectedModel.value)
         }
         popup.setOnMenuItemClickListener { item ->
             val selected = models[item.itemId]
@@ -188,7 +250,6 @@ class VoiceChatActivity : AppCompatActivity() {
     }
 
     private fun updateModelButton(model: String) {
-        // Truncate long model names to keep the button compact
         val label = if (model.length > 14) model.take(13) + "…" else model
         btnModel.text = "$label ▾"
     }
@@ -204,112 +265,46 @@ class VoiceChatActivity : AppCompatActivity() {
         }
         uiScope.launch {
             viewModel.streamingText.collect { text ->
-                if (text.isEmpty()) {
-                    tvStreaming.visibility = View.GONE
-                } else {
-                    tvStreaming.text = text
-                    tvStreaming.visibility = View.VISIBLE
-                }
+                tvStreaming.text = text
+                tvStreaming.visibility = if (text.isEmpty()) View.GONE else View.VISIBLE
             }
         }
         uiScope.launch {
             viewModel.status.collect { status ->
-                if (voiceMode) updateTalkButton(status)
                 tvStatus.text = when (status) {
                     ChatStatus.IDLE      -> ""
                     ChatStatus.LISTENING -> "Listening…"
                     ChatStatus.THINKING  -> "Thinking…"
                     ChatStatus.SPEAKING  -> "Speaking…"
                 }
-                // Auto-restart mic after speaking. 600ms lets the speaker ring
-                // down before the mic opens so TTS echo isn't captured.
-                if (prevStatus == ChatStatus.SPEAKING && status == ChatStatus.IDLE
-                        && conversationActive && voiceMode) {
+
+                // Auto-restart mic after TTS finishes. 600ms lets the speaker
+                // ring down so the mic doesn't capture TTS echo.
+                if (prevStatus == ChatStatus.SPEAKING
+                        && status == ChatStatus.IDLE
+                        && conversationActive
+                        && voiceMode) {
                     mainHandler.postDelayed({ startListening() }, 600)
                 }
                 prevStatus = status
             }
         }
         uiScope.launch {
-            viewModel.selectedModel.collect { model ->
-                updateModelButton(model)
-            }
+            viewModel.selectedModel.collect { updateModelButton(it) }
         }
     }
 
-    private fun updateTalkButton(status: ChatStatus) {
-        when (status) {
-            ChatStatus.IDLE -> {
-                btnTalk.text  = "🎙  Start Talking"
-                btnTalk.alpha = 1.0f
-                btnTalk.isEnabled = true
-            }
-            ChatStatus.LISTENING -> {
-                btnTalk.text  = "⏹  Tap to Cancel"
-                btnTalk.alpha = 1.0f
-                btnTalk.isEnabled = true
-            }
-            ChatStatus.THINKING -> {
-                btnTalk.text  = "⏳  Processing…  (tap to stop)"
-                btnTalk.alpha = 0.75f
-                btnTalk.isEnabled = true
-            }
-            ChatStatus.SPEAKING -> {
-                btnTalk.text  = "🔊  Speaking…  (tap to stop)"
-                btnTalk.alpha = 0.85f
-                btnTalk.isEnabled = true
-            }
+    private fun updateTalkButton() {
+        if (conversationActive) {
+            btnTalk.setBackgroundResource(R.drawable.pill_background_stop)
+            btnTalk.text  = "⏹  End Conversation"
+            btnTalk.alpha = 1.0f
+        } else {
+            btnTalk.setBackgroundResource(R.drawable.pill_background_accent)
+            btnTalk.text  = "🎙  Talk to Kai"
+            btnTalk.alpha = 1.0f
         }
-    }
-
-    // ── Voice input ───────────────────────────────────────────────────────────
-
-    private fun onTalkTapped() {
-        when (viewModel.status.value) {
-            ChatStatus.IDLE -> {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                        == PackageManager.PERMISSION_GRANTED) {
-                    startListening()
-                } else {
-                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
-                }
-            }
-            ChatStatus.LISTENING -> {
-                // User changed mind — cancel without sending
-                conversationActive = false
-                viewModel.setStatus(ChatStatus.IDLE)
-                engine?.stopListening()
-            }
-            ChatStatus.THINKING, ChatStatus.SPEAKING -> {
-                conversationActive = false
-                viewModel.cancelActive()
-            }
-        }
-    }
-
-    private fun startListening() {
-        conversationActive = true
-        if (engine == null) engine = SpeechEngineFactory.create(this)
-        viewModel.setStatus(ChatStatus.LISTENING)
-
-        // holdMode=false: silence auto-fires onFinal (SherpaOnnx: 1.5s; AndroidSTT: 10s).
-        // No "Tap to Send" needed — the conversation loop runs hands-free.
-        engine?.startListening(
-            holdMode  = false,
-            onPartial = { },
-            onFinal   = { text ->
-                if (text.isNotBlank()) {
-                    viewModel.sendText(text)
-                } else {
-                    viewModel.setStatus(ChatStatus.IDLE)
-                    if (conversationActive) mainHandler.postDelayed({ startListening() }, 300)
-                }
-            },
-            onError   = {
-                viewModel.setStatus(ChatStatus.IDLE)
-                if (conversationActive) mainHandler.postDelayed({ startListening() }, 500)
-            }
-        )
+        btnTalk.isEnabled = true
     }
 
     // ── Text input ────────────────────────────────────────────────────────────
@@ -325,40 +320,27 @@ class VoiceChatActivity : AppCompatActivity() {
     // ── Permission ────────────────────────────────────────────────────────────
 
     override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQ_MIC && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED)
-            startListening()
+            startConversation()
     }
 
-    // ── RecyclerView adapter ──────────────────────────────────────────────────
+    // ── RecyclerView ──────────────────────────────────────────────────────────
 
     private inner class MessageAdapter : RecyclerView.Adapter<MessageViewHolder>() {
         private var items: List<ConversationMessage> = emptyList()
-
-        fun update(newItems: List<ConversationMessage>) {
-            items = newItems
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-            val view = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_chat_message, parent, false)
-            return MessageViewHolder(view)
-        }
-
-        override fun onBindViewHolder(holder: MessageViewHolder, position: Int) =
-            holder.bind(items[position])
-
+        fun update(newItems: List<ConversationMessage>) { items = newItems; notifyDataSetChanged() }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+            MessageViewHolder(LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_chat_message, parent, false))
+        override fun onBindViewHolder(h: MessageViewHolder, pos: Int) = h.bind(items[pos])
         override fun getItemCount() = items.size
     }
 
     private inner class MessageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvMsg: TextView = view.findViewById(R.id.tv_message)
-
         fun bind(msg: ConversationMessage) {
             tvMsg.text = msg.content
             val lp = tvMsg.layoutParams as FrameLayout.LayoutParams
@@ -375,7 +357,5 @@ class VoiceChatActivity : AppCompatActivity() {
         }
     }
 
-    companion object {
-        private const val REQ_MIC = 55
-    }
+    companion object { private const val REQ_MIC = 55 }
 }
