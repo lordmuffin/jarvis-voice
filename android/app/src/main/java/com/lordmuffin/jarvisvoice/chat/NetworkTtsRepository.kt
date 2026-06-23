@@ -41,6 +41,7 @@ class NetworkTtsRepository(
             put("model", "kokoro")
             put("input", text)
             put("voice", voice)
+            put("response_format", "wav")
         }.toString().toRequestBody("application/json".toMediaType())
 
         val req = Request.Builder()
