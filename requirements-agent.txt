@@ -9,3 +9,4 @@ faster-whisper>=1.0.0
 # Capture API (jarvis_voice.capture_api)
 fastapi>=0.110.0
 uvicorn>=0.29.0
+python-multipart>=0.0.9
