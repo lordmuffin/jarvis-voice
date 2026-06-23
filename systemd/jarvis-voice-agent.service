@@ -1,0 +1,19 @@
+[Unit]
+Description=Kai LiveKit Voice Agent (vault tools + barge-in)
+After=network-online.target mnt-notes.automount
+Wants=mnt-notes.automount
+PartOf=mnt-notes.automount
+
+[Service]
+Type=simple
+User=lordmuffin
+WorkingDirectory=/opt/jarvis-voice/src
+EnvironmentFile=/home/lordmuffin/.jarvis-agent.env
+ExecStart=/home/lordmuffin/.agent-venv/bin/python -m jarvis_voice.livekit_agent start
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

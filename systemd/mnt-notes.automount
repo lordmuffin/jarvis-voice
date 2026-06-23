@@ -1,0 +1,10 @@
+[Unit]
+Description=SSHFS vault automount
+After=network-online.target
+
+[Automount]
+Where=/mnt/notes
+TimeoutIdleSec=0
+
+[Install]
+WantedBy=multi-user.target
