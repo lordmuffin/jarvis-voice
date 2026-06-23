@@ -31,6 +31,10 @@ from jarvis_voice.vault import VAULT_INBOX, voice_note_basename, write_voice_not
 
 log = logging.getLogger(__name__)
 
+# Default API key — matches DEFAULT_VAULT_KEY in VoiceChatViewModel.kt.
+# Override with JARVIS_CAPTURE_KEY env var to rotate the key on both sides.
+_DEFAULT_API_KEY = "0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo"
+
 # Vault root — two levels up from the Voice Notes inbox subfolder.
 # Override with VAULT_ROOT env var if the directory layout differs.
 VAULT_ROOT = pathlib.Path(
@@ -90,8 +94,8 @@ class VoiceCapture(BaseModel):
 
 
 def verify_key(x_jarvis_key: str = Header(...)) -> str:
-    expected = os.environ.get("JARVIS_CAPTURE_KEY", "")
-    if not expected or x_jarvis_key != expected:
+    expected = os.environ.get("JARVIS_CAPTURE_KEY", _DEFAULT_API_KEY)
+    if x_jarvis_key != expected:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return x_jarvis_key
 

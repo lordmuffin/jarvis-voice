@@ -150,7 +150,10 @@ class SettingsActivity : AppCompatActivity() {
         // Vault API key — used by the chat tool calls (read/write vault notes)
         val etVaultKey = findViewById<android.widget.EditText>(R.id.et_vault_api_key)
         etVaultKey?.let { et ->
-            et.setText(prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_VAULT_KEY, ""))
+            // Show stored key, or pre-fill with the built-in default so users can
+            // see the active value and copy/rotate it without digging through the source.
+            val storedKey = prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_VAULT_KEY, "") ?: ""
+            et.setText(storedKey.ifBlank { com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.DEFAULT_VAULT_KEY })
             et.addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
