@@ -16,6 +16,7 @@ VENV="/home/lordmuffin/.agent-venv"
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 echo "→ Syncing source to ${REMOTE_ROOT}"
+sudo mkdir -p "${REMOTE_ROOT}/src"
 rsync -avz --delete \
     --exclude '__pycache__' --exclude '*.pyc' \
     "${REPO}/src/" "${REMOTE_ROOT}/src/"
