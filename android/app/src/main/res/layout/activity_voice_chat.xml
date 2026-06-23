@@ -133,7 +133,7 @@
                 android:layout_weight="1"
                 android:background="@drawable/pill_background_dim"
                 android:hint="Type a message…"
-                android:hintTextColor="@color/jv_text2"
+                android:textColorHint="@color/jv_text2"
                 android:textColor="@color/jv_text"
                 android:textSize="14sp"
                 android:paddingStart="14dp"
