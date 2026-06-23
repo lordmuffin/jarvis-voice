@@ -1,8 +1,11 @@
 package com.lordmuffin.jarvisvoice.chat
 
 import android.content.Context
+import android.media.AudioAttributes
 import android.media.MediaPlayer
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -26,6 +29,23 @@ class TtsRepository(private val context: Context) {
     @Volatile private var player: MediaPlayer? = null
 
     suspend fun speak(text: String) {
+        val bytes = withContext(Dispatchers.IO) { fetchMp3(text) }
+
+        // MediaPlayer lifecycle (prepare, start, completion) must run on the main
+        // thread. Calling prepareAsync() from a background thread causes silent
+        // failures on Android — onPrepared never fires and the coroutine hangs.
+        withContext(Dispatchers.Main) {
+            val tmp = File.createTempFile("tts_", ".mp3", context.cacheDir)
+            try {
+                tmp.writeBytes(bytes)
+                playAndAwait(tmp.absolutePath)
+            } finally {
+                tmp.delete()
+            }
+        }
+    }
+
+    private fun fetchMp3(text: String): ByteArray {
         val body = JSONObject()
             .put("model", "kokoro")
             .put("input", text)
@@ -38,21 +58,18 @@ class TtsRepository(private val context: Context) {
             Request.Builder().url(TTS_URL).post(body).build()
         ).execute()
         if (!response.isSuccessful) throw IOException("TTS failed: ${response.code}")
-
-        val bytes = response.body?.bytes() ?: throw IOException("TTS empty body")
-        response.close()
-
-        val tmp = File.createTempFile("tts_", ".mp3", context.cacheDir)
-        try {
-            tmp.writeBytes(bytes)
-            playAndAwait(tmp.absolutePath)
-        } finally {
-            tmp.delete()
-        }
+        return response.body?.bytes() ?: throw IOException("TTS empty body")
     }
 
     private suspend fun playAndAwait(path: String) = suspendCancellableCoroutine { cont ->
-        val mp = MediaPlayer()
+        val mp = MediaPlayer().apply {
+            setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .build()
+            )
+        }
         player = mp
         mp.setDataSource(path)
         mp.setOnPreparedListener { it.start() }
