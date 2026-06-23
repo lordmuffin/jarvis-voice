@@ -1,5 +1,4 @@
-# LiveKit voice agent dependencies (separate from capture API)
-# Install into /home/lordmuffin/.agent-venv
+# Agent + capture API dependencies (shared venv: /home/lordmuffin/.agent-venv)
 
 # LiveKit agents framework + plugins
 livekit-agents[openai,silero]>=1.0.0
@@ -7,4 +6,6 @@ livekit-agents[openai,silero]>=1.0.0
 # Faster-whisper for local STT (optional — can also proxy through LiteLLM)
 faster-whisper>=1.0.0
 
-# Used by vault_tools.py (stdlib only — no extra deps needed)
+# Capture API (jarvis_voice.capture_api)
+fastapi>=0.110.0
+uvicorn>=0.29.0
