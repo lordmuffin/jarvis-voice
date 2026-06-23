@@ -2,27 +2,32 @@ package com.lordmuffin.jarvisvoice
 
 import android.content.ContentValues
 import android.content.Context
+import android.database.DatabaseErrorHandler
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 
 class DictationHistoryManager(context: Context) :
-    SQLiteOpenHelper(context, PersistentStorage.dbFile(context).absolutePath, null, 5) {
+    SQLiteOpenHelper(
+        context,
+        PersistentStorage.dbFile(context).absolutePath,
+        null,
+        5,
+        // SQLiteOpenHelper.onCorruption() is not overridable in Kotlin — use the
+        // DatabaseErrorHandler constructor param instead. Wipe corrupted DB files
+        // so the next open recreates them clean, breaking the crash loop.
+        DatabaseErrorHandler { db ->
+            DebugLog.e("History", "DB corrupted — deleting and recreating: ${db.path}")
+            runCatching {
+                db.close()
+                java.io.File(db.path).delete()
+                java.io.File("${db.path}-wal").delete()
+                java.io.File("${db.path}-shm").delete()
+            }
+        }
+    ) {
 
     companion object {
         private const val TABLE = "sessions"
-    }
-
-    override fun onCorruption(db: SQLiteDatabase) {
-        // SQLite detected an unrecoverable corruption — wipe the file so the next
-        // open recreates it from scratch. History data is lost, but the crash loop
-        // (which would otherwise persist until the user clears app data) is broken.
-        DebugLog.e("History", "DB corrupted — deleting and recreating: ${db.path}")
-        runCatching {
-            db.close()
-            java.io.File(db.path).delete()
-            java.io.File("${db.path}-wal").delete()
-            java.io.File("${db.path}-shm").delete()
-        }
     }
 
     override fun onCreate(db: SQLiteDatabase) {
