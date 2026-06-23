@@ -47,10 +47,10 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     private val chunkSamples = sampleRate * 300 / 1000   // 300 ms per read
 
     // VAD-flush thresholds
-    private val FLUSH_SILENCE_CHUNKS    = 5              // 5 × 300ms = 1.5s pause → commit
-    private val MAX_BUFFER_SAMPLES      = sampleRate * 15 // 15s without pause → force commit
+    private val FLUSH_SILENCE_CHUNKS    = 10             // 10 × 300ms = 3s pause → commit
+    private val MAX_BUFFER_SAMPLES      = sampleRate * 20 // 20s without pause → force commit
     private val MIN_CHUNK_SAMPLES       = sampleRate / 2  // 0.5s minimum to transcribe
-    private val AUTO_STOP_EMPTY_FLUSHES = 20             // 20 × ~1.5s = 30s pure silence
+    private val AUTO_STOP_EMPTY_FLUSHES = 20             // 20 × ~3s = ~60s pure silence
 
     private val silenceRmsThreshold  = 200.0
     private val partialIntervalMs    = 2_000L

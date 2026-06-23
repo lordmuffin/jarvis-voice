@@ -1,0 +1,16 @@
+[Unit]
+Description=Jarvis F5-TTS Voice Clone API (Cortana / port 8082)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lordmuffin
+WorkingDirectory=/opt/jarvis-voice/src
+Environment=F5_VOICES_DIR=/home/lordmuffin/.f5-tts-voices
+ExecStart=/home/lordmuffin/.f5-tts-venv/bin/python -m uvicorn jarvis_voice.f5_tts_api:app --host 0.0.0.0 --port 8082
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -30,7 +30,8 @@ private fun toolLabel(name: String) = when (name) {
 class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private val llm = LlmRepository()
-    private val tts = TtsRepository(app.applicationContext)
+    private val tts: TtsRepository
+    private var networkTts: NetworkTtsRepository? = null
 
     private val _messages        = MutableStateFlow<List<ConversationMessage>>(emptyList())
     private val _status          = MutableStateFlow(ChatStatus.IDLE)
@@ -50,9 +51,17 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
     private val historyFile = File(app.filesDir, "voice_chat_history.json")
 
     init {
-        // Load vault API key from SharedPreferences so HTTP calls to the capture API are authenticated
         val prefs = app.getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
         llm.vaultApiKey = prefs.getString(PREF_VAULT_KEY, "") ?: ""
+
+        // Use Kokoro network TTS when a URL is configured; fall back to Android TTS.
+        val kokoroUrl = prefs.getString(PREF_TTS_URL, "") ?: ""
+        val kokoroVoice = prefs.getString(PREF_TTS_VOICE, DEFAULT_TTS_VOICE) ?: DEFAULT_TTS_VOICE
+        tts = TtsRepository(app.applicationContext)
+        if (kokoroUrl.isNotBlank()) {
+            networkTts = NetworkTtsRepository(kokoroUrl, kokoroVoice)
+            DebugLog.i("VoiceChat", "Network TTS enabled: $kokoroUrl voice=$kokoroVoice")
+        }
 
         loadHistory()
         fetchModels()
@@ -144,8 +153,10 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
                     _toolStatusText.value = ""
                     _status.value = ChatStatus.SPEAKING
 
-                    runCatching { tts.speak(full) }
-                        .onFailure { e -> DebugLog.e("VoiceChat/TTS", "speak failed: ${e.message}") }
+                    runCatching {
+                        val net = networkTts
+                        if (net != null) net.speak(full) else tts.speak(full)
+                    }.onFailure { e -> DebugLog.e("VoiceChat/TTS", "speak failed: ${e.message}") }
                 }
             } catch (e: Exception) {
                 DebugLog.e("VoiceChat/LLM", "chat failed: ${e.message}")
@@ -159,17 +170,15 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun cancelActive() {
         activeJob?.cancel()
-        tts.stop()
+        networkTts?.stop() ?: tts.stop()
         _streamingText.value = ""
         _toolStatusText.value = ""
         _status.value = ChatStatus.IDLE
     }
 
-    // Interrupt TTS mid-speech without ending the conversation loop.
-    // Identical to cancelActive() but named distinctly so call-sites are readable.
     fun interruptSpeaking() {
         activeJob?.cancel()
-        tts.stop()
+        networkTts?.stop() ?: tts.stop()
         _streamingText.value = ""
         _toolStatusText.value = ""
         _status.value = ChatStatus.IDLE
@@ -182,10 +191,14 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         super.onCleared()
+        networkTts?.destroy()
         tts.destroy()
     }
 
     companion object {
-        const val PREF_VAULT_KEY = "vault_api_key"
+        const val PREF_VAULT_KEY    = "vault_api_key"
+        const val PREF_TTS_URL      = "tts_url"
+        const val PREF_TTS_VOICE    = "tts_voice"
+        const val DEFAULT_TTS_VOICE = "af_sky"
     }
 }

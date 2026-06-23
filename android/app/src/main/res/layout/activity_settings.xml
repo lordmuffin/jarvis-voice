@@ -416,6 +416,55 @@
                 android:paddingHorizontal="4dp"
                 android:layout_marginBottom="16dp" />
 
+            <!-- ── Voice TTS ──────────────────────────────────────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Voice (TTS)"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:textAllCaps="true"
+                android:letterSpacing="0.08"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/et_tts_url"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="http://192.168.1.43:8880"
+                android:inputType="textUri"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:background="@drawable/permission_card_bg"
+                android:padding="12dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="6dp" />
+
+            <EditText
+                android:id="@+id/et_tts_voice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="af_sky"
+                android:inputType="text"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:background="@drawable/permission_card_bg"
+                android:padding="12dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Kokoro TTS server URL + voice name. Leave URL blank to use Android TTS. Kokoro voices: af_sky, af_heart, am_michael, etc."
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:paddingHorizontal="4dp"
+                android:layout_marginBottom="16dp" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

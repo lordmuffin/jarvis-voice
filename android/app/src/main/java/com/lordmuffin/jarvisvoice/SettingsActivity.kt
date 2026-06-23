@@ -160,6 +160,29 @@ class SettingsActivity : AppCompatActivity() {
             })
         }
 
+        // TTS URL + voice
+        val etTtsUrl   = findViewById<android.widget.EditText>(R.id.et_tts_url)
+        val etTtsVoice = findViewById<android.widget.EditText>(R.id.et_tts_voice)
+        etTtsUrl.setText(prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_URL, ""))
+        etTtsVoice.setText(prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_VOICE,
+            com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.DEFAULT_TTS_VOICE))
+        etTtsUrl.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                prefs.edit().putString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_URL,
+                    s?.toString()?.trim() ?: "").apply()
+            }
+        })
+        etTtsVoice.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                prefs.edit().putString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_VOICE,
+                    s?.toString()?.trim() ?: com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.DEFAULT_TTS_VOICE).apply()
+            }
+        })
+
         findViewById<Button>(R.id.btn_open_stt_model_manager).setOnClickListener {
             startActivity(Intent(this, SttModelManagerActivity::class.java))
         }
