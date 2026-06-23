@@ -1,8 +1,10 @@
 package com.lordmuffin.jarvisvoice.chat
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,10 +18,10 @@ import org.json.JSONObject
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-private const val LLM_URL      = "http://192.168.1.93:4000/v1/chat/completions"
-private const val LLM_MODEL    = "local-default"
-private const val SYSTEM_PROMPT =
-    "You are Kai, Andrew's AI chief of staff. Be concise — this is a voice conversation."
+private const val LLM_BASE      = "http://192.168.1.93:4000"
+private const val DEFAULT_MODEL  = "local-default"
+private const val SYSTEM_PROMPT  =
+    "You are Kai, Andrew's AI chief of staff. Be concise and direct."
 
 class LlmRepository {
 
@@ -28,7 +30,10 @@ class LlmRepository {
         .connectTimeout(10, TimeUnit.SECONDS)
         .build()
 
-    fun streamChat(history: List<ConversationMessage>): Flow<String> = callbackFlow {
+    fun streamChat(
+        history: List<ConversationMessage>,
+        model: String = DEFAULT_MODEL
+    ): Flow<String> = callbackFlow {
         val messages = JSONArray().apply {
             put(JSONObject().put("role", "system").put("content", SYSTEM_PROMPT))
             history.forEach { msg ->
@@ -36,14 +41,14 @@ class LlmRepository {
             }
         }
         val body = JSONObject()
-            .put("model", LLM_MODEL)
+            .put("model", model)
             .put("messages", messages)
             .put("stream", true)
             .toString()
             .toRequestBody("application/json".toMediaType())
 
         val request = Request.Builder()
-            .url(LLM_URL)
+            .url("$LLM_BASE/v1/chat/completions")
             .post(body)
             .build()
 
@@ -69,5 +74,20 @@ class LlmRepository {
 
         val eventSource = EventSources.createFactory(client).newEventSource(request, listener)
         awaitClose { eventSource.cancel() }
+    }
+
+    // Fetches the list of model IDs available on the LiteLLM proxy.
+    // Returns an empty list on network failure so callers can fall back to defaults.
+    suspend fun fetchModels(): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder().url("$LLM_BASE/v1/models").get().build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext emptyList()
+            val body = response.body?.string() ?: return@withContext emptyList()
+            val data = JSONObject(body).getJSONArray("data")
+            (0 until data.length()).map { data.getJSONObject(it).getString("id") }.sorted()
+        } catch (_: Exception) {
+            emptyList()
+        }
     }
 }

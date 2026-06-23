@@ -24,17 +24,44 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _messages      = MutableStateFlow<List<ConversationMessage>>(emptyList())
     private val _status        = MutableStateFlow(ChatStatus.IDLE)
     private val _streamingText = MutableStateFlow("")
+    private val _selectedModel = MutableStateFlow("local-default")
+    private val _availableModels = MutableStateFlow<List<String>>(listOf("local-default"))
 
-    val messages:      StateFlow<List<ConversationMessage>> = _messages.asStateFlow()
-    val status:        StateFlow<ChatStatus>                = _status.asStateFlow()
-    val streamingText: StateFlow<String>                    = _streamingText.asStateFlow()
+    val messages:        StateFlow<List<ConversationMessage>> = _messages.asStateFlow()
+    val status:          StateFlow<ChatStatus>                = _status.asStateFlow()
+    val streamingText:   StateFlow<String>                    = _streamingText.asStateFlow()
+    val selectedModel:   StateFlow<String>                    = _selectedModel.asStateFlow()
+    val availableModels: StateFlow<List<String>>              = _availableModels.asStateFlow()
 
     private var activeJob: Job? = null
     private val historyFile = File(app.filesDir, "voice_chat_history.json")
 
     init {
         loadHistory()
+        fetchModels()
     }
+
+    // ── Model management ──────────────────────────────────────────────────────
+
+    fun selectModel(model: String) {
+        _selectedModel.value = model
+        DebugLog.i("VoiceChat", "Model switched to: $model")
+    }
+
+    private fun fetchModels() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val models = llm.fetchModels()
+            if (models.isNotEmpty()) {
+                _availableModels.value = models
+                // Keep selectedModel valid — if current selection not in list, reset to first
+                if (_selectedModel.value !in models) {
+                    _selectedModel.value = models.first()
+                }
+            }
+        }
+    }
+
+    // ── History persistence ───────────────────────────────────────────────────
 
     private fun loadHistory() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -66,7 +93,11 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ── Status ────────────────────────────────────────────────────────────────
+
     fun setStatus(s: ChatStatus) { _status.value = s }
+
+    // ── Chat ──────────────────────────────────────────────────────────────────
 
     fun sendText(userText: String) {
         if (userText.isBlank()) return
@@ -82,11 +113,9 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
             val response = StringBuilder()
 
             try {
-                // Collect every token from the LLM stream and show it live in
-                // the streaming preview. Wait for the full response before speaking
-                // so the user hears a complete, coherent reply rather than
-                // sentence fragments fired as they arrive.
-                llm.streamChat(history).collect { token ->
+                // Stream all tokens into the live preview, wait for the full
+                // response before speaking so the user hears a complete reply.
+                llm.streamChat(history, _selectedModel.value).collect { token ->
                     response.append(token)
                     _streamingText.value = response.toString()
                 }
@@ -100,8 +129,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
                     _streamingText.value = ""
                     _status.value = ChatStatus.SPEAKING
 
-                    // Android on-device TTS — no network, instant, no MediaPlayer
-                    // threading issues. speak() suspends until the utterance is done.
+                    // Android on-device TTS — no network, instant, no threading issues.
                     runCatching { tts.speak(full) }
                         .onFailure { e -> DebugLog.e("VoiceChat/TTS", "speak failed: ${e.message}") }
                 }

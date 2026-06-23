@@ -4,29 +4,27 @@
     android:layout_height="match_parent"
     android:background="@color/jv_bg">
 
-    <!-- Conversation list -->
+    <!-- Conversation list — leaves room for the control panel + bottom nav -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_messages"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="148dp"
+        android:layout_marginBottom="192dp"
         android:clipToPadding="false"
         android:paddingTop="12dp"
         android:paddingBottom="8dp" />
 
-    <!-- Controls pinned above bottom nav -->
+    <!-- Control panel pinned above bottom nav -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
         android:layout_marginBottom="64dp"
         android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="8dp"
-        android:background="@color/jv_bg">
+        android:background="@color/jv_bg"
+        android:paddingTop="6dp">
 
-        <!-- Streaming preview (visible while assistant responds) -->
+        <!-- Streaming preview — visible while LLM is responding -->
         <TextView
             android:id="@+id/tv_streaming"
             android:layout_width="match_parent"
@@ -35,31 +33,128 @@
             android:ellipsize="end"
             android:textSize="13sp"
             android:textColor="@color/jv_accent"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
             android:paddingBottom="6dp"
             android:visibility="gone" />
 
-        <!-- Status label -->
-        <TextView
-            android:id="@+id/tv_chat_status"
+        <!-- Mode toggle + status + model selector row -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:textSize="11sp"
-            android:textColor="@color/jv_text2"
-            android:layout_marginBottom="6dp" />
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:gravity="center_vertical">
 
-        <!-- Push-to-talk pill -->
+            <!-- Voice mode button -->
+            <Button
+                android:id="@+id/btn_mode_voice"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="🎙 Voice"
+                android:textSize="12sp"
+                android:background="@drawable/pill_background_accent"
+                android:textColor="@color/jv_text"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="4dp" />
+
+            <!-- Type mode button -->
+            <Button
+                android:id="@+id/btn_mode_type"
+                android:layout_width="0dp"
+                android:layout_height="32dp"
+                android:layout_weight="1"
+                android:text="⌨️ Type"
+                android:textSize="12sp"
+                android:background="@drawable/pill_background_dim"
+                android:textColor="@color/jv_text2"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Status label (fills remaining space) -->
+            <TextView
+                android:id="@+id/tv_chat_status"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:textSize="11sp"
+                android:textColor="@color/jv_text2" />
+
+            <!-- Model selector button -->
+            <Button
+                android:id="@+id/btn_model"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="Model ▾"
+                android:textSize="11sp"
+                android:background="@drawable/pill_background_dim"
+                android:textColor="@color/jv_text2"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:stateListAnimator="@null"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+        </LinearLayout>
+
+        <!-- Voice input panel (visible in voice mode) -->
         <Button
             android:id="@+id/btn_talk"
             android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_height="52dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="6dp"
             android:background="@drawable/pill_background_accent"
-            android:text="🎙  Tap to Talk"
+            android:text="🎙  Start Talking"
             android:textColor="@color/jv_text"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:stateListAnimator="@null" />
+
+        <!-- Type input panel (hidden in voice mode) -->
+        <LinearLayout
+            android:id="@+id/ll_type_input"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="6dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:visibility="gone">
+
+            <EditText
+                android:id="@+id/et_message"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/pill_background_dim"
+                android:hint="Type a message…"
+                android:hintTextColor="@color/jv_text2"
+                android:textColor="@color/jv_text"
+                android:textSize="14sp"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:imeOptions="actionSend"
+                android:inputType="textMultiLine|textCapSentences"
+                android:maxLines="3"
+                android:singleLine="false"
+                android:layout_marginEnd="6dp" />
+
+            <Button
+                android:id="@+id/btn_send_text"
+                android:layout_width="52dp"
+                android:layout_height="match_parent"
+                android:text="▶"
+                android:textSize="18sp"
+                android:background="@drawable/pill_background_accent"
+                android:textColor="@color/jv_text"
+                android:stateListAnimator="@null" />
+
+        </LinearLayout>
 
     </LinearLayout>
 
