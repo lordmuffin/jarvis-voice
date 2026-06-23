@@ -132,19 +132,32 @@ class VoiceChatActivity : AppCompatActivity() {
     // ── Conversation control ──────────────────────────────────────────────────
 
     private fun onTalkTapped() {
-        if (!conversationActive) {
-            // OFF → ON: start the conversation loop
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED) {
-                startConversation()
-            } else {
-                requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+        when {
+            !conversationActive -> {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                        == PackageManager.PERMISSION_GRANTED) {
+                    startConversation()
+                } else {
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
+                }
             }
-        } else {
-            // ON → OFF: stop everything cleanly
-            stopConversation()
-            viewModel.cancelActive()
+            viewModel.status.value == ChatStatus.SPEAKING -> interruptAndListen()
+            else -> {
+                // Listening / Thinking / Tool call → end the conversation entirely
+                stopConversation()
+                viewModel.cancelActive()
+            }
         }
+    }
+
+    // Barge-in: cut Kai off mid-sentence and immediately start the next turn.
+    private fun interruptAndListen() {
+        mainHandler.removeCallbacksAndMessages(null)
+        // Pre-set prevStatus so the collect observer's SPEAKING→IDLE branch is a no-op —
+        // we're handling the mic restart here, not via the 600 ms delayed path.
+        prevStatus = ChatStatus.IDLE
+        viewModel.interruptSpeaking()
+        startListening()
     }
 
     private fun startConversation() {
@@ -284,6 +297,10 @@ class VoiceChatActivity : AppCompatActivity() {
                     ChatStatus.SPEAKING  -> "Speaking…"
                 }
 
+                // Update button label so SPEAKING shows "Interrupt Kai" and
+                // LISTENING/THINKING show "End Conversation".
+                if (conversationActive) updateTalkButton(status)
+
                 // Restart mic only after TTS finishes (SPEAKING→IDLE) — not after
                 // silent tool call turns (TOOL_CALL/THINKING→IDLE with empty LLM response).
                 if (prevStatus == ChatStatus.SPEAKING
@@ -308,16 +325,22 @@ class VoiceChatActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateTalkButton() {
-        if (conversationActive) {
-            btnTalk.setBackgroundResource(R.drawable.pill_background_stop)
-            btnTalk.text  = "⏹  End Conversation"
-            btnTalk.alpha = 1.0f
-        } else {
-            btnTalk.setBackgroundResource(R.drawable.pill_background_accent)
-            btnTalk.text  = "🎙  Talk to Kai"
-            btnTalk.alpha = 1.0f
+    private fun updateTalkButton(currentStatus: ChatStatus = viewModel.status.value) {
+        when {
+            !conversationActive -> {
+                btnTalk.setBackgroundResource(R.drawable.pill_background_accent)
+                btnTalk.text  = "🎙  Talk to Kai"
+            }
+            currentStatus == ChatStatus.SPEAKING -> {
+                btnTalk.setBackgroundResource(R.drawable.pill_background_stop)
+                btnTalk.text  = "🎙  Interrupt Kai"
+            }
+            else -> {
+                btnTalk.setBackgroundResource(R.drawable.pill_background_stop)
+                btnTalk.text  = "⏹  End Conversation"
+            }
         }
+        btnTalk.alpha     = 1.0f
         btnTalk.isEnabled = true
     }
 

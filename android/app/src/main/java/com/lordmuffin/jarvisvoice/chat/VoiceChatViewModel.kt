@@ -165,6 +165,16 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         _status.value = ChatStatus.IDLE
     }
 
+    // Interrupt TTS mid-speech without ending the conversation loop.
+    // Identical to cancelActive() but named distinctly so call-sites are readable.
+    fun interruptSpeaking() {
+        activeJob?.cancel()
+        tts.stop()
+        _streamingText.value = ""
+        _toolStatusText.value = ""
+        _status.value = ChatStatus.IDLE
+    }
+
     fun clearHistory() {
         _messages.value = emptyList()
         viewModelScope.launch(Dispatchers.IO) { runCatching { historyFile.delete() } }
