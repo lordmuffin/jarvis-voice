@@ -241,8 +241,32 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             val sep = if (committedText.isNotEmpty()) " " else ""
             committedText += sep + text.trim()
         }
-        val partial = committedText
-        mainHandler.post { onPartialCallback?.invoke(partial) }
+
+        // In VAD conversation mode (holdMode=false), each committed speech chunk
+        // is a complete utterance — auto-fire onFinal so the caller can send to
+        // the LLM immediately without waiting for 30s silence or stopListening().
+        // Guard with pendingFinal so a concurrent stopListening() call doesn't
+        // double-fire the callback.
+        if (!holdMode && text.isNotBlank() && !pendingFinal) {
+            val final = committedText.trim()
+            committedText = ""
+            pendingFinal = true
+            isListening  = false
+            DebugLog.i("STT", "auto-final on VAD: \"${final.take(60)}\"")
+            Thread({
+                recordingThread?.join(600)
+                audioRecord?.run { stop(); release() }
+                audioRecord = null
+                if (scoStarted) {
+                    deviceRouter.stopBluetoothSco()
+                    scoStarted = false
+                }
+            }, "jarvis-auto-final").start()
+            mainHandler.post { onFinalCallback?.invoke(final) }
+        } else {
+            val partial = committedText
+            mainHandler.post { onPartialCallback?.invoke(partial) }
+        }
     }
 
     override fun stopListening() {
