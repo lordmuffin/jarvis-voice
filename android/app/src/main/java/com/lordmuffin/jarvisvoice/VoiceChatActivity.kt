@@ -69,6 +69,27 @@ class VoiceChatActivity : AppCompatActivity() {
         btnTalk.setOnClickListener { onTalkTapped() }
     }
 
+    override fun onPause() {
+        super.onPause()
+        // Stop listening immediately when backgrounded — mic should never
+        // stay open when the Chat tab isn't visible.
+        conversationActive = false
+        if (viewModel.status.value == ChatStatus.LISTENING) {
+            engine?.stopListening()
+        }
+        viewModel.cancelActive()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // Destroy the SpeechEngine to free Whisper model weights from memory.
+        // SherpaOnnxSpeechEngine holds ~300MB; leaving it loaded while another
+        // tab or the overlay is active causes OOM pressure and sustained CPU heat.
+        // Engine is recreated lazily on the next tap (startListening).
+        engine?.destroy()
+        engine = null
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         conversationActive = false
