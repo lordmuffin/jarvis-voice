@@ -194,11 +194,15 @@ class VoiceChatActivity : AppCompatActivity() {
             onFinal   = { text ->
                 val discard = discardNextResult
                 discardNextResult = false
+                // SherpaOnnx emits artifact tokens like "(static)", "[noise]", "(inaudible)"
+                // for non-speech audio. Treat them the same as silence.
+                val isArtifact = text.matches(Regex("""^\(.*\)$""")) ||
+                                 text.matches(Regex("""^\[.*]$"""))
                 when {
-                    discard        -> viewModel.setStatus(ChatStatus.IDLE)
-                    text.isNotBlank() -> viewModel.sendText(text)
+                    discard               -> viewModel.setStatus(ChatStatus.IDLE)
+                    text.isNotBlank() && !isArtifact -> viewModel.sendText(text)
                     else -> {
-                        // Silence / low-confidence — stay in loop, restart mic
+                        // Silence / noise / low-confidence — stay in loop, restart mic
                         viewModel.setStatus(ChatStatus.IDLE)
                         if (conversationActive) mainHandler.postDelayed({ startListening() }, 300)
                     }
