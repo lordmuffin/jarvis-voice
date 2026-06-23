@@ -39,10 +39,6 @@ sudo install -m 644 /tmp/mnt-notes.automount         /etc/systemd/system/mnt-not
 sudo install -m 644 /tmp/jarvis-voice-agent.service  /etc/systemd/system/jarvis-voice-agent.service
 sudo install -m 644 /tmp/jarvis-capture-api.service  /etc/systemd/system/jarvis-capture-api.service
 
-# Patch capture API service to use the shared venv (not .whisper-venv)
-sudo sed -i "s|/home/lordmuffin/.whisper-venv|${VENV}|g" \
-    /etc/systemd/system/jarvis-capture-api.service
-
 sudo systemctl daemon-reload
 sudo systemctl enable --now mnt-notes.automount
 sudo systemctl restart jarvis-voice-agent   2>/dev/null || sudo systemctl enable --now jarvis-voice-agent
