@@ -4,6 +4,8 @@ import android.content.Context
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.NoiseSuppressor
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -26,6 +28,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
     private var recognizer: OfflineRecognizer? = null
     private var audioRecord: AudioRecord? = null
+    private var aec: AcousticEchoCanceler? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
     private var recordingThread: Thread? = null
     private val deviceRouter = AudioDeviceRouter(context)
     @Volatile private var scoStarted = false
@@ -161,6 +165,16 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             audioRecord?.preferredDevice = preferredDevice
             DebugLog.i("STT", "preferred input device: ${deviceRouter.deviceLabel(preferredDevice)}")
         }
+        // Attach AEC and NS to suppress TTS speaker bleed (enables auto barge-in).
+        val sessionId = audioRecord!!.audioSessionId
+        if (AcousticEchoCanceler.isAvailable()) {
+            aec = AcousticEchoCanceler.create(sessionId)
+            DebugLog.i("STT", "AEC attached session=$sessionId")
+        }
+        if (NoiseSuppressor.isAvailable()) {
+            noiseSuppressor = NoiseSuppressor.create(sessionId)
+            DebugLog.i("STT", "NoiseSuppressor attached")
+        }
         audioRecord?.startRecording()
 
         recordingThread = Thread {
@@ -255,6 +269,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             DebugLog.i("STT", "auto-final on VAD: \"${final.take(60)}\"")
             Thread({
                 recordingThread?.join(600)
+                aec?.release(); aec = null
+                noiseSuppressor?.release(); noiseSuppressor = null
                 audioRecord?.run { stop(); release() }
                 audioRecord = null
                 if (scoStarted) {
@@ -306,9 +322,25 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         }, "jarvis-stop").start()
     }
 
+    override fun cancelListening() {
+        DebugLog.i("STT", "cancelListening")
+        isListening  = false
+        pendingFinal = true  // suppress any in-flight auto-final callback
+        Thread({
+            recordingThread?.join(500)
+            aec?.release(); aec = null
+            noiseSuppressor?.release(); noiseSuppressor = null
+            audioRecord?.run { stop(); release() }
+            audioRecord = null
+            if (scoStarted) { deviceRouter.stopBluetoothSco(); scoStarted = false }
+        }, "jarvis-cancel").start()
+    }
+
     override fun destroy() {
         DebugLog.i("STT", "destroy")
         isListening = false
+        aec?.release(); aec = null
+        noiseSuppressor?.release(); noiseSuppressor = null
         audioRecord?.run { stop(); release() }
         audioRecord = null
         recordingThread = null

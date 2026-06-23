@@ -12,5 +12,8 @@ interface SpeechEngine {
         holdMode:  Boolean = false
     )
     fun stopListening()
+    /** Stop the mic immediately without firing [onFinal]. Used to cancel a shadow barge-in
+     *  listener when the conversation ends or transitions to a new state. */
+    fun cancelListening() {}
     fun destroy()
 }

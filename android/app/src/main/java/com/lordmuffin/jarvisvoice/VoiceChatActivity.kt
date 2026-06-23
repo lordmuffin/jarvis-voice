@@ -56,13 +56,14 @@ class VoiceChatActivity : AppCompatActivity() {
     private var engine: SpeechEngine? = null
     private var voiceMode = true
 
-    // true while the conversation loop is running. Mic auto-restarts after
-    // each assistant response until the user taps "End Conversation".
+    // true while the conversation loop is running.
     @Volatile private var conversationActive = false
 
-    // Set before calling stopListening() when the user explicitly stops the
-    // conversation mid-utterance. Prevents onFinal from sending the partial
-    // speech to the LLM.
+    // true while the shadow barge-in mic is running during SPEAKING.
+    @Volatile private var bargeInListening = false
+
+    // Set before stopListening() when the user explicitly stops the conversation
+    // mid-utterance, so onFinal discards the partial text instead of sending it.
     @Volatile private var discardNextResult = false
 
     private var prevStatus = ChatStatus.IDLE
@@ -150,14 +151,47 @@ class VoiceChatActivity : AppCompatActivity() {
         }
     }
 
-    // Barge-in: cut Kai off mid-sentence and immediately start the next turn.
+    // Manual barge-in (button tap while SPEAKING).
     private fun interruptAndListen() {
         mainHandler.removeCallbacksAndMessages(null)
-        // Pre-set prevStatus so the collect observer's SPEAKING→IDLE branch is a no-op —
-        // we're handling the mic restart here, not via the 600 ms delayed path.
-        prevStatus = ChatStatus.IDLE
+        bargeInListening = false
+        engine?.cancelListening()  // stop shadow mic
+        prevStatus = ChatStatus.IDLE  // skip SPEAKING→IDLE observer restart
         viewModel.interruptSpeaking()
         startListening()
+    }
+
+    // Auto barge-in: called by the shadow mic when speech is detected while SPEAKING.
+    private fun interruptWithText(text: String) {
+        mainHandler.removeCallbacksAndMessages(null)
+        bargeInListening = false
+        prevStatus = ChatStatus.IDLE  // skip SPEAKING→IDLE observer restart
+        viewModel.interruptSpeaking()  // cancel TTS + set IDLE
+        viewModel.sendText(text)       // immediately process the detected speech
+    }
+
+    // Shadow mic — runs silently during SPEAKING so the user can barge in without tapping.
+    // AEC on the AudioRecord session suppresses TTS bleed so Kai's voice doesn't self-trigger.
+    private fun startBargeInListening() {
+        if (!conversationActive || !voiceMode || !bargeInListening) return
+        if (engine == null) engine = SpeechEngineFactory.create(this)
+        // Do NOT change viewModel status — it stays SPEAKING.
+        engine?.startListening(
+            holdMode  = false,
+            onPartial = { },
+            onFinal   = { text ->
+                if (!bargeInListening) return@startListening
+                if (text.isNotBlank() && !isSherpaArtifact(text)) {
+                    mainHandler.post { interruptWithText(text) }
+                } else {
+                    // Silence / noise — restart shadow mic and keep monitoring
+                    mainHandler.postDelayed({ startBargeInListening() }, 100)
+                }
+            },
+            onError = {
+                if (bargeInListening) mainHandler.postDelayed({ startBargeInListening() }, 500)
+            }
+        )
     }
 
     private fun startConversation() {
@@ -169,13 +203,15 @@ class VoiceChatActivity : AppCompatActivity() {
 
     private fun stopConversation() {
         conversationActive = false
+        bargeInListening = false
         mainHandler.removeCallbacksAndMessages(null)
-        // If currently listening, signal onFinal to discard its result before
-        // stopping the engine — otherwise stopListening() fires onFinal which
-        // sends the partial utterance to the LLM.
-        if (viewModel.status.value == ChatStatus.LISTENING) {
-            discardNextResult = true
-            engine?.stopListening()
+        when (viewModel.status.value) {
+            ChatStatus.LISTENING -> {
+                discardNextResult = true
+                engine?.stopListening()
+            }
+            ChatStatus.SPEAKING -> engine?.cancelListening()  // cancel shadow barge-in mic
+            else -> {}
         }
         viewModel.setStatus(ChatStatus.IDLE)
         updateTalkButton()
@@ -199,8 +235,8 @@ class VoiceChatActivity : AppCompatActivity() {
                 val isArtifact = text.matches(Regex("""^\(.*\)$""")) ||
                                  text.matches(Regex("""^\[.*]$"""))
                 when {
-                    discard               -> viewModel.setStatus(ChatStatus.IDLE)
-                    text.isNotBlank() && !isArtifact -> viewModel.sendText(text)
+                    discard                                        -> viewModel.setStatus(ChatStatus.IDLE)
+                    text.isNotBlank() && !isSherpaArtifact(text)  -> viewModel.sendText(text)
                     else -> {
                         // Silence / noise / low-confidence — stay in loop, restart mic
                         viewModel.setStatus(ChatStatus.IDLE)
@@ -301,20 +337,25 @@ class VoiceChatActivity : AppCompatActivity() {
                     ChatStatus.SPEAKING  -> "Speaking…"
                 }
 
-                // Update button label so SPEAKING shows "Interrupt Kai" and
-                // LISTENING/THINKING show "End Conversation".
                 if (conversationActive) updateTalkButton(status)
 
-                // Restart mic only after TTS finishes (SPEAKING→IDLE) — not after
-                // silent tool call turns (TOOL_CALL/THINKING→IDLE with empty LLM response).
+                // When Kai starts speaking, start the shadow mic so the user can barge in
+                // by talking (AEC on the AudioRecord suppresses TTS bleed).
+                if (status == ChatStatus.SPEAKING && conversationActive && voiceMode) {
+                    bargeInListening = true
+                    mainHandler.postDelayed({ startBargeInListening() }, 300)
+                }
+
+                // TTS finished naturally — cancel any in-flight shadow mic, restart normal listen.
                 if (prevStatus == ChatStatus.SPEAKING
                         && status == ChatStatus.IDLE
                         && conversationActive
                         && voiceMode) {
+                    bargeInListening = false
+                    engine?.cancelListening()
                     mainHandler.postDelayed({ startListening() }, 600)
                 }
-                // If LLM/tool call failed and returned nothing, restart anyway so the
-                // loop doesn't stall indefinitely.
+                // LLM/tool call returned nothing — restart so the loop doesn't stall.
                 if ((prevStatus == ChatStatus.THINKING || prevStatus == ChatStatus.TOOL_CALL)
                         && status == ChatStatus.IDLE
                         && conversationActive
@@ -397,6 +438,11 @@ class VoiceChatActivity : AppCompatActivity() {
             tvMsg.layoutParams = lp
         }
     }
+
+    // SherpaOnnx emits tokens like "(static)", "[noise]", "(inaudible)" for non-speech audio.
+    // Treat them as silence — don't send to the LLM.
+    private fun isSherpaArtifact(text: String) =
+        text.matches(Regex("""^\(.*\)$""")) || text.matches(Regex("""^\[.*]$"""))
 
     companion object { private const val REQ_MIC = 55 }
 }
