@@ -42,8 +42,8 @@ class VoiceChatActivity : AppCompatActivity() {
 
     private var engine: SpeechEngine? = null
 
-    // Tracks whether we're in continuous conversation mode.
-    // When true, mic auto-restarts after each assistant response.
+    // true while the user is in a continuous back-and-forth conversation.
+    // Mic auto-restarts after each assistant turn until the user cancels.
     private var conversationActive = false
     private var prevStatus = ChatStatus.IDLE
 
@@ -84,7 +84,6 @@ class VoiceChatActivity : AppCompatActivity() {
         super.onStop()
         // Activity is now fully hidden — cancel in-flight LLM/TTS jobs and
         // destroy the SpeechEngine to free Whisper model weights (~300MB).
-        // Engine is recreated lazily on the next tap (startListening).
         conversationActive = false
         if (viewModel.status.value == ChatStatus.LISTENING) {
             engine?.stopListening()
@@ -125,15 +124,17 @@ class VoiceChatActivity : AppCompatActivity() {
             viewModel.status.collect { status ->
                 updateTalkButton(status)
                 tvStatus.text = when (status) {
-                    ChatStatus.IDLE      -> if (conversationActive) "" else ""
+                    ChatStatus.IDLE      -> ""
                     ChatStatus.LISTENING -> "Listening…"
                     ChatStatus.THINKING  -> "Thinking…"
                     ChatStatus.SPEAKING  -> "Speaking…"
                 }
 
-                // Auto-restart mic after assistant finishes speaking
+                // Auto-restart mic after assistant finishes speaking.
+                // 600ms delay: lets the speaker ring down before the mic opens,
+                // preventing the STT from capturing TTS echo.
                 if (prevStatus == ChatStatus.SPEAKING && status == ChatStatus.IDLE && conversationActive) {
-                    mainHandler.postDelayed({ startListening() }, 300)
+                    mainHandler.postDelayed({ startListening() }, 600)
                 }
                 prevStatus = status
             }
@@ -143,24 +144,24 @@ class VoiceChatActivity : AppCompatActivity() {
     private fun updateTalkButton(status: ChatStatus) {
         when (status) {
             ChatStatus.IDLE -> {
-                btnTalk.text = "🎙  Tap to Talk"
+                btnTalk.text = "🎙  Start Talking"
                 btnTalk.alpha = 1.0f
                 btnTalk.isEnabled = true
             }
             ChatStatus.LISTENING -> {
-                btnTalk.text = "⏹  Tap to Send"
+                btnTalk.text = "⏹  Tap to Cancel"
                 btnTalk.alpha = 1.0f
                 btnTalk.isEnabled = true
             }
             ChatStatus.THINKING -> {
-                btnTalk.text = "⏳  Thinking…"
-                btnTalk.alpha = 0.6f
-                btnTalk.isEnabled = true  // allow tap to cancel
+                btnTalk.text = "⏳  Processing…  (tap to stop)"
+                btnTalk.alpha = 0.75f
+                btnTalk.isEnabled = true
             }
             ChatStatus.SPEAKING -> {
                 btnTalk.text = "🔊  Speaking…  (tap to stop)"
-                btnTalk.alpha = 0.8f
-                btnTalk.isEnabled = true  // allow tap to interrupt
+                btnTalk.alpha = 0.85f
+                btnTalk.isEnabled = true
             }
         }
     }
@@ -178,11 +179,13 @@ class VoiceChatActivity : AppCompatActivity() {
                 }
             }
             ChatStatus.LISTENING -> {
-                // Commit what was heard
+                // User cancelled before saying anything — stop mic, exit conversation mode
+                conversationActive = false
+                viewModel.setStatus(ChatStatus.IDLE)
                 engine?.stopListening()
             }
             ChatStatus.THINKING, ChatStatus.SPEAKING -> {
-                // Interrupt and go back to IDLE (no auto-restart)
+                // Interrupt and exit conversation mode
                 conversationActive = false
                 viewModel.cancelActive()
             }
@@ -193,18 +196,32 @@ class VoiceChatActivity : AppCompatActivity() {
         conversationActive = true
         if (engine == null) engine = SpeechEngineFactory.create(this)
         viewModel.setStatus(ChatStatus.LISTENING)
+
+        // holdMode = false: silence detection is ENABLED. The STT engine
+        // automatically fires onFinal when the user stops speaking (SherpaOnnx:
+        // 1.5s VAD; AndroidSTT: 10s timeout). No "Tap to Send" needed — the
+        // conversation loop runs hands-free.
         engine?.startListening(
-            holdMode  = true,
+            holdMode  = false,
             onPartial = { },
             onFinal   = { text ->
                 if (text.isNotBlank()) {
                     viewModel.sendText(text)
                 } else {
-                    // Nothing heard — back to IDLE, auto-restart will fire
+                    // Silence or low-confidence result — restart mic immediately
+                    // if still in conversation mode rather than hanging at IDLE.
                     viewModel.setStatus(ChatStatus.IDLE)
+                    if (conversationActive) {
+                        mainHandler.postDelayed({ startListening() }, 300)
+                    }
                 }
             },
-            onError   = { viewModel.setStatus(ChatStatus.IDLE) }
+            onError   = {
+                viewModel.setStatus(ChatStatus.IDLE)
+                if (conversationActive) {
+                    mainHandler.postDelayed({ startListening() }, 500)
+                }
+            }
         )
     }
 

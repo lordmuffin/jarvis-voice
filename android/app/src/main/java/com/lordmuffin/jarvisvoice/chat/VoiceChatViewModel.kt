@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -83,19 +82,28 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
             val response = StringBuilder()
 
             try {
-                val sentences = splitIntoSentences(llm.streamChat(history))
-                sentences.collect { sentence ->
-                    response.append(sentence).append(" ")
-                    _streamingText.value = response.toString().trim()
-                    _status.value = ChatStatus.SPEAKING
-                    runCatching { tts.speak(sentence) }
-                        .onFailure { e -> DebugLog.e("VoiceChat/TTS", "speak failed: ${e.message}") }
+                // Collect every token from the LLM stream and show it live in
+                // the streaming preview. Wait for the full response before speaking
+                // so the user hears a complete, coherent reply rather than
+                // sentence fragments fired as they arrive.
+                llm.streamChat(history).collect { token ->
+                    response.append(token)
+                    _streamingText.value = response.toString()
                 }
+
                 val full = response.toString().trim()
                 if (full.isNotEmpty()) {
                     val updated = history + ConversationMessage("assistant", full)
                     _messages.value = updated
                     saveHistory(updated)
+
+                    _streamingText.value = ""
+                    _status.value = ChatStatus.SPEAKING
+
+                    // Android on-device TTS — no network, instant, no MediaPlayer
+                    // threading issues. speak() suspends until the utterance is done.
+                    runCatching { tts.speak(full) }
+                        .onFailure { e -> DebugLog.e("VoiceChat/TTS", "speak failed: ${e.message}") }
                 }
             } catch (e: Exception) {
                 DebugLog.e("VoiceChat/LLM", "stream failed: ${e.message}")
@@ -122,6 +130,6 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         super.onCleared()
-        tts.stop()
+        tts.destroy()
     }
 }
