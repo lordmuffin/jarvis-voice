@@ -1,101 +1,102 @@
 package com.lordmuffin.jarvisvoice.chat
 
 import android.content.Context
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import kotlinx.coroutines.Dispatchers
+import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
+import com.lordmuffin.jarvisvoice.DebugLog
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
-import java.io.File
-import java.io.IOException
-import java.util.concurrent.TimeUnit
+import java.util.Locale
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
-private const val TTS_URL = "http://192.168.1.43:8880/v1/audio/speech"
+private const val UTTERANCE_ID = "jarvis_tts"
 
-class TtsRepository(private val context: Context) {
+class TtsRepository(context: Context) {
 
-    private val client = OkHttpClient.Builder()
-        .readTimeout(30, TimeUnit.SECONDS)
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .build()
+    private val ready = CompletableDeferred<Boolean>()
 
-    @Volatile private var player: MediaPlayer? = null
+    private val tts = TextToSpeech(context) { status ->
+        if (status == TextToSpeech.SUCCESS) {
+            ready.complete(true)
+        } else {
+            DebugLog.e("TTS", "TextToSpeech init failed: $status")
+            ready.complete(false)
+        }
+    }
 
-    suspend fun speak(text: String) {
-        val bytes = withContext(Dispatchers.IO) { fetchMp3(text) }
-
-        // MediaPlayer lifecycle (prepare, start, completion) must run on the main
-        // thread. Calling prepareAsync() from a background thread causes silent
-        // failures on Android — onPrepared never fires and the coroutine hangs.
-        withContext(Dispatchers.Main) {
-            val tmp = File.createTempFile("tts_", ".mp3", context.cacheDir)
-            try {
-                tmp.writeBytes(bytes)
-                playAndAwait(tmp.absolutePath)
-            } finally {
-                tmp.delete()
+    init {
+        // After init, select the best available en-US voice and set a natural pace
+        tts.setOnInitListener { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                tts.language = Locale.US
+                // Prefer a high-quality neural voice if the device has one
+                val best = tts.voices
+                    ?.filter { v ->
+                        !v.isNetworkConnectionRequired &&
+                        v.locale.language == "en" &&
+                        v.quality >= android.speech.tts.Voice.QUALITY_HIGH
+                    }
+                    ?.maxByOrNull { it.quality }
+                if (best != null) {
+                    tts.voice = best
+                    DebugLog.i("TTS", "Selected voice: ${best.name} quality=${best.quality}")
+                }
+                tts.setSpeechRate(1.0f)
+                tts.setPitch(1.0f)
             }
         }
     }
 
-    private fun fetchMp3(text: String): ByteArray {
-        val body = JSONObject()
-            .put("model", "kokoro")
-            .put("input", text)
-            .put("voice", "af_sky")
-            .put("response_format", "mp3")
-            .toString()
-            .toRequestBody("application/json".toMediaType())
+    // Speak text using Android on-device TTS. Suspends until the utterance completes
+    // or is cancelled. No network required — playback is instant on-device.
+    suspend fun speak(text: String) {
+        val isReady = ready.await()
+        if (!isReady) {
+            DebugLog.e("TTS", "Engine not ready — skipping speak()")
+            return
+        }
 
-        val response = client.newCall(
-            Request.Builder().url(TTS_URL).post(body).build()
-        ).execute()
-        if (!response.isSuccessful) throw IOException("TTS failed: ${response.code}")
-        return response.body?.bytes() ?: throw IOException("TTS empty body")
-    }
+        suspendCancellableCoroutine { cont ->
+            tts.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(utteranceId: String?) {}
 
-    private suspend fun playAndAwait(path: String) = suspendCancellableCoroutine { cont ->
-        val mp = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .build()
-            )
+                override fun onDone(utteranceId: String?) {
+                    if (cont.isActive) cont.resume(Unit)
+                }
+
+                @Deprecated("Deprecated in API 21")
+                override fun onError(utteranceId: String?) {
+                    DebugLog.e("TTS", "Utterance error: $utteranceId")
+                    if (cont.isActive) cont.resume(Unit)
+                }
+
+                override fun onError(utteranceId: String?, errorCode: Int) {
+                    DebugLog.e("TTS", "Utterance error $errorCode: $utteranceId")
+                    if (cont.isActive) cont.resume(Unit)
+                }
+            })
+
+            val params = Bundle().apply {
+                putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, 1.0f)
+            }
+            val result = tts.speak(text, TextToSpeech.QUEUE_FLUSH, params, UTTERANCE_ID)
+            if (result == TextToSpeech.ERROR) {
+                DebugLog.e("TTS", "tts.speak() returned ERROR")
+                if (cont.isActive) cont.resume(Unit)
+                return@suspendCancellableCoroutine
+            }
+
+            cont.invokeOnCancellation { tts.stop() }
         }
-        player = mp
-        mp.setDataSource(path)
-        mp.setOnPreparedListener { it.start() }
-        mp.setOnCompletionListener {
-            it.release()
-            player = null
-            if (cont.isActive) cont.resume(Unit)
-        }
-        mp.setOnErrorListener { _, _, _ ->
-            mp.release()
-            player = null
-            if (cont.isActive) cont.resumeWithException(IOException("MediaPlayer error"))
-            true
-        }
-        cont.invokeOnCancellation {
-            mp.release()
-            player = null
-        }
-        mp.prepareAsync()
     }
 
     fun stop() {
-        player?.apply {
-            runCatching { if (isPlaying) stop() }
-            release()
-        }
-        player = null
+        tts.stop()
+    }
+
+    fun destroy() {
+        tts.stop()
+        tts.shutdown()
     }
 }
