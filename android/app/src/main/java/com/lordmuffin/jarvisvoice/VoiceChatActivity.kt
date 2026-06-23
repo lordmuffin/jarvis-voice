@@ -230,6 +230,10 @@ class VoiceChatActivity : AppCompatActivity() {
             onFinal   = { text ->
                 val discard = discardNextResult
                 discardNextResult = false
+                // SherpaOnnx emits artifact tokens like "(static)", "[noise]", "(inaudible)"
+                // for non-speech audio. Treat them the same as silence.
+                val isArtifact = text.matches(Regex("""^\(.*\)$""")) ||
+                                 text.matches(Regex("""^\[.*]$"""))
                 when {
                     discard                                        -> viewModel.setStatus(ChatStatus.IDLE)
                     text.isNotBlank() && !isSherpaArtifact(text)  -> viewModel.sendText(text)
