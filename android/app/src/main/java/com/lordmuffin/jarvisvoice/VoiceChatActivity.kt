@@ -270,21 +270,35 @@ class VoiceChatActivity : AppCompatActivity() {
             }
         }
         uiScope.launch {
+            viewModel.toolStatusText.collect { text ->
+                if (text.isNotEmpty()) tvStatus.text = text
+            }
+        }
+        uiScope.launch {
             viewModel.status.collect { status ->
                 tvStatus.text = when (status) {
                     ChatStatus.IDLE      -> ""
                     ChatStatus.LISTENING -> "Listening…"
                     ChatStatus.THINKING  -> "Thinking…"
+                    ChatStatus.TOOL_CALL -> tvStatus.text  // toolStatusText flow owns this
                     ChatStatus.SPEAKING  -> "Speaking…"
                 }
 
-                // Auto-restart mic after TTS finishes. 600ms lets the speaker
-                // ring down so the mic doesn't capture TTS echo.
+                // Restart mic only after TTS finishes (SPEAKING→IDLE) — not after
+                // silent tool call turns (TOOL_CALL/THINKING→IDLE with empty LLM response).
                 if (prevStatus == ChatStatus.SPEAKING
                         && status == ChatStatus.IDLE
                         && conversationActive
                         && voiceMode) {
                     mainHandler.postDelayed({ startListening() }, 600)
+                }
+                // If LLM/tool call failed and returned nothing, restart anyway so the
+                // loop doesn't stall indefinitely.
+                if ((prevStatus == ChatStatus.THINKING || prevStatus == ChatStatus.TOOL_CALL)
+                        && status == ChatStatus.IDLE
+                        && conversationActive
+                        && voiceMode) {
+                    mainHandler.postDelayed({ startListening() }, 400)
                 }
                 prevStatus = status
             }
