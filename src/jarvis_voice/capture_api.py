@@ -31,6 +31,13 @@ from jarvis_voice.vault import VAULT_INBOX, voice_note_basename, write_voice_not
 
 log = logging.getLogger(__name__)
 
+# Vault root — two levels up from the Voice Notes inbox subfolder.
+# Override with VAULT_ROOT env var if the directory layout differs.
+VAULT_ROOT = pathlib.Path(
+    os.environ.get("VAULT_ROOT", str(pathlib.Path(VAULT_INBOX).parents[1]))
+)
+_VAULT_MAX_CHARS = 6000
+
 app = FastAPI(title="Jarvis Capture API", version="1.0")
 
 
@@ -187,3 +194,78 @@ def capture_audio(
         "transcript": transcript,
         "transcribe_seconds": round(float(transcribe_seconds), 1),
     }
+
+
+# ── Vault tool endpoints (used by Android Kai voice tool calls) ───────────────
+
+class AppendPayload(BaseModel):
+    path: str
+    text: str
+
+
+@app.get("/api/v1/vault/note")
+def vault_read_note(path: str, _: str = Depends(verify_key)) -> dict:
+    """Read a note from the vault by relative path."""
+    target = VAULT_ROOT / path
+    if not target.exists():
+        name = pathlib.Path(path).name
+        matches = list(VAULT_ROOT.rglob(f"*{name}"))
+        if matches:
+            target = matches[0]
+        else:
+            raise HTTPException(status_code=404, detail=f"Not found: {path}")
+    content = target.read_text(encoding="utf-8", errors="replace")
+    if len(content) > _VAULT_MAX_CHARS:
+        content = content[:_VAULT_MAX_CHARS] + "\n\n[truncated]"
+    return {"path": str(target.relative_to(VAULT_ROOT)), "content": content}
+
+
+@app.get("/api/v1/vault/search")
+def vault_search(
+    query: str,
+    directory: str = "",
+    _: str = Depends(verify_key),
+) -> dict:
+    """Search vault notes for a keyword. Returns list of relative paths."""
+    search_root = VAULT_ROOT / directory if directory else VAULT_ROOT
+    try:
+        result = subprocess.run(
+            ["grep", "-rl", "--include=*.md", query, str(search_root)],
+            capture_output=True, text=True, timeout=5,
+        )
+        matches = result.stdout.strip().splitlines()
+        rel = [str(pathlib.Path(m).relative_to(VAULT_ROOT)) for m in matches[:20]]
+        return {"query": query, "count": len(matches), "matches": rel}
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Search timed out")
+
+
+@app.get("/api/v1/vault/sprint-state")
+def vault_sprint_state(_: str = Depends(verify_key)) -> dict:
+    """Return today's daily note, sprint board, and TASKS.md concatenated."""
+    import datetime as dt
+    today = dt.date.today().strftime("%Y-%m-%d")
+    paths = [
+        f"20 Areas/Personal/Daily Notes/{today}.md",
+        "20 Areas/Personal/Sprints.md",
+        "20 Areas/Personal/TASKS.md",
+    ]
+    parts: list[dict] = []
+    for p in paths:
+        try:
+            content = (VAULT_ROOT / p).read_text(encoding="utf-8", errors="replace")
+            parts.append({"path": p, "content": content[:2000]})
+        except FileNotFoundError:
+            parts.append({"path": p, "content": "[not found]"})
+    return {"date": today, "sections": parts}
+
+
+@app.post("/api/v1/vault/note/append")
+def vault_append_note(payload: AppendPayload, _: str = Depends(verify_key)) -> dict:
+    """Append text to an existing vault note."""
+    target = VAULT_ROOT / payload.path
+    if not target.exists():
+        raise HTTPException(status_code=404, detail=f"Not found: {payload.path}")
+    with open(target, "a", encoding="utf-8") as f:
+        f.write(f"\n{payload.text.rstrip()}\n")
+    return {"status": "appended", "path": payload.path}

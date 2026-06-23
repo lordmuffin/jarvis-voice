@@ -383,6 +383,39 @@
                 android:paddingHorizontal="4dp"
                 android:layout_marginBottom="16dp" />
 
+            <!-- ── Vault API (note read/write tool calls) ─────────────── -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Vault API Key"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="4dp" />
+
+            <EditText
+                android:id="@+id/et_vault_api_key"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="JARVIS_CAPTURE_KEY value"
+                android:inputType="textPassword"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:background="@drawable/permission_card_bg"
+                android:padding="12dp"
+                android:textSize="13sp"
+                android:fontFamily="monospace"
+                android:layout_marginBottom="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Key from /home/lordmuffin/.jarvis-capture.env on GamingPC. Required for vault note tools (read, search, write)."
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:paddingHorizontal="4dp"
+                android:layout_marginBottom="16dp" />
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="1dp"

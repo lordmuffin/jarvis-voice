@@ -1,9 +1,11 @@
 package com.lordmuffin.jarvisvoice.chat
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.lordmuffin.jarvisvoice.DebugLog
+import com.lordmuffin.jarvisvoice.VoiceOverlayService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,29 +16,44 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-enum class ChatStatus { IDLE, LISTENING, THINKING, SPEAKING }
+enum class ChatStatus { IDLE, LISTENING, THINKING, TOOL_CALL, SPEAKING }
+
+// Human-readable label shown in tvStatus during a tool call
+private fun toolLabel(name: String) = when (name) {
+    "read_note"      -> "Reading vault…"
+    "search_vault"   -> "Searching vault…"
+    "get_sprint_state" -> "Checking sprint board…"
+    "append_to_note" -> "Writing to vault…"
+    else             -> "Using vault…"
+}
 
 class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
     private val llm = LlmRepository()
     private val tts = TtsRepository(app.applicationContext)
 
-    private val _messages      = MutableStateFlow<List<ConversationMessage>>(emptyList())
-    private val _status        = MutableStateFlow(ChatStatus.IDLE)
-    private val _streamingText = MutableStateFlow("")
-    private val _selectedModel = MutableStateFlow("local-default")
+    private val _messages        = MutableStateFlow<List<ConversationMessage>>(emptyList())
+    private val _status          = MutableStateFlow(ChatStatus.IDLE)
+    private val _streamingText   = MutableStateFlow("")
+    private val _toolStatusText  = MutableStateFlow("")
+    private val _selectedModel   = MutableStateFlow("local-default")
     private val _availableModels = MutableStateFlow<List<String>>(listOf("local-default"))
 
-    val messages:        StateFlow<List<ConversationMessage>> = _messages.asStateFlow()
-    val status:          StateFlow<ChatStatus>                = _status.asStateFlow()
-    val streamingText:   StateFlow<String>                    = _streamingText.asStateFlow()
-    val selectedModel:   StateFlow<String>                    = _selectedModel.asStateFlow()
-    val availableModels: StateFlow<List<String>>              = _availableModels.asStateFlow()
+    val messages:       StateFlow<List<ConversationMessage>> = _messages.asStateFlow()
+    val status:         StateFlow<ChatStatus>                = _status.asStateFlow()
+    val streamingText:  StateFlow<String>                    = _streamingText.asStateFlow()
+    val toolStatusText: StateFlow<String>                    = _toolStatusText.asStateFlow()
+    val selectedModel:  StateFlow<String>                    = _selectedModel.asStateFlow()
+    val availableModels:StateFlow<List<String>>              = _availableModels.asStateFlow()
 
     private var activeJob: Job? = null
     private val historyFile = File(app.filesDir, "voice_chat_history.json")
 
     init {
+        // Load vault API key from SharedPreferences so HTTP calls to the capture API are authenticated
+        val prefs = app.getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
+        llm.vaultApiKey = prefs.getString(PREF_VAULT_KEY, "") ?: ""
+
         loadHistory()
         fetchModels()
     }
@@ -53,10 +70,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
             val models = llm.fetchModels()
             if (models.isNotEmpty()) {
                 _availableModels.value = models
-                // Keep selectedModel valid — if current selection not in list, reset to first
-                if (_selectedModel.value !in models) {
-                    _selectedModel.value = models.first()
-                }
+                if (_selectedModel.value !in models) _selectedModel.value = models.first()
             }
         }
     }
@@ -68,11 +82,10 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
             if (!historyFile.exists()) return@launch
             try {
                 val arr = JSONArray(historyFile.readText())
-                val msgs = (0 until arr.length()).map { i ->
-                    val obj = arr.getJSONObject(i)
-                    ConversationMessage(obj.getString("role"), obj.getString("content"))
+                _messages.value = (0 until arr.length()).map { i ->
+                    val o = arr.getJSONObject(i)
+                    ConversationMessage(o.getString("role"), o.getString("content"))
                 }
-                _messages.value = msgs
             } catch (e: Exception) {
                 DebugLog.e("VoiceChat", "load history failed: ${e.message}")
             }
@@ -110,33 +123,35 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         activeJob = viewModelScope.launch {
             _status.value = ChatStatus.THINKING
             _streamingText.value = ""
-            val response = StringBuilder()
+            _toolStatusText.value = ""
 
             try {
-                // Stream all tokens into the live preview, wait for the full
-                // response before speaking so the user hears a complete reply.
-                llm.streamChat(history, _selectedModel.value).collect { token ->
-                    response.append(token)
-                    _streamingText.value = response.toString()
-                }
+                val full = llm.chatWithTools(
+                    history  = history,
+                    model    = _selectedModel.value,
+                    onToolCall = { toolName ->
+                        _status.value = ChatStatus.TOOL_CALL
+                        _toolStatusText.value = toolLabel(toolName)
+                    },
+                )
 
-                val full = response.toString().trim()
                 if (full.isNotEmpty()) {
                     val updated = history + ConversationMessage("assistant", full)
                     _messages.value = updated
                     saveHistory(updated)
 
                     _streamingText.value = ""
+                    _toolStatusText.value = ""
                     _status.value = ChatStatus.SPEAKING
 
-                    // Android on-device TTS — no network, instant, no threading issues.
                     runCatching { tts.speak(full) }
                         .onFailure { e -> DebugLog.e("VoiceChat/TTS", "speak failed: ${e.message}") }
                 }
             } catch (e: Exception) {
-                DebugLog.e("VoiceChat/LLM", "stream failed: ${e.message}")
+                DebugLog.e("VoiceChat/LLM", "chat failed: ${e.message}")
             } finally {
                 _streamingText.value = ""
+                _toolStatusText.value = ""
                 _status.value = ChatStatus.IDLE
             }
         }
@@ -146,18 +161,21 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         activeJob?.cancel()
         tts.stop()
         _streamingText.value = ""
+        _toolStatusText.value = ""
         _status.value = ChatStatus.IDLE
     }
 
     fun clearHistory() {
         _messages.value = emptyList()
-        viewModelScope.launch(Dispatchers.IO) {
-            runCatching { historyFile.delete() }
-        }
+        viewModelScope.launch(Dispatchers.IO) { runCatching { historyFile.delete() } }
     }
 
     override fun onCleared() {
         super.onCleared()
         tts.destroy()
+    }
+
+    companion object {
+        const val PREF_VAULT_KEY = "vault_api_key"
     }
 }

@@ -147,6 +147,19 @@ class SettingsActivity : AppCompatActivity() {
             }
         })
 
+        // Vault API key — used by the chat tool calls (read/write vault notes)
+        val etVaultKey = findViewById<android.widget.EditText>(R.id.et_vault_api_key)
+        etVaultKey?.let { et ->
+            et.setText(prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_VAULT_KEY, ""))
+            et.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    prefs.edit().putString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_VAULT_KEY, s?.toString()?.trim() ?: "").apply()
+                }
+            })
+        }
+
         findViewById<Button>(R.id.btn_open_stt_model_manager).setOnClickListener {
             startActivity(Intent(this, SttModelManagerActivity::class.java))
         }
