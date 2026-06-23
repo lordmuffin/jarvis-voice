@@ -20,7 +20,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 private const val LLM_BASE   = "http://192.168.1.93:4000"
-private const val VAULT_BASE = "http://192.168.1.183:8881"   // capture API on GamingPC
+private const val VAULT_BASE = "http://192.168.1.155:8881"   // capture API on DGX Spark (.155)
 
 // /no_think disables Qwen3's chain-of-thought so the model replies directly.
 private const val SYSTEM_PROMPT =
