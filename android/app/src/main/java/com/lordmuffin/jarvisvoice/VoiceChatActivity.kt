@@ -340,8 +340,12 @@ class VoiceChatActivity : AppCompatActivity() {
                 if (conversationActive) updateTalkButton(status)
 
                 // When Kai starts speaking, start the shadow mic so the user can barge in
-                // by talking (AEC on the AudioRecord suppresses TTS bleed).
-                if (status == ChatStatus.SPEAKING && conversationActive && voiceMode) {
+                // by talking. Skip auto-barge-in when Kokoro (NetworkTTS) is active —
+                // hardware AEC only references VOICE_COMMUNICATION streams, not USAGE_ASSISTANT,
+                // so Kokoro's speaker output bleeds through the mic and self-triggers. The user
+                // can still tap btn_talk to interrupt manually.
+                if (status == ChatStatus.SPEAKING && conversationActive && voiceMode
+                        && !viewModel.hasNetworkTts()) {
                     bargeInListening = true
                     mainHandler.postDelayed({ startBargeInListening() }, 300)
                 }

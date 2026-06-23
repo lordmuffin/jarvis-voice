@@ -168,6 +168,8 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun hasNetworkTts(): Boolean = networkTts != null
+
     fun cancelActive() {
         activeJob?.cancel()
         networkTts?.stop() ?: tts.stop()

@@ -239,7 +239,7 @@ class VoiceOverlayService : Service() {
         runCatching { unregisterReceiver(screenStateReceiver) }
         instance = null
         speechEngine?.destroy()
-        historyManager.close()
+        runCatching { historyManager.close() }
         if (::overlayView.isInitialized) {
             runCatching { windowManager.removeView(overlayView) }
         }
@@ -449,7 +449,14 @@ class VoiceOverlayService : Service() {
     private fun finalizeAndInject(rawText: String, finalText: String, elapsedMs: Long,
                                    llmModel: String = "", llmMs: Long = 0L,
                                    sttBackend: String = "", llmBackend: String = "") {
-        val session = historyManager.saveSession(rawText, finalText, elapsedMs, llmModel, llmMs, sttBackend, llmBackend)
+        val session = runCatching {
+            historyManager.saveSession(rawText, finalText, elapsedMs, llmModel, llmMs, sttBackend, llmBackend)
+        }.getOrElse { e ->
+            DebugLog.e("Service", "history save failed — continuing without persisting", e)
+            val words = finalText.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+            DictationSession(0, System.currentTimeMillis(), finalText, rawText,
+                words.size, elapsedMs, 0f, llmModel, llmMs, sttBackend, llmBackend)
+        }
 
         state = OverlayState.DONE
         waveformView.stopAnimation()

@@ -12,6 +12,19 @@ class DictationHistoryManager(context: Context) :
         private const val TABLE = "sessions"
     }
 
+    override fun onCorruption(db: SQLiteDatabase) {
+        // SQLite detected an unrecoverable corruption — wipe the file so the next
+        // open recreates it from scratch. History data is lost, but the crash loop
+        // (which would otherwise persist until the user clears app data) is broken.
+        DebugLog.e("History", "DB corrupted — deleting and recreating: ${db.path}")
+        runCatching {
+            db.close()
+            java.io.File(db.path).delete()
+            java.io.File("${db.path}-wal").delete()
+            java.io.File("${db.path}-shm").delete()
+        }
+    }
+
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("""
             CREATE TABLE $TABLE (
