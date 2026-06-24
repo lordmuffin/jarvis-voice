@@ -95,6 +95,12 @@
             android:label="Voice to Vault" />
 
         <activity
+            android:name=".AgentTaskActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Agent Tasks" />
+
+        <activity
             android:name=".OnboardingActivity"
             android:exported="true"
             android:theme="@style/Theme.JarvisVoice">

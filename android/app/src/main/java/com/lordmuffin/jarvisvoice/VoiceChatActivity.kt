@@ -2,6 +2,7 @@ package com.lordmuffin.jarvisvoice
 
 import android.Manifest
 import android.app.Dialog
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -52,7 +53,8 @@ class VoiceChatActivity : AppCompatActivity() {
     private lateinit var btnTalk:      Button
     private lateinit var llTypeInput:  LinearLayout
     private lateinit var etMessage:    EditText
-    private lateinit var btnSendText:      Button
+    private lateinit var btnSendText:  Button
+    private lateinit var btnDelegate:  Button
     private lateinit var pbContext:        ProgressBar
     private lateinit var tvContextTokens:  TextView
     private lateinit var btnSessions:      Button
@@ -96,6 +98,7 @@ class VoiceChatActivity : AppCompatActivity() {
         llTypeInput   = findViewById(R.id.ll_type_input)
         etMessage     = findViewById(R.id.et_message)
         btnSendText       = findViewById(R.id.btn_send_text)
+        btnDelegate       = findViewById(R.id.btn_delegate)
         pbContext         = findViewById(R.id.pb_context)
         tvContextTokens   = findViewById(R.id.tv_context_tokens)
         btnSessions       = findViewById(R.id.btn_sessions)
@@ -114,6 +117,7 @@ class VoiceChatActivity : AppCompatActivity() {
         btnModel.setOnClickListener     { showModelMenu() }
         btnTalk.setOnClickListener      { onTalkTapped() }
         btnSendText.setOnClickListener  { sendTypedMessage() }
+        btnDelegate.setOnClickListener  { delegateToAgent() }
         btnSessions.setOnClickListener  { showSessionsDialog() }
         btnNewConvo.setOnClickListener  {
             stopConversation()
@@ -429,6 +433,20 @@ class VoiceChatActivity : AppCompatActivity() {
         }
         btnTalk.alpha     = 1.0f
         btnTalk.isEnabled = true
+    }
+
+    // ── Delegate to agent ─────────────────────────────────────────────────────
+
+    private fun delegateToAgent() {
+        val text = etMessage.text.toString().trim()
+        etMessage.setText("")
+        dismissKeyboard()
+        val intent = Intent(this, AgentTaskActivity::class.java).apply {
+            putExtra(AgentTaskActivity.EXTRA_PROMPT, text)
+            putExtra(AgentTaskActivity.EXTRA_MODEL, viewModel.selectedModel.value)
+            flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        }
+        startActivity(intent)
     }
 
     // ── Text input ────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 
 object BottomNav {
 
-    enum class Tab { RECORD, HISTORY, CHAT, SETTINGS, MODELS }
+    enum class Tab { RECORD, HISTORY, CHAT, SETTINGS, MODELS, AGENT }
 
     fun wire(activity: AppCompatActivity, active: Tab) {
         val root = activity.findViewById<LinearLayout>(R.id.bottom_nav_root) ?: return
@@ -23,6 +23,7 @@ object BottomNav {
             TabDef(Tab.CHAT,     R.id.nav_tab_chat,     R.id.nav_icon_chat,     R.id.nav_label_chat),
             TabDef(Tab.SETTINGS, R.id.nav_tab_settings, R.id.nav_icon_settings, R.id.nav_label_settings),
             TabDef(Tab.MODELS,   R.id.nav_tab_models,   R.id.nav_icon_models,   R.id.nav_label_models),
+            TabDef(Tab.AGENT,    R.id.nav_tab_agent,    R.id.nav_icon_agent,    R.id.nav_label_agent),
         )
 
         for (t in tabs) {
@@ -38,6 +39,7 @@ object BottomNav {
                         Tab.CHAT     -> VoiceChatActivity::class.java
                         Tab.SETTINGS -> SettingsActivity::class.java
                         Tab.MODELS   -> ModelManagerActivity::class.java
+                        Tab.AGENT    -> AgentTaskActivity::class.java
                     })
                     intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                     activity.startActivity(intent)

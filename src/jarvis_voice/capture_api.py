@@ -23,6 +23,10 @@ import tempfile
 import urllib.request
 import uuid
 
+import json as _json
+import threading as _threading
+import time as _time
+
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -345,3 +349,152 @@ def system_exec(payload: ExecPayload, _: str = Depends(verify_key)) -> dict:
         raise HTTPException(status_code=504, detail="Command timed out after 30s")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+# ── Agent task queue ───────────────────────────────────────────────────────────
+
+_LITELLM_BASE = os.environ.get("LITELLM_BASE", "http://192.168.1.93:4000")
+_TASKS: dict[str, dict] = {}
+_TASKS_LOCK = _threading.Lock()
+_TASKS_FILE = pathlib.Path("/tmp/jarvis_agent_tasks.json")
+
+
+def _tasks_load() -> None:
+    if _TASKS_FILE.exists():
+        try:
+            data = _json.loads(_TASKS_FILE.read_text())
+            _TASKS.update(data)
+        except Exception:
+            pass
+
+
+def _tasks_save() -> None:
+    try:
+        _TASKS_FILE.write_text(_json.dumps(_TASKS))
+    except Exception:
+        pass
+
+
+_tasks_load()
+
+
+class AgentTaskCreate(BaseModel):
+    name: str = ""
+    prompt: str
+    model: str = "local-default"
+    system: str = ""
+
+
+def _run_agent_task(task_id: str) -> None:
+    with _TASKS_LOCK:
+        task = _TASKS.get(task_id)
+        if not task:
+            return
+        if task["status"] == "cancelled":
+            return
+        task["status"] = "running"
+        task["started_at"] = _time.time()
+        _tasks_save()
+
+    try:
+        messages: list[dict] = []
+        if task.get("system"):
+            messages.append({"role": "system", "content": task["system"]})
+        messages.append({"role": "user", "content": task["prompt"]})
+
+        body = _json.dumps({
+            "model": task["model"],
+            "messages": messages,
+            "max_tokens": 4096,
+        }).encode()
+
+        api_key = os.environ.get("LITELLM_API_KEY", "litellm")
+        req = urllib.request.Request(
+            f"{_LITELLM_BASE}/chat/completions",
+            data=body,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            result = _json.loads(resp.read().decode())
+
+        content = result["choices"][0]["message"]["content"]
+        usage = result.get("usage", {})
+
+        with _TASKS_LOCK:
+            task = _TASKS.get(task_id, {})
+            if task.get("status") != "cancelled":
+                task["status"]      = "done"
+                task["output"]      = content
+                task["finished_at"] = _time.time()
+                task["tokens"]      = usage.get("total_tokens", 0)
+            _tasks_save()
+
+    except Exception as exc:
+        with _TASKS_LOCK:
+            task = _TASKS.get(task_id, {})
+            if task.get("status") != "cancelled":
+                task["status"]      = "failed"
+                task["output"]      = str(exc)
+                task["finished_at"] = _time.time()
+            _tasks_save()
+
+
+@app.post("/api/v1/agent/tasks")
+def agent_task_create(payload: AgentTaskCreate, _: str = Depends(verify_key)) -> dict:
+    """Submit a prompt as a background agent task and return its id immediately."""
+    task_id = str(uuid.uuid4())
+    name = payload.name.strip() or payload.prompt[:40].strip()
+    task: dict = {
+        "id":          task_id,
+        "name":        name,
+        "prompt":      payload.prompt,
+        "model":       payload.model,
+        "system":      payload.system,
+        "status":      "queued",
+        "output":      "",
+        "tokens":      0,
+        "created_at":  _time.time(),
+        "started_at":  None,
+        "finished_at": None,
+    }
+    with _TASKS_LOCK:
+        _TASKS[task_id] = task
+        _tasks_save()
+
+    _threading.Thread(target=_run_agent_task, args=(task_id,), daemon=True).start()
+    return {"id": task_id, "status": "queued"}
+
+
+@app.get("/api/v1/agent/tasks")
+def agent_task_list(_: str = Depends(verify_key)) -> dict:
+    """List all agent tasks, newest first (max 100)."""
+    with _TASKS_LOCK:
+        tasks = sorted(_TASKS.values(), key=lambda t: t["created_at"], reverse=True)
+    return {"tasks": tasks[:100]}
+
+
+@app.get("/api/v1/agent/tasks/{task_id}")
+def agent_task_get(task_id: str, _: str = Depends(verify_key)) -> dict:
+    """Get a single agent task by id."""
+    with _TASKS_LOCK:
+        task = _TASKS.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+@app.delete("/api/v1/agent/tasks/{task_id}")
+def agent_task_delete(task_id: str, _: str = Depends(verify_key)) -> dict:
+    """Cancel and remove an agent task."""
+    with _TASKS_LOCK:
+        task = _TASKS.pop(task_id, None)
+        if task:
+            task["status"] = "cancelled"
+            _tasks_save()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"id": task_id, "status": "cancelled"}
