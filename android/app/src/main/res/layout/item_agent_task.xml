@@ -131,6 +131,7 @@
             android:textAllCaps="false"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
+            android:layout_marginEnd="2dp"
             android:backgroundTint="@color/jv_surface2"
             android:textColor="@color/jv_accent"
             android:stateListAnimator="@null" />
