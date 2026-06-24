@@ -551,6 +551,11 @@ def agent_task_reply(task_id: str, payload: AgentTaskReply, _: str = Depends(ver
 
 _WORKSPACES_DIR = pathlib.Path(os.environ.get("JARVIS_WORKSPACES", "/home/lordmuffin/jarvis-workspaces"))
 
+# Ensure ~/.local/bin is on PATH so gh CLI installed as user-local binary is found
+_LOCAL_BIN = str(pathlib.Path.home() / ".local" / "bin")
+if _LOCAL_BIN not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _LOCAL_BIN + ":" + os.environ.get("PATH", "")
+
 
 def _ws_path(repo_slug: str) -> pathlib.Path:
     safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", repo_slug)
