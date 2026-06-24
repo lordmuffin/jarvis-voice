@@ -5,6 +5,7 @@ __pycache__/
 venv/
 .env
 .env.local
+.signing.env
 *.log
 
 # Signing keystores — never commit; use KEYSTORE_BASE64 GitHub secret instead
