@@ -469,6 +469,121 @@ class AgentTaskCreate(BaseModel):
     system: str = ""
 
 
+_AGENT_SYSTEM = (
+    "You are Kai, an AI assistant running on the Jarvis homelab server (192.168.1.155). "
+    "You have tools available — use them to complete tasks autonomously end-to-end. "
+    "Do NOT say you lack access to external systems; use the tools provided.\n\n"
+    "Git workspace tools (clone repos, edit files, commit, open PRs):\n"
+    "  git_clone   — clone a GitHub repo by slug (e.g. lordmuffin/jarvis-voice)\n"
+    "  git_write   — write/create a file in a cloned workspace\n"
+    "  git_status  — check working tree status\n"
+    "  git_commit  — stage all changes and commit (optionally on a new branch)\n"
+    "  git_pr      — push branch and create a pull request\n\n"
+    "Vault tools (Obsidian knowledge base at /home/lordmuffin/Notes):\n"
+    "  vault_read   — read a note by vault-relative path\n"
+    "  vault_search — keyword search across all notes\n"
+    "  vault_append — append text to an existing note\n"
+    "  vault_write  — create or overwrite a note\n\n"
+    "Web + system:\n"
+    "  web_fetch    — fetch a URL and return stripped text\n"
+    "  system_exec  — run a shell command on the server\n\n"
+    "Work through multi-step tasks by calling tools in sequence. "
+    "Return a concise summary when done."
+)
+
+_AGENT_TOOLS: list[dict] = [
+    {"type": "function", "function": {
+        "name": "git_clone",
+        "description": "Clone (or update) a GitHub repo into a local workspace. Must be done before git_write/git_commit/git_pr.",
+        "parameters": {"type": "object", "required": ["repo"], "properties": {
+            "repo":   {"type": "string", "description": "GitHub slug, e.g. lordmuffin/jarvis-voice"},
+            "branch": {"type": "string", "description": "Branch to checkout after clone (optional)"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "git_write",
+        "description": "Write or create a file in a cloned workspace repo.",
+        "parameters": {"type": "object", "required": ["repo", "path", "content"], "properties": {
+            "repo":    {"type": "string", "description": "GitHub slug"},
+            "path":    {"type": "string", "description": "File path relative to repo root"},
+            "content": {"type": "string", "description": "Full file content"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "git_status",
+        "description": "Return git status and diff stat for a workspace repo.",
+        "parameters": {"type": "object", "required": ["repo"], "properties": {
+            "repo": {"type": "string", "description": "GitHub slug"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "git_commit",
+        "description": "Stage all changes and commit. Optionally create a new branch first.",
+        "parameters": {"type": "object", "required": ["repo", "message"], "properties": {
+            "repo":    {"type": "string", "description": "GitHub slug"},
+            "message": {"type": "string", "description": "Commit message"},
+            "branch":  {"type": "string", "description": "Create/switch to this branch before committing (optional)"},
+            "push":    {"type": "boolean", "description": "Push to origin after commit (default true)"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "git_pr",
+        "description": "Push current branch and open a pull request. Returns PR URL or compare URL.",
+        "parameters": {"type": "object", "required": ["repo", "title"], "properties": {
+            "repo":  {"type": "string", "description": "GitHub slug"},
+            "title": {"type": "string", "description": "PR title"},
+            "body":  {"type": "string", "description": "PR description (markdown)"},
+            "base":  {"type": "string", "description": "Target branch (default: main)"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "vault_read",
+        "description": "Read a note from the Obsidian vault by vault-relative path.",
+        "parameters": {"type": "object", "required": ["path"], "properties": {
+            "path": {"type": "string", "description": "Vault-relative path, e.g. 20 Areas/Personal/Sprints.md"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "vault_search",
+        "description": "Keyword search across all vault notes. Returns list of matching file paths.",
+        "parameters": {"type": "object", "required": ["query"], "properties": {
+            "query": {"type": "string", "description": "Search keyword or phrase"},
+            "limit": {"type": "integer", "description": "Max results (default 10)"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "vault_append",
+        "description": "Append text to an existing vault note.",
+        "parameters": {"type": "object", "required": ["path", "content"], "properties": {
+            "path":    {"type": "string", "description": "Vault-relative path"},
+            "content": {"type": "string", "description": "Text to append"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "vault_write",
+        "description": "Create or overwrite a vault note.",
+        "parameters": {"type": "object", "required": ["path", "content"], "properties": {
+            "path":    {"type": "string", "description": "Vault-relative path"},
+            "content": {"type": "string", "description": "Full note content"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "web_fetch",
+        "description": "Fetch a URL and return stripped plain text.",
+        "parameters": {"type": "object", "required": ["url"], "properties": {
+            "url": {"type": "string", "description": "URL to fetch"},
+        }},
+    }},
+    {"type": "function", "function": {
+        "name": "system_exec",
+        "description": "Run a shell command on the Jarvis server. Returns stdout+stderr (max 2000 chars).",
+        "parameters": {"type": "object", "required": ["command"], "properties": {
+            "command": {"type": "string", "description": "Shell command"},
+        }},
+    }},
+]
+
+
 def _run_agent_task(task_id: str) -> None:
     with _TASKS_LOCK:
         task = _TASKS.get(task_id)
@@ -479,40 +594,76 @@ def _run_agent_task(task_id: str) -> None:
         task["status"] = "running"
         task["started_at"] = _time.time()
         _tasks_save()
-        # Snapshot existing messages so we can append to them after
         existing_messages: list[dict] = list(task.get("messages", []))
 
     try:
-        # Build context: use stored messages if this is a continuation, else seed from prompt
+        # Seed messages for first run; use stored messages for continuations
         if existing_messages:
-            send_messages = existing_messages
+            send_messages = list(existing_messages)
         else:
-            send_messages = []
-            if task.get("system"):
-                send_messages.append({"role": "system", "content": task["system"]})
-            send_messages.append({"role": "user", "content": task["prompt"]})
+            system_content = task.get("system") or _AGENT_SYSTEM
+            send_messages = [
+                {"role": "system", "content": system_content},
+                {"role": "user",   "content": task["prompt"]},
+            ]
 
-        body = _json.dumps({
-            "model": task["model"],
-            "messages": send_messages,
-            "max_tokens": 4096,
-        }).encode()
+        # Ensure a system message is present (continuations may lack one)
+        if not send_messages or send_messages[0]["role"] != "system":
+            send_messages = [{"role": "system", "content": _AGENT_SYSTEM}] + send_messages
 
         api_key = os.environ.get("LITELLM_API_KEY", "litellm")
-        req = urllib.request.Request(
-            f"{_LITELLM_BASE}/chat/completions",
-            data=body,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            result = _json.loads(resp.read().decode())
+        content = ""
+        total_tokens = 0
+        new_messages: list[dict] = []
 
-        content = result["choices"][0]["message"]["content"]
-        usage = result.get("usage", {})
+        for _iteration in range(10):
+            body = _json.dumps({
+                "model":       task["model"],
+                "messages":    send_messages,
+                "tools":       _AGENT_TOOLS,
+                "tool_choice": "auto",
+                "max_tokens":  4096,
+            }).encode()
+
+            req = urllib.request.Request(
+                f"{_LITELLM_BASE}/chat/completions",
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                },
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                result = _json.loads(resp.read().decode())
+
+            total_tokens += result.get("usage", {}).get("total_tokens", 0)
+            choice  = result["choices"][0]
+            message = choice["message"]
+            finish  = choice.get("finish_reason", "stop")
+
+            tool_calls = message.get("tool_calls") or []
+            if tool_calls:
+                send_messages.append(message)
+                new_messages.append(message)
+                for tc in tool_calls:
+                    fn   = tc["function"]["name"]
+                    try:
+                        args = _json.loads(tc["function"]["arguments"])
+                    except Exception:
+                        args = {}
+                    result_text = _execute_tool(fn, args)
+                    tool_msg = {
+                        "role":         "tool",
+                        "tool_call_id": tc["id"],
+                        "content":      result_text,
+                    }
+                    send_messages.append(tool_msg)
+                    new_messages.append(tool_msg)
+            else:
+                content = message.get("content") or ""
+                new_messages.append({"role": "assistant", "content": content})
+                break
 
         with _TASKS_LOCK:
             task = _TASKS.get(task_id, {})
@@ -520,15 +671,10 @@ def _run_agent_task(task_id: str) -> None:
                 task["status"]      = "done"
                 task["output"]      = content
                 task["finished_at"] = _time.time()
-                task["tokens"]      = task.get("tokens", 0) + usage.get("total_tokens", 0)
-                # Persist full conversation: seed + assistant reply
+                task["tokens"]      = task.get("tokens", 0) + total_tokens
                 if not existing_messages:
-                    seed: list[dict] = []
-                    if task.get("system"):
-                        seed.append({"role": "system", "content": task["system"]})
-                    seed.append({"role": "user", "content": task["prompt"]})
-                    task["messages"] = seed
-                task["messages"].append({"role": "assistant", "content": content})
+                    task["messages"] = send_messages[:2]  # system + user seed
+                task["messages"].extend(new_messages)
             _tasks_save()
 
     except Exception as exc:
@@ -801,3 +947,127 @@ def git_pr(payload: GitPRPayload, _: str = Depends(verify_key)) -> dict:
 
     pr_url = out.strip().splitlines()[-1] if out else ""
     return {"status": "created", "url": pr_url}
+
+
+# ── Agent tool executor ────────────────────────────────────────────────────────
+# Called by _run_agent_task() when the LLM emits a tool_call.  Defined here so
+# it has access to _run / _ws_path / VAULT_ROOT which are declared earlier.
+
+def _execute_tool(name: str, args: dict) -> str:
+    try:
+        if name == "git_clone":
+            _WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
+            slug = args["repo"].strip("/")
+            ws   = _ws_path(slug.replace("/", "__"))
+            url  = f"git@github.com:{slug}.git" if not slug.startswith(("http", "git@")) else slug
+            if ws.exists():
+                rc, _, err = _run(["git", "fetch", "--all"], cwd=ws)
+                if args.get("branch"):
+                    _run(["git", "checkout", args["branch"]], cwd=ws)
+                return f"Updated workspace at {ws}"
+            cmd = ["git", "clone", url, str(ws)]
+            if args.get("branch"):
+                cmd += ["--branch", args["branch"]]
+            rc, out, err = _run(cmd, timeout=120)
+            if rc != 0:
+                return f"clone error: {err.strip()}"
+            return f"Cloned {slug} to {ws}"
+
+        elif name == "git_write":
+            ws     = _ws_path(args["repo"].replace("/", "__"))
+            target = (ws / args["path"]).resolve()
+            if not str(target).startswith(str(ws)):
+                return "Path traversal rejected"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(args["content"], encoding="utf-8")
+            return f"Wrote {args['path']}"
+
+        elif name == "git_status":
+            ws = _ws_path(args["repo"].replace("/", "__"))
+            _, status, _ = _run(["git", "status", "--short"], cwd=ws)
+            _, branch, _ = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ws)
+            return f"branch: {branch.strip()}\n{status.strip() or '(clean)'}"
+
+        elif name == "git_commit":
+            ws = _ws_path(args["repo"].replace("/", "__"))
+            if args.get("branch"):
+                rc, _, err = _run(["git", "checkout", "-b", args["branch"]], cwd=ws)
+                if rc != 0:
+                    _run(["git", "checkout", args["branch"]], cwd=ws)
+            _run(["git", "add", "-A"], cwd=ws)
+            rc, out, err = _run(["git", "commit", "-m", args["message"]], cwd=ws)
+            if rc != 0:
+                return f"commit error: {(err or out).strip()}"
+            push = args.get("push", True)
+            if push:
+                _, bn, _ = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ws)
+                _run(["git", "push", "-u", "origin", bn.strip()], cwd=ws)
+            return f"Committed: {out.strip().splitlines()[0] if out else 'ok'}"
+
+        elif name == "git_pr":
+            ws    = _ws_path(args["repo"].replace("/", "__"))
+            _, bn, _ = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ws)
+            branch = bn.strip()
+            _run(["git", "push", "-u", "origin", branch], cwd=ws)
+            cmd = ["gh", "pr", "create",
+                   "--title", args["title"],
+                   "--base",  args.get("base", "main"),
+                   "--body",  args.get("body", "")]
+            rc, out, err = _run(cmd, cwd=ws, timeout=60)
+            if rc != 0:
+                slug = args["repo"].strip("/")
+                return f"Pushed branch {branch}. Open PR: https://github.com/{slug}/compare/{branch}"
+            return out.strip().splitlines()[-1] if out else "PR created"
+
+        elif name == "vault_read":
+            path = VAULT_ROOT / args["path"]
+            if not path.exists():
+                return f"Not found: {args['path']}"
+            return path.read_text(encoding="utf-8", errors="replace")[:_VAULT_MAX_CHARS]
+
+        elif name == "vault_search":
+            query = args["query"].lower()
+            limit = int(args.get("limit", 10))
+            hits: list[str] = []
+            for f in VAULT_ROOT.rglob("*.md"):
+                try:
+                    if query in f.read_text(encoding="utf-8", errors="replace").lower():
+                        hits.append(str(f.relative_to(VAULT_ROOT)))
+                        if len(hits) >= limit:
+                            break
+                except Exception:
+                    pass
+            return _json.dumps(hits) if hits else "No results"
+
+        elif name == "vault_append":
+            path = VAULT_ROOT / args["path"]
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write("\n" + args["content"])
+            return f"Appended to {args['path']}"
+
+        elif name == "vault_write":
+            path = VAULT_ROOT / args["path"]
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(args["content"], encoding="utf-8")
+            return f"Wrote {args['path']}"
+
+        elif name == "web_fetch":
+            req2 = urllib.request.Request(
+                args["url"], headers={"User-Agent": "JarvisAgent/1.0"}
+            )
+            with urllib.request.urlopen(req2, timeout=15) as r:
+                raw = r.read().decode("utf-8", errors="replace")
+            return _strip_html(raw)[:_VAULT_MAX_CHARS]
+
+        elif name == "system_exec":
+            r = subprocess.run(
+                args["command"], shell=True, capture_output=True, text=True, timeout=30
+            )
+            out = (r.stdout or "") + (r.stderr or "")
+            return out[:2000] or f"(exit {r.returncode})"
+
+        else:
+            return f"Unknown tool: {name}"
+
+    except Exception as exc:
+        return f"Tool error ({name}): {exc}"
