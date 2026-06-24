@@ -1,13 +1,14 @@
 package com.lordmuffin.jarvisvoice
 
 import android.content.Intent
+import com.lordmuffin.jarvisvoice.call.CallActivity
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 object BottomNav {
 
-    enum class Tab { RECORD, HISTORY, CHAT, SETTINGS, MODELS, AGENT }
+    enum class Tab { RECORD, HISTORY, CHAT, SETTINGS, MODELS, AGENT, CALLS }
 
     fun wire(activity: AppCompatActivity, active: Tab) {
         val root = activity.findViewById<LinearLayout>(R.id.bottom_nav_root) ?: return
@@ -24,6 +25,7 @@ object BottomNav {
             TabDef(Tab.SETTINGS, R.id.nav_tab_settings, R.id.nav_icon_settings, R.id.nav_label_settings),
             TabDef(Tab.MODELS,   R.id.nav_tab_models,   R.id.nav_icon_models,   R.id.nav_label_models),
             TabDef(Tab.AGENT,    R.id.nav_tab_agent,    R.id.nav_icon_agent,    R.id.nav_label_agent),
+            TabDef(Tab.CALLS,    R.id.nav_tab_calls,    R.id.nav_icon_calls,    R.id.nav_label_calls),
         )
 
         for (t in tabs) {
@@ -40,6 +42,7 @@ object BottomNav {
                         Tab.SETTINGS -> SettingsActivity::class.java
                         Tab.MODELS   -> ModelManagerActivity::class.java
                         Tab.AGENT    -> AgentTaskActivity::class.java
+                        Tab.CALLS    -> CallActivity::class.java
                     })
                     intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                     activity.startActivity(intent)

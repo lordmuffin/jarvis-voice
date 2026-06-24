@@ -23,6 +23,7 @@
         tools:ignore="ScopedStorage" />
     <!-- Required for startBluetoothSco() to route audio to Bluetooth headset mic -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
         android:name=".JarvisApp"
@@ -99,6 +100,12 @@
             android:exported="false"
             android:theme="@style/Theme.JarvisVoice"
             android:label="Agent Tasks" />
+
+        <activity
+            android:name=".call.CallActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Jarvis Calls" />
 
         <activity
             android:name=".OnboardingActivity"

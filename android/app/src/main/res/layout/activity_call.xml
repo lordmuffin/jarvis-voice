@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/jv_bg">
+
+    <!-- Header: contact info + status -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="24dp"
+        android:background="@color/jv_surface">
+
+        <TextView
+            android:id="@+id/tv_call_contact"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Contact"
+            android:textSize="22sp"
+            android:textColor="@color/jv_text"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_call_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+1 (555) 000-0000"
+            android:textSize="14sp"
+            android:textColor="@color/jv_text2"
+            android:layout_marginTop="2dp" />
+
+        <TextView
+            android:id="@+id/tv_call_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connecting…"
+            android:textSize="12sp"
+            android:textColor="@color/jv_accent"
+            android:layout_marginTop="8dp"
+            android:background="@color/jv_surface2"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp" />
+
+        <TextView
+            android:id="@+id/tv_call_elapsed"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0:00"
+            android:textSize="11sp"
+            android:textColor="@color/jv_text2"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
+    <!-- Transcript -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_transcript"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:padding="12dp"
+        android:clipToPadding="false" />
+
+    <!-- Controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="@color/jv_surface">
+
+        <!-- Phone number + context input (shown before call starts) -->
+        <LinearLayout
+            android:id="@+id/ll_input"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <EditText
+                android:id="@+id/et_phone"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Phone number (+16125550000)"
+                android:inputType="phone"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:backgroundTint="@color/jv_accent"
+                android:textSize="14sp"
+                android:paddingBottom="6dp" />
+
+            <EditText
+                android:id="@+id/et_contact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Contact name (optional)"
+                android:inputType="textPersonName"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:backgroundTint="@color/jv_accent"
+                android:textSize="14sp"
+                android:paddingBottom="6dp"
+                android:layout_marginTop="8dp" />
+
+            <EditText
+                android:id="@+id/et_context"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Call objective (what should Jarvis accomplish?)"
+                android:inputType="textMultiLine"
+                android:minLines="2"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:backgroundTint="@color/jv_accent"
+                android:textSize="14sp"
+                android:paddingBottom="6dp"
+                android:layout_marginTop="8dp" />
+
+            <Button
+                android:id="@+id/btn_call"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="📞  Have Jarvis Call"
+                android:textSize="15sp"
+                android:backgroundTint="@color/jv_accent"
+                android:textColor="@color/jv_bg"
+                android:layout_marginTop="12dp"
+                android:stateListAnimator="@null" />
+
+        </LinearLayout>
+
+        <!-- End call button (shown during active call) -->
+        <Button
+            android:id="@+id/btn_end_call"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:text="⏹  End Call"
+            android:textSize="16sp"
+            android:backgroundTint="#CC3333"
+            android:textColor="@color/jv_text"
+            android:stateListAnimator="@null"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <include layout="@layout/bottom_nav" />
+
+</LinearLayout>
