@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/jv_surface">
+
+    <!-- Header row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="12dp">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Conversations"
+            android:textColor="@color/jv_text"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_session_new"
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:text="+ New"
+            android:textSize="12sp"
+            android:textAllCaps="false"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:backgroundTint="@color/jv_accent"
+            android:textColor="@color/jv_bg"
+            android:stateListAnimator="@null" />
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/jv_surface2" />
+
+    <!-- Session list -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rv_sessions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxHeight="420dp"
+        android:overScrollMode="never"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp" />
+
+</LinearLayout>

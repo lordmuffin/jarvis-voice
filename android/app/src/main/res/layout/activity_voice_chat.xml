@@ -82,6 +82,20 @@
                 android:textColor="@color/jv_text2" />
 
             <Button
+                android:id="@+id/btn_sessions"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="Chats"
+                android:textSize="11sp"
+                android:textAllCaps="false"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:backgroundTint="@color/jv_surface2"
+                android:textColor="@color/jv_text2"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="6dp" />
+
+            <Button
                 android:id="@+id/btn_new_convo"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"

@@ -1,6 +1,7 @@
 package com.lordmuffin.jarvisvoice
 
 import android.Manifest
+import android.app.Dialog
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
@@ -9,6 +10,7 @@ import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
@@ -18,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.ProgressBar
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
@@ -26,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import com.lordmuffin.jarvisvoice.chat.ChatStatus
 import com.lordmuffin.jarvisvoice.chat.ConversationMessage
+import com.lordmuffin.jarvisvoice.chat.SessionMeta
 import com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
@@ -51,6 +55,7 @@ class VoiceChatActivity : AppCompatActivity() {
     private lateinit var btnSendText:      Button
     private lateinit var pbContext:        ProgressBar
     private lateinit var tvContextTokens:  TextView
+    private lateinit var btnSessions:      Button
     private lateinit var btnNewConvo:      Button
     private lateinit var btnCompact:       Button
 
@@ -93,6 +98,7 @@ class VoiceChatActivity : AppCompatActivity() {
         btnSendText       = findViewById(R.id.btn_send_text)
         pbContext         = findViewById(R.id.pb_context)
         tvContextTokens   = findViewById(R.id.tv_context_tokens)
+        btnSessions       = findViewById(R.id.btn_sessions)
         btnNewConvo       = findViewById(R.id.btn_new_convo)
         btnCompact        = findViewById(R.id.btn_compact)
 
@@ -108,6 +114,7 @@ class VoiceChatActivity : AppCompatActivity() {
         btnModel.setOnClickListener     { showModelMenu() }
         btnTalk.setOnClickListener      { onTalkTapped() }
         btnSendText.setOnClickListener  { sendTypedMessage() }
+        btnSessions.setOnClickListener  { showSessionsDialog() }
         btnNewConvo.setOnClickListener  {
             stopConversation()
             viewModel.clearHistory()
@@ -472,6 +479,136 @@ class VoiceChatActivity : AppCompatActivity() {
             }
             tvMsg.layoutParams = lp
         }
+    }
+
+    // ── Sessions dialog ───────────────────────────────────────────────────────
+
+    private fun showSessionsDialog() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.bottom_sheet_sessions)
+        dialog.window?.apply {
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            setGravity(Gravity.BOTTOM)
+            setBackgroundDrawableResource(android.R.color.transparent)
+        }
+
+        val rv     = dialog.findViewById<RecyclerView>(R.id.rv_sessions)
+        val btnNew = dialog.findViewById<Button>(R.id.btn_session_new)
+
+        var sessionsAdapter: SessionsAdapter? = null
+
+        uiScope.launch {
+            viewModel.sessions.collect { sessions ->
+                if (sessionsAdapter == null) {
+                    sessionsAdapter = SessionsAdapter(
+                        sessions   = sessions.toMutableList(),
+                        activeId   = viewModel.activeSessionId.value,
+                        onSwitch   = { id ->
+                            stopConversation()
+                            viewModel.switchSession(id)
+                            dialog.dismiss()
+                        },
+                        onDelete   = { id -> viewModel.deleteSession(id) },
+                        onRename   = { id, current -> showRenameDialog(id, current) },
+                    )
+                    rv.layoutManager = LinearLayoutManager(this@VoiceChatActivity)
+                    rv.adapter = sessionsAdapter
+                } else {
+                    sessionsAdapter?.update(sessions, viewModel.activeSessionId.value)
+                }
+            }
+        }
+
+        btnNew.setOnClickListener {
+            stopConversation()
+            viewModel.newSession()
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    private fun showRenameDialog(id: String, current: String) {
+        val et = EditText(this).apply {
+            setText(current)
+            selectAll()
+            setPadding(48, 32, 48, 8)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rename conversation")
+            .setView(et)
+            .setPositiveButton("Save") { _, _ ->
+                val name = et.text.toString().trim()
+                if (name.isNotEmpty()) viewModel.renameSession(id, name)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    // ── Sessions RecyclerView adapter ─────────────────────────────────────────
+
+    private inner class SessionsAdapter(
+        private val sessions: MutableList<SessionMeta>,
+        private var activeId: String?,
+        private val onSwitch: (String) -> Unit,
+        private val onDelete: (String) -> Unit,
+        private val onRename: (String, String) -> Unit,
+    ) : RecyclerView.Adapter<SessionViewHolder>() {
+
+        fun update(newSessions: List<SessionMeta>, newActiveId: String?) {
+            sessions.clear()
+            sessions.addAll(newSessions)
+            activeId = newActiveId
+            notifyDataSetChanged()
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
+            SessionViewHolder(LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_chat_session, parent, false))
+
+        override fun getItemCount() = sessions.size
+
+        override fun onBindViewHolder(h: SessionViewHolder, pos: Int) {
+            val s = sessions[pos]
+            val isActive = s.id == activeId
+            h.tvName.text    = s.name
+            h.tvCount.text   = "${s.messageCount} msgs"
+            h.tvPreview.text = s.preview.ifBlank { "No messages yet" }
+            h.tvName.setTextColor(
+                getColor(if (isActive) R.color.jv_accent else R.color.jv_text)
+            )
+            h.itemView.setOnClickListener { onSwitch(s.id) }
+            h.itemView.setOnLongClickListener {
+                showSessionActionMenu(s, h.itemView)
+                true
+            }
+        }
+
+        private fun showSessionActionMenu(s: SessionMeta, anchor: View) {
+            val popup = PopupMenu(this@VoiceChatActivity, anchor)
+            popup.menu.add(0, 0, 0, "Rename")
+            popup.menu.add(0, 1, 1, "Delete")
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    0 -> onRename(s.id, s.name)
+                    1 -> AlertDialog.Builder(this@VoiceChatActivity)
+                            .setTitle("Delete conversation?")
+                            .setMessage("\"${s.name}\" will be permanently removed.")
+                            .setPositiveButton("Delete") { _, _ -> onDelete(s.id) }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                }
+                true
+            }
+            popup.show()
+        }
+    }
+
+    private inner class SessionViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvName:    TextView = view.findViewById(R.id.tv_session_name)
+        val tvCount:   TextView = view.findViewById(R.id.tv_session_count)
+        val tvPreview: TextView = view.findViewById(R.id.tv_session_preview)
     }
 
     // SherpaOnnx emits tokens like "(static)", "[noise]", "(inaudible)" for non-speech audio.
