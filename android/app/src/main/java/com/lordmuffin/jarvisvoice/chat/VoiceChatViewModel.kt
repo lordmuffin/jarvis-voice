@@ -28,7 +28,7 @@ private fun toolLabel(name: String) = when (name) {
 
 class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val llm            = LlmRepository()
+    private val llm            = LlmRepository(app.applicationContext)
     private val tts: TtsRepository
     private var networkTts: NetworkTtsRepository? = null
     private val sessionManager = SessionManager(app.applicationContext)

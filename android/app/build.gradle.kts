@@ -16,8 +16,8 @@ android {
         applicationId = "com.lordmuffin.jarvisvoice"
         minSdk = 26
         targetSdk = 34
-        versionCode = 69
-        versionName = "1.2.7"
+        versionCode = 70
+        versionName = "1.2.8"
         buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
     }
 
