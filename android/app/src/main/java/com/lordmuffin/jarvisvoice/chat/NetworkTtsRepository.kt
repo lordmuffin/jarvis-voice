@@ -1,7 +1,10 @@
 package com.lordmuffin.jarvisvoice.chat
 
+import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
 import com.lordmuffin.jarvisvoice.DebugLog
 import kotlinx.coroutines.Dispatchers
@@ -13,7 +16,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
-import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.TimeUnit
@@ -24,6 +26,7 @@ import kotlin.coroutines.resume
  * Returns WAV; plays it via AudioTrack for barge-in-friendly immediate stop().
  */
 class NetworkTtsRepository(
+    private val context: Context,
     private val baseUrl: String,
     private val voice: String,
 ) {
@@ -68,10 +71,12 @@ class NetworkTtsRepository(
         }
 
         val minBuf = AudioTrack.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+        // USAGE_MEDIA routes to Bluetooth A2DP reliably across all OEMs.
+        // USAGE_ASSISTANT is inconsistent — many manufacturers keep it on the phone speaker.
         val at = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
@@ -85,6 +90,14 @@ class NetworkTtsRepository(
             .setBufferSizeInBytes(maxOf(minBuf, 8192))
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
+
+        // Explicitly route to the connected Bluetooth A2DP device when available.
+        // Without this, the audio system may fall back to phone speaker even when
+        // a BT device is connected, especially when SCO was recently active.
+        preferredBluetoothOutput()?.let { btDevice ->
+            at.preferredDevice = btDevice
+            DebugLog.i("TTS/Network", "routing to BT A2DP: ${btDevice.productName}")
+        }
 
         track = at
         at.play()
@@ -122,6 +135,17 @@ class NetworkTtsRepository(
     }
 
     fun destroy() = stop()
+
+    // ── Bluetooth output routing ──────────────────────────────────────────────
+
+    private fun preferredBluetoothOutput(): AudioDeviceInfo? {
+        val am = context.getSystemService(AudioManager::class.java) ?: return null
+        return am.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { device ->
+            device.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+            device.type == AudioDeviceInfo.TYPE_BLE_HEADSET ||
+            device.type == AudioDeviceInfo.TYPE_BLE_SPEAKER
+        }
+    }
 
     // ── WAV header parser ─────────────────────────────────────────────────────
 

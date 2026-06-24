@@ -60,7 +60,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         val kokoroVoice = prefs.getString(PREF_TTS_VOICE, DEFAULT_TTS_VOICE) ?: DEFAULT_TTS_VOICE
         tts = TtsRepository(app.applicationContext)
         if (kokoroUrl.isNotBlank()) {
-            networkTts = NetworkTtsRepository(kokoroUrl, kokoroVoice)
+            networkTts = NetworkTtsRepository(app.applicationContext, kokoroUrl, kokoroVoice)
             DebugLog.i("VoiceChat", "Network TTS enabled: $kokoroUrl voice=$kokoroVoice")
         }
 
