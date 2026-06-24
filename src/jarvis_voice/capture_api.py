@@ -628,14 +628,9 @@ def _run_agent_task(task_id: str) -> None:
         total_tokens = 0
         new_messages: list[dict] = []
         _MAX_ITERATIONS = 25
+        _LLM_TIMEOUT = 300  # 5 min — qwen-coder-32b at 8192 tokens can take 3-4 min
 
         for _iteration in range(_MAX_ITERATIONS):
-            # If model stopped calling tools without signalling task_done, nudge it
-            tool_choice: str | dict = "auto"
-            if _iteration > 0 and not new_messages[-1].get("role") == "tool":
-                # Last message wasn't a tool result — model may be drifting; remind it
-                pass  # keep auto; the system prompt handles this
-
             body = _json.dumps({
                 "model":       task["model"],
                 "messages":    send_messages,
@@ -653,8 +648,19 @@ def _run_agent_task(task_id: str) -> None:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=180) as resp:
-                result = _json.loads(resp.read().decode())
+            try:
+                with urllib.request.urlopen(req, timeout=_LLM_TIMEOUT) as resp:
+                    result = _json.loads(resp.read().decode())
+            except Exception as llm_exc:
+                # LLM call failed — surface what was done so far instead of a bare error
+                partial = content or (
+                    new_messages[-1].get("content", "") if new_messages else ""
+                )
+                raise RuntimeError(
+                    f"LLM call failed on iteration {_iteration + 1}/{_MAX_ITERATIONS}: "
+                    f"{llm_exc}."
+                    + (f"\n\nWork completed before failure:\n{partial[:1000]}" if partial else "")
+                ) from llm_exc
 
             total_tokens += result.get("usage", {}).get("total_tokens", 0)
             choice  = result["choices"][0]
@@ -738,6 +744,12 @@ def _run_agent_task(task_id: str) -> None:
                 task["status"]      = "failed"
                 task["output"]      = str(exc)
                 task["finished_at"] = _time.time()
+                task["tokens"]      = task.get("tokens", 0) + total_tokens
+                # Preserve any conversation history accumulated before the failure
+                if new_messages:
+                    if not existing_messages:
+                        task["messages"] = send_messages[:2]
+                    task["messages"].extend(new_messages)
             _tasks_save()
 
 
