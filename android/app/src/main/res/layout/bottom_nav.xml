@@ -197,6 +197,36 @@
 
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/nav_tab_calls"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <TextView
+                android:id="@+id/nav_icon_calls"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📞"
+                android:textSize="20sp"
+                android:textColor="@color/jv_text2" />
+
+            <TextView
+                android:id="@+id/nav_label_calls"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Calls"
+                android:textSize="10sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginTop="2dp" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
 </LinearLayout>

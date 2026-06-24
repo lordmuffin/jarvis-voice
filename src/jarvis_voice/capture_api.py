@@ -50,6 +50,9 @@ _VAULT_MAX_CHARS = 6000
 
 app = FastAPI(title="Jarvis Capture API", version="1.0")
 
+from jarvis_voice.call_api import router as _call_router  # noqa: E402
+app.include_router(_call_router)
+
 
 def _transcode_to_mp3(src_path: str, dst_path: str) -> bool:
     """Transcode *src_path* to MP3 at *dst_path*. Returns True on success."""
