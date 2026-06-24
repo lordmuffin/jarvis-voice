@@ -166,7 +166,8 @@ class SettingsActivity : AppCompatActivity() {
         // TTS URL + voice
         val etTtsUrl   = findViewById<android.widget.EditText>(R.id.et_tts_url)
         val etTtsVoice = findViewById<android.widget.EditText>(R.id.et_tts_voice)
-        etTtsUrl.setText(prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_URL, ""))
+        val storedTtsUrl = prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_URL, "") ?: ""
+        etTtsUrl.setText(storedTtsUrl.ifBlank { com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.DEFAULT_TTS_URL })
         etTtsVoice.setText(prefs.getString(com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.PREF_TTS_VOICE,
             com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel.DEFAULT_TTS_VOICE))
         etTtsUrl.addTextChangedListener(object : TextWatcher {

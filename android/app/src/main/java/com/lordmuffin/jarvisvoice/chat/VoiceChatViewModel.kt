@@ -56,7 +56,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         llm.vaultApiKey = storedKey.ifBlank { DEFAULT_VAULT_KEY }
 
         // Use Kokoro network TTS when a URL is configured; fall back to Android TTS.
-        val kokoroUrl = prefs.getString(PREF_TTS_URL, "") ?: ""
+        val kokoroUrl = (prefs.getString(PREF_TTS_URL, "") ?: "").ifBlank { DEFAULT_TTS_URL }
         val kokoroVoice = prefs.getString(PREF_TTS_VOICE, DEFAULT_TTS_VOICE) ?: DEFAULT_TTS_VOICE
         tts = TtsRepository(app.applicationContext)
         if (kokoroUrl.isNotBlank()) {
@@ -203,6 +203,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         const val PREF_TTS_URL      = "tts_url"
         const val PREF_TTS_VOICE    = "tts_voice"
         const val DEFAULT_TTS_VOICE = "af_sky"
+        const val DEFAULT_TTS_URL   = "http://192.168.1.43:8880"
         // Baked-in default — matches the server's _DEFAULT_API_KEY in capture_api.py.
         // Change both sides together if you rotate the key.
         const val DEFAULT_VAULT_KEY = "0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo"
