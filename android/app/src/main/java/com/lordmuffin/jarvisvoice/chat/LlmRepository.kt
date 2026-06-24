@@ -108,6 +108,72 @@ private val VAULT_TOOLS = JSONArray().apply {
             })
         })
     })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "write_note")
+            put("description",
+                "Create or overwrite a vault note with full content. " +
+                "Use for saving new skills to 90 Skills/, creating project notes, or any new document.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("path", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Relative path for the note, e.g. '90 Skills/my-skill.md'")
+                    })
+                    put("content", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Full content to write (overwrites if exists)")
+                    })
+                })
+                put("required", JSONArray().put("path").put("content"))
+            })
+        })
+    })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "web_fetch")
+            put("description",
+                "Fetch a URL and return its text content for research. " +
+                "Use to look up documentation, articles, GitHub issues, or any web resource.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("url", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Full URL to fetch (https://...)")
+                    })
+                })
+                put("required", JSONArray().put("url"))
+            })
+        })
+    })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "run_command")
+            put("description",
+                "Run a shell command on Andrew's homelab server. " +
+                "Use for checking service status, reading logs, running scripts, or system tasks.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("command", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Shell command to run via /bin/bash")
+                    })
+                    put("working_dir", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Working directory (default: /home/lordmuffin)")
+                        put("default", "/home/lordmuffin")
+                    })
+                })
+                put("required", JSONArray().put("command"))
+            })
+        })
+    })
 }
 
 class LlmRepository {
@@ -167,12 +233,18 @@ class LlmRepository {
         history: List<ConversationMessage>,
         model: String,
         onToolCall: (String) -> Unit = {},
+        onUsage: (Int) -> Unit = {},
     ): String = withContext(Dispatchers.IO) {
         val messages = buildMutableMessages(history)
         var iterations = 0
 
         while (iterations++ < 5) {
             val responseJson = callLlmBlocking(messages, model) ?: return@withContext ""
+
+            // Report token usage after each round so the UI stays current.
+            responseJson.optJSONObject("usage")?.optInt("total_tokens", 0)
+                ?.let { if (it > 0) onUsage(it) }
+
             val choice  = responseJson.getJSONArray("choices").getJSONObject(0)
             val message = choice.getJSONObject("message")
             val content = message.optString("content", "")
@@ -290,6 +362,51 @@ class LlmRepository {
                     val resp = client.newCall(req).execute()
                     if (!resp.isSuccessful) return "Append failed: ${resp.code}"
                     "Appended to ${args.optString("path")}"
+                }
+                "write_note" -> {
+                    val payload = JSONObject()
+                        .put("path", args.getString("path"))
+                        .put("content", args.getString("content"))
+                        .toString()
+                        .toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/vault/note/write")
+                        .header("x-jarvis-key", vaultKey())
+                        .post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    if (!resp.isSuccessful) return "Write failed: ${resp.code}"
+                    "Written: ${args.optString("path")}"
+                }
+                "web_fetch" -> {
+                    val url = args.getString("url")
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/web/fetch?url=${encode(url)}")
+                        .header("x-jarvis-key", vaultKey())
+                        .get().build()
+                    val resp = client.newCall(req).execute()
+                    if (!resp.isSuccessful) return "Fetch failed: ${resp.code}"
+                    JSONObject(resp.body?.string() ?: "{}").optString("content", "[empty]")
+                }
+                "run_command" -> {
+                    val payload = JSONObject()
+                        .put("command", args.getString("command"))
+                        .put("working_dir", args.optString("working_dir", "/home/lordmuffin"))
+                        .toString()
+                        .toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/system/exec")
+                        .header("x-jarvis-key", vaultKey())
+                        .post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    if (!resp.isSuccessful) return "Command failed: ${resp.code}"
+                    val json = JSONObject(resp.body?.string() ?: "{}")
+                    buildString {
+                        append("exit_code: ${json.optInt("exit_code", -1)}\n")
+                        val out = json.optString("stdout", "")
+                        val err = json.optString("stderr", "")
+                        if (out.isNotBlank()) append("stdout:\n$out\n")
+                        if (err.isNotBlank()) append("stderr:\n$err")
+                    }.trim()
                 }
                 else -> "Unknown tool: $name"
             }

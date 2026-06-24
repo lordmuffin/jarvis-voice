@@ -16,6 +16,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.PopupMenu
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -47,7 +48,11 @@ class VoiceChatActivity : AppCompatActivity() {
     private lateinit var btnTalk:      Button
     private lateinit var llTypeInput:  LinearLayout
     private lateinit var etMessage:    EditText
-    private lateinit var btnSendText:  Button
+    private lateinit var btnSendText:      Button
+    private lateinit var pbContext:        ProgressBar
+    private lateinit var tvContextTokens:  TextView
+    private lateinit var btnNewConvo:      Button
+    private lateinit var btnCompact:       Button
 
     private val adapter = MessageAdapter()
     private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -85,7 +90,11 @@ class VoiceChatActivity : AppCompatActivity() {
         btnTalk       = findViewById(R.id.btn_talk)
         llTypeInput   = findViewById(R.id.ll_type_input)
         etMessage     = findViewById(R.id.et_message)
-        btnSendText   = findViewById(R.id.btn_send_text)
+        btnSendText       = findViewById(R.id.btn_send_text)
+        pbContext         = findViewById(R.id.pb_context)
+        tvContextTokens   = findViewById(R.id.tv_context_tokens)
+        btnNewConvo       = findViewById(R.id.btn_new_convo)
+        btnCompact        = findViewById(R.id.btn_compact)
 
         rvMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         rvMessages.adapter = adapter
@@ -99,6 +108,11 @@ class VoiceChatActivity : AppCompatActivity() {
         btnModel.setOnClickListener     { showModelMenu() }
         btnTalk.setOnClickListener      { onTalkTapped() }
         btnSendText.setOnClickListener  { sendTypedMessage() }
+        btnNewConvo.setOnClickListener  {
+            stopConversation()
+            viewModel.clearHistory()
+        }
+        btnCompact.setOnClickListener   { viewModel.compactHistory() }
 
         etMessage.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_SEND ||
@@ -371,6 +385,23 @@ class VoiceChatActivity : AppCompatActivity() {
         }
         uiScope.launch {
             viewModel.selectedModel.collect { updateModelButton(it) }
+        }
+        uiScope.launch {
+            viewModel.contextTokens.collect { tokens ->
+                pbContext.progress = tokens.coerceAtMost(pbContext.max)
+                tvContextTokens.text = when {
+                    tokens >= 1000 -> "${"%.1f".format(tokens / 1000.0)}k tkns"
+                    else           -> "$tokens tkns"
+                }
+                // Colour the bar: green → yellow → red as context fills
+                val tint = when {
+                    tokens < 16_000 -> getColor(R.color.jv_accent)
+                    tokens < 28_000 -> getColor(R.color.jv_warning)
+                    else            -> getColor(R.color.jv_error)
+                }
+                pbContext.progressTintList =
+                    android.content.res.ColorStateList.valueOf(tint)
+            }
         }
     }
 

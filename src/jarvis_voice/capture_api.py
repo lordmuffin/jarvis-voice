@@ -16,9 +16,11 @@ import html as _html
 import logging
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import tempfile
+import urllib.request
 import uuid
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -202,9 +204,28 @@ def capture_audio(
 
 # ── Vault tool endpoints (used by Android Kai voice tool calls) ───────────────
 
+def _strip_html(html_text: str) -> str:
+    """Strip HTML tags and decode entities to plain text."""
+    text = re.sub(r'<script[^>]*>.*?</script>', '', html_text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = _html.unescape(text)
+    return re.sub(r'\s+', ' ', text).strip()
+
+
 class AppendPayload(BaseModel):
     path: str
     text: str
+
+
+class WritePayload(BaseModel):
+    path: str
+    content: str
+
+
+class ExecPayload(BaseModel):
+    command: str
+    working_dir: str = "/home/lordmuffin"
 
 
 @app.get("/api/v1/vault/note")
@@ -273,3 +294,54 @@ def vault_append_note(payload: AppendPayload, _: str = Depends(verify_key)) -> d
     with open(target, "a", encoding="utf-8") as f:
         f.write(f"\n{payload.text.rstrip()}\n")
     return {"status": "appended", "path": payload.path}
+
+
+@app.post("/api/v1/vault/note/write")
+def vault_write_note(payload: WritePayload, _: str = Depends(verify_key)) -> dict:
+    """Create or overwrite a vault note. Creates parent directories as needed."""
+    target = VAULT_ROOT / payload.path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(payload.content, encoding="utf-8")
+    log.info("vault_write_note: wrote %d chars to %s", len(payload.content), payload.path)
+    return {"status": "written", "path": payload.path}
+
+
+@app.get("/api/v1/web/fetch")
+def web_fetch(url: str, _: str = Depends(verify_key)) -> dict:
+    """Fetch a URL and return its text content (HTML stripped) for research."""
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (Kai/1.0; +https://jarvis.apj.dev)"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            raw = resp.read(1_000_000).decode("utf-8", errors="replace")
+        text = _strip_html(raw) if "html" in content_type.lower() else raw
+        return {"url": url, "content": text[:6000]}
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Fetch failed: {exc}") from exc
+
+
+@app.post("/api/v1/system/exec")
+def system_exec(payload: ExecPayload, _: str = Depends(verify_key)) -> dict:
+    """Run a shell command on the homelab server and return its output."""
+    try:
+        result = subprocess.run(
+            payload.command,
+            shell=True,
+            executable="/bin/bash",
+            cwd=payload.working_dir,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return {
+            "stdout": result.stdout[:4000],
+            "stderr": result.stderr[:1000],
+            "exit_code": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=504, detail="Command timed out after 30s")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

@@ -47,6 +47,67 @@
             android:paddingBottom="6dp"
             android:visibility="gone" />
 
+        <!-- Context usage bar + New / Compact controls -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="4dp">
+
+            <ProgressBar
+                android:id="@+id/pb_context"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="4dp"
+                android:layout_weight="1"
+                android:max="32768"
+                android:progress="0"
+                android:progressTint="@color/jv_accent"
+                android:progressBackgroundTint="@color/jv_surface"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tv_context_tokens"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 tkns"
+                android:textSize="10sp"
+                android:textColor="@color/jv_text2"
+                android:layout_marginEnd="10dp" />
+
+            <Button
+                android:id="@+id/btn_new_convo"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:text="New"
+                android:textSize="10sp"
+                android:textAllCaps="false"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:backgroundTint="@color/jv_surface2"
+                android:textColor="@color/jv_text2"
+                android:stateListAnimator="@null"
+                android:layout_marginEnd="4dp" />
+
+            <Button
+                android:id="@+id/btn_compact"
+                android:layout_width="wrap_content"
+                android:layout_height="28dp"
+                android:text="Compact"
+                android:textSize="10sp"
+                android:textAllCaps="false"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:backgroundTint="@color/jv_surface2"
+                android:textColor="@color/jv_text2"
+                android:stateListAnimator="@null" />
+
+        </LinearLayout>
+
         <!-- Mode toggle + status + model selector row -->
         <LinearLayout
             android:layout_width="match_parent"

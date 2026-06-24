@@ -39,6 +39,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
     private val _toolStatusText  = MutableStateFlow("")
     private val _selectedModel   = MutableStateFlow("local-default")
     private val _availableModels = MutableStateFlow<List<String>>(listOf("local-default"))
+    private val _contextTokens   = MutableStateFlow(0)
 
     val messages:       StateFlow<List<ConversationMessage>> = _messages.asStateFlow()
     val status:         StateFlow<ChatStatus>                = _status.asStateFlow()
@@ -46,6 +47,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
     val toolStatusText: StateFlow<String>                    = _toolStatusText.asStateFlow()
     val selectedModel:  StateFlow<String>                    = _selectedModel.asStateFlow()
     val availableModels:StateFlow<List<String>>              = _availableModels.asStateFlow()
+    val contextTokens:  StateFlow<Int>                       = _contextTokens.asStateFlow()
 
     private var activeJob: Job? = null
     private val historyFile = File(app.filesDir, "voice_chat_history.json")
@@ -145,6 +147,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
                         _status.value = ChatStatus.TOOL_CALL
                         _toolStatusText.value = toolLabel(toolName)
                     },
+                    onUsage = { tokens -> _contextTokens.value = tokens },
                 )
 
                 if (full.isNotEmpty()) {
@@ -191,7 +194,45 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearHistory() {
         _messages.value = emptyList()
+        _contextTokens.value = 0
         viewModelScope.launch(Dispatchers.IO) { runCatching { historyFile.delete() } }
+    }
+
+    fun compactHistory() {
+        val msgs = _messages.value
+        if (msgs.size < 4) return
+        activeJob?.cancel()
+        activeJob = viewModelScope.launch {
+            _status.value = ChatStatus.THINKING
+            _toolStatusText.value = "Compacting context…"
+            try {
+                val summaryRequest = msgs + ConversationMessage(
+                    "user",
+                    "Summarize this entire conversation in 3-5 sentences covering the key topics, " +
+                    "decisions, and outcomes. Return only the summary text, nothing else."
+                )
+                val summary = llm.chatWithTools(
+                    history = summaryRequest.takeLast(30),
+                    model   = _selectedModel.value,
+                )
+                if (summary.isNotBlank()) {
+                    val compacted = listOf(
+                        ConversationMessage(
+                            "assistant",
+                            "[Context compacted — summary of prior conversation]\n\n$summary"
+                        )
+                    )
+                    _messages.value = compacted
+                    saveHistory(compacted)
+                    _contextTokens.value = 0
+                }
+            } catch (e: Exception) {
+                DebugLog.e("VoiceChat", "compact failed: ${e.message}")
+            } finally {
+                _toolStatusText.value = ""
+                _status.value = ChatStatus.IDLE
+            }
+        }
     }
 
     override fun onCleared() {
