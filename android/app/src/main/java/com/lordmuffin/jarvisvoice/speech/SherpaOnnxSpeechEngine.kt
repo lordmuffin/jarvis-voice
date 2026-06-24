@@ -63,6 +63,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     @Volatile private var committedText = ""
 
     private val bufferLock    = Any()
+    private val hwLock        = Any()   // guards audio hardware release across threads
     private val currentBuffer = ArrayList<Short>(sampleRate * 5)
 
     private var onPartialCallback: ((String) -> Unit)? = null
@@ -269,14 +270,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             DebugLog.i("STT", "auto-final on VAD: \"${final.take(60)}\"")
             Thread({
                 recordingThread?.join(600)
-                aec?.release(); aec = null
-                noiseSuppressor?.release(); noiseSuppressor = null
-                audioRecord?.run { stop(); release() }
-                audioRecord = null
-                if (scoStarted) {
-                    deviceRouter.stopBluetoothSco()
-                    scoStarted = false
-                }
+                releaseHardware()
             }, "jarvis-auto-final").start()
             mainHandler.post { onFinalCallback?.invoke(final) }
         } else {
@@ -328,29 +322,32 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         pendingFinal = true  // suppress any in-flight auto-final callback
         Thread({
             recordingThread?.join(500)
-            aec?.release(); aec = null
-            noiseSuppressor?.release(); noiseSuppressor = null
-            audioRecord?.run { stop(); release() }
-            audioRecord = null
-            if (scoStarted) { deviceRouter.stopBluetoothSco(); scoStarted = false }
+            releaseHardware()
         }, "jarvis-cancel").start()
     }
 
     override fun destroy() {
         DebugLog.i("STT", "destroy")
         isListening = false
+        releaseHardware()
+        recordingThread = null
+        // Null recognizer first so any in-flight transcribe() exits early via the null guard.
+        // Submit the actual native release to the executor so it runs after any in-progress
+        // transcription finishes, then shut down.
+        val rec = recognizer; recognizer = null
+        transcribeExecutor.submit { rec?.release() }
+        transcribeExecutor.shutdown()
+    }
+
+    // Single entry point for releasing audio hardware. Synchronized so concurrent callers
+    // (jarvis-auto-final, jarvis-cancel, destroy) only release once — second caller finds
+    // everything null and exits safely.
+    private fun releaseHardware() = synchronized(hwLock) {
         aec?.release(); aec = null
         noiseSuppressor?.release(); noiseSuppressor = null
-        audioRecord?.run { stop(); release() }
+        runCatching { audioRecord?.stop(); audioRecord?.release() }
         audioRecord = null
-        recordingThread = null
-        transcribeExecutor.shutdown()
-        recognizer?.release()
-        recognizer = null
-        if (scoStarted) {
-            deviceRouter.stopBluetoothSco()
-            scoStarted = false
-        }
+        if (scoStarted) { deviceRouter.stopBluetoothSco(); scoStarted = false }
     }
 
     private fun transcribe(samples: ShortArray): String {
