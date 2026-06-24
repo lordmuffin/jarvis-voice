@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = AgentTaskRepository()
-    private val llm  = LlmRepository()
+    private val llm  = LlmRepository(app.applicationContext)
 
     private val _tasks          = MutableStateFlow<List<AgentTask>>(emptyList())
     private val _loading        = MutableStateFlow(false)

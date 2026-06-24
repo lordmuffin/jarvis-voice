@@ -1,6 +1,8 @@
 package com.lordmuffin.jarvisvoice.chat
 
+import android.content.Context
 import com.lordmuffin.jarvisvoice.DebugLog
+import com.lordmuffin.jarvisvoice.notify.NotifyWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -337,7 +339,7 @@ private val VAULT_TOOLS = JSONArray().apply {
     })
 }
 
-class LlmRepository {
+class LlmRepository(private val context: Context) {
 
     private val client = OkHttpClient.Builder()
         .readTimeout(60, TimeUnit.SECONDS)
@@ -626,16 +628,27 @@ class LlmRepository {
                     resp.body?.string() ?: "PR failed: ${resp.code}"
                 }
                 "schedule_notification" -> {
+                    val title        = args.getString("title")
+                    val body         = args.optString("body", "")
+                    val delayMinutes = args.getDouble("delay_minutes")
                     val payload = JSONObject()
-                        .put("title", args.getString("title"))
-                        .put("body", args.optString("body", ""))
-                        .put("delay_minutes", args.getDouble("delay_minutes"))
+                        .put("title", title)
+                        .put("body", body)
+                        .put("delay_minutes", delayMinutes)
                         .toString().toRequestBody("application/json".toMediaType())
                     val req = Request.Builder()
                         .url("$VAULT_BASE/api/v1/notify/schedule")
                         .header("x-jarvis-key", vaultKey()).post(payload).build()
                     val resp = client.newCall(req).execute()
-                    resp.body?.string() ?: "schedule failed: ${resp.code}"
+                    val respBody = resp.body?.string() ?: ""
+                    // Schedule a one-shot WorkManager job for exact delivery — the
+                    // periodic poller has a 15-min minimum and would fire too late.
+                    val notifId = runCatching {
+                        JSONObject(respBody).optString("id", "")
+                    }.getOrDefault("")
+                    val delayMs = (delayMinutes * 60 * 1000).toLong().coerceAtLeast(0L)
+                    NotifyWorker.scheduleOnce(context, notifId, title, body, delayMs)
+                    respBody.ifEmpty { "schedule failed: ${resp.code}" }
                 }
                 else -> "Unknown tool: $name"
             }
