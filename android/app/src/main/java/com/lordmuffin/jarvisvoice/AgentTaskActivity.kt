@@ -1,8 +1,12 @@
 package com.lordmuffin.jarvisvoice
 
 import android.app.Dialog
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.widget.Toast
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -180,13 +184,16 @@ class AgentTaskActivity : AppCompatActivity() {
                     h.tvOutput.visibility = View.VISIBLE
                     h.tvOutput.text       = task.output
                     h.tvExpand.text       = "Hide output ▲"
+                    h.btnCopy.visibility  = View.VISIBLE
                 } else {
                     h.tvOutput.visibility = View.GONE
                     h.tvExpand.text       = "Show output ▼"
+                    h.btnCopy.visibility  = View.GONE
                 }
             } else {
                 h.tvOutput.visibility = View.GONE
                 h.tvExpand.text       = ""
+                h.btnCopy.visibility  = View.GONE
             }
 
             val toggleExpand = View.OnClickListener {
@@ -195,6 +202,13 @@ class AgentTaskActivity : AppCompatActivity() {
             }
             h.tvExpand.setOnClickListener(toggleExpand)
             h.itemView.setOnClickListener(toggleExpand)
+
+            // Copy button — copies full output to clipboard
+            h.btnCopy.setOnClickListener {
+                val clip = ClipData.newPlainText("agent output", task.output)
+                (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
+                Toast.makeText(this@AgentTaskActivity, "Copied", Toast.LENGTH_SHORT).show()
+            }
 
             // Reply button — opens conversation thread sheet
             h.btnReply.setOnClickListener { showConversationSheet(task) }
@@ -219,6 +233,7 @@ class AgentTaskActivity : AppCompatActivity() {
         val tvOutput:   TextView    = view.findViewById(R.id.tv_task_output)
         val llActions:  LinearLayout = view.findViewById(R.id.ll_task_actions)
         val tvExpand:   TextView    = view.findViewById(R.id.tv_expand)
+        val btnCopy:    TextView    = view.findViewById(R.id.btn_copy)
         val btnReply:   TextView    = view.findViewById(R.id.btn_reply)
         val btnDelete:  Button      = view.findViewById(R.id.btn_task_delete)
     }
