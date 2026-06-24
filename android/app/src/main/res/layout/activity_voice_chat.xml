@@ -47,7 +47,21 @@
             android:paddingBottom="6dp"
             android:visibility="gone" />
 
-        <!-- Context usage bar + New / Compact controls -->
+        <!-- Context usage: full-width progress bar -->
+        <ProgressBar
+            android:id="@+id/pb_context"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginTop="4dp"
+            android:max="32768"
+            android:progress="0"
+            android:progressTint="@color/jv_accent"
+            android:progressBackgroundTint="@color/jv_surface" />
+
+        <!-- Token count + action buttons (separate row below bar) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -56,52 +70,40 @@
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
             android:paddingTop="2dp"
-            android:paddingBottom="4dp">
-
-            <ProgressBar
-                android:id="@+id/pb_context"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="0dp"
-                android:layout_height="4dp"
-                android:layout_weight="1"
-                android:max="32768"
-                android:progress="0"
-                android:progressTint="@color/jv_accent"
-                android:progressBackgroundTint="@color/jv_surface"
-                android:layout_marginEnd="8dp" />
+            android:paddingBottom="2dp">
 
             <TextView
                 android:id="@+id/tv_context_tokens"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:text="0 tkns"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
-                android:layout_marginEnd="10dp" />
+                android:textColor="@color/jv_text2" />
 
             <Button
                 android:id="@+id/btn_new_convo"
                 android:layout_width="wrap_content"
-                android:layout_height="28dp"
+                android:layout_height="32dp"
                 android:text="New"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textAllCaps="false"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:backgroundTint="@color/jv_surface2"
                 android:textColor="@color/jv_text2"
                 android:stateListAnimator="@null"
-                android:layout_marginEnd="4dp" />
+                android:layout_marginEnd="6dp" />
 
             <Button
                 android:id="@+id/btn_compact"
                 android:layout_width="wrap_content"
-                android:layout_height="28dp"
+                android:layout_height="32dp"
                 android:text="Compact"
-                android:textSize="10sp"
+                android:textSize="11sp"
                 android:textAllCaps="false"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:backgroundTint="@color/jv_surface2"
                 android:textColor="@color/jv_text2"
                 android:stateListAnimator="@null" />
