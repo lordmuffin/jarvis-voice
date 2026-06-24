@@ -528,6 +528,13 @@ def agent_task_reply(task_id: str, payload: AgentTaskReply, _: str = Depends(ver
             raise HTTPException(status_code=404, detail="Task not found")
         if task["status"] in ("queued", "running"):
             raise HTTPException(status_code=409, detail="Task is still running")
+        # Backfill messages for tasks created before v1.2.6
+        if "messages" not in task:
+            task["messages"] = []
+            if task.get("prompt"):
+                task["messages"].append({"role": "user", "content": task["prompt"]})
+            if task.get("output"):
+                task["messages"].append({"role": "assistant", "content": task["output"]})
         # Append user turn; clear output so the next response becomes the new output
         task["messages"].append({"role": "user", "content": payload.message})
         task["status"]      = "queued"
