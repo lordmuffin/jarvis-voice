@@ -106,7 +106,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val arr = JSONArray()
-                messages.takeLast(50).forEach { msg ->
+                messages.takeLast(500).forEach { msg ->
                     arr.put(JSONObject().put("role", msg.role).put("content", msg.content))
                 }
                 historyFile.writeText(arr.toString())
@@ -126,8 +126,10 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         if (userText.isBlank()) return
 
         val userMsg = ConversationMessage("user", userText.trim())
-        val history = _messages.value.takeLast(10) + userMsg
-        _messages.value = history
+        // Append to full history — takeLast(10) is for LLM context only, not display
+        val allMessages = _messages.value + userMsg
+        _messages.value = allMessages
+        saveHistory(allMessages)  // persist immediately so user message survives a crash
 
         activeJob?.cancel()
         activeJob = viewModelScope.launch {
@@ -137,7 +139,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
 
             try {
                 val full = llm.chatWithTools(
-                    history  = history,
+                    history  = allMessages.takeLast(10),  // limit context sent to LLM
                     model    = _selectedModel.value,
                     onToolCall = { toolName ->
                         _status.value = ChatStatus.TOOL_CALL
@@ -146,7 +148,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
                 )
 
                 if (full.isNotEmpty()) {
-                    val updated = history + ConversationMessage("assistant", full)
+                    val updated = _messages.value + ConversationMessage("assistant", full)
                     _messages.value = updated
                     saveHistory(updated)
 
