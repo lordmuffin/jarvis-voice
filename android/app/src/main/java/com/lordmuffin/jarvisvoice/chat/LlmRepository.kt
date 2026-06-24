@@ -174,6 +174,138 @@ private val VAULT_TOOLS = JSONArray().apply {
             })
         })
     })
+    // ── Git tools ─────────────────────────────────────────────────────────────
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "git_clone")
+            put("description",
+                "Clone a GitHub repository to the homelab server workspace so you can read and edit it. " +
+                "Call this first before any git_write_file or git_commit_and_push.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("repo", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "owner/repo shorthand (e.g. 'lordmuffin/jarvis-voice') or full HTTPS URL")
+                    })
+                    put("branch", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Branch to checkout after clone (default: repo default branch)")
+                        put("default", "")
+                    })
+                })
+                put("required", JSONArray().put("repo"))
+            })
+        })
+    })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "git_write_file")
+            put("description",
+                "Write or overwrite a file in a cloned repository workspace. " +
+                "Use after git_clone to make code changes before committing.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("repo", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "owner/repo identifier used when the repo was cloned")
+                    })
+                    put("path", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Relative file path within the repo (e.g. 'src/main.py')")
+                    })
+                    put("content", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Full file content to write")
+                    })
+                })
+                put("required", JSONArray().put("repo").put("path").put("content"))
+            })
+        })
+    })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "git_status")
+            put("description",
+                "Get the current git status, branch, and diff for a cloned repo workspace. " +
+                "Use to verify changes before committing.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("repo", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "owner/repo identifier")
+                    })
+                })
+                put("required", JSONArray().put("repo"))
+            })
+        })
+    })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "git_commit_and_push")
+            put("description",
+                "Stage all changes, commit with a message, and push to the remote origin. " +
+                "Call after git_write_file to persist code changes.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("repo", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "owner/repo identifier")
+                    })
+                    put("message", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Git commit message")
+                    })
+                    put("push", JSONObject().apply {
+                        put("type", "boolean")
+                        put("description", "Whether to push after committing (default true)")
+                        put("default", true)
+                    })
+                })
+                put("required", JSONArray().put("repo").put("message"))
+            })
+        })
+    })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "git_create_pr")
+            put("description",
+                "Create a pull request on GitHub after pushing a branch. " +
+                "Requires gh CLI to be authenticated on the homelab server.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("repo", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "owner/repo identifier")
+                    })
+                    put("title", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Pull request title")
+                    })
+                    put("body", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Pull request description (markdown)")
+                        put("default", "")
+                    })
+                    put("base", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Base branch to merge into (default: main)")
+                        put("default", "main")
+                    })
+                })
+                put("required", JSONArray().put("repo").put("title"))
+            })
+        })
+    })
 }
 
 class LlmRepository {
@@ -407,6 +539,62 @@ class LlmRepository {
                         if (out.isNotBlank()) append("stdout:\n$out\n")
                         if (err.isNotBlank()) append("stderr:\n$err")
                     }.trim()
+                }
+                "git_clone" -> {
+                    val payload = JSONObject()
+                        .put("repo", args.getString("repo"))
+                        .put("branch", args.optString("branch", ""))
+                        .toString().toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/git/clone")
+                        .header("x-jarvis-key", vaultKey()).post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    resp.body?.string() ?: "Clone failed: ${resp.code}"
+                }
+                "git_write_file" -> {
+                    val payload = JSONObject()
+                        .put("repo", args.getString("repo"))
+                        .put("path", args.getString("path"))
+                        .put("content", args.getString("content"))
+                        .toString().toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/git/write")
+                        .header("x-jarvis-key", vaultKey()).post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    resp.body?.string() ?: "Write failed: ${resp.code}"
+                }
+                "git_status" -> {
+                    val repo = args.getString("repo")
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/git/status?repo=${encode(repo)}")
+                        .header("x-jarvis-key", vaultKey()).get().build()
+                    val resp = client.newCall(req).execute()
+                    resp.body?.string() ?: "Status failed: ${resp.code}"
+                }
+                "git_commit_and_push" -> {
+                    val payload = JSONObject()
+                        .put("repo", args.getString("repo"))
+                        .put("message", args.getString("message"))
+                        .put("push", args.optBoolean("push", true))
+                        .toString().toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/git/commit")
+                        .header("x-jarvis-key", vaultKey()).post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    resp.body?.string() ?: "Commit failed: ${resp.code}"
+                }
+                "git_create_pr" -> {
+                    val payload = JSONObject()
+                        .put("repo", args.getString("repo"))
+                        .put("title", args.getString("title"))
+                        .put("body", args.optString("body", ""))
+                        .put("base", args.optString("base", "main"))
+                        .toString().toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/git/pr")
+                        .header("x-jarvis-key", vaultKey()).post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    resp.body?.string() ?: "PR failed: ${resp.code}"
                 }
                 else -> "Unknown tool: $name"
             }

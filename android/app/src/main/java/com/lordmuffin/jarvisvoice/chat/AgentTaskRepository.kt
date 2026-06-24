@@ -61,6 +61,19 @@ class AgentTaskRepository {
         }
     }
 
+    suspend fun replyToTask(id: String, message: String): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val payload = JSONObject().put("message", message).toString().toByteArray()
+            val conn = openPost("$vaultBase/api/v1/agent/tasks/$id/reply", payload)
+            val code = conn.responseCode
+            conn.disconnect()
+            code in 200..299
+        }.getOrElse {
+            DebugLog.e("AgentTaskRepo", "replyToTask($id) failed: ${it.message}")
+            false
+        }
+    }
+
     suspend fun deleteTask(id: String): Boolean = withContext(Dispatchers.IO) {
         runCatching {
             val url  = URL("$vaultBase/api/v1/agent/tasks/$id")
@@ -100,16 +113,29 @@ class AgentTaskRepository {
             outputStream.write(body)
         }
 
-    private fun parseTask(o: JSONObject) = AgentTask(
-        id          = o.getString("id"),
-        name        = o.optString("name", "Unnamed"),
-        prompt      = o.optString("prompt", ""),
-        model       = o.optString("model", ""),
-        status      = o.optString("status", "unknown"),
-        output      = o.optString("output", ""),
-        tokens      = o.optInt("tokens", 0),
-        createdAt   = (o.optDouble("created_at", 0.0) * 1000).toLong(),
-        startedAt   = o.optDouble("started_at", 0.0).takeIf { it > 0 }?.let { (it * 1000).toLong() },
-        finishedAt  = o.optDouble("finished_at", 0.0).takeIf { it > 0 }?.let { (it * 1000).toLong() },
-    )
+    private fun parseTask(o: JSONObject): AgentTask {
+        val msgs = o.optJSONArray("messages")
+        val messageList = if (msgs != null) {
+            (0 until msgs.length()).mapNotNull { i ->
+                val m = msgs.getJSONObject(i)
+                val role = m.optString("role", "")
+                val content = m.optString("content", "")
+                if (role.isNotEmpty() && content.isNotEmpty()) role to content else null
+            }
+        } else emptyList()
+
+        return AgentTask(
+            id         = o.getString("id"),
+            name       = o.optString("name", "Unnamed"),
+            prompt     = o.optString("prompt", ""),
+            model      = o.optString("model", ""),
+            status     = o.optString("status", "unknown"),
+            output     = o.optString("output", ""),
+            tokens     = o.optInt("tokens", 0),
+            createdAt  = (o.optDouble("created_at", 0.0) * 1000).toLong(),
+            startedAt  = o.optDouble("started_at", 0.0).takeIf { it > 0 }?.let { (it * 1000).toLong() },
+            finishedAt = o.optDouble("finished_at", 0.0).takeIf { it > 0 }?.let { (it * 1000).toLong() },
+            messages   = messageList,
+        )
+    }
 }

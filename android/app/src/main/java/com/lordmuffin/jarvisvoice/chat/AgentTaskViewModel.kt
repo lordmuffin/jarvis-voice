@@ -68,6 +68,19 @@ class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun replyToTask(id: String, message: String) {
+        viewModelScope.launch {
+            val ok = repo.replyToTask(id, message)
+            if (ok) {
+                // Task is now running again — poll immediately then continue normal cadence
+                val list = repo.listTasks()
+                if (list.isNotEmpty()) _tasks.value = list
+            } else {
+                _error.value = "Reply failed — check server"
+            }
+        }
+    }
+
     fun deleteTask(id: String) {
         viewModelScope.launch {
             repo.deleteTask(id)

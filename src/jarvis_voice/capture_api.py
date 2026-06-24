@@ -395,16 +395,22 @@ def _run_agent_task(task_id: str) -> None:
         task["status"] = "running"
         task["started_at"] = _time.time()
         _tasks_save()
+        # Snapshot existing messages so we can append to them after
+        existing_messages: list[dict] = list(task.get("messages", []))
 
     try:
-        messages: list[dict] = []
-        if task.get("system"):
-            messages.append({"role": "system", "content": task["system"]})
-        messages.append({"role": "user", "content": task["prompt"]})
+        # Build context: use stored messages if this is a continuation, else seed from prompt
+        if existing_messages:
+            send_messages = existing_messages
+        else:
+            send_messages = []
+            if task.get("system"):
+                send_messages.append({"role": "system", "content": task["system"]})
+            send_messages.append({"role": "user", "content": task["prompt"]})
 
         body = _json.dumps({
             "model": task["model"],
-            "messages": messages,
+            "messages": send_messages,
             "max_tokens": 4096,
         }).encode()
 
@@ -430,7 +436,15 @@ def _run_agent_task(task_id: str) -> None:
                 task["status"]      = "done"
                 task["output"]      = content
                 task["finished_at"] = _time.time()
-                task["tokens"]      = usage.get("total_tokens", 0)
+                task["tokens"]      = task.get("tokens", 0) + usage.get("total_tokens", 0)
+                # Persist full conversation: seed + assistant reply
+                if not existing_messages:
+                    seed: list[dict] = []
+                    if task.get("system"):
+                        seed.append({"role": "system", "content": task["system"]})
+                    seed.append({"role": "user", "content": task["prompt"]})
+                    task["messages"] = seed
+                task["messages"].append({"role": "assistant", "content": content})
             _tasks_save()
 
     except Exception as exc:
@@ -457,6 +471,7 @@ def agent_task_create(payload: AgentTaskCreate, _: str = Depends(verify_key)) ->
         "status":      "queued",
         "output":      "",
         "tokens":      0,
+        "messages":    [],
         "created_at":  _time.time(),
         "started_at":  None,
         "finished_at": None,
@@ -498,3 +513,180 @@ def agent_task_delete(task_id: str, _: str = Depends(verify_key)) -> dict:
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return {"id": task_id, "status": "cancelled"}
+
+
+class AgentTaskReply(BaseModel):
+    message: str
+
+
+@app.post("/api/v1/agent/tasks/{task_id}/reply")
+def agent_task_reply(task_id: str, payload: AgentTaskReply, _: str = Depends(verify_key)) -> dict:
+    """Append a user message to a completed task and continue the conversation."""
+    with _TASKS_LOCK:
+        task = _TASKS.get(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+        if task["status"] in ("queued", "running"):
+            raise HTTPException(status_code=409, detail="Task is still running")
+        # Append user turn; clear output so the next response becomes the new output
+        task["messages"].append({"role": "user", "content": payload.message})
+        task["status"]      = "queued"
+        task["output"]      = ""
+        task["started_at"]  = None
+        task["finished_at"] = None
+        _tasks_save()
+
+    _threading.Thread(target=_run_agent_task, args=(task_id,), daemon=True).start()
+    return {"id": task_id, "status": "queued"}
+
+
+# ── Git workspace endpoints ────────────────────────────────────────────────────
+
+_WORKSPACES_DIR = pathlib.Path(os.environ.get("JARVIS_WORKSPACES", "/home/lordmuffin/jarvis-workspaces"))
+
+
+def _ws_path(repo_slug: str) -> pathlib.Path:
+    safe = re.sub(r"[^a-zA-Z0-9_.-]", "_", repo_slug)
+    return _WORKSPACES_DIR / safe
+
+
+def _run(cmd: list[str], cwd: pathlib.Path | None = None, timeout: int = 60) -> tuple[int, str, str]:
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    return r.returncode, r.stdout, r.stderr
+
+
+class GitClonePayload(BaseModel):
+    repo: str          # e.g. "lordmuffin/jarvis-voice" or full URL
+    branch: str = ""
+
+
+class GitWritePayload(BaseModel):
+    repo: str
+    path: str          # relative path inside repo
+    content: str
+
+
+class GitCommitPayload(BaseModel):
+    repo: str
+    message: str
+    push: bool = True
+    branch: str = ""   # creates branch if non-empty and doesn't exist
+
+
+class GitPRPayload(BaseModel):
+    repo: str
+    title: str
+    body: str = ""
+    base: str = "main"
+
+
+@app.post("/api/v1/git/clone")
+def git_clone(payload: GitClonePayload, _: str = Depends(verify_key)) -> dict:
+    """Clone a GitHub repo into the local workspace directory."""
+    _WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
+    slug = payload.repo.rstrip("/")
+    ws = _ws_path(slug.replace("/", "__"))
+
+    url = slug if slug.startswith("http") else f"https://github.com/{slug}.git"
+
+    if ws.exists():
+        # Already cloned — just fetch
+        rc, out, err = _run(["git", "fetch", "--all"], cwd=ws)
+        if rc != 0:
+            raise HTTPException(status_code=500, detail=f"git fetch failed: {err}")
+        if payload.branch:
+            rc, out, err = _run(["git", "checkout", payload.branch], cwd=ws)
+            if rc != 0:
+                _run(["git", "checkout", "-b", payload.branch], cwd=ws)
+        return {"status": "updated", "path": str(ws)}
+
+    cmd = ["git", "clone", url, str(ws)]
+    if payload.branch:
+        cmd += ["--branch", payload.branch]
+    rc, out, err = _run(cmd, timeout=120)
+    if rc != 0:
+        raise HTTPException(status_code=500, detail=f"git clone failed: {err}")
+    return {"status": "cloned", "path": str(ws)}
+
+
+@app.post("/api/v1/git/write")
+def git_write(payload: GitWritePayload, _: str = Depends(verify_key)) -> dict:
+    """Write (create or overwrite) a file in a local workspace."""
+    ws = _ws_path(payload.repo.replace("/", "__"))
+    if not ws.exists():
+        raise HTTPException(status_code=404, detail=f"Workspace not found for {payload.repo} — clone first")
+    target = (ws / payload.path).resolve()
+    if not str(target).startswith(str(ws)):
+        raise HTTPException(status_code=400, detail="Path traversal rejected")
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(payload.content, encoding="utf-8")
+    return {"status": "written", "path": payload.path}
+
+
+@app.get("/api/v1/git/status")
+def git_status(repo: str, _: str = Depends(verify_key)) -> dict:
+    """Return git status and a short diff for a local workspace."""
+    ws = _ws_path(repo.replace("/", "__"))
+    if not ws.exists():
+        raise HTTPException(status_code=404, detail=f"Workspace not found for {repo}")
+    _, status_out, _ = _run(["git", "status", "--short"], cwd=ws)
+    _, diff_out, _   = _run(["git", "diff", "--stat", "HEAD"], cwd=ws)
+    _, branch_out, _ = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ws)
+    return {
+        "branch": branch_out.strip(),
+        "status": status_out.strip(),
+        "diff_stat": diff_out.strip(),
+    }
+
+
+@app.post("/api/v1/git/commit")
+def git_commit(payload: GitCommitPayload, _: str = Depends(verify_key)) -> dict:
+    """Stage all changes, commit, and optionally push."""
+    ws = _ws_path(payload.repo.replace("/", "__"))
+    if not ws.exists():
+        raise HTTPException(status_code=404, detail=f"Workspace not found for {payload.repo}")
+
+    if payload.branch:
+        rc, _, err = _run(["git", "checkout", "-b", payload.branch], cwd=ws)
+        if rc != 0:
+            # Branch may already exist
+            _run(["git", "checkout", payload.branch], cwd=ws)
+
+    _run(["git", "add", "-A"], cwd=ws)
+    rc, out, err = _run(["git", "commit", "-m", payload.message], cwd=ws)
+    if rc != 0:
+        raise HTTPException(status_code=500, detail=f"git commit failed: {err or out}")
+
+    sha = out.strip().splitlines()[0] if out else ""
+
+    push_result = ""
+    if payload.push:
+        branch_name = payload.branch or ""
+        if not branch_name:
+            _, bn, _ = _run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=ws)
+            branch_name = bn.strip()
+        rc2, out2, err2 = _run(["git", "push", "-u", "origin", branch_name], cwd=ws)
+        push_result = "pushed" if rc2 == 0 else f"push failed: {err2}"
+
+    return {"status": "committed", "commit": sha, "push": push_result}
+
+
+@app.post("/api/v1/git/pr")
+def git_pr(payload: GitPRPayload, _: str = Depends(verify_key)) -> dict:
+    """Create a GitHub pull request using the gh CLI."""
+    ws = _ws_path(payload.repo.replace("/", "__"))
+    if not ws.exists():
+        raise HTTPException(status_code=404, detail=f"Workspace not found for {payload.repo}")
+
+    cmd = [
+        "gh", "pr", "create",
+        "--title", payload.title,
+        "--body",  payload.body or "",
+        "--base",  payload.base,
+    ]
+    rc, out, err = _run(cmd, cwd=ws, timeout=60)
+    if rc != 0:
+        raise HTTPException(status_code=500, detail=f"gh pr create failed: {err or out}")
+
+    pr_url = out.strip().splitlines()[-1] if out else ""
+    return {"status": "created", "url": pr_url}

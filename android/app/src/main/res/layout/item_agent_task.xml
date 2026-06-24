@@ -103,15 +103,38 @@
         android:ellipsize="end"
         android:visibility="gone" />
 
-    <!-- Expand/collapse label -->
-    <TextView
-        android:id="@+id/tv_expand"
-        android:layout_width="wrap_content"
+    <!-- Expand/collapse label + Reply button row -->
+    <LinearLayout
+        android:id="@+id/ll_task_actions"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Show output ▼"
-        android:textColor="@color/jv_accent"
-        android:textSize="11sp"
-        android:layout_marginTop="4dp"
-        android:visibility="gone" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="6dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tv_expand"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Show output ▼"
+            android:textColor="@color/jv_accent"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/btn_reply"
+            android:layout_width="wrap_content"
+            android:layout_height="28dp"
+            android:text="↩ Reply"
+            android:textSize="11sp"
+            android:textAllCaps="false"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:backgroundTint="@color/jv_surface2"
+            android:textColor="@color/jv_accent"
+            android:stateListAnimator="@null" />
+
+    </LinearLayout>
 
 </LinearLayout>
