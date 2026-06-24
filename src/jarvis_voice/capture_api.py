@@ -351,6 +351,90 @@ def system_exec(payload: ExecPayload, _: str = Depends(verify_key)) -> dict:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
+# ── Push notification scheduler ───────────────────────────────────────────────
+
+_NOTIFS: dict[str, dict] = {}
+_NOTIFS_LOCK = _threading.Lock()
+_NOTIFS_FILE = pathlib.Path("/tmp/jarvis_notifications.json")
+
+
+def _notifs_load() -> None:
+    if _NOTIFS_FILE.exists():
+        try:
+            _NOTIFS.update(_json.loads(_NOTIFS_FILE.read_text()))
+        except Exception:
+            pass
+
+
+def _notifs_save() -> None:
+    try:
+        _NOTIFS_FILE.write_text(_json.dumps(_NOTIFS))
+    except Exception:
+        pass
+
+
+_notifs_load()
+
+
+class NotifSchedulePayload(BaseModel):
+    title: str
+    body: str = ""
+    delay_minutes: float
+
+
+@app.post("/api/v1/notify/schedule")
+def notify_schedule(payload: NotifSchedulePayload, _: str = Depends(verify_key)) -> dict:
+    """Schedule a push notification to fire after delay_minutes."""
+    nid = str(uuid.uuid4())
+    fires_at = _time.time() + payload.delay_minutes * 60
+    with _NOTIFS_LOCK:
+        _NOTIFS[nid] = {
+            "id":         nid,
+            "title":      payload.title,
+            "body":       payload.body,
+            "fires_at":   fires_at,
+            "delivered":  False,
+            "created_at": _time.time(),
+        }
+        _notifs_save()
+    return {"id": nid, "fires_at": fires_at}
+
+
+@app.get("/api/v1/notify/pending")
+def notify_pending(_: str = Depends(verify_key)) -> dict:
+    """Return all notifications due now; mark them delivered."""
+    now = _time.time()
+    due: list[dict] = []
+    with _NOTIFS_LOCK:
+        for n in list(_NOTIFS.values()):
+            if not n["delivered"] and n["fires_at"] <= now:
+                n["delivered"] = True
+                due.append(dict(n))
+        if due:
+            _notifs_save()
+    return {"notifications": due}
+
+
+@app.delete("/api/v1/notify/{notif_id}")
+def notify_cancel(notif_id: str, _: str = Depends(verify_key)) -> dict:
+    """Cancel a scheduled notification."""
+    with _NOTIFS_LOCK:
+        n = _NOTIFS.pop(notif_id, None)
+        if n:
+            _notifs_save()
+    if not n:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    return {"id": notif_id, "status": "cancelled"}
+
+
+@app.get("/api/v1/notify")
+def notify_list(_: str = Depends(verify_key)) -> dict:
+    """List all pending (undelivered) scheduled notifications."""
+    with _NOTIFS_LOCK:
+        pending = [n for n in _NOTIFS.values() if not n["delivered"]]
+    return {"notifications": sorted(pending, key=lambda n: n["fires_at"])}
+
+
 # ── Agent task queue ───────────────────────────────────────────────────────────
 
 _LITELLM_BASE = os.environ.get("LITELLM_BASE", "http://192.168.1.93:4000")

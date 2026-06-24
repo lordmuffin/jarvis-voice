@@ -306,6 +306,35 @@ private val VAULT_TOOLS = JSONArray().apply {
             })
         })
     })
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "schedule_notification")
+            put("description",
+                "Schedule a push notification to appear on the user's phone after a delay. " +
+                "Use whenever the user says 'remind me', 'notify me', or 'set a timer'. " +
+                "The notification fires even when the app is in the background.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("title", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Short notification title (e.g. 'Time to take Vyvanse')")
+                    })
+                    put("body", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "Optional longer notification body text")
+                        put("default", "")
+                    })
+                    put("delay_minutes", JSONObject().apply {
+                        put("type", "number")
+                        put("description", "Minutes from now when the notification should fire")
+                    })
+                })
+                put("required", JSONArray().put("title").put("delay_minutes"))
+            })
+        })
+    })
 }
 
 class LlmRepository {
@@ -595,6 +624,18 @@ class LlmRepository {
                         .header("x-jarvis-key", vaultKey()).post(payload).build()
                     val resp = client.newCall(req).execute()
                     resp.body?.string() ?: "PR failed: ${resp.code}"
+                }
+                "schedule_notification" -> {
+                    val payload = JSONObject()
+                        .put("title", args.getString("title"))
+                        .put("body", args.optString("body", ""))
+                        .put("delay_minutes", args.getDouble("delay_minutes"))
+                        .toString().toRequestBody("application/json".toMediaType())
+                    val req = Request.Builder()
+                        .url("$VAULT_BASE/api/v1/notify/schedule")
+                        .header("x-jarvis-key", vaultKey()).post(payload).build()
+                    val resp = client.newCall(req).execute()
+                    resp.body?.string() ?: "schedule failed: ${resp.code}"
                 }
                 else -> "Unknown tool: $name"
             }

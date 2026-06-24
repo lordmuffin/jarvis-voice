@@ -23,11 +23,13 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
+import com.lordmuffin.jarvisvoice.notify.NotifyWorker
 import com.lordmuffin.jarvisvoice.chat.ChatStatus
 import com.lordmuffin.jarvisvoice.chat.ConversationMessage
 import com.lordmuffin.jarvisvoice.chat.SessionMeta
@@ -107,6 +109,14 @@ class VoiceChatActivity : AppCompatActivity() {
 
         rvMessages.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
         rvMessages.adapter = adapter
+
+        // Start background notification poller and request POST_NOTIFICATIONS permission
+        NotifyWorker.schedule(this)
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 99)
+        }
 
         viewModel = ViewModelProvider(this)[VoiceChatViewModel::class.java]
 
