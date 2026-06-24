@@ -15,14 +15,17 @@ import kotlinx.coroutines.launch
 class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repo = AgentTaskRepository()
+    private val llm  = LlmRepository()
 
-    private val _tasks     = MutableStateFlow<List<AgentTask>>(emptyList())
-    private val _loading   = MutableStateFlow(false)
-    private val _error     = MutableStateFlow<String?>(null)
+    private val _tasks          = MutableStateFlow<List<AgentTask>>(emptyList())
+    private val _loading        = MutableStateFlow(false)
+    private val _error          = MutableStateFlow<String?>(null)
+    private val _availableModels = MutableStateFlow<List<String>>(listOf("local-default"))
 
-    val tasks:   StateFlow<List<AgentTask>> = _tasks.asStateFlow()
-    val loading: StateFlow<Boolean>         = _loading.asStateFlow()
-    val error:   StateFlow<String?>         = _error.asStateFlow()
+    val tasks:           StateFlow<List<AgentTask>> = _tasks.asStateFlow()
+    val loading:         StateFlow<Boolean>         = _loading.asStateFlow()
+    val error:           StateFlow<String?>         = _error.asStateFlow()
+    val availableModels: StateFlow<List<String>>    = _availableModels.asStateFlow()
 
     private var pollJob: Job? = null
 
@@ -31,8 +34,17 @@ class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
         val key   = (prefs.getString(VoiceChatViewModel.PREF_VAULT_KEY, "") ?: "")
             .ifBlank { VoiceChatViewModel.DEFAULT_VAULT_KEY }
         repo.vaultApiKey = key
+        llm.vaultApiKey  = key
+        fetchModels()
         refresh()
         startPolling()
+    }
+
+    private fun fetchModels() {
+        viewModelScope.launch {
+            val models = llm.fetchModels()
+            if (models.isNotEmpty()) _availableModels.value = models
+        }
     }
 
     fun refresh() {

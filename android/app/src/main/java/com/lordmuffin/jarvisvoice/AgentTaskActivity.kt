@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
@@ -23,18 +24,21 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class AgentTaskActivity : AppCompatActivity() {
 
-    private lateinit var viewModel: AgentTaskViewModel
-    private lateinit var rvTasks:   RecyclerView
-    private lateinit var llEmpty:   LinearLayout
-    private lateinit var fabNew:    Button
-    private val adapter = TaskAdapter()
-    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private lateinit var viewModel:  AgentTaskViewModel
+    private lateinit var rvTasks:    RecyclerView
+    private lateinit var llEmpty:    LinearLayout
+    private lateinit var etPrompt:   EditText
+    private lateinit var etTaskName: EditText
+    private lateinit var spModel:    Spinner
+    private lateinit var btnRun:     Button
+
+    private val taskAdapter = TaskAdapter()
+    private val uiScope     = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private var modelList: List<String> = listOf("local-default")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,36 +46,27 @@ class AgentTaskActivity : AppCompatActivity() {
         supportActionBar?.title = "Agent Tasks"
         BottomNav.wire(this, BottomNav.Tab.AGENT)
 
-        rvTasks = findViewById(R.id.rv_tasks)
-        llEmpty = findViewById(R.id.ll_empty)
-        fabNew  = findViewById(R.id.fab_new_task)
+        rvTasks    = findViewById(R.id.rv_tasks)
+        llEmpty    = findViewById(R.id.ll_empty)
+        etPrompt   = findViewById(R.id.et_prompt)
+        etTaskName = findViewById(R.id.et_task_name)
+        spModel    = findViewById(R.id.sp_model)
+        btnRun     = findViewById(R.id.btn_run_task)
 
         rvTasks.layoutManager = LinearLayoutManager(this)
-        rvTasks.adapter = adapter
+        rvTasks.adapter = taskAdapter
 
         viewModel = ViewModelProvider(this)[AgentTaskViewModel::class.java]
 
-        // Pre-fill prompt and model if launched from chat (Delegate flow)
+        observeViewModel()
+
+        btnRun.setOnClickListener { submitTask() }
+
+        // Pre-fill from chat Delegate flow
         val initialPrompt = intent.getStringExtra(EXTRA_PROMPT) ?: ""
         val initialModel  = intent.getStringExtra(EXTRA_MODEL)  ?: ""
-
-        uiScope.launch {
-            viewModel.tasks.collect { tasks ->
-                adapter.update(tasks)
-                llEmpty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
-                rvTasks.visibility = if (tasks.isEmpty()) View.GONE   else View.VISIBLE
-            }
-        }
-
-        fabNew.setOnClickListener { showCreateDialog("", "", "") }
-
-        // If launched with a pre-filled prompt, open the dialog immediately
-        if (initialPrompt.isNotBlank()) {
-            showCreateDialog(
-                prompt        = initialPrompt,
-                selectedModel = initialModel,
-            )
-        }
+        if (initialPrompt.isNotBlank()) etPrompt.setText(initialPrompt)
+        if (initialModel.isNotBlank()) selectModelInSpinner(initialModel)
     }
 
     override fun onResume() {
@@ -89,60 +84,59 @@ class AgentTaskActivity : AppCompatActivity() {
         uiScope.cancel()
     }
 
-    // ── Create task dialog ────────────────────────────────────────────────────
+    // ── Observe ───────────────────────────────────────────────────────────────
 
-    private fun showCreateDialog(
-        prompt: String = "",
-        name: String = "",
-        selectedModel: String = "",
-    ) {
-        val view = layoutInflater.inflate(R.layout.dialog_create_task, null)
-        val etName    = view.findViewById<EditText>(R.id.et_task_name)
-        val etPrompt  = view.findViewById<EditText>(R.id.et_task_prompt)
-        val spModel   = view.findViewById<Spinner>(R.id.sp_task_model)
-
-        etPrompt.setText(prompt)
-        etName.setText(name)
-
-        // Populate model spinner
-        val models = viewModel.tasks.value
-            .map { it.model }
-            .distinct()
-            .toMutableList()
-
-        // Also pull from a companion list if available
-        val knownModels = listOf(
-            "local-default",
-            "claude-sonnet-4-6",
-            "claude-haiku-4-5-20251001",
-            "gpt-4o",
-            "gpt-4o-mini",
-        ) + models
-        val uniqueModels = knownModels.distinct()
-
-        val spinnerAdapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            uniqueModels,
-        ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
-        spModel.adapter = spinnerAdapter
-
-        val defaultIndex = uniqueModels.indexOf(selectedModel.ifBlank { "local-default" })
-        if (defaultIndex >= 0) spModel.setSelection(defaultIndex)
-
-        AlertDialog.Builder(this)
-            .setTitle("New Agent Task")
-            .setView(view)
-            .setPositiveButton("Delegate") { _, _ ->
-                val taskPrompt = etPrompt.text.toString().trim()
-                val taskName   = etName.text.toString().trim()
-                val taskModel  = spModel.selectedItem?.toString() ?: "local-default"
-                if (taskPrompt.isNotEmpty()) {
-                    viewModel.createTask(taskName, taskPrompt, taskModel)
-                }
+    private fun observeViewModel() {
+        uiScope.launch {
+            viewModel.tasks.collect { tasks ->
+                taskAdapter.update(tasks)
+                llEmpty.visibility = if (tasks.isEmpty()) View.VISIBLE else View.GONE
+                rvTasks.visibility = if (tasks.isEmpty()) View.GONE   else View.VISIBLE
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        }
+        uiScope.launch {
+            viewModel.availableModels.collect { models ->
+                modelList = models
+                val adapter = ArrayAdapter(
+                    this@AgentTaskActivity,
+                    android.R.layout.simple_spinner_item,
+                    models,
+                ).also { it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+                spModel.adapter = adapter
+            }
+        }
+    }
+
+    // ── Submit ────────────────────────────────────────────────────────────────
+
+    private fun submitTask() {
+        val prompt = etPrompt.text.toString().trim()
+        if (prompt.isEmpty()) {
+            etPrompt.error = "Enter a prompt"
+            return
+        }
+        val name  = etTaskName.text.toString().trim()
+        val model = spModel.selectedItem?.toString() ?: "local-default"
+
+        viewModel.createTask(name, prompt, model)
+
+        etPrompt.setText("")
+        etTaskName.setText("")
+        dismissKeyboard()
+
+        // Scroll to top so user sees the new task appear
+        rvTasks.scrollToPosition(0)
+    }
+
+    private fun selectModelInSpinner(model: String) {
+        val idx = modelList.indexOf(model)
+        if (idx >= 0) spModel.setSelection(idx)
+    }
+
+    private fun dismissKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.hideSoftInputFromWindow(etPrompt.windowToken, 0)
+        etPrompt.clearFocus()
     }
 
     // ── Adapter ───────────────────────────────────────────────────────────────
@@ -167,39 +161,36 @@ class AgentTaskActivity : AppCompatActivity() {
             val isOpen = task.id in expanded
 
             h.tvName.text    = task.name
-            h.tvModel.text   = task.model.take(20)
+            h.tvModel.text   = task.model.take(22)
             h.tvStatus.text  = task.status.replaceFirstChar { it.titlecase() }
             h.tvElapsed.text = task.elapsedLabel()
 
-            // Status dot color
             val dotColor = statusColor(task.status)
             h.tvDot.backgroundTintList = ColorStateList.valueOf(getColor(dotColor))
 
-            // Output
             if (task.output.isNotEmpty()) {
                 h.tvExpand.visibility = View.VISIBLE
                 if (isOpen) {
-                    h.tvOutput.maxLines  = Int.MAX_VALUE
+                    h.tvOutput.maxLines   = Int.MAX_VALUE
                     h.tvOutput.visibility = View.VISIBLE
-                    h.tvOutput.text      = task.output
-                    h.tvExpand.text      = "Hide output ▲"
+                    h.tvOutput.text       = task.output
+                    h.tvExpand.text       = "Hide output ▲"
                 } else {
                     h.tvOutput.visibility = View.GONE
-                    h.tvExpand.text      = "Show output ▼"
+                    h.tvExpand.text       = "Show output ▼"
                 }
             } else {
-                h.tvOutput.visibility  = View.GONE
-                h.tvExpand.visibility  = View.GONE
+                h.tvOutput.visibility = View.GONE
+                h.tvExpand.visibility = View.GONE
             }
 
-            h.tvExpand.setOnClickListener {
+            val toggleExpand = View.OnClickListener {
                 if (task.id in expanded) expanded.remove(task.id) else expanded.add(task.id)
                 notifyItemChanged(pos)
             }
-            h.itemView.setOnClickListener {
-                if (task.id in expanded) expanded.remove(task.id) else expanded.add(task.id)
-                notifyItemChanged(pos)
-            }
+            h.tvExpand.setOnClickListener(toggleExpand)
+            h.itemView.setOnClickListener(toggleExpand)
+
             h.btnDelete.setOnClickListener {
                 AlertDialog.Builder(this@AgentTaskActivity)
                     .setTitle("Remove task?")
@@ -222,12 +213,12 @@ class AgentTaskActivity : AppCompatActivity() {
         val btnDelete: Button   = view.findViewById(R.id.btn_task_delete)
     }
 
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
     private fun statusColor(status: String) = when (status) {
-        "queued"    -> R.color.jv_text2
         "running"   -> R.color.jv_warning
         "done"      -> R.color.jv_accent
         "failed"    -> R.color.jv_error
-        "cancelled" -> R.color.jv_text2
         else        -> R.color.jv_text2
     }
 
@@ -236,9 +227,9 @@ class AgentTaskActivity : AppCompatActivity() {
         return when {
             ms == null && !isTerminal -> "running…"
             ms == null -> ""
-            ms < 1_000 -> "${ms}ms"
+            ms < 1_000  -> "${ms}ms"
             ms < 60_000 -> "${"%.1f".format(ms / 1000.0)}s"
-            else -> "${ms / 60_000}m ${(ms % 60_000) / 1000}s"
+            else        -> "${ms / 60_000}m ${(ms % 60_000) / 1000}s"
         }
     }
 
