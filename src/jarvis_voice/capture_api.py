@@ -630,7 +630,14 @@ def _run_agent_task(task_id: str) -> None:
         _MAX_ITERATIONS = 25
         _LLM_TIMEOUT = 300  # 5 min — qwen-coder-32b at 8192 tokens can take 3-4 min
 
+        # Keep system + seed user msg; prune middle when context grows large
+        _MAX_MSG_WINDOW = 20
+        _MSG_KEEP_TAIL  = 10
+
         for _iteration in range(_MAX_ITERATIONS):
+            if len(send_messages) > _MAX_MSG_WINDOW:
+                send_messages = send_messages[:2] + send_messages[-_MSG_KEEP_TAIL:]
+
             body = _json.dumps({
                 "model":       task["model"],
                 "messages":    send_messages,
@@ -651,6 +658,21 @@ def _run_agent_task(task_id: str) -> None:
             try:
                 with urllib.request.urlopen(req, timeout=_LLM_TIMEOUT) as resp:
                     result = _json.loads(resp.read().decode())
+            except urllib.error.HTTPError as http_exc:
+                partial = content or (
+                    new_messages[-1].get("content", "") if new_messages else ""
+                )
+                if http_exc.code == 400:
+                    raise RuntimeError(
+                        f"LLM rejected request on iteration {_iteration + 1}/{_MAX_ITERATIONS} "
+                        f"(HTTP 400 — likely context too large: {len(send_messages)} messages in window)."
+                        + (f"\n\nWork completed before failure:\n{partial[:1000]}" if partial else "")
+                    ) from http_exc
+                raise RuntimeError(
+                    f"LLM call failed on iteration {_iteration + 1}/{_MAX_ITERATIONS}: "
+                    f"HTTP {http_exc.code}."
+                    + (f"\n\nWork completed before failure:\n{partial[:1000]}" if partial else "")
+                ) from http_exc
             except Exception as llm_exc:
                 # LLM call failed — surface what was done so far instead of a bare error
                 partial = content or (

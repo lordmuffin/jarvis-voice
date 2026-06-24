@@ -20,7 +20,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.text.Html
-import androidx.core.widget.LinkMovementMethod
+import android.text.method.LinkMovementMethod
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider

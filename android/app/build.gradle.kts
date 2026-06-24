@@ -76,4 +76,6 @@ dependencies {
     implementation(libs.okhttp.sse)
     implementation(libs.lifecycle.viewmodel.ktx)
     implementation(libs.mlkit.genai.prompt)
+    implementation(libs.androidx.car.app)
+    implementation(libs.androidx.media3.common)
 }
