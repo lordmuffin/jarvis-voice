@@ -219,7 +219,7 @@ class AgentTaskActivity : AppCompatActivity() {
         val tvOutput:   TextView    = view.findViewById(R.id.tv_task_output)
         val llActions:  LinearLayout = view.findViewById(R.id.ll_task_actions)
         val tvExpand:   TextView    = view.findViewById(R.id.tv_expand)
-        val btnReply:   Button      = view.findViewById(R.id.btn_reply)
+        val btnReply:   TextView    = view.findViewById(R.id.btn_reply)
         val btnDelete:  Button      = view.findViewById(R.id.btn_task_delete)
     }
 
