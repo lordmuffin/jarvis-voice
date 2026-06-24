@@ -470,6 +470,7 @@ class AgentTaskCreate(BaseModel):
 
 
 _AGENT_SYSTEM = (
+    "/no_think\n\n"
     "You are Kai, an AI assistant running on the Jarvis homelab server (192.168.1.155). "
     "You have tools available — use them to complete tasks autonomously end-to-end. "
     "Do NOT say you lack access to external systems; use the tools provided.\n\n"
@@ -487,8 +488,10 @@ _AGENT_SYSTEM = (
     "Web + system:\n"
     "  web_fetch    — fetch a URL and return stripped text\n"
     "  system_exec  — run a shell command on the server\n\n"
-    "Work through multi-step tasks by calling tools in sequence. "
-    "Return a concise summary when done."
+    "COMPLETION RULE: You MUST call task_done when the work is fully finished. "
+    "Do NOT stop calling tools and return a text answer — that signals incomplete work. "
+    "Every task ends with task_done(summary='...', pr_url='...'). "
+    "If you hit a blocker you cannot resolve, call task_done with what was done and what is blocked."
 )
 
 _AGENT_TOOLS: list[dict] = [
@@ -581,6 +584,15 @@ _AGENT_TOOLS: list[dict] = [
             "command": {"type": "string", "description": "Shell command"},
         }},
     }},
+    {"type": "function", "function": {
+        "name": "task_done",
+        "description": "Signal that all work is complete. MUST be called at the end of every task. Do not return a text answer without calling this first.",
+        "parameters": {"type": "object", "required": ["summary"], "properties": {
+            "summary": {"type": "string", "description": "What was accomplished, including any commit hashes, PR URLs, or file paths."},
+            "pr_url":  {"type": "string", "description": "Pull request URL if a PR was created (optional)"},
+            "blocked": {"type": "string", "description": "If a blocker was hit, describe it here (optional)"},
+        }},
+    }},
 ]
 
 
@@ -615,14 +627,21 @@ def _run_agent_task(task_id: str) -> None:
         content = ""
         total_tokens = 0
         new_messages: list[dict] = []
+        _MAX_ITERATIONS = 25
 
-        for _iteration in range(10):
+        for _iteration in range(_MAX_ITERATIONS):
+            # If model stopped calling tools without signalling task_done, nudge it
+            tool_choice: str | dict = "auto"
+            if _iteration > 0 and not new_messages[-1].get("role") == "tool":
+                # Last message wasn't a tool result — model may be drifting; remind it
+                pass  # keep auto; the system prompt handles this
+
             body = _json.dumps({
                 "model":       task["model"],
                 "messages":    send_messages,
                 "tools":       _AGENT_TOOLS,
                 "tool_choice": "auto",
-                "max_tokens":  4096,
+                "max_tokens":  8192,
             }).encode()
 
             req = urllib.request.Request(
@@ -634,36 +653,71 @@ def _run_agent_task(task_id: str) -> None:
                 },
                 method="POST",
             )
-            with urllib.request.urlopen(req, timeout=120) as resp:
+            with urllib.request.urlopen(req, timeout=180) as resp:
                 result = _json.loads(resp.read().decode())
 
             total_tokens += result.get("usage", {}).get("total_tokens", 0)
             choice  = result["choices"][0]
             message = choice["message"]
-            finish  = choice.get("finish_reason", "stop")
 
             tool_calls = message.get("tool_calls") or []
             if tool_calls:
                 send_messages.append(message)
                 new_messages.append(message)
+                done_called = False
                 for tc in tool_calls:
                     fn   = tc["function"]["name"]
                     try:
                         args = _json.loads(tc["function"]["arguments"])
                     except Exception:
                         args = {}
-                    result_text = _execute_tool(fn, args)
-                    tool_msg = {
-                        "role":         "tool",
-                        "tool_call_id": tc["id"],
-                        "content":      result_text,
-                    }
-                    send_messages.append(tool_msg)
-                    new_messages.append(tool_msg)
+
+                    if fn == "task_done":
+                        # Model signalled completion — use summary as output
+                        content = args.get("summary", "Task complete.")
+                        if args.get("pr_url"):
+                            content += f"\n\nPR: {args['pr_url']}"
+                        if args.get("blocked"):
+                            content += f"\n\nBlocked: {args['blocked']}"
+                        tool_msg = {
+                            "role":         "tool",
+                            "tool_call_id": tc["id"],
+                            "content":      "acknowledged",
+                        }
+                        send_messages.append(tool_msg)
+                        new_messages.append(tool_msg)
+                        new_messages.append({"role": "assistant", "content": content})
+                        done_called = True
+                    else:
+                        result_text = _execute_tool(fn, args)
+                        tool_msg = {
+                            "role":         "tool",
+                            "tool_call_id": tc["id"],
+                            "content":      result_text,
+                        }
+                        send_messages.append(tool_msg)
+                        new_messages.append(tool_msg)
+
+                if done_called:
+                    break
             else:
-                content = message.get("content") or ""
-                new_messages.append({"role": "assistant", "content": content})
-                break
+                # Model returned text without calling task_done — could be mid-thought
+                text = message.get("content") or ""
+                text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL).strip()
+
+                if _iteration < _MAX_ITERATIONS - 1:
+                    # Push the response back and prompt continuation
+                    send_messages.append({"role": "assistant", "content": text})
+                    send_messages.append({
+                        "role":    "user",
+                        "content": "Continue the task. Call task_done when fully complete.",
+                    })
+                    new_messages.append({"role": "assistant", "content": text})
+                else:
+                    # Final iteration — accept whatever we have
+                    content = text
+                    new_messages.append({"role": "assistant", "content": content})
+                    break
 
         with _TASKS_LOCK:
             task = _TASKS.get(task_id, {})
@@ -1065,6 +1119,9 @@ def _execute_tool(name: str, args: dict) -> str:
             )
             out = (r.stdout or "") + (r.stderr or "")
             return out[:2000] or f"(exit {r.returncode})"
+
+        elif name == "task_done":
+            return "acknowledged"  # handled in the loop; shouldn't reach here
 
         else:
             return f"Unknown tool: {name}"
