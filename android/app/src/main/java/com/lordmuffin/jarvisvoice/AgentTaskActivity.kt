@@ -15,6 +15,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import android.text.Html
+import android.widget.LinkMovementMethod
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
@@ -178,7 +180,8 @@ class AgentTaskActivity : AppCompatActivity() {
                 if (isOpen) {
                     h.tvOutput.maxLines   = Int.MAX_VALUE
                     h.tvOutput.visibility = View.VISIBLE
-                    h.tvOutput.text       = task.output
+                    h.tvOutput.text   = Html.fromHtml(task.output, Html.FROM_HTML_MODE_COMPACT)
+                    h.tvOutput.movementMethod = LinkMovementMethod.getInstance()
                     h.tvExpand.text       = "Hide output ▲"
                 } else {
                     h.tvOutput.visibility = View.GONE
@@ -301,7 +304,8 @@ class AgentTaskActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(h: ConvoViewHolder, pos: Int) {
             val (role, content) = messages[pos]
-            h.tvMsg.text = content
+            h.tvMsg.text = Html.fromHtml(content, Html.FROM_HTML_MODE_COMPACT)
+            h.tvMsg.movementMethod = LinkMovementMethod.getInstance()
             val lp = h.tvMsg.layoutParams as android.widget.FrameLayout.LayoutParams
             if (role == "user") {
                 lp.gravity = Gravity.END
