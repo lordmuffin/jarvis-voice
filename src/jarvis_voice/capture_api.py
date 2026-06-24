@@ -562,8 +562,16 @@ def _ws_path(repo_slug: str) -> pathlib.Path:
     return _WORKSPACES_DIR / safe
 
 
+_GITHUB_SSH_CONFIG = pathlib.Path.home() / ".config" / "jarvis" / "github-ssh.config"
+_GIT_SSH_CMD = f"ssh -F {_GITHUB_SSH_CONFIG}" if _GITHUB_SSH_CONFIG.exists() else None
+
+
 def _run(cmd: list[str], cwd: pathlib.Path | None = None, timeout: int = 60) -> tuple[int, str, str]:
-    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout)
+    env = None
+    if _GIT_SSH_CMD and cmd and cmd[0] == "git":
+        env = os.environ.copy()
+        env["GIT_SSH_COMMAND"] = _GIT_SSH_CMD
+    r = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, env=env)
     return r.returncode, r.stdout, r.stderr
 
 
@@ -599,7 +607,14 @@ def git_clone(payload: GitClonePayload, _: str = Depends(verify_key)) -> dict:
     slug = payload.repo.rstrip("/")
     ws = _ws_path(slug.replace("/", "__"))
 
-    url = slug if slug.startswith("http") else f"https://github.com/{slug}.git"
+    # Prefer SSH (uses the homelab deploy key via GIT_SSH_COMMAND).
+    # Fall back to HTTPS only if a full HTTPS URL is explicitly passed.
+    if slug.startswith("http"):
+        url = slug
+    elif slug.startswith("git@"):
+        url = slug
+    else:
+        url = f"git@github.com:{slug}.git"
 
     if ws.exists():
         # Already cloned — just fetch
