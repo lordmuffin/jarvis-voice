@@ -29,6 +29,7 @@ import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
@@ -45,11 +46,19 @@ class VoiceOverlayService : Service() {
         const val NOTIF_TRANSCRIPT_ID     = 2
         const val NOTIF_RESTORE_ID        = 3
         const val ACTION_OPEN_SETTINGS    = "com.lordmuffin.jarvisvoice.OPEN_SETTINGS"
+        const val ACTION_CAR_START        = "com.lordmuffin.jarvisvoice.CAR_START"
+        const val ACTION_CAR_STOP         = "com.lordmuffin.jarvisvoice.CAR_STOP"
+        const val ACTION_CAR_MUTE         = "com.lordmuffin.jarvisvoice.CAR_MUTE"
         const val PREF_FILE               = "jarvis_prefs"
         const val KEY_CLIPBOARD_NOTIFY    = "clipboard_notify"
         const val KEY_SCREEN_ALWAYS_ON    = "screen_always_on"
         var lastFocusedNode: AccessibilityNodeInfo? = null
         var instance: VoiceOverlayService? = null
+
+        // Shared state consumed by JarvisCarScreen — updated from the main thread.
+        val carStateFlow    = MutableStateFlow(OverlayState.IDLE)
+        val carLastTextFlow = MutableStateFlow("")
+        val carMutedFlow    = MutableStateFlow(false)
     }
 
     private lateinit var windowManager: WindowManager
@@ -221,11 +230,13 @@ class VoiceOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_OPEN_SETTINGS) {
-            startActivity(
-                Intent(this, SettingsActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        when (intent?.action) {
+            ACTION_OPEN_SETTINGS -> startActivity(
+                Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
+            ACTION_CAR_START -> if (!carMutedFlow.value) startRecording(holdMode = false)
+            ACTION_CAR_STOP  -> if (state == OverlayState.RECORDING) stopRecording()
+            ACTION_CAR_MUTE  -> carMutedFlow.value = !carMutedFlow.value
         }
         // Always NOT_STICKY — the service is user-initiated (app open / accessibility event).
         // START_STICKY causes rapid crash loops when the LLM backend init throws a native error
@@ -353,6 +364,7 @@ class VoiceOverlayService : Service() {
         params.flags = params.flags or WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
         runCatching { windowManager.updateViewLayout(overlayView, params) }
         state = OverlayState.RECORDING
+        carStateFlow.value = OverlayState.RECORDING
         dotIdle.clearAnimation()
         dotIdle.visibility = View.GONE
         progressSpinner.visibility = View.GONE
@@ -381,6 +393,7 @@ class VoiceOverlayService : Service() {
     private fun stopRecording() {
         // Instant visual feedback — don't wait for Whisper to finish
         state = OverlayState.PROCESSING
+        carStateFlow.value = OverlayState.PROCESSING
         waveformView.stopAnimation()
         waveformView.visibility = View.GONE
         dotIdle.clearAnimation()
@@ -459,6 +472,8 @@ class VoiceOverlayService : Service() {
         }
 
         state = OverlayState.DONE
+        carStateFlow.value = OverlayState.DONE
+        carLastTextFlow.value = finalText
         waveformView.stopAnimation()
         progressSpinner.visibility = View.GONE
         dotIdle.clearAnimation()
@@ -490,6 +505,7 @@ class VoiceOverlayService : Service() {
 
     private fun setIdleState() {
         state = OverlayState.IDLE
+        carStateFlow.value = OverlayState.IDLE
         micIcon.visibility = View.GONE
         waveformView.visibility = View.GONE
         waveformView.stopAnimation()
