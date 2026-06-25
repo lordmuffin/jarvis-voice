@@ -142,7 +142,7 @@
                 android:textSize="11sp"
                 android:textAllCaps="false"
                 android:background="@drawable/pill_background_accent"
-                android:textColor="@color/jv_bg"
+                android:textColor="#ffffff"
                 android:stateListAnimator="@null"
                 android:layout_gravity="bottom" />
 
