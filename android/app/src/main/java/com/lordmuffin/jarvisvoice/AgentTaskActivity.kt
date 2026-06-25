@@ -110,43 +110,34 @@ class AgentTaskActivity : AppCompatActivity() {
         }
     }
 
-    // ── Submit ────────────────────────────────────────────────────────────────
-
     private fun submitTask() {
-        val prompt = etPrompt.text.toString().trim()
-        if (prompt.isEmpty()) {
-            etPrompt.error = "Enter a prompt"
-            return
+        val prompt      = etPrompt.text.toString().trim()
+        val taskName    = etTaskName.text.toString().trim()
+        val selectedIdx = spModel.selectedItemPosition
+        val model       = modelList.getOrElse(selectedIdx) { "local-default" }
+        if (prompt.isEmpty()) return
+        uiScope.launch {
+            val ok = viewModel.createTask(taskName, prompt, model)
+            if (ok) {
+                etPrompt.text?.clear()
+                etTaskName.text?.clear()
+            } else {
+                _error.value = "Failed to create task — check server connectivity"
+            }
         }
-        val name  = etTaskName.text.toString().trim()
-        val model = spModel.selectedItem?.toString() ?: "local-default"
-
-        viewModel.createTask(name, prompt, model)
-
-        etPrompt.setText("")
-        etTaskName.setText("")
-        dismissKeyboard()
-
-        // Scroll to top so user sees the new task appear
-        rvTasks.scrollToPosition(0)
     }
 
-    private fun selectModelInSpinner(model: String) {
-        val idx = modelList.indexOf(model)
+    fun selectModelInSpinner(modelName: String) {
+        val idx = modelList.indexOf(modelName)
         if (idx >= 0) spModel.setSelection(idx)
     }
 
-    private fun dismissKeyboard() {
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(etPrompt.windowToken, 0)
-        etPrompt.clearFocus()
-    }
+    // ── Task RecyclerView adapter ─────────────────────────────────────────────
 
-    // ── Adapter ───────────────────────────────────────────────────────────────
+    private var expanded: MutableSet<String> = mutableSetOf()
 
     private inner class TaskAdapter : RecyclerView.Adapter<TaskViewHolder>() {
         private var items: List<AgentTask> = emptyList()
-        private val expanded = mutableSetOf<String>()
 
         fun update(newItems: List<AgentTask>) {
             items = newItems
@@ -196,42 +187,46 @@ class AgentTaskActivity : AppCompatActivity() {
             h.tvExpand.setOnClickListener(toggleExpand)
             h.itemView.setOnClickListener(toggleExpand)
 
-            // Reply button — opens conversation thread sheet
+            // Reply button — opens full-screen conversation window
             h.btnReply.setOnClickListener { showConversationSheet(task) }
 
             h.btnDelete.setOnClickListener {
-                AlertDialog.Builder(this@AgentTaskActivity)
-                    .setTitle("Remove task?")
-                    .setMessage("\"${task.name}\" will be cancelled and removed.")
-                    .setPositiveButton("Remove") { _, _ -> viewModel.deleteTask(task.id) }
-                    .setNegativeButton("Cancel", null)
-                    .show()
+                viewModel.deleteTask(task.id)
+                expanded.remove(task.id)
             }
+        }
+
+        private fun statusColor(status: String): Int = when (status) {
+            "queued"    -> R.color.jv_warning
+            "running"   -> R.color.jv_accent
+            "completed" -> R.color.jv_success
+            "failed"    -> R.color.jv_error
+            "cancelled" -> R.color.jv_text2
+            else        -> R.color.jv_text2
         }
     }
 
     private inner class TaskViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvDot:      View        = view.findViewById(R.id.tv_status_dot)
-        val tvName:     TextView    = view.findViewById(R.id.tv_task_name)
-        val tvModel:    TextView    = view.findViewById(R.id.tv_task_model)
-        val tvStatus:   TextView    = view.findViewById(R.id.tv_task_status)
-        val tvElapsed:  TextView    = view.findViewById(R.id.tv_task_elapsed)
-        val tvOutput:   TextView    = view.findViewById(R.id.tv_task_output)
-        val llActions:  LinearLayout = view.findViewById(R.id.ll_task_actions)
-        val tvExpand:   TextView    = view.findViewById(R.id.tv_expand)
-        val btnReply:   TextView    = view.findViewById(R.id.btn_reply)
-        val btnDelete:  Button      = view.findViewById(R.id.btn_task_delete)
+        val tvName:     TextView      = view.findViewById(R.id.tv_task_name)
+        val tvModel:    TextView      = view.findViewById(R.id.tv_task_model)
+        val tvStatus:   TextView      = view.findViewById(R.id.tv_task_status)
+        val tvElapsed:  TextView      = view.findViewById(R.id.tv_task_elapsed)
+        val tvOutput:   TextView      = view.findViewById(R.id.tv_task_output)
+        val llActions:  LinearLayout  = view.findViewById(R.id.ll_task_actions)
+        val tvExpand:   TextView      = view.findViewById(R.id.tv_expand)
+        val btnReply:   TextView      = view.findViewById(R.id.btn_reply)
+        val btnDelete:  Button        = view.findViewById(R.id.btn_task_delete)
     }
 
-    // ── Conversation sheet ────────────────────────────────────────────────────
+    // ── Full-screen conversation sheet ────────────────────────────────────────
 
     private fun showConversationSheet(task: AgentTask) {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.bottom_sheet_task_convo)
         dialog.window?.apply {
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setGravity(Gravity.BOTTOM)
+            // Make dialog full-screen
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundDrawableResource(android.R.color.transparent)
         }
 
@@ -290,54 +285,32 @@ class AgentTaskActivity : AppCompatActivity() {
     // ── Conversation RecyclerView adapter ─────────────────────────────────────
 
     private inner class ConvoAdapter(
-        private val messages: List<Pair<String, String>>,
+        private val items: MutableList<Pair<String, String>>,
     ) : RecyclerView.Adapter<ConvoViewHolder>() {
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            ConvoViewHolder(LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_chat_message, parent, false))
-
-        override fun getItemCount() = messages.size
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ConvoViewHolder {
+            val ctx = parent.context
+            val (role, _) = items.firstOrNull() ?: ("" to "")
+            return ConvoViewHolder(LayoutInflater.from(ctx).inflate(
+                if (role == "user") R.layout.chat_bubble_user else R.layout.chat_bubble_ai,
+                parent, false
+            ))
+        }
 
         override fun onBindViewHolder(h: ConvoViewHolder, pos: Int) {
-            val (role, content) = messages[pos]
-            h.tvMsg.text = content
-            val lp = h.tvMsg.layoutParams as android.widget.FrameLayout.LayoutParams
-            if (role == "user") {
-                lp.gravity = Gravity.END
-                h.tvMsg.setBackgroundResource(R.drawable.chat_bubble_user)
-                h.tvMsg.setTextColor(getColor(R.color.jv_bg))
-            } else {
-                lp.gravity = Gravity.START
-                h.tvMsg.setBackgroundResource(R.drawable.chat_bubble_ai)
-                h.tvMsg.setTextColor(getColor(R.color.jv_text))
-            }
-            h.tvMsg.layoutParams = lp
+            val (role, text) = items[pos]
+            h.tvMsg.text = text
+            h.itemView.background = if (role == "user")
+                ctx.getDrawable(R.drawable.chat_bubble_user)
+            else
+                ctx.getDrawable(R.drawable.chat_bubble_ai)
         }
+
+        override fun getItemCount() = items.size
     }
 
     private inner class ConvoViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvMsg: TextView = view.findViewById(R.id.tv_message)
-    }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
-
-    private fun statusColor(status: String) = when (status) {
-        "running"   -> R.color.jv_warning
-        "done"      -> R.color.jv_accent
-        "failed"    -> R.color.jv_error
-        else        -> R.color.jv_text2
-    }
-
-    private fun AgentTask.elapsedLabel(): String {
-        val ms = elapsedMs
-        return when {
-            ms == null && !isTerminal -> "running…"
-            ms == null -> ""
-            ms < 1_000  -> "${ms}ms"
-            ms < 60_000 -> "${"%.1f".format(ms / 1000.0)}s"
-            else        -> "${ms / 60_000}m ${(ms % 60_000) / 1000}s"
-        }
     }
 
     companion object {
