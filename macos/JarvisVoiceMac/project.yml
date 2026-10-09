@@ -1,0 +1,59 @@
+name: JarvisVoiceMac
+options:
+  bundleIdPrefix: dev.apj
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+configFiles:
+  Debug: Base.xcconfig
+  Release: Base.xcconfig
+packages:
+  JarvisLiveKit:
+    path: ../JarvisLiveKit
+targets:
+  JarvisVoiceMac:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+    dependencies:
+      - package: JarvisLiveKit
+    settings:
+      base:
+        PRODUCT_NAME: Jarvis Voice
+        PRODUCT_BUNDLE_IDENTIFIER: dev.apj.JarvisVoiceMac
+        INFOPLIST_FILE: Resources/Info.plist
+        CODE_SIGN_ENTITLEMENTS: JarvisVoiceMac.entitlements
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        GENERATE_INFOPLIST_FILE: NO
+  JarvisVoiceMacTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: JarvisVoiceMac
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.apj.JarvisVoiceMacTests
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Jarvis Voice.app/Contents/MacOS/Jarvis Voice"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  JarvisVoiceMac:
+    build:
+      targets:
+        JarvisVoiceMac: all
+        JarvisVoiceMacTests: [test]
+    test:
+      targets:
+        - JarvisVoiceMacTests
