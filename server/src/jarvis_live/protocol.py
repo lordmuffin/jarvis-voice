@@ -10,6 +10,9 @@ from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator
 PROTOCOL_VERSION = 1
 HEADER_SIZE = 12
 _HEADER = struct.Struct("<BBHII")
+BYTES_PER_MS = 32  # 16 kHz * 2 bytes, mono
+MIN_PAYLOAD = 20 * BYTES_PER_MS
+MAX_PAYLOAD = 200 * BYTES_PER_MS
 
 ChannelName = Literal["mic", "system"]
 NonNegInt = Annotated[int, Field(ge=0)]
@@ -194,11 +197,19 @@ class Frame:
     flags: int = 0
 
 
+def _check_payload(pcm: bytes) -> None:
+    if len(pcm) % 2:
+        raise FrameError("PCM16 payload must have even length")
+    if not MIN_PAYLOAD <= len(pcm) <= MAX_PAYLOAD:
+        raise FrameError(
+            f"payload must be {MIN_PAYLOAD}-{MAX_PAYLOAD} bytes (20-200 ms), got {len(pcm)}"
+        )
+
+
 def encode_frame(channel: int, seq: int, t_ms: int, pcm: bytes) -> bytes:
     if channel not in (CHANNEL_MIC, CHANNEL_SYSTEM):
         raise FrameError(f"invalid channel {channel}")
-    if len(pcm) % 2:
-        raise FrameError("PCM16 payload must have even length")
+    _check_payload(pcm)
     try:
         return _HEADER.pack(PROTOCOL_VERSION, channel, 0, seq, t_ms) + pcm
     except struct.error as e:
@@ -216,6 +227,5 @@ def decode_frame(data: bytes) -> Frame:
     if flags != 0:
         raise FrameError(f"non-zero flags {flags:#x}")
     pcm = data[HEADER_SIZE:]
-    if len(pcm) % 2:
-        raise FrameError("PCM16 payload must have even length")
+    _check_payload(pcm)
     return Frame(channel=channel, seq=seq, t_ms=t_ms, pcm=pcm, version=version, flags=flags)

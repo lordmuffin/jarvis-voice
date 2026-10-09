@@ -81,11 +81,21 @@ def test_message_unions_dispatch_on_type() -> None:
 
 def test_hex_frame_decodes_to_expected_header() -> None:
     data = bytes.fromhex((V1 / "fixtures" / "frame_mic_seq7.hex").read_text().strip())
-    assert len(data) == 12 + 320
+    assert len(data) == 12 + 640
     frame = p.decode_frame(data)
     assert (frame.version, frame.channel, frame.flags, frame.seq, frame.t_ms) == (1, 0, 0, 7, 140)
-    assert frame.pcm == bytes(320)
-    assert p.encode_frame(0, 7, 140, bytes(320)) == data
+    assert frame.pcm == bytes(640)
+    assert p.encode_frame(0, 7, 140, bytes(640)) == data
+
+
+def test_payload_duration_bounds() -> None:
+    for n in (640, 6400):
+        p.decode_frame(p.encode_frame(1, 0, 0, bytes(n)))
+    for n in (0, 320, 638, 641, 6402):
+        with pytest.raises(p.FrameError):
+            p.encode_frame(0, 0, 0, bytes(n))
+        with pytest.raises(p.FrameError):
+            p.decode_frame(bytes([1, 0, 0, 0]) + bytes(8) + bytes(n))
 
 
 @pytest.mark.parametrize(

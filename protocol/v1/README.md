@@ -8,7 +8,7 @@ Fixtures in `fixtures/` are the conformance suite every implementation must pass
 
 - `fixtures/valid/<schema>[__variant].json` must validate against `schemas/<schema>.json`.
 - `fixtures/invalid/<schema>__<reason>.json` must be rejected by it.
-- `fixtures/frame_mic_seq7.hex` is a binary frame (hex text): channel 0, seq 7, t_ms 140, then 320 zero bytes.
+- `fixtures/frame_mic_seq7.hex` is a binary frame (hex text): channel 0, seq 7, t_ms 140, then 640 zero bytes (20 ms).
 
 Any change under `protocol/` needs fixtures plus updated server **and** Swift tests.
 
@@ -37,8 +37,8 @@ A ticket is a short-lived (60 s) credential for the WebSocket below.
 | 4 | u32 | seq | per-channel, increments by 1 per frame |
 | 8 | u32 | t_ms | capture time since session start |
 
-Payload: PCM16LE, 16 kHz, mono. Senders SHOULD send 20–200 ms per frame (640–6400 bytes).
-Receivers MUST accept any non-empty even-length payload (see `frame_mic_seq7.hex`, 10 ms).
+Payload: PCM16LE, 16 kHz, mono, 20–200 ms per frame (640–6400 bytes, 32 bytes/ms).
+Senders MUST NOT send frames outside this range; receivers MUST reject them.
 
 ### Client → server JSON (discriminator: `type`)
 
