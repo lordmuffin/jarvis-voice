@@ -387,7 +387,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Vault API Key"
+                android:text="Capture key"
                 android:textColor="@color/jv_text2"
                 android:textSize="11sp"
                 android:layout_marginTop="12dp"
@@ -397,7 +397,7 @@
                 android:id="@+id/et_vault_api_key"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="JARVIS_CAPTURE_KEY value"
+                android:hint="Capture key (JARVIS_CAPTURE_KEY on the server)"
                 android:inputType="textPassword"
                 android:textColor="@color/jv_text"
                 android:textColorHint="@color/jv_text2"

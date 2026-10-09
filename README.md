@@ -353,8 +353,12 @@ ssh -F ~/.config/jarvis/github-ssh.config -T git@github.com
 ### Server: `~/.jarvis-agent.env`
 
 ```bash
-# Auth — must match DEFAULT_VAULT_KEY in VoiceChatViewModel.kt
-JARVIS_CAPTURE_KEY=0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo
+# Auth — required (no default; API returns 503 if unset). Must match "Capture key" in the app.
+# Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JARVIS_CAPTURE_KEY=change-me
+
+# Shell/git endpoints and agent tools are off by default
+# JARVIS_ENABLE_DANGEROUS_TOOLS=false
 
 # Vault root (defaults to /home/lordmuffin/Notes)
 # VAULT_ROOT=/home/lordmuffin/Notes

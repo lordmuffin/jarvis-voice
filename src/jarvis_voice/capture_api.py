@@ -12,6 +12,7 @@ Both paths share auth, frontmatter, and vault output via ``write_voice_note``.
 from __future__ import annotations
 
 import datetime as _dt
+import hmac
 import html as _html
 import logging
 import os
@@ -37,18 +38,55 @@ from jarvis_voice.vault import VAULT_INBOX, voice_note_basename, write_voice_not
 
 log = logging.getLogger(__name__)
 
-# Default API key — matches DEFAULT_VAULT_KEY in VoiceChatViewModel.kt.
-# Override with JARVIS_CAPTURE_KEY env var to rotate the key on both sides.
-_DEFAULT_API_KEY = "0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo"
+# Auth: JARVIS_CAPTURE_KEY must be set; there is no built-in default. When it is
+# unset or empty every authenticated route returns 503 (fail closed).
+if not os.environ.get("JARVIS_CAPTURE_KEY"):
+    log.error("JARVIS_CAPTURE_KEY is not set — all authenticated routes will return 503")
+
+# system_exec and git_* (HTTP routes and agent tools) are off unless explicitly enabled.
+DANGEROUS_TOOLS_ENABLED = os.environ.get(
+    "JARVIS_ENABLE_DANGEROUS_TOOLS", ""
+).strip().lower() in ("1", "true", "yes", "on")
+_DANGEROUS_TOOL_NAMES = frozenset(
+    {"system_exec", "git_clone", "git_write", "git_status", "git_commit", "git_pr"}
+)
+
+
+class _NoRoutes:
+    """Stand-in for `app` that registers nothing (dangerous routes disabled)."""
+
+    def get(self, *a, **kw):
+        return lambda fn: fn
+
+    post = get
+
+
 
 # Vault root — two levels up from the Voice Notes inbox subfolder.
 # Override with VAULT_ROOT env var if the directory layout differs.
 VAULT_ROOT = pathlib.Path(
     os.environ.get("VAULT_ROOT", str(pathlib.Path(VAULT_INBOX).parents[1]))
-)
+).resolve()
 _VAULT_MAX_CHARS = 6000
 
 app = FastAPI(title="Jarvis Capture API", version="1.0")
+_dangerous = app if DANGEROUS_TOOLS_ENABLED else _NoRoutes()
+
+
+def _vault_path(rel: str) -> pathlib.Path:
+    """Resolve a vault-relative path; raise ValueError if it escapes VAULT_ROOT."""
+    root = VAULT_ROOT.resolve()
+    target = (root / rel).resolve()
+    if not target.is_relative_to(root):
+        raise ValueError("Path traversal rejected")
+    return target
+
+
+def _vault_path_or_400(rel: str) -> pathlib.Path:
+    try:
+        return _vault_path(rel)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Path traversal rejected") from None
 
 
 def _transcode_to_mp3(src_path: str, dst_path: str) -> bool:
@@ -99,9 +137,13 @@ class VoiceCapture(BaseModel):
     intent_hint: str | None = None
 
 
-def verify_key(x_jarvis_key: str = Header(...)) -> str:
-    expected = os.environ.get("JARVIS_CAPTURE_KEY", _DEFAULT_API_KEY)
-    if x_jarvis_key != expected:
+def verify_key(x_jarvis_key: str | None = Header(None)) -> str:
+    expected = os.environ.get("JARVIS_CAPTURE_KEY", "")
+    if not expected:
+        raise HTTPException(status_code=503, detail="server not configured")
+    if not x_jarvis_key or not hmac.compare_digest(
+        x_jarvis_key.encode("utf-8"), expected.encode("utf-8")
+    ):
         raise HTTPException(status_code=401, detail="Invalid API key")
     return x_jarvis_key
 
@@ -235,18 +277,18 @@ class ExecPayload(BaseModel):
 @app.get("/api/v1/vault/note")
 def vault_read_note(path: str, _: str = Depends(verify_key)) -> dict:
     """Read a note from the vault by relative path."""
-    target = VAULT_ROOT / path
+    target = _vault_path_or_400(path)
     if not target.exists():
         name = pathlib.Path(path).name
         matches = list(VAULT_ROOT.rglob(f"*{name}"))
         if matches:
-            target = matches[0]
+            target = _vault_path_or_400(str(matches[0].relative_to(VAULT_ROOT)))
         else:
             raise HTTPException(status_code=404, detail=f"Not found: {path}")
     content = target.read_text(encoding="utf-8", errors="replace")
     if len(content) > _VAULT_MAX_CHARS:
         content = content[:_VAULT_MAX_CHARS] + "\n\n[truncated]"
-    return {"path": str(target.relative_to(VAULT_ROOT)), "content": content}
+    return {"path": str(target.relative_to(VAULT_ROOT.resolve())), "content": content}
 
 
 @app.get("/api/v1/vault/search")
@@ -256,7 +298,7 @@ def vault_search(
     _: str = Depends(verify_key),
 ) -> dict:
     """Search vault notes for a keyword. Returns list of relative paths."""
-    search_root = VAULT_ROOT / directory if directory else VAULT_ROOT
+    search_root = _vault_path_or_400(directory) if directory else VAULT_ROOT
     try:
         result = subprocess.run(
             ["grep", "-rl", "--include=*.md", query, str(search_root)],
@@ -292,7 +334,7 @@ def vault_sprint_state(_: str = Depends(verify_key)) -> dict:
 @app.post("/api/v1/vault/note/append")
 def vault_append_note(payload: AppendPayload, _: str = Depends(verify_key)) -> dict:
     """Append text to an existing vault note."""
-    target = VAULT_ROOT / payload.path
+    target = _vault_path_or_400(payload.path)
     if not target.exists():
         raise HTTPException(status_code=404, detail=f"Not found: {payload.path}")
     with open(target, "a", encoding="utf-8") as f:
@@ -303,7 +345,7 @@ def vault_append_note(payload: AppendPayload, _: str = Depends(verify_key)) -> d
 @app.post("/api/v1/vault/note/write")
 def vault_write_note(payload: WritePayload, _: str = Depends(verify_key)) -> dict:
     """Create or overwrite a vault note. Creates parent directories as needed."""
-    target = VAULT_ROOT / payload.path
+    target = _vault_path_or_400(payload.path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(payload.content, encoding="utf-8")
     log.info("vault_write_note: wrote %d chars to %s", len(payload.content), payload.path)
@@ -327,7 +369,7 @@ def web_fetch(url: str, _: str = Depends(verify_key)) -> dict:
         raise HTTPException(status_code=502, detail=f"Fetch failed: {exc}") from exc
 
 
-@app.post("/api/v1/system/exec")
+@_dangerous.post("/api/v1/system/exec")
 def system_exec(payload: ExecPayload, _: str = Depends(verify_key)) -> dict:
     """Run a shell command on the homelab server and return its output."""
     try:
@@ -594,6 +636,10 @@ _AGENT_TOOLS: list[dict] = [
         }},
     }},
 ]
+
+
+if not DANGEROUS_TOOLS_ENABLED:
+    _AGENT_TOOLS = [t for t in _AGENT_TOOLS if t["function"]["name"] not in _DANGEROUS_TOOL_NAMES]
 
 
 def _run_agent_task(task_id: str) -> None:
@@ -918,7 +964,7 @@ class GitPRPayload(BaseModel):
     base: str = "main"
 
 
-@app.post("/api/v1/git/clone")
+@_dangerous.post("/api/v1/git/clone")
 def git_clone(payload: GitClonePayload, _: str = Depends(verify_key)) -> dict:
     """Clone a GitHub repo into the local workspace directory."""
     _WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
@@ -954,7 +1000,7 @@ def git_clone(payload: GitClonePayload, _: str = Depends(verify_key)) -> dict:
     return {"status": "cloned", "path": str(ws)}
 
 
-@app.post("/api/v1/git/write")
+@_dangerous.post("/api/v1/git/write")
 def git_write(payload: GitWritePayload, _: str = Depends(verify_key)) -> dict:
     """Write (create or overwrite) a file in a local workspace."""
     ws = _ws_path(payload.repo.replace("/", "__"))
@@ -968,7 +1014,7 @@ def git_write(payload: GitWritePayload, _: str = Depends(verify_key)) -> dict:
     return {"status": "written", "path": payload.path}
 
 
-@app.get("/api/v1/git/status")
+@_dangerous.get("/api/v1/git/status")
 def git_status(repo: str, _: str = Depends(verify_key)) -> dict:
     """Return git status and a short diff for a local workspace."""
     ws = _ws_path(repo.replace("/", "__"))
@@ -984,7 +1030,7 @@ def git_status(repo: str, _: str = Depends(verify_key)) -> dict:
     }
 
 
-@app.post("/api/v1/git/commit")
+@_dangerous.post("/api/v1/git/commit")
 def git_commit(payload: GitCommitPayload, _: str = Depends(verify_key)) -> dict:
     """Stage all changes, commit, and optionally push."""
     ws = _ws_path(payload.repo.replace("/", "__"))
@@ -1016,7 +1062,7 @@ def git_commit(payload: GitCommitPayload, _: str = Depends(verify_key)) -> dict:
     return {"status": "committed", "commit": sha, "push": push_result}
 
 
-@app.post("/api/v1/git/pr")
+@_dangerous.post("/api/v1/git/pr")
 def git_pr(payload: GitPRPayload, _: str = Depends(verify_key)) -> dict:
     """Create a GitHub pull request using the gh CLI."""
     ws = _ws_path(payload.repo.replace("/", "__"))
@@ -1042,6 +1088,8 @@ def git_pr(payload: GitPRPayload, _: str = Depends(verify_key)) -> dict:
 # it has access to _run / _ws_path / VAULT_ROOT which are declared earlier.
 
 def _execute_tool(name: str, args: dict) -> str:
+    if name in _DANGEROUS_TOOL_NAMES and not DANGEROUS_TOOLS_ENABLED:
+        return f"Refused: tool {name} is disabled (JARVIS_ENABLE_DANGEROUS_TOOLS is off)"
     try:
         if name == "git_clone":
             _WORKSPACES_DIR.mkdir(parents=True, exist_ok=True)
@@ -1108,7 +1156,7 @@ def _execute_tool(name: str, args: dict) -> str:
             return out.strip().splitlines()[-1] if out else "PR created"
 
         elif name == "vault_read":
-            path = VAULT_ROOT / args["path"]
+            path = _vault_path(args["path"])
             if not path.exists():
                 return f"Not found: {args['path']}"
             return path.read_text(encoding="utf-8", errors="replace")[:_VAULT_MAX_CHARS]
@@ -1128,13 +1176,13 @@ def _execute_tool(name: str, args: dict) -> str:
             return _json.dumps(hits) if hits else "No results"
 
         elif name == "vault_append":
-            path = VAULT_ROOT / args["path"]
+            path = _vault_path(args["path"])
             with open(path, "a", encoding="utf-8") as fh:
                 fh.write("\n" + args["content"])
             return f"Appended to {args['path']}"
 
         elif name == "vault_write":
-            path = VAULT_ROOT / args["path"]
+            path = _vault_path(args["path"])
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(args["content"], encoding="utf-8")
             return f"Wrote {args['path']}"
@@ -1160,5 +1208,9 @@ def _execute_tool(name: str, args: dict) -> str:
         else:
             return f"Unknown tool: {name}"
 
+    except ValueError as exc:
+        if str(exc) == "Path traversal rejected":
+            return "Refused: path is outside the vault"
+        return f"Tool error ({name}): {exc}"
     except Exception as exc:
         return f"Tool error ({name}): {exc}"

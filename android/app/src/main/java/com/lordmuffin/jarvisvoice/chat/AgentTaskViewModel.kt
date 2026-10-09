@@ -31,8 +31,7 @@ class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         val prefs = app.getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
-        val key   = (prefs.getString(VoiceChatViewModel.PREF_VAULT_KEY, "") ?: "")
-            .ifBlank { VoiceChatViewModel.DEFAULT_VAULT_KEY }
+        val key   = prefs.getString(VoiceChatViewModel.PREF_VAULT_KEY, "") ?: ""
         repo.vaultApiKey = key
         llm.vaultApiKey  = key
         fetchModels()

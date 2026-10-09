@@ -58,7 +58,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
     init {
         val prefs = app.getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
         val storedKey = prefs.getString(PREF_VAULT_KEY, "") ?: ""
-        llm.vaultApiKey = storedKey.ifBlank { DEFAULT_VAULT_KEY }
+        llm.vaultApiKey = storedKey
 
         val kokoroUrl   = (prefs.getString(PREF_TTS_URL, "") ?: "").ifBlank { DEFAULT_TTS_URL }
         val kokoroVoice = prefs.getString(PREF_TTS_VOICE, DEFAULT_TTS_VOICE) ?: DEFAULT_TTS_VOICE
@@ -307,6 +307,5 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         const val PREF_TTS_VOICE    = "tts_voice"
         const val DEFAULT_TTS_VOICE = "af_sky"
         const val DEFAULT_TTS_URL   = "http://192.168.1.43:8880"
-        const val DEFAULT_VAULT_KEY = "0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo"
     }
 }
