@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.2.0...macos-v0.3.0) (2026-10-09)
+
+
+### Features
+
+* **macos:** add JarvisLiveKit package (protocol, framing, outbox, transport, session store) ([8ba0d8f](https://github.com/lordmuffin/jarvis-voice/commit/8ba0d8fc2fbbbec547e24d2c5f9d489f3152f1b1))
+* **macos:** add JarvisLiveKit package (protocol, framing, outbox, transport, session store) ([953c3af](https://github.com/lordmuffin/jarvis-voice/commit/953c3af85057fbaf8963f55e7aca0373b1eb94c5))
+
 ## [0.2.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.1.0...macos-v0.2.0) (2026-10-09)
 
 
