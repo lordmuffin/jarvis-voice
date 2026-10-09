@@ -8,6 +8,7 @@
 | `server/` | Jarvis Live backend (Python 3.12, uv, FastAPI), package `jarvis_live` |
 | `macos/` | Jarvis Live macOS app (Swift) — scaffold only so far |
 | `android/` | Android app |
+| `design/` | Design system: `tokens.json` (colors, type, spacing, radius, sizes) and `README.md` usage rules, extracted from the Android app |
 | `src/jarvis_voice/`, `tests/` | **Legacy** FastAPI service — bugfix only |
 
 ## Running tests
