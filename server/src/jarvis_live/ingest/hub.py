@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -35,7 +36,15 @@ class IngestHub:
         sessionmaker: "async_sessionmaker[AsyncSession]",
         bus: Bus,
         stt: STTBackend,
+        *,
+        on_start: Callable[[SessionIngest], None] | None = None,
+        on_end: Callable[[uuid.UUID], None] | None = None,
     ) -> None:
+        """``on_start`` fires (synchronously, under the hub lock) when a session's ingest state
+        is created; ``on_end`` after a live session has been moved to ``finalizing`` and its
+        pipeline drained. Both must return quickly (spawn a task)."""
+        self._on_start = on_start
+        self._on_end = on_end
         self._cfg = settings
         self._sm = sessionmaker
         self._bus = bus
@@ -63,7 +72,12 @@ class IngestHub:
                 state = self._states[session_id] = SessionIngest(
                     session_id, channels, store, pipeline
                 )
+                if self._on_start is not None:
+                    self._on_start(state)
             return state
+
+    def live_sessions(self) -> list[SessionIngest]:
+        return list(self._states.values())
 
     async def end(self, session_id: uuid.UUID, *, caller: WebSocket | None = None) -> bool:
         """Move a live session to ``finalizing`` and drain its pipeline. Idempotent.
@@ -90,6 +104,8 @@ class IngestHub:
                 await state.producer.close(code=4410)
         if transitioned:
             log.info("session ended")
+            if self._on_end is not None:
+                self._on_end(session_id)
         return transitioned
 
     async def shutdown(self) -> None:
