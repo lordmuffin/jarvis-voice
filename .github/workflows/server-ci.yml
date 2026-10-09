@@ -22,6 +22,18 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy src
+      # Anonymous registry pulls on shared runners are rate limited (HTTP 429). testcontainers
+      # swallows that and fails later with ImageNotFound, so pull here with retries instead.
+      - name: Pull Postgres test image
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull "$JARVIS_LIVE_TEST_POSTGRES_IMAGE" && exit 0
+            echo "pull attempt $i failed; retrying" >&2
+            sleep $((i * 15))
+          done
+          exit 1
+        env:
+          JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
       - run: uv run pytest -q
         env:
           # Avoid Docker Hub's anonymous pull limit (and the Ryuk image pull) on shared runners.
