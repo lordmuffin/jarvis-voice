@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/error.json",
+  "title": "error",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "error"
+    },
+    "code": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "code",
+    "message"
+  ],
+  "additionalProperties": false
+}

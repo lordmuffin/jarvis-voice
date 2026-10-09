@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/draft_segment.json",
+  "title": "draft_segment",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "draft_segment"
+    },
+    "channel": {
+      "enum": [
+        "mic",
+        "system"
+      ]
+    },
+    "start_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "end_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "text": {
+      "type": "string"
+    },
+    "final": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "type",
+    "channel",
+    "start_ms",
+    "end_ms",
+    "text",
+    "final"
+  ],
+  "additionalProperties": false
+}
