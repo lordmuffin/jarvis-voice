@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.3.0...server-v0.4.0) (2026-10-09)
+
+
+### Features
+
+* **server:** add image build, GitOps bump, release notifications and release train ([3414b81](https://github.com/lordmuffin/jarvis-voice/commit/3414b815e7eb1c1ead540bca4fbbf2f3b64b21a8))
+* **server:** copilot loop, vault context, final note and Gotify notifications ([78110f8](https://github.com/lordmuffin/jarvis-voice/commit/78110f844b229c7c48f3dbb2b55404bf7c40ad94))
+* **server:** copilot loop, vault context, final note and Gotify notifications ([49c3663](https://github.com/lordmuffin/jarvis-voice/commit/49c3663d3260447282c4e72be3389734e2a70665))
+* **server:** ship pipeline (image, GitOps bump, Gotify notifications) ([7519dcc](https://github.com/lordmuffin/jarvis-voice/commit/7519dcc1e7e65ad7a95042a2ff12d5835dafc9d3))
+
+
+### Bug Fixes
+
+* **server:** install jarvis_live non-editable in the image ([b8077c9](https://github.com/lordmuffin/jarvis-voice/commit/b8077c9f431ca9a1a396cd686f0864aeb16b125c))
+* **server:** install jarvis_live non-editable in the image ([49f9d74](https://github.com/lordmuffin/jarvis-voice/commit/49f9d742daee69a3b8dcf73b242bb9697a609808))
+
 ## [0.3.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.2.0...server-v0.3.0) (2026-10-09)
 
 
