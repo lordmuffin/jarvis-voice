@@ -77,3 +77,13 @@ jobs:
           name: ${{ github.ref_name }}
           generate_release_notes: true
           files: ${{ steps.apk.outputs.path }}
+
+  notify:
+    needs: release
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-voice ${{ github.ref_name }} released"
+      message: "Signed APK attached to the GitHub Release."
+      priority: 5
+      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+    secrets: inherit
