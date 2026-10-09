@@ -2,9 +2,9 @@ name: Python CI
 
 on:
   push:
-    paths: ["src/**", "tests/**", "requirements*.txt", ".github/workflows/python-ci.yml"]
+    paths: ["src/**", "tests/**"]
   pull_request:
-    paths: ["src/**", "tests/**", "requirements*.txt", ".github/workflows/python-ci.yml"]
+    paths: ["src/**", "tests/**"]
 
 jobs:
   pytest:

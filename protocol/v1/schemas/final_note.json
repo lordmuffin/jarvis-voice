@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/final_note.json",
+  "title": "final_note",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "final_note"
+    },
+    "path": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "path",
+    "title"
+  ],
+  "additionalProperties": false
+}

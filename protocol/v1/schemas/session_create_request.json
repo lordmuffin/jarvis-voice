@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/session_create_request.json",
+  "title": "session_create_request",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "meeting",
+        "solo"
+      ]
+    },
+    "channels": {
+      "enum": [
+        [
+          "mic"
+        ],
+        [
+          "mic",
+          "system"
+        ]
+      ]
+    }
+  },
+  "required": [
+    "mode",
+    "channels"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,10 @@
+{
+  "type": "hello",
+  "protocol": 1,
+  "device": "macbook-pro",
+  "codec": "pcm16le_16k",
+  "resume": {
+    "mic": null,
+    "system": null
+  }
+}

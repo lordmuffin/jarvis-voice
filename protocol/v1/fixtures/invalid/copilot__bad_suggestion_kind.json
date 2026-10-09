@@ -1,0 +1,16 @@
+{
+  "type": "copilot",
+  "version": 1,
+  "notes": [],
+  "actions": [],
+  "decisions": [],
+  "suggestions": [
+    {
+      "id": "s",
+      "kind": "joke",
+      "text": "x",
+      "expires_at_ms": 1
+    }
+  ],
+  "related": []
+}

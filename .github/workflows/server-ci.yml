@@ -1,0 +1,25 @@
+name: Server CI
+
+on:
+  push:
+    paths: ["server/**", "protocol/**", ".github/workflows/server-ci.yml"]
+  pull_request:
+    paths: ["server/**", "protocol/**", ".github/workflows/server-ci.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src
+      - run: uv run pytest -q

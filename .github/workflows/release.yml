@@ -3,7 +3,7 @@ name: Release Signed APK
 on:
   push:
     tags:
-      - 'v*'
+      - 'android-v*'
 
 jobs:
   release:
@@ -62,13 +62,18 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK
+        id: apk
+        env:
+          REF_NAME: ${{ github.ref_name }}
         run: |
+          version="${REF_NAME#android-v}"
           mv android/app/build/outputs/apk/release/app-release.apk \
-             android/app/build/outputs/apk/release/jarvis-voice-${{ github.ref_name }}.apk
+             "android/app/build/outputs/apk/release/jarvis-voice-v${version}.apk"
+          echo "path=android/app/build/outputs/apk/release/jarvis-voice-v${version}.apk" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: android/app/build/outputs/apk/release/jarvis-voice-${{ github.ref_name }}.apk
+          files: ${{ steps.apk.outputs.path }}

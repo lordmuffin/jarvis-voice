@@ -16,3 +16,10 @@ venv/
 android/app/src/main/assets/models/
 android/app/src/main/jniLibs/
 android/app/src/main/java/com/k2fsa/
+
+# Jarvis Live server
+server/.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+__pycache__/

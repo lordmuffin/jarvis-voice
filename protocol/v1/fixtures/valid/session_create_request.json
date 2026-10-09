@@ -1,0 +1,8 @@
+{
+  "title": "Weekly sync",
+  "mode": "meeting",
+  "channels": [
+    "mic",
+    "system"
+  ]
+}
