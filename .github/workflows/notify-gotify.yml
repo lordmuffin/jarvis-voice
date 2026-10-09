@@ -1,0 +1,109 @@
+name: notify-gotify
+
+# Reusable: send a Gotify push from a GitHub-hosted runner via an ephemeral
+# Tailscale node. Notifications never fail the calling workflow.
+
+on:
+  workflow_call:
+    inputs:
+      title:
+        type: string
+        required: true
+      message:
+        type: string
+        required: true
+      priority:
+        type: number
+        required: true
+      url:
+        type: string
+        required: false
+        default: ""
+    secrets:
+      TS_OAUTH_CLIENT_ID:
+        required: true
+      TS_OAUTH_SECRET:
+        required: true
+      GOTIFY_URL:
+        required: true
+      GOTIFY_TOKEN:
+        required: true
+  workflow_dispatch:
+    inputs:
+      title:
+        description: Notification title
+        type: string
+        default: "jarvis-ci test"
+      message:
+        description: Notification body (markdown)
+        type: string
+        default: "Gotify reachability test from GitHub Actions."
+      priority:
+        description: Gotify priority
+        type: number
+        default: 3
+      url:
+        description: Click-through URL (optional)
+        type: string
+        default: ""
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Connect to tailnet
+        id: ts
+        continue-on-error: true
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+
+      - name: Check Gotify reachability
+        id: health
+        env:
+          GOTIFY_URL: ${{ secrets.GOTIFY_URL }}
+          TS_OUTCOME: ${{ steps.ts.outcome }}
+        run: |
+          if [ "$TS_OUTCOME" != "success" ]; then
+            echo "::warning::Tailscale connection failed; skipping Gotify notification"
+            echo "reachable=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if curl --fail --silent --show-error --max-time 10 "${GOTIFY_URL%/}/health" > /dev/null; then
+            echo "reachable=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Gotify is unreachable at /health; skipping notification"
+            echo "reachable=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send notification
+        if: steps.health.outputs.reachable == 'true'
+        env:
+          GOTIFY_URL: ${{ secrets.GOTIFY_URL }}
+          GOTIFY_TOKEN: ${{ secrets.GOTIFY_TOKEN }}
+          N_TITLE: ${{ inputs.title }}
+          N_MESSAGE: ${{ inputs.message }}
+          N_PRIORITY: ${{ inputs.priority }}
+          N_URL: ${{ inputs.url }}
+        run: |
+          payload=$(jq -n \
+            --arg title "$N_TITLE" \
+            --arg message "$N_MESSAGE" \
+            --argjson priority "$N_PRIORITY" \
+            --arg url "$N_URL" \
+            '{title: $title, message: $message, priority: $priority,
+              extras: ({"client::display": {contentType: "text/markdown"}}
+                + (if $url != "" then {"client::notification": {click: {url: $url}}} else {} end))}')
+          if curl --fail --silent --show-error --max-time 10 \
+              -H "X-Gotify-Key: ${GOTIFY_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "$payload" "${GOTIFY_URL%/}/message" > /dev/null; then
+            echo "Notification sent."
+          else
+            echo "::warning::Gotify POST failed"
+          fi
