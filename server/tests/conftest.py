@@ -1,3 +1,4 @@
+import os
 import socket
 import threading
 import time
@@ -49,7 +50,9 @@ class FakeSTT:
 
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
-    with PostgresContainer("postgres:16-alpine", driver="asyncpg") as pg:
+    with PostgresContainer(
+        os.environ.get("JARVIS_LIVE_TEST_POSTGRES_IMAGE", "postgres:16-alpine"), driver="asyncpg"
+    ) as pg:
         url = pg.get_connection_url()
         run_migrations(url)
         yield url

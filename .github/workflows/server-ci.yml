@@ -23,3 +23,7 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run mypy src
       - run: uv run pytest -q
+        env:
+          # Avoid Docker Hub's anonymous pull limit (and the Ryuk image pull) on shared runners.
+          JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
+          TESTCONTAINERS_RYUK_DISABLED: "true"
