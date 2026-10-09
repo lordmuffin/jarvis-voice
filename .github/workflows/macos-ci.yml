@@ -1,0 +1,23 @@
+name: macOS CI
+
+on:
+  push:
+    paths: ["macos/**", "protocol/**", ".github/workflows/macos-ci.yml"]
+  pull_request:
+    paths: ["macos/**", "protocol/**", ".github/workflows/macos-ci.yml"]
+
+jobs:
+  jarvis-live-kit:
+    # macos-26 is a GitHub-hosted arm64 image with Xcode 26 / Swift 6.2 (verified in actions/runner-images).
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: macos/JarvisLiveKit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - run: swift build
+      - run: swift test
