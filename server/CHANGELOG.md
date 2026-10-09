@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.2.0...server-v0.3.0) (2026-10-09)
+
+
+### Features
+
+* **server:** jarvis-live core service (auth, session REST, WS ingest, VAD, tiered STT) ([2819bb8](https://github.com/lordmuffin/jarvis-voice/commit/2819bb8cc25b3db23ced7162e8e9eb96df96c1cf))
+* **server:** jarvis-live core service (Phase A2) ([d7594d8](https://github.com/lordmuffin/jarvis-voice/commit/d7594d8b3f9fdaa58fcf93fe7555d4df5689c213))
+
 ## [0.2.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.1.0...server-v0.2.0) (2026-10-09)
 
 
