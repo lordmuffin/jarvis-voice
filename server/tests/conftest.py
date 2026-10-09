@@ -15,6 +15,8 @@ from jarvis_live.app import create_app
 from jarvis_live.auth import create_device
 from jarvis_live.config import Settings
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
+from jarvis_live.llm.client import LLM
+from jarvis_live.notify.gotify import Notifier
 from jarvis_live.stt.backend import STTBackend, Transcription
 
 
@@ -50,6 +52,10 @@ class FakeSTT:
 
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
+    if url := os.environ.get("JARVIS_LIVE_TEST_DATABASE_URL"):  # no Docker: use this server
+        run_migrations(url)
+        yield url
+        return
     with PostgresContainer(
         os.environ.get("JARVIS_LIVE_TEST_POSTGRES_IMAGE", "postgres:16-alpine"), driver="asyncpg"
     ) as pg:
@@ -76,13 +82,18 @@ def make_server(postgres_url: str, tmp_path: Path) -> Iterator[Callable[..., Ser
     """Run the real app under uvicorn in a thread (own event loop), like production."""
     running: list[tuple[uvicorn.Server, threading.Thread]] = []
 
-    def start(stt: STTBackend | None = None, **overrides: object) -> ServerHandle:
+    def start(
+        stt: STTBackend | None = None,
+        llm: LLM | None = None,
+        notifier: Notifier | None = None,
+        **overrides: object,
+    ) -> ServerHandle:
         settings = Settings(database_url=postgres_url, data_dir=tmp_path / "data", **overrides)  # type: ignore[arg-type]
         stt = stt or FakeSTT()
         port = _free_port()
         server = uvicorn.Server(
             uvicorn.Config(
-                create_app(settings, stt=stt),
+                create_app(settings, stt=stt, llm=llm, notifier=notifier),
                 host="127.0.0.1",
                 port=port,
                 log_level="warning",

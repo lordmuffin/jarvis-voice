@@ -2,6 +2,7 @@
 
 import asyncio
 import math
+import time
 import uuid
 from dataclasses import dataclass
 
@@ -65,6 +66,8 @@ class SessionPipeline:
         self._wake = asyncio.Event()
         self._finishing = False
         self._last_final_end_ms = 0
+        self.llm_ok = False  # set by the copilot loop; False until an LLM cycle has succeeded
+        self.last_audio_at = time.monotonic()
         self._tasks: list[asyncio.Task[None]] = []
 
     def start(self) -> None:
@@ -83,6 +86,7 @@ class SessionPipeline:
     def feed(self, channel: str, pcm: bytes) -> None:
         if self._finishing:
             return
+        self.last_audio_at = time.monotonic()
         for seg in self._segmenters[channel].feed(pcm):
             self._enqueue(channel, seg)
         if channel == "system":
@@ -227,6 +231,16 @@ class SessionPipeline:
 
     # --- status -----------------------------------------------------------------------------
 
+    def position_ms(self) -> int:
+        """Stream time ingested so far (the later of the channels)."""
+        return max(s.position_ms for s in self._segmenters.values())
+
+    def publish_status(self) -> None:
+        self._bus.publish(
+            str(self.session_id),
+            Status(stt_tier=self._stt.current_tier(), llm_ok=self.llm_ok, lag_ms=self.lag_ms()),
+        )
+
     def lag_ms(self) -> int:
         """Ingested stream time minus the end of the last finalized segment."""
         position = max(s.position_ms for s in self._segmenters.values())
@@ -235,8 +249,4 @@ class SessionPipeline:
     async def _status_loop(self) -> None:
         while True:
             await asyncio.sleep(self._cfg.status_interval_s)
-            self._bus.publish(
-                str(self.session_id),
-                # llm_ok is False until the LLM lands in Phase A3.
-                Status(stt_tier=self._stt.current_tier(), llm_ok=False, lag_ms=self.lag_ms()),
-            )
+            self.publish_status()

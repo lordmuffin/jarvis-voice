@@ -11,13 +11,24 @@ from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
 from jarvis_live.db.session import make_engine, make_sessionmaker
 from jarvis_live.ingest.hub import IngestHub
+from jarvis_live.llm.client import LLM, LiteLLMClient
+from jarvis_live.notify.gotify import GotifyNotifier, Notifier
+from jarvis_live.orchestrator import Orchestrator
 from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
+from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
 
 
-def create_app(settings: Settings | None = None, *, stt: STTBackend | None = None) -> FastAPI:
-    """``stt`` overrides the Whisper backend built from ``settings.whisper_tiers`` (tests)."""
+def create_app(
+    settings: Settings | None = None,
+    *,
+    stt: STTBackend | None = None,
+    llm: LLM | None = None,
+    notifier: Notifier | None = None,
+) -> FastAPI:
+    """``stt``, ``llm`` and ``notifier`` override what is built from settings (tests). The
+    copilot and finalizer run only if an LLM is configured or injected."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -38,7 +49,48 @@ def create_app(settings: Settings | None = None, *, stt: STTBackend | None = Non
             )
             backend = WhisperBackend(pool)
             tasks.append(asyncio.create_task(pool.run_probe_loop()))
-        hub = IngestHub(cfg, sm, bus, backend)
+        orchestrator: Orchestrator | None = None
+        if (
+            llm is not None or cfg.litellm_base_url
+        ):  # copilot + finalizer need an LLM; without one, A2 behaviour
+            if client is None:
+                client = httpx.AsyncClient()
+            vault: VaultContext = NullVault()
+            if cfg.vault_clone_dir is not None:
+                index = VaultIndex(
+                    cfg.vault_clone_dir,
+                    cfg.index_dir,
+                    vault_name=cfg.vault_name,
+                    exclude_globs=cfg.vault_exclude_globs,
+                )
+                vault = index
+                tasks.append(
+                    asyncio.create_task(index.run_refresh_loop(cfg.vault_refresh_interval_s))
+                )
+            orchestrator = Orchestrator(
+                cfg,
+                sm,
+                bus,
+                backend,
+                llm
+                or LiteLLMClient(
+                    cfg.litellm_base_url, client, api_key_file=cfg.litellm_api_key_file
+                ),
+                vault,
+                notifier or GotifyNotifier(cfg.gotify_url, cfg.gotify_token_file, client),
+            )
+        hub = IngestHub(
+            cfg,
+            sm,
+            bus,
+            backend,
+            on_start=orchestrator.on_start if orchestrator else None,
+            on_end=orchestrator.on_end if orchestrator else None,
+        )
+        if orchestrator is not None:
+            orchestrator.attach(hub)
+            await orchestrator.recover()
+            tasks.append(asyncio.create_task(orchestrator.run_watchdog()))
         app.state.settings = cfg
         app.state.sessionmaker = sm
         app.state.bus = bus
@@ -57,6 +109,8 @@ def create_app(settings: Settings | None = None, *, stt: STTBackend | None = Non
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            if orchestrator is not None:
+                await orchestrator.shutdown()
             await hub.shutdown()
             if client is not None:
                 await client.aclose()

@@ -47,6 +47,46 @@ class Settings(BaseSettings):
     # duplicate guard is applied anyway.
     duplicate_hold_ms: int = 20_000
 
+    # LLM (LiteLLM's OpenAI-compatible API). Empty base URL disables the copilot and finalizer.
+    litellm_base_url: str = ""
+    litellm_api_key_file: Path | None = None
+    copilot_model: str = "fast"
+    final_model: str = "heavy"
+    copilot_timeout_s: float = 60.0
+    final_timeout_s: float = 600.0
+
+    # Copilot loop
+    copilot_poll_s: float = 1.0
+    copilot_min_segments: int = 3
+    copilot_max_wait_s: float = 25.0
+    copilot_window_s: float = 480.0
+    copilot_max_related: int = 3
+    suggestion_default_ttl_s: int = 120
+
+    # Vault context (read-only clone of the Obsidian vault; index lives on local disk)
+    vault_clone_dir: Path | None = None
+    index_dir: Path = Path("/tmp/jarvis-live-index")  # noqa: S108
+    vault_name: str = "Notes"
+    vault_exclude_globs: list[str] = Field(default_factory=list)
+    vault_refresh_interval_s: float = 600.0
+
+    # Finalizer
+    outbox_dir: Path | None = None  # default: <data_dir>/outbox
+    final_filename_template: str = "{date} {time} - {slug}.md"
+    final_max_input_tokens: int = 24_000
+    final_window_s: float = 1200.0
+    # On startup, finalize sessions left in `finalizing` that ended within this window. Older
+    # ones (e.g. from before the finalizer existed) are left alone. 0 disables recovery.
+    finalize_recover_max_age_s: float = 86_400.0
+    idle_end_s: float = 600.0  # end a live session after this long without audio
+    timezone: str = "UTC"  # for note filenames and `created`
+
+    # Gotify (no-op unless both are set)
+    gotify_url: str = ""
+    gotify_token_file: Path | None = None
+    public_base_url: str = ""
+    stt_outage_notify_s: float = 120.0
+
     # Retention
     audio_retention_days: int = 90
     retention_interval_s: float = 86_400.0
