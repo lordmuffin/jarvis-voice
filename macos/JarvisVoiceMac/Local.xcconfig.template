@@ -1,0 +1,4 @@
+// Copy to Local.xcconfig (gitignored) and fill in your personal team ID.
+// Find it in Xcode > Settings > Accounts, or: security find-identity -v -p codesigning
+// A stable team means a stable signing identity, so TCC grants (mic, audio capture) survive rebuilds.
+DEVELOPMENT_TEAM = REPLACE_WITH_TEAM_ID
