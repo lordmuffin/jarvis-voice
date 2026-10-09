@@ -1,0 +1,59 @@
+name: Release Train
+
+on:
+  # 08:45 CT during CDT; drifts to 07:45 CT in winter, which is fine.
+  schedule:
+    - cron: "45 13 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    outputs:
+      total: ${{ steps.count.outputs.total }}
+      table: ${{ steps.count.outputs.table }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Count unreleased commits
+        id: count
+        run: |
+          total=0
+          table=$'| Component | Last tag | Unreleased commits |\n|---|---|---|'
+          for c in server macos android; do
+            tag=$(git describe --tags --match "${c}-v*" --abbrev=0 2>/dev/null || true)
+            if [ -n "$tag" ]; then
+              n=$(git rev-list --count "${tag}..HEAD" -- "$c")
+            else
+              n=$(git rev-list --count HEAD -- "$c")
+            fi
+            total=$((total + n))
+            table+=$'\n'"| ${c} | ${tag:-_none_} | ${n} |"
+          done
+          echo "total=${total}" >> "$GITHUB_OUTPUT"
+          {
+            echo "table<<EOF"
+            echo "$table"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  notify:
+    if: ${{ needs.summary.outputs.total != '0' }}
+    needs: summary
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "Release train: unreleased changes"
+      message: |
+        ${{ needs.summary.outputs.table }}
+
+        Open release PRs: ${{ github.server_url }}/${{ github.repository }}/pulls?q=is%3Apr+is%3Aopen+label%3A%22autorelease%3A+pending%22
+      priority: 3
+      url: ${{ github.server_url }}/${{ github.repository }}/pulls?q=is%3Apr+is%3Aopen+label%3A%22autorelease%3A+pending%22
+    secrets: inherit

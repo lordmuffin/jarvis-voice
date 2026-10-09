@@ -39,3 +39,14 @@ jobs:
           # Avoid Docker Hub's anonymous pull limit (and the Ryuk image pull) on shared runners.
           JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
           TESTCONTAINERS_RYUK_DISABLED: "true"
+
+  notify-failure:
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: check
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "Server CI failed on main"
+      message: "${{ github.event.head_commit.message }}"
+      priority: 7
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

@@ -14,5 +14,8 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v4
         with:
+          # Tags/releases created with GITHUB_TOKEN do not trigger the tag-push workflows
+          # (release.yml, macos-release.yml, server-image.yml). Use a PAT when available.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json

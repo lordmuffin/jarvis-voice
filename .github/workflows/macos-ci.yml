@@ -21,3 +21,14 @@ jobs:
           swift --version
       - run: swift build
       - run: swift test
+
+  notify-failure:
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: jarvis-live-kit
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "macOS CI failed on main"
+      message: "${{ github.event.head_commit.message }}"
+      priority: 7
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

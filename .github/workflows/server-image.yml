@@ -1,0 +1,134 @@
+name: Server Image
+
+on:
+  pull_request:
+    paths: ["server/**", ".github/workflows/server-image.yml"]
+  push:
+    branches: [main]
+    paths: ["server/**", ".github/workflows/server-image.yml"]
+    tags: ["server-v*"]
+
+env:
+  IMAGE: ghcr.io/lordmuffin/jarvis-live
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      version: ${{ steps.tags.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute tags
+        id: tags
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          SHA: ${{ github.sha }}
+        run: |
+          short="${SHA::7}"
+          tags="${IMAGE}:sha-${short}"
+          version=""
+          if [ "$REF_TYPE" = "tag" ]; then
+            version="${REF_NAME#server-v}"
+            tags="${IMAGE}:${version}"$'\n'"${tags}"
+          fi
+          {
+            echo "version=${version}"
+            echo "tags<<EOF"
+            echo "$tags"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build${{ github.event_name != 'pull_request' && ' and push' || '' }}
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test (read-only root)
+        if: github.event_name == 'pull_request'
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          docker run --rm --read-only --tmpfs /tmp \
+            -e JARVIS_LIVE_DATA_DIR=/tmp/data -e JARVIS_LIVE_INDEX_DIR=/tmp/idx \
+            "${IMAGE}:sha-${SHA::7}" python -c "import jarvis_live.app"
+
+  bump-homelab:
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'server-v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: lordmuffin/np-home-homelab
+          token: ${{ secrets.HOMELAB_PR_TOKEN }}
+
+      - name: Pin image digest
+        id: bump
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          DIGEST: ${{ needs.build.outputs.digest }}
+        run: |
+          f=apps/ai/jarvis-live/deployment.yaml
+          if [ ! -f "$f" ]; then
+            echo "::notice::$f not found in np-home-homelab; skipping deploy PR"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          export IMG="${IMAGE}:${VERSION}@${DIGEST}"
+          yq -i '(select(.kind == "Deployment") | .spec.template.spec.containers[] | select(.image | test("^ghcr.io/lordmuffin/jarvis-live([:@]|$)")) | .image) = strenv(IMG)' "$f"
+          if git diff --quiet -- "$f"; then
+            echo "::notice::$f already pins $IMG; nothing to do"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open deploy PR
+        if: steps.bump.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.HOMELAB_PR_TOKEN }}
+          branch: chore/jarvis-live-server-v${{ needs.build.outputs.version }}
+          title: "chore(jarvis-live): deploy server-v${{ needs.build.outputs.version }}"
+          commit-message: "chore(jarvis-live): deploy server-v${{ needs.build.outputs.version }}"
+          body: |
+            Pins `jarvis-live` to `server-v${{ needs.build.outputs.version }}`.
+
+            - Image: `${{ env.IMAGE }}:${{ needs.build.outputs.version }}@${{ needs.build.outputs.digest }}`
+            - Release: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+            - Build: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+  notify:
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.ref_type == 'tag' }}
+    needs: [build, bump-homelab]
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-live ${{ github.ref_name }} published"
+      message: "Image `${{ needs.build.outputs.version }}` pushed (`${{ needs.build.outputs.digest }}`). Homelab deploy PR: **${{ needs.bump-homelab.result }}**."
+      priority: 5
+      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ github.ref_name }}
+    secrets: inherit
