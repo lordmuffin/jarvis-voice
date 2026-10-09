@@ -598,6 +598,7 @@ dependencies = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
     { name = "webrtcvad-wheels" },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -622,6 +623,7 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
     { name = "uvicorn", extras = ["standard"] },
     { name = "webrtcvad-wheels" },
+    { name = "websockets" },
 ]
 
 [package.metadata.requires-dev]
