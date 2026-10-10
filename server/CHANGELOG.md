@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.6.0...server-v0.7.0) (2026-10-10)
+
+
+### Features
+
+* **server:** session rename, copilot auto-naming, live/offline status ([9c889bd](https://github.com/lordmuffin/jarvis-voice/commit/9c889bd77404389e50006becca25d5da13ab17a0))
+* **server:** session rename, copilot auto-naming, live/offline status ([7cb72ea](https://github.com/lordmuffin/jarvis-voice/commit/7cb72eaa2b9986fc71bf4ecaa23a5f2fb633de7b))
+
 ## [0.6.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.5.0...server-v0.6.0) (2026-10-10)
 
 

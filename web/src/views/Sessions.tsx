@@ -95,7 +95,7 @@ export function SessionsView() {
                   {` · ${s.mode}`}
                 </span>
               </span>
-              <StatusChip status={s.status} />
+              <StatusChip status={s.status} streaming={s.streaming} />
             </a>
           </li>
         ))}

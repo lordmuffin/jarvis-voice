@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 MAX_TOPICS = 5
+MAX_TITLE_CHARS = 80
 
 
 class _LLMModel(BaseModel):
@@ -37,11 +38,18 @@ class CopilotDelta(_LLMModel):
     remove_ids: list[str] = Field(default_factory=list)
     suggestions: list[SuggestionIn] = Field(default_factory=list)
     topics: list[str] = Field(default_factory=list)
+    title: str | None = None  # only asked for while the session is untitled
 
     @field_validator("topics")
     @classmethod
     def _trim_topics(cls, v: list[str]) -> list[str]:
         return [t.strip() for t in v if t.strip()][:MAX_TOPICS]
+
+    @field_validator("title")
+    @classmethod
+    def _trim_title(cls, v: str | None) -> str | None:
+        v = " ".join((v or "").split()).strip("\"'")
+        return v[:MAX_TITLE_CHARS].rstrip() or None
 
 
 class FinalAction(_LLMModel):

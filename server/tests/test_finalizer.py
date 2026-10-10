@@ -127,6 +127,22 @@ async def test_writes_note_sets_done_publishes_and_notifies(mk: Any) -> None:
     assert await rig.fin.run(sid) is None  # already done: idempotent
 
 
+async def test_untitled_session_takes_the_note_title(mk: Any) -> None:
+    rig: Rig = mk()
+    untitled, titled = await rig.session(), await rig.session()
+    async with rig.sm() as db:
+        row = await db.get(SessionRow, titled)
+        assert row is not None
+        row.title = "Named by me"
+        await db.commit()
+    for sid in (untitled, titled):
+        await add_segments(rig.sm, sid, [(1000, 4000, "them", "Hello.")])
+        await rig.fin.run(sid)
+    async with rig.sm() as db:
+        assert (await db.get(SessionRow, untitled)).title == "Vendor call"  # type: ignore[union-attr]
+        assert (await db.get(SessionRow, titled)).title == "Named by me"  # type: ignore[union-attr]
+
+
 async def test_map_reduce_over_20_minute_windows(mk: Any) -> None:
     min_ = 60_000
     partial = lambda t: FinalNote(title=t, summary=t)  # noqa: E731

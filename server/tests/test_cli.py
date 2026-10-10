@@ -50,6 +50,7 @@ async def test_replay_cli_streams_a_wav_file(
         w.setsampwidth(2)
         w.setframerate(16_000)
         w.writeframes(TWO_UTTERANCES)
+    # `--token=` form: token_urlsafe can start with "-", which argparse would read as a flag.
     args = [
         "replay",
         "--server",

@@ -1,6 +1,7 @@
 """End-to-end tests against the real app (uvicorn thread) and a real Postgres."""
 
 import asyncio
+import contextlib
 import os
 import time
 import uuid
@@ -340,6 +341,71 @@ async def test_session_rest_lifecycle(server: ServerHandle, sm: SM) -> None:
         ).status_code == 200
 
 
+async def test_rename_session(server: ServerHandle, sm: SM) -> None:
+    _, tok = await create_device(sm, "rename")
+    _, other = await create_device(sm, "rename-other")
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {tok}"}
+    ) as c:
+        sid = (await c.post("/v1/sessions", json={"mode": "solo", "channels": ["mic"]})).json()[
+            "id"
+        ]
+        r = await c.patch(f"/v1/sessions/{sid}", json={"title": "  Budget review "})
+        assert r.status_code == 200 and r.json()["title"] == "Budget review"
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["title"] == "Budget review"
+        assert (await c.get("/v1/sessions")).json()["items"][0]["title"] == "Budget review"
+        # blank clears it (the copilot may name it again)
+        assert (await c.patch(f"/v1/sessions/{sid}", json={"title": " "})).json()["title"] is None
+        assert (await c.patch(f"/v1/sessions/{sid}", json={"title": "x" * 201})).status_code == 422
+        assert (await c.patch(f"/v1/sessions/{sid}", json={})).status_code == 422
+        # ended sessions can be renamed too
+        await c.post(f"/v1/sessions/{sid}/end")
+        r = await c.patch(f"/v1/sessions/{sid}", json={"title": "After the fact"})
+        assert r.json()["title"] == "After the fact"
+        r = await c.patch(
+            f"/v1/sessions/{sid}",
+            json={"title": "Hijack"},
+            headers={"Authorization": f"Bearer {other}"},
+        )
+        assert r.status_code == 404
+
+
+async def test_streaming_flag_follows_the_producer(
+    make_server: Callable[..., ServerHandle], token: str
+) -> None:
+    server = make_server(streaming_stale_s=1.0)
+    rp = ReplayProducer(server.url, token)
+    sid = await rp.create_session()
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {token}"}
+    ) as c:
+
+        async def streaming() -> tuple[bool, bool]:
+            one = (await c.get(f"/v1/sessions/{sid}")).json()
+            items = (await c.get("/v1/sessions")).json()["items"]
+            listed = next(s for s in items if s["id"] == sid)
+            return one["streaming"], listed["streaming"]
+
+        assert await streaming() == (False, False)  # created, no producer yet
+        p, _ = await RawProducer.connect(rp, sid)
+        await p.send_pcm(0, silence(0.3))
+        await p.recv_until("ack")
+        assert await streaming() == (True, True)
+        await asyncio.sleep(1.2)  # connected, but no audio for longer than streaming_stale_s
+        assert await streaming() == (False, False)
+        nxt = await p.send_pcm(0, silence(0.3), seq0=3)
+        while (await p.recv_until("ack"))["seq"] < nxt - 1:
+            pass
+        assert await streaming() == (True, True)
+        await p.close()
+        for _ in range(50):  # the server notices the disconnect asynchronously
+            if await streaming() == (False, False):
+                break
+            await asyncio.sleep(0.05)
+        assert await streaming() == (False, False)
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["status"] == "live"
+
+
 async def test_rest_end_disconnects_producer_and_drains(
     server: ServerHandle, token: str, sm: SM
 ) -> None:
@@ -433,17 +499,23 @@ async def test_status_lag_is_stream_time_minus_last_final_segment(
     sid = await rp.create_session()
     async with await open_viewer(rp, sid) as viewer:
         p, _ = await RawProducer.connect(rp, sid)
-        await p.send_pcm(0, silence(0.5) + tone(1.0) + silence(1.0) + silence(2.0))  # 4.5 s
+        nxt = await p.send_pcm(0, silence(0.5) + tone(1.0) + silence(1.0) + silence(2.0))  # 4.5 s
+        # Frames are fed to the pipeline before they are acked, so after the last ack the stream
+        # position is final. Statuses published earlier carry a smaller lag.
+        while (await p.recv_until("ack"))["seq"] < nxt - 1:
+            pass
         await eventually(lambda: len(viewer.of_type("segment")) == 1)
         seg_end = viewer.of_type("segment")[0]["end_ms"]
-        await eventually(
-            lambda: (
-                viewer.of_type("status")[-1:] != [] and viewer.of_type("status")[-1]["lag_ms"] > 0
-            )
-        )
-        lag = viewer.of_type("status")[-1]["lag_ms"]
+        expected = 4500 - seg_end  # 4.5 s = 150 whole 30 ms frames
+
+        def lag() -> int | None:
+            statuses = viewer.of_type("status")
+            return statuses[-1]["lag_ms"] if statuses else None
+
+        with contextlib.suppress(AssertionError):  # the assert below reports the values
+            await eventually(lambda: lag() == expected)
         await p.close()
-    assert lag == 4500 - seg_end  # 4.5 s = 150 whole 30 ms frames
+    assert lag() == expected
 
 
 class ToneSTT(FakeSTT):

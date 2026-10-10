@@ -141,6 +141,7 @@ class Finalizer:
         )
 
         await self._persist_final(session_id, written, note.title)
+        await self._fill_title(session_id, note.title)
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
         await self._notifier.notify(
@@ -225,6 +226,17 @@ class Finalizer:
                     kind=FINAL_NOTE_KIND,
                     payload={"path": path, "title": title},
                 )
+            )
+            await db.commit()
+
+    async def _fill_title(self, session_id: uuid.UUID, title: str) -> None:
+        """A session still untitled at the end (e.g. the copilot never ran) takes the note's
+        title. A user's or the copilot's title is kept."""
+        async with self._sm() as db:
+            await db.execute(
+                update(SessionRow)
+                .where(SessionRow.id == session_id, SessionRow.title.is_(None))
+                .values(title=title)
             )
             await db.commit()
 

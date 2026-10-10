@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     # ones (e.g. from before the finalizer existed) are left alone. 0 disables recovery.
     finalize_recover_max_age_s: float = 86_400.0
     idle_end_s: float = 600.0  # end a live session after this long without audio
+    # A live session counts as streaming while a producer is connected and audio arrived
+    # within this window; otherwise viewers show it as offline.
+    streaming_stale_s: float = 10.0
     timezone: str = "UTC"  # for note filenames and `created`
 
     # Gotify (no-op unless both are set)

@@ -126,6 +126,8 @@ export interface SessionSummary {
   started_at: string;
   ended_at: string | null;
   local_only: boolean;
+  /** Audio is arriving now. A `live` session that is not streaming lost its recorder. */
+  streaming: boolean;
 }
 
 export interface SessionPage {

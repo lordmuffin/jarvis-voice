@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,9 +43,12 @@ class SessionOut(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     local_only: bool
+    # Audio is arriving right now. ``status`` stays ``live`` while a dropped producer may still
+    # reconnect, so viewers use this to tell "live" from "live but nothing streaming".
+    streaming: bool
 
     @classmethod
-    def of(cls, s: SessionRow) -> "SessionOut":
+    def of(cls, s: SessionRow, request: Request) -> "SessionOut":
         return cls(
             id=s.id,
             title=s.title,
@@ -55,7 +58,18 @@ class SessionOut(BaseModel):
             started_at=s.started_at,
             ended_at=s.ended_at,
             local_only=s.local_only,
+            streaming=s.status == "live" and request.app.state.hub.is_streaming(s.id),
         )
+
+
+class SessionUpdate(BaseModel):
+    # Blank or null clears the title; the copilot may then name the session again.
+    title: str | None = Field(max_length=200)
+
+    @field_validator("title")
+    @classmethod
+    def _blank_is_none(cls, v: str | None) -> str | None:
+        return (v or "").strip() or None
 
 
 class SessionPage(BaseModel):
@@ -131,6 +145,7 @@ async def create_session(
 async def list_sessions(
     device: DeviceDep,
     db: Db,
+    request: Request,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> SessionPage:
@@ -153,7 +168,7 @@ async def list_sessions(
         .all()
     )
     return SessionPage(
-        items=[SessionOut.of(r) for r in rows], total=total, limit=limit, offset=offset
+        items=[SessionOut.of(r, request) for r in rows], total=total, limit=limit, offset=offset
     )
 
 
@@ -213,7 +228,7 @@ async def get_session(
         markdown = await asyncio.to_thread(_read_note, outbox, path)
         final_note = FinalNoteOut(path=path, title=str(final_payload["title"]), markdown=markdown)
     return SessionDetail(
-        **SessionOut.of(row).model_dump(),
+        **SessionOut.of(row, request).model_dump(),
         markers=[MarkerOut(t_ms=m.t_ms, label=m.label) for m in markers],
         final_note=final_note,
         segments=[
@@ -251,4 +266,15 @@ async def end_session(
     await request.app.state.hub.end(session_id)
     row = await db.get(SessionRow, session_id, populate_existing=True)
     assert row is not None
-    return SessionOut.of(row)
+    return SessionOut.of(row, request)
+
+
+@router.patch("/{session_id}")
+async def update_session(
+    session_id: uuid.UUID, body: SessionUpdate, device: DeviceDep, db: Db, request: Request
+) -> SessionOut:
+    row = await _owned(db, device, session_id)
+    row.title = body.title
+    await db.commit()
+    session_logger(__name__, row.id).info("session renamed")
+    return SessionOut.of(row, request)
