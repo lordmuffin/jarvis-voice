@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.3](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.2...android-v1.7.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** run Live drafts on CPU Whisper and log each decode ([dae62e4](https://github.com/lordmuffin/jarvis-voice/commit/dae62e4a491708a32ed7b69c82b1abcc0143d862))
+* **android:** run Live drafts on CPU Whisper and log each decode ([ee5ae6f](https://github.com/lordmuffin/jarvis-voice/commit/ee5ae6f6713fd341a3135eafda942bc489949938))
+
 ## [1.7.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.1...android-v1.7.2) (2026-10-10)
 
 
