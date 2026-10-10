@@ -1,6 +1,9 @@
+import secrets
 import uuid
 
-from jarvis_live.auth import TicketStore, hash_token
+import pytest
+
+from jarvis_live.auth import TicketStore, hash_token, new_device_token
 
 
 class Clock:
@@ -46,3 +49,20 @@ def test_unknown_ticket() -> None:
 
 def test_hash_token_is_sha256_hex() -> None:
     assert hash_token("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+
+
+def test_device_token_never_starts_with_a_dash(monkeypatch: pytest.MonkeyPatch) -> None:
+    issued = iter(["-dash-first", "--also-dash", "ok-token"])
+    calls: list[int | None] = []
+
+    def fake_token_urlsafe(nbytes: int | None = None) -> str:
+        calls.append(nbytes)
+        return next(issued)
+
+    monkeypatch.setattr(secrets, "token_urlsafe", fake_token_urlsafe)
+    assert new_device_token() == "ok-token"
+    assert calls == [32, 32, 32]
+
+
+def test_device_token_keeps_the_token_urlsafe_32_length() -> None:
+    assert all(len(new_device_token()) == 43 for _ in range(200))
