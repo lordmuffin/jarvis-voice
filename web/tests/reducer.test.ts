@@ -26,6 +26,7 @@ const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   started_at: "2026-10-09T14:30:00Z",
   ended_at: null,
   local_only: false,
+  streaming: true,
   segments: [],
   copilot: { version: 0, notes: [], actions: [], decisions: [], suggestions: [], related: [] },
   markers: [],
@@ -228,6 +229,27 @@ describe("snapshot bootstrap (REST) merged with the live stream", () => {
     expect(s.markers).toEqual([{ t_ms: 1, label: "x" }]);
     expect(s.copilot.version).toBe(3);
     expect(s.finalNote).toEqual({ path: "n.md", title: "T" });
+  });
+
+  it("tracks the session row: title, status and streaming follow each poll", () => {
+    let s = reduce(initialState, { type: "snapshot", detail: detail({ title: null }) });
+    expect(s.session).toMatchObject({ title: null, status: "live", streaming: true });
+    expect(s.session).not.toHaveProperty("segments");
+    s = reduce(s, {
+      type: "snapshot",
+      detail: detail({ title: "Budget review", streaming: false }),
+    });
+    expect(s.session).toMatchObject({ title: "Budget review", status: "live", streaming: false });
+    s = reduce(s, { type: "snapshot", detail: detail({ status: "finalizing", streaming: false }) });
+    expect(s.session?.status).toBe("finalizing");
+  });
+
+  it("applies a rename immediately", () => {
+    const s0 = reduce(initialState, { type: "snapshot", detail: detail() });
+    const { segments: _s, copilot: _c, markers: _m, final_note: _f, ...row } = detail();
+    const s = reduce(s0, { type: "session", session: { ...row, title: "Renamed" } });
+    expect(s.session?.title).toBe("Renamed");
+    expect(s.segments).toBe(s0.segments);
   });
 
   it("does not mutate the previous state", () => {

@@ -91,6 +91,7 @@ def serve(port: int, web_dist: Path) -> int:
                 actions_upsert=[ActionUpsert(text="Send the deck", owner="sam")],
                 decisions_upsert=[NoteUpsert(text="Ship on Friday")],
                 suggestions=[SuggestionIn(kind="question", text="Who owns QA?", ttl_s=3600)],
+                title="Standup kickoff",
             ),
         )
         .queue(

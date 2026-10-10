@@ -50,7 +50,17 @@ async def test_replay_cli_streams_a_wav_file(
         w.setsampwidth(2)
         w.setframerate(16_000)
         w.writeframes(TWO_UTTERANCES)
-    args = ["replay", "--server", server.url, "--token", token, "--wav", str(wav), "--speed", "50"]
+    # `--token=` form: token_urlsafe can start with "-", which argparse would read as a flag.
+    args = [
+        "replay",
+        "--server",
+        server.url,
+        f"--token={token}",
+        "--wav",
+        str(wav),
+        "--speed",
+        "50",
+    ]
     assert await asyncio.to_thread(cli.main, args) == 0
     out = capsys.readouterr().out
     assert "seg-1" in out and "seg-2" in out and "acked {'mic': 76" in out

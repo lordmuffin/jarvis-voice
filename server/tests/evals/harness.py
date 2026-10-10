@@ -51,6 +51,7 @@ async def run_case(
     state = CopilotState()
     user = copilot_user(
         today=datetime.now(UTC).date().isoformat(),
+        title=None,
         state_json=state.prompt_json(),
         related="",
         transcript=case.transcript,

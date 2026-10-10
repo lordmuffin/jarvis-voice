@@ -1,6 +1,7 @@
 """Registry of live-session ingest state (single replica; Postgres is the source of truth)."""
 
 import asyncio
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -78,6 +79,16 @@ class IngestHub:
 
     def live_sessions(self) -> list[SessionIngest]:
         return list(self._states.values())
+
+    def is_streaming(self, session_id: uuid.UUID) -> bool:
+        """True while a producer is connected and sending audio. A ``live`` session without
+        this is waiting for its producer to reconnect, or for the idle watchdog to end it."""
+        state = self._states.get(session_id)
+        return (
+            state is not None
+            and state.producer is not None
+            and time.monotonic() - state.pipeline.last_audio_at < self._cfg.streaming_stale_s
+        )
 
     async def end(self, session_id: uuid.UUID, *, caller: WebSocket | None = None) -> bool:
         """Move a live session to ``finalizing`` and drain its pipeline. Idempotent.

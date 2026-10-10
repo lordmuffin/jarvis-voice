@@ -1,4 +1,4 @@
-import type { SessionDetail, SessionPage } from "./types";
+import type { SessionDetail, SessionPage, SessionSummary } from "./types";
 
 const TOKEN_KEY = "jarvis-live.device-token";
 
@@ -78,6 +78,15 @@ export const viewerTicket = async (token: string, id: string, f?: typeof fetch) 
       f,
     )
   ).ticket;
+
+/** Set a session's title; a blank title clears it. */
+export const renameSession = (token: string, id: string, title: string, f?: typeof fetch) =>
+  request<SessionSummary>(
+    token,
+    `/v1/sessions/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify({ title }) },
+    f,
+  );
 
 /** Validate a token by making a cheap authenticated call. */
 export async function checkToken(token: string, f?: typeof fetch): Promise<void> {
