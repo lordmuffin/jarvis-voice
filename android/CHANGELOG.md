@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.0...android-v1.7.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** keep a Live session failure from crashing the app ([f4c9589](https://github.com/lordmuffin/jarvis-voice/commit/f4c9589eccdbea52a2737f5b0d4e35756cf5f355))
+* Live tab crash on Android and phone sessions missing from the web dashboard ([9e79195](https://github.com/lordmuffin/jarvis-voice/commit/9e791957999a8ede809497bb25c976cba30fcacf))
+
 ## [1.7.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.6.0...android-v1.7.0) (2026-10-10)
 
 
