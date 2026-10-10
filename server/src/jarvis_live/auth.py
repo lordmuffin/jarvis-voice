@@ -20,11 +20,23 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
+def new_device_token() -> str:
+    """A url-safe device token that never starts with "-".
+
+    A leading dash makes argparse treat ``--token <token>`` as a missing value. Rejection
+    sampling keeps the length and costs log2(64/63) ~ 0.02 bits of entropy.
+    """
+    while True:
+        token = secrets.token_urlsafe(32)
+        if not token.startswith("-"):
+            return token
+
+
 async def create_device(
     sessionmaker: "async_sessionmaker[AsyncSession]", name: str
 ) -> tuple[uuid.UUID, str]:
     """Create a device and return ``(id, token)``. The token is never stored, only its sha256."""
-    token = secrets.token_urlsafe(32)
+    token = new_device_token()
     device = Device(name=name, token_hash=hash_token(token))
     async with sessionmaker() as db:
         db.add(device)

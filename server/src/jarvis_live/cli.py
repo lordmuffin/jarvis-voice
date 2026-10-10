@@ -19,6 +19,7 @@ def _create_device(name: str) -> int:
         print(f"device id: {device_id}")
         print(f"token:     {token}")
         print("Store this token now; it is not shown again.", file=sys.stderr)
+        print(f"Use it as: jarvis-live replay --server <url> --token={token} ...", file=sys.stderr)
 
     asyncio.run(go())
     return 0
