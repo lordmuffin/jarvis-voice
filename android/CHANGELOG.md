@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.4](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.3...android-v1.7.4) (2026-10-10)
+
+
+### Documentation
+
+* **android:** document the sherpa-onnx setup step and version pinning ([bf79def](https://github.com/lordmuffin/jarvis-voice/commit/bf79def647d120a2d6f43b4ef4a158aaa537bdf7))
+
 ## [1.7.3](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.2...android-v1.7.3) (2026-10-10)
 
 
