@@ -175,7 +175,12 @@ class VoiceOverlayService : Service() {
         }
     }
 
-    private fun loadLlmIfConfigured() {
+    /** Also called when a Live session ends: the session unloads the LLM to free memory for Whisper. */
+    fun loadLlmIfConfigured() {
+        if (LiveSessionService.isRecording) {
+            DebugLog.i("LlmInit", "Live session running — LLM load deferred until it ends")
+            return
+        }
         val llmMgr  = LlmModelManager(this)
         val config  = llmMgr.getActiveConfig()
         if (config == null) {
@@ -205,6 +210,8 @@ class VoiceOverlayService : Service() {
         val nativeLibDir = applicationInfo.nativeLibraryDir
         val npuOnly = config.npuOnly
         Thread {
+            // A Live session may have started since the check above.
+            if (LiveSessionService.isRecording) return@Thread
             val ok = runCatching {
                 LlmEnhancer.init(modelFile, config.id, nativeLibDir, npuOnly)
             }.getOrElse { t ->

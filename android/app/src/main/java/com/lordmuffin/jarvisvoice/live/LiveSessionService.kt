@@ -19,6 +19,7 @@ import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.lordmuffin.jarvisvoice.DebugLog
+import com.lordmuffin.jarvisvoice.LlmEnhancer
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.VoiceOverlayService
 import com.lordmuffin.jarvisvoice.live.protocol.Channel
@@ -150,6 +151,8 @@ class LiveSessionService : Service() {
         run = null
         releaseWakeLock()
         if (_ui.value.isActive) _ui.update { it.copy(phase = LiveUiState.Phase.IDLE) }
+        // Bring back the enhancement LLM that startSession unloaded.
+        VoiceOverlayService.instance?.loadLlmIfConfigured()
         scope.cancel()
         super.onDestroy()
     }
@@ -165,6 +168,10 @@ class LiveSessionService : Service() {
         }
         // Dictation and Live can't share the mic: whichever starts later wins, like Voice to Vault.
         withContext(Dispatchers.Main) { VoiceOverlayService.instance?.cancelActiveRecording() }
+        // The enhancement LLM sits idle during a session but can hold gigabytes, leaving Whisper
+        // too little memory to transcribe. Waits for a running enhancement; reloaded in onDestroy.
+        if (LlmEnhancer.isReady()) DebugLog.i(TAG, "unloading the enhancement LLM for the session")
+        LlmEnhancer.destroy()
 
         var localOnly = requestedLocalOnly
         var notice: String? = null
