@@ -346,7 +346,10 @@ async def test_rest_end_disconnects_producer_and_drains(
     rp = ReplayProducer(server.url, token)
     sid = await rp.create_session()
     p, _ = await RawProducer.connect(rp, sid)
-    await p.send_pcm(0, silence(0.5) + tone(1.0))  # an utterance still open when the session ends
+    nxt = await p.send_pcm(0, silence(0.5) + tone(1.0))  # an utterance still open at session end
+    ack = None  # frames must be stored before ending, or they race the REST end
+    while ack is None or ack["seq"] < nxt - 1:
+        ack = await p.recv_until("ack")
     async with httpx.AsyncClient(
         base_url=server.url, headers={"Authorization": f"Bearer {token}"}
     ) as c:
