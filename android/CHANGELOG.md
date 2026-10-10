@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.1...android-v1.7.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** unload the enhancement LLM during a Live session ([f656ee6](https://github.com/lordmuffin/jarvis-voice/commit/f656ee602b22ed57167f2996f4146968cf0f4c51))
+* **android:** unload the enhancement LLM during a Live session ([b3fab5e](https://github.com/lordmuffin/jarvis-voice/commit/b3fab5efc6197f76f05d95c64bcf8d770613c5e6))
+
 ## [1.7.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.0...android-v1.7.1) (2026-10-10)
 
 
