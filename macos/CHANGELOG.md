@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.3.0...macos-v0.4.0) (2026-10-10)
+
+
+### Features
+
+* **macos:** add Jarvis Voice menu-bar app ([b4eae2d](https://github.com/lordmuffin/jarvis-voice/commit/b4eae2d19fa534d41e344cc7946f4b0ff871846b))
+* **macos:** add Jarvis Voice menu-bar app ([8364f68](https://github.com/lordmuffin/jarvis-voice/commit/8364f68b3483bd82ac81c3925a52248825f60cf7))
+
 ## [0.3.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.2.0...macos-v0.3.0) (2026-10-09)
 
 

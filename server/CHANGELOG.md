@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.5.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.4.0...server-v0.5.0) (2026-10-10)
+
+
+### Features
+
+* **server:** expose markers and final note in session detail ([382ea2c](https://github.com/lordmuffin/jarvis-voice/commit/382ea2cefc0b1d5cd94d2820482d214c4fa2183d))
+* **server:** serve the web dashboard with SPA fallback ([22dbca4](https://github.com/lordmuffin/jarvis-voice/commit/22dbca48df2c6ff23263045821ae1bde48845046))
+* **web:** add viewer dashboard ([39b88ed](https://github.com/lordmuffin/jarvis-voice/commit/39b88edc9e64def4f89ab1daa86856b479c917fc))
+* **web:** add viewer dashboard (Phase C3) ([65afcbb](https://github.com/lordmuffin/jarvis-voice/commit/65afcbb48605078184f5c42955b99e46479ef154))
+
 ## [0.4.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.3.0...server-v0.4.0) (2026-10-09)
 
 
