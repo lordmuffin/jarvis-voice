@@ -11,7 +11,7 @@ from jarvis_live.api import sessions, stream
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
-from jarvis_live.db.session import make_engine, make_sessionmaker
+from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
 from jarvis_live.ingest.hub import IngestHub
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
@@ -69,6 +69,8 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         cfg = settings or get_settings()
+        if cfg.auto_migrate:
+            await asyncio.to_thread(run_migrations, cfg.database_url)  # env.py owns a loop
         engine = make_engine(cfg.database_url)
         sm = make_sessionmaker(engine)
         bus = Bus()

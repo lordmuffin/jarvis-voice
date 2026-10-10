@@ -1,7 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="JARVIS_LIVE_")
 
     database_url: str = "postgresql+asyncpg://jarvis:jarvis@localhost:5432/jarvis_live"
+    # Apply Alembic migrations at startup. Off by default; `jarvis-live migrate` does the same
+    # by hand. Run with a single replica: concurrent upgrades are not serialised.
+    auto_migrate: bool = False
     log_level: str = "info"
     data_dir: Path = Path("/data")
 
@@ -94,6 +97,16 @@ class Settings(BaseSettings):
     # Retention
     audio_retention_days: int = 90
     retention_interval_s: float = 86_400.0
+
+    @field_validator("database_url")
+    @classmethod
+    def _asyncpg_driver(cls, v: str) -> str:
+        """Only asyncpg is installed; a bare ``postgresql://`` would make SQLAlchemy ask for
+        psycopg. Accept the plain libpq-style URL that CNPG and most tooling hand out."""
+        for plain in ("postgresql://", "postgres://"):
+            if v.startswith(plain):
+                return "postgresql+asyncpg://" + v[len(plain) :]
+        return v
 
 
 @lru_cache
