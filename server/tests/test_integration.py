@@ -1,6 +1,7 @@
 """End-to-end tests against the real app (uvicorn thread) and a real Postgres."""
 
 import asyncio
+import contextlib
 import os
 import time
 import uuid
@@ -498,17 +499,23 @@ async def test_status_lag_is_stream_time_minus_last_final_segment(
     sid = await rp.create_session()
     async with await open_viewer(rp, sid) as viewer:
         p, _ = await RawProducer.connect(rp, sid)
-        await p.send_pcm(0, silence(0.5) + tone(1.0) + silence(1.0) + silence(2.0))  # 4.5 s
+        nxt = await p.send_pcm(0, silence(0.5) + tone(1.0) + silence(1.0) + silence(2.0))  # 4.5 s
+        # Frames are fed to the pipeline before they are acked, so after the last ack the stream
+        # position is final. Statuses published earlier carry a smaller lag.
+        while (await p.recv_until("ack"))["seq"] < nxt - 1:
+            pass
         await eventually(lambda: len(viewer.of_type("segment")) == 1)
         seg_end = viewer.of_type("segment")[0]["end_ms"]
-        await eventually(
-            lambda: (
-                viewer.of_type("status")[-1:] != [] and viewer.of_type("status")[-1]["lag_ms"] > 0
-            )
-        )
-        lag = viewer.of_type("status")[-1]["lag_ms"]
+        expected = 4500 - seg_end  # 4.5 s = 150 whole 30 ms frames
+
+        def lag() -> int | None:
+            statuses = viewer.of_type("status")
+            return statuses[-1]["lag_ms"] if statuses else None
+
+        with contextlib.suppress(AssertionError):  # the assert below reports the values
+            await eventually(lambda: lag() == expected)
         await p.close()
-    assert lag == 4500 - seg_end  # 4.5 s = 150 whole 30 ms frames
+    assert lag() == expected
 
 
 class ToneSTT(FakeSTT):
