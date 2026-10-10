@@ -18,6 +18,14 @@ Floating dictation pill for Android. Tap a text field anywhere on your device, t
 
 ## Build
 
+First fetch the sherpa-onnx (on-device Whisper) Kotlin bindings, native libraries and model, from the repo root:
+
+```bash
+bash download-models.sh
+```
+
+The bindings and native libraries are pinned to the same sherpa-onnx release (`SHERPA_VERSION` in the script). They must match: the native code builds Kotlin objects by signature, so mixing versions crashes the app on the first transcription. Re-run the script after changing `SHERPA_VERSION`; it refreshes files from any other version.
+
 ```bash
 cd android/
 ./gradlew assembleDebug
