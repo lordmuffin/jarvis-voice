@@ -209,6 +209,12 @@ class LiveConnectionTest {
                 webSocket.send("""{"type":"ack","channel":"mic","seq":$seq}""")
             }
 
+            // Answer the client's close like the real server, so the socket is closed before
+            // tearDown; otherwise server.shutdown() can give up waiting for it (IOException).
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                webSocket.close(code, null)
+            }
+
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) = Unit
         }
     }

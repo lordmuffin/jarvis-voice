@@ -13,11 +13,10 @@ import com.lordmuffin.jarvisvoice.PersistentStorage
  * A handle on the active offline Whisper model (sherpa-onnx), shared by dictation
  * ([SherpaOnnxSpeechEngine]) and Live sessions.
  *
- * The native model is loaded once per process and reference-counted: the overlay service keeps
- * dictation's handle for its whole lifetime, so a Live session that loaded its own copy would hold
- * two models in memory, enough to get the process killed with the larger models. Native calls are
- * serialized, and the model is freed only after the last handle is released and any in-flight
- * transcription has returned.
+ * The native model is loaded once per process and provider preference, and reference-counted: the
+ * overlay service keeps dictation's handle for its whole lifetime, so callers with the same
+ * preference share one copy instead of holding two. Native calls are serialized, and the model is
+ * freed only after the last handle is released and any in-flight transcription has returned.
  */
 class WhisperRecognizer private constructor(@Volatile private var model: Model?) {
 
@@ -35,7 +34,13 @@ class WhisperRecognizer private constructor(@Volatile private var model: Model?)
     }
 
     /** One loaded native recognizer. */
-    private class Model(val id: String, private var recognizer: OfflineRecognizer?, val provider: String) {
+    private class Model(
+        val id: String,
+        /** Model id plus provider preference: the cache key in [loaded]. */
+        val key: String,
+        private var recognizer: OfflineRecognizer?,
+        val provider: String,
+    ) {
         var refs = 0
 
         @Synchronized
@@ -70,29 +75,34 @@ class WhisperRecognizer private constructor(@Volatile private var model: Model?)
         const val SAMPLE_RATE = 16_000
 
         private val lock = Any()
-        /** The most recently loaded model; older ones live on until their last handle is released. */
-        private var current: Model? = null
+        /**
+         * Loaded models by [Model.key]. A replaced model (another active model chosen) lives on
+         * until its last handle is released.
+         */
+        private val loaded = HashMap<String, Model>()
 
         /**
-         * Returns a handle on the active model, loading it (NNAPI first, then CPU) unless it is
-         * already loaded. The handle must be [release]d. Blocks while loading.
+         * Returns a handle on the active model, loading it unless it is already loaded with the
+         * same provider preference: NNAPI first, then CPU; or CPU only when [cpuOnly]. The handle
+         * must be [release]d. Blocks while loading.
          */
-        fun create(context: Context): WhisperRecognizer {
+        fun create(context: Context, cpuOnly: Boolean = false): WhisperRecognizer {
             val config = SttModelManager(context).getActiveConfig()
             if (config == null) {
                 DebugLog.e("STT", "No STT model available — recognizer not initialized")
                 return WhisperRecognizer(null)
             }
+            val key = "${config.id}/${if (cpuOnly) "cpu" else "auto"}"
             synchronized(lock) {
-                current?.takeIf { it.id == config.id }?.let {
+                loaded[key]?.let {
                     it.refs += 1
-                    DebugLog.i("STT", "Recognizer shared: model=${it.id} refs=${it.refs}")
+                    DebugLog.i("STT", "Recognizer shared: model=${it.id} provider=${it.provider} refs=${it.refs}")
                     return WhisperRecognizer(it)
                 }
-                val loaded = load(context, config) ?: return WhisperRecognizer(null)
-                loaded.refs = 1
-                current = loaded
-                return WhisperRecognizer(loaded)
+                val model = load(context, config, key, cpuOnly) ?: return WhisperRecognizer(null)
+                model.refs = 1
+                loaded[key] = model
+                return WhisperRecognizer(model)
             }
         }
 
@@ -100,13 +110,13 @@ class WhisperRecognizer private constructor(@Volatile private var model: Model?)
             synchronized(lock) {
                 m.refs -= 1
                 if (m.refs > 0) return
-                if (current === m) current = null
+                if (loaded[m.key] === m) loaded.remove(m.key)
             }
             DebugLog.i("STT", "Recognizer released: model=${m.id}")
             m.free()
         }
 
-        private fun load(context: Context, config: SttModelConfig): Model? {
+        private fun load(context: Context, config: SttModelConfig, key: String, cpuOnly: Boolean): Model? {
             val dir = PersistentStorage.sttModelDir(context, config.subdir).absolutePath
             val whisper = OfflineWhisperModelConfig(
                 encoder = "$dir/${config.encoderFile}",
@@ -125,9 +135,12 @@ class WhisperRecognizer private constructor(@Volatile private var model: Model?)
                 )
             )
             var provider = "nnapi"
-            var recognizer = runCatching { OfflineRecognizer(config = cfg("nnapi")) }
-                .onFailure { DebugLog.e("STT", "nnapi backend failed", it) }
-                .getOrNull()
+            var recognizer: OfflineRecognizer? = null
+            if (!cpuOnly) {
+                recognizer = runCatching { OfflineRecognizer(config = cfg("nnapi")) }
+                    .onFailure { DebugLog.e("STT", "nnapi backend failed", it) }
+                    .getOrNull()
+            }
             if (recognizer == null) {
                 provider = "cpu"
                 recognizer = runCatching { OfflineRecognizer(config = cfg("cpu")) }
@@ -135,7 +148,7 @@ class WhisperRecognizer private constructor(@Volatile private var model: Model?)
                     .getOrNull()
             }
             DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"} provider=$provider model=${config.id}")
-            return recognizer?.let { Model(config.id, it, provider) }
+            return recognizer?.let { Model(config.id, key, it, provider) }
         }
     }
 }
