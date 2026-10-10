@@ -51,9 +51,18 @@ class FakeSTT:
         return self.tier
 
 
+def _asyncpg_url(url: str) -> str:
+    """Accept plain postgres:// and postgresql:// URLs; the app only ships the asyncpg driver."""
+    for plain in ("postgresql://", "postgres://"):
+        if url.startswith(plain):
+            return "postgresql+asyncpg://" + url[len(plain) :]
+    return url
+
+
 @pytest.fixture(scope="session")
 def postgres_url() -> Iterator[str]:
     if url := os.environ.get("JARVIS_LIVE_TEST_DATABASE_URL"):  # no Docker: use this server
+        url = _asyncpg_url(url)
         run_migrations(url)
         yield url
         return
