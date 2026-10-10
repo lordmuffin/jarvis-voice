@@ -88,7 +88,11 @@ def test_dangerous_routes_present_with_flag(monkeypatch, tmp_path, method, url, 
 
 def test_system_exec_works_with_flag(monkeypatch, tmp_path):
     _, c = load_app(monkeypatch, tmp_path, dangerous="true")
-    r = c.post("/api/v1/system/exec", json={"command": "echo hi"}, headers={"X-Jarvis-Key": KEY})
+    r = c.post(
+        "/api/v1/system/exec",
+        json={"command": "echo hi", "working_dir": str(tmp_path)},
+        headers={"X-Jarvis-Key": KEY},
+    )
     assert r.status_code == 200 and "hi" in r.text
 
 
