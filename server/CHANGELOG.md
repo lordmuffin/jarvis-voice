@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.0...server-v0.7.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **server:** never issue device tokens that start with "-" ([00829ca](https://github.com/lordmuffin/jarvis-voice/commit/00829ca06caea9f3f3bfa82c8521e5bf082622a9))
+* **server:** never issue device tokens that start with "-" ([90c6297](https://github.com/lordmuffin/jarvis-voice/commit/90c62973c13f06522508e08670e207d559923ed2))
+
 ## [0.7.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.6.0...server-v0.7.0) (2026-10-10)
 
 
