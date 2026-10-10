@@ -17,6 +17,11 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import androidx.lifecycle.lifecycleScope
+import com.lordmuffin.jarvisvoice.live.LiveApiClient
+import com.lordmuffin.jarvisvoice.live.LiveHttpException
+import com.lordmuffin.jarvisvoice.live.LiveSettings
+import kotlinx.coroutines.launch
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import com.lordmuffin.jarvisvoice.speech.SttModelManager
 
@@ -160,6 +165,8 @@ class SettingsActivity : AppCompatActivity() {
                 }
             })
         }
+
+        wireLiveSettings()
 
         // TTS URL + voice
         val etTtsUrl   = findViewById<android.widget.EditText>(R.id.et_tts_url)
@@ -337,4 +344,54 @@ class SettingsActivity : AppCompatActivity() {
         tvAvgWpm.text     = "%.0f".format(lifetime.avgWpm)
     }
 
+
+    /** Jarvis Live server URL + device token (token stored encrypted; never shown again). */
+    private fun wireLiveSettings() {
+        val live     = LiveSettings(this)
+        val etUrl    = findViewById<EditText>(R.id.et_live_server_url) ?: return
+        val etToken  = findViewById<EditText>(R.id.et_live_device_token)
+        val tvStatus = findViewById<TextView>(R.id.tv_live_settings_status)
+
+        etUrl.setText(live.serverUrl)
+        if (live.isConfigured) etToken.hint = getString(R.string.live_settings_token_saved)
+
+        fun save(): Boolean {
+            val url = etUrl.text.toString().trim().ifBlank { LiveSettings.DEFAULT_SERVER_URL }
+            if (!url.startsWith("https://") && !url.startsWith("http://")) {
+                tvStatus.text = "Server URL must start with https://"
+                return false
+            }
+            live.serverUrl = url
+            val token = etToken.text.toString().trim()
+            if (token.isNotEmpty()) {
+                live.deviceToken = token
+                etToken.setText("")
+                etToken.hint = getString(R.string.live_settings_token_saved)
+            }
+            return true
+        }
+
+        findViewById<Button>(R.id.btn_live_save).setOnClickListener {
+            if (save()) tvStatus.text = if (live.isConfigured) "Saved." else "Saved. Add a device token to stream."
+        }
+        findViewById<Button>(R.id.btn_live_test).setOnClickListener {
+            if (!save()) return@setOnClickListener
+            val token = live.deviceToken
+            if (token.isNullOrBlank()) {
+                tvStatus.text = "Enter a device token first."
+                return@setOnClickListener
+            }
+            tvStatus.text = "Testing…"
+            lifecycleScope.launch {
+                tvStatus.text = try {
+                    LiveApiClient(live.serverUrl, token).ping()
+                    "✓ Connected to ${live.serverUrl}"
+                } catch (e: LiveHttpException) {
+                    if (e.status == 401) "✗ Token rejected (401)" else "✗ HTTP ${e.status}"
+                } catch (e: Exception) {
+                    "✗ ${e.message ?: e.javaClass.simpleName}"
+                }
+            }
+        }
+    }
 }

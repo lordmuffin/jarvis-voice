@@ -1,6 +1,6 @@
 # Jarvis Live wire protocol — v1
 
-Shared by `server/`, the macOS app, and the web dashboard. JSON Schemas (draft 2020-12) in
+Shared by `server/`, the macOS app, the Android app, and the web dashboard. JSON Schemas (draft 2020-12) in
 `schemas/` are the machine-readable source of truth; this file is the human spec.
 Fixtures in `fixtures/` are the conformance suite every implementation must pass.
 

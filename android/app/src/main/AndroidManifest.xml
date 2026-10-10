@@ -95,6 +95,13 @@
             android:label="Voice to Vault" />
 
         <activity
+            android:name=".live.LiveActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Jarvis Live" />
+
+        <activity
             android:name=".AgentTaskActivity"
             android:exported="false"
             android:theme="@style/Theme.JarvisVoice"
@@ -117,6 +124,11 @@
 
         <service
             android:name=".VoiceOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
+
+        <service
+            android:name=".live.LiveSessionService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
 

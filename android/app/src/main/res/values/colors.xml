@@ -12,6 +12,10 @@
     <color name="jv_error">#F85149</color>
     <color name="jv_glass_border">#24FFFFFF</color>
     <color name="jv_glass_bg">#C7161B22</color>
+    <color name="jv_on_accent">#04130F</color>
+    <color name="jv_fab_stop">#E53935</color>
+    <color name="jv_danger_fill">#442222</color>
+    <color name="jv_disabled_fill">#333333</color>
     <!-- legacy aliases used by existing code -->
     <color name="pill_bg">@color/jv_bg</color>
     <color name="accent">@color/jv_accent</color>

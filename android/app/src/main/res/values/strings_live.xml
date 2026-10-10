@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_title">Jarvis Live</string>
+    <string name="live_subtitle">Record a session, transcribe it on-device and stream it to Jarvis Live.</string>
+    <string name="live_mode_solo">Solo</string>
+    <string name="live_mode_meeting">Meeting</string>
+    <string name="live_title_hint">Title (optional)</string>
+    <string name="live_local_only">Local only (no network)</string>
+    <string name="live_start">Start session</string>
+    <string name="live_stop">Stop</string>
+    <string name="live_marker">Marker</string>
+    <string name="live_marker_added">Marker added</string>
+    <string name="live_copilot">Copilot</string>
+    <string name="live_transcript_empty">The transcript appears here as you speak.</string>
+    <string name="live_pending">Pending sessions</string>
+    <string name="live_upload">Upload</string>
+    <string name="live_delete">Delete</string>
+    <string name="live_delete_confirm">Delete this session\'s recorded audio? This can\'t be undone.</string>
+    <string name="live_upload_queued">Upload queued — it runs when you\'re online.</string>
+    <string name="live_not_configured">Set the server and device token in Settings → Jarvis Live to stream. Local only works without them.</string>
+    <string name="live_mic_busy">A Jarvis Live session is using the microphone</string>
+    <string name="live_mic_permission">Microphone permission is required for Live sessions</string>
+
+    <string name="live_notif_title">Jarvis Live session</string>
+    <string name="live_notif_streaming">Recording and streaming</string>
+    <string name="live_notif_local">Recording locally</string>
+    <string name="live_notif_finishing">Finishing upload…</string>
+    <string name="live_channel_name">Jarvis Live session</string>
+
+    <string name="live_settings_header">Jarvis Live</string>
+    <string name="live_settings_desc">Stream Live sessions to your Jarvis Live server. Create a device token on the server with: jarvis-live create-device --name phone</string>
+    <string name="live_settings_url_hint">https://live.lab.apj.dev</string>
+    <string name="live_settings_token_hint">Device token</string>
+    <string name="live_settings_token_saved">Token saved — enter a new one to replace it</string>
+    <string name="live_settings_save">Save</string>
+    <string name="live_settings_test">Test connection</string>
+</resources>

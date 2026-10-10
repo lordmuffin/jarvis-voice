@@ -13,13 +13,14 @@ class JarvisApp : Application() {
         super.onCreate()
         DebugLog.init(this)
 
-        // Cancel all WorkManager jobs on every cold start. This handles:
+        // Cancel model downloads on every cold start. This handles:
         //   - adb install -r  (am force-stop doesn't trigger UncaughtExceptionHandler,
         //     so RUNNING jobs stay in the DB across installs)
         //   - OOM kills / force-stop from Settings
         //   - Any non-graceful process death
         // Downloads are user-initiated — they just tap Download again if interrupted.
-        runCatching { WorkManager.getInstance(this).cancelAllWork() }
+        // Only downloads: Live session uploads must survive restarts to deliver recorded audio.
+        runCatching { WorkManager.getInstance(this).cancelAllWorkByTag(TAG_DOWNLOAD) }
 
         installCrashHandler()
     }
@@ -29,7 +30,7 @@ class JarvisApp : Application() {
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
             try {
                 DebugLog.e("CrashGuard", "Crash on $thread", ex)
-                WorkManager.getInstance(this).cancelAllWork()
+                WorkManager.getInstance(this).cancelAllWorkByTag(TAG_DOWNLOAD)
             } catch (_: Exception) { /* best effort */ }
             default?.uncaughtException(thread, ex)
         }

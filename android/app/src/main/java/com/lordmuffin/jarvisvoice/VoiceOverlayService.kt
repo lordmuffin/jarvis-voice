@@ -30,6 +30,7 @@ import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.lordmuffin.jarvisvoice.live.LiveSessionService
 import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
@@ -353,6 +354,11 @@ class VoiceOverlayService : Service() {
 
     fun startRecording(holdMode: Boolean = false) {
         DebugLog.i("Overlay", "startRecording holdMode=$holdMode engine=${speechEngine?.javaClass?.simpleName}")
+        if (LiveSessionService.isRecording) {
+            // A Live session owns the microphone; dictation would only capture silence.
+            Toast.makeText(this, R.string.live_mic_busy, Toast.LENGTH_SHORT).show()
+            return
+        }
         sessionStartMs = SystemClock.elapsedRealtime()
         if (wakeLock == null || wakeLock?.isHeld == false) {
             wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
