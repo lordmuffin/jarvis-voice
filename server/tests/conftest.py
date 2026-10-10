@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 import uvicorn
+from docker.errors import DockerException
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from testcontainers.community.postgres import PostgresContainer
 
@@ -56,12 +57,24 @@ def postgres_url() -> Iterator[str]:
         run_migrations(url)
         yield url
         return
-    with PostgresContainer(
-        os.environ.get("JARVIS_LIVE_TEST_POSTGRES_IMAGE", "postgres:16-alpine"), driver="asyncpg"
-    ) as pg:
-        url = pg.get_connection_url()
+    try:  # the Docker client connects in the constructor
+        container = PostgresContainer(
+            os.environ.get("JARVIS_LIVE_TEST_POSTGRES_IMAGE", "postgres:16-alpine"),
+            driver="asyncpg",
+        )
+        container.start()
+    except DockerException:
+        pytest.fail(
+            "Docker is not reachable. Start Docker or set JARVIS_LIVE_TEST_DATABASE_URL "
+            "to a Postgres URL.",
+            pytrace=False,
+        )
+    try:
+        url = container.get_connection_url()
         run_migrations(url)
         yield url
+    finally:
+        container.stop()
 
 
 @dataclass
