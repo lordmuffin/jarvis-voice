@@ -2,10 +2,10 @@ name: Server Image
 
 on:
   pull_request:
-    paths: ["server/**", ".github/workflows/server-image.yml"]
+    paths: ["server/**", "web/**", ".github/workflows/server-image.yml"]
   push:
     branches: [main]
-    paths: ["server/**", ".github/workflows/server-image.yml"]
+    paths: ["server/**", "web/**", ".github/workflows/server-image.yml"]
     tags: ["server-v*"]
 
 env:
@@ -59,6 +59,11 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: server
+          # The dashboard sources live outside the context; see server/Dockerfile.
+          build-contexts: webctx=web
+          build-args: |
+            WEB_SRC=webctx
+            WEB_DIST_SOURCE=web-build
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
@@ -74,6 +79,7 @@ jobs:
           docker run --rm --read-only --tmpfs /tmp \
             -e JARVIS_LIVE_DATA_DIR=/tmp/data -e JARVIS_LIVE_INDEX_DIR=/tmp/idx \
             "${IMAGE}:sha-${SHA::7}" python -c "import jarvis_live.app"
+          docker run --rm "${IMAGE}:sha-${SHA::7}" test -f /app/web/dist/index.html
 
   bump-homelab:
     if: github.ref_type == 'tag' && startsWith(github.ref_name, 'server-v')

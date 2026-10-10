@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     fsync_interval_s: float = 1.0
     status_interval_s: float = 5.0
 
+    # Web dashboard: built assets served at `/`. Unset: ./web/dist (the image), then the
+    # repo's web/dist. No index.html there means the dashboard is simply not served.
+    web_dist_dir: Path | None = None
+
     # Segmenter
     vad_aggressiveness: int = 2
     vad_frame_ms: int = 30

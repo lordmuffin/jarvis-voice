@@ -1,9 +1,11 @@
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
 from jarvis_live.api import sessions, stream
 from jarvis_live.auth import TicketStore
@@ -18,6 +20,40 @@ from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
+
+
+def find_web_dist(cfg: Settings) -> Path | None:
+    """The built web dashboard, if one is present."""
+    candidates = [cfg.web_dist_dir] if cfg.web_dist_dir else [Path("web/dist")]
+    if cfg.web_dist_dir is None and len(Path(__file__).resolve().parents) > 3:
+        candidates.append(Path(__file__).resolve().parents[3] / "web" / "dist")
+    for c in candidates:
+        if c is not None and (c / "index.html").is_file():
+            return c.resolve()
+    return None
+
+
+def _mount_web(app: FastAPI, dist: Path) -> None:
+    """Serve the SPA. Registered after every API route so it only sees unmatched GETs."""
+    index = dist / "index.html"
+    no_cache = {"Cache-Control": "no-cache"}
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def web(path: str) -> FileResponse:
+        if path == "v1" or path.startswith("v1/") or path in {"healthz", "readyz"}:
+            raise HTTPException(404)
+        candidate = (dist / path).resolve()
+        if path and candidate.is_file() and candidate.is_relative_to(dist):
+            # Vite fingerprints everything under assets/, so it can be cached forever.
+            headers = (
+                {"Cache-Control": "public, max-age=31536000, immutable"}
+                if path.startswith("assets/")
+                else no_cache
+            )
+            return FileResponse(candidate, headers=headers)
+        if path.startswith("assets/") or Path(path).suffix:
+            raise HTTPException(404)  # a missing file, not a client-side route
+        return FileResponse(index, headers=no_cache)  # SPA fallback
 
 
 def create_app(
@@ -129,6 +165,10 @@ def create_app(
     async def readyz() -> dict[str, str]:
         """Readiness: always ok until dependencies (DB, STT) are wired in."""
         return {"status": "ok"}
+
+    dist = find_web_dist(settings or get_settings())
+    if dist is not None:
+        _mount_web(app, dist)
 
     return app
 
