@@ -1,12 +1,19 @@
-import { duration, titleOf, when } from "../format";
+import { duration, when } from "../format";
 import { initialState, reduce, transcriptLines } from "../reducer";
-import type { SessionDetail } from "../types";
+import type { SessionDetail, SessionSummary } from "../types";
 import { NoteView } from "./NoteView";
 import { Panes } from "./Panes";
+import { SessionTitle } from "./SessionTitle";
 import { StatusChip } from "./StatusChip";
 import { Transcript } from "./Transcript";
 
-export function PastSession({ detail }: { detail: SessionDetail }) {
+export function PastSession({
+  detail,
+  onRenamed,
+}: {
+  detail: SessionDetail;
+  onRenamed: (s: SessionSummary) => void;
+}) {
   const state = reduce(initialState, { type: "snapshot", detail });
   const lines = transcriptLines(state);
   const note = detail.final_note;
@@ -26,8 +33,8 @@ export function PastSession({ detail }: { detail: SessionDetail }) {
   return (
     <section>
       <div class="session-head">
-        <h1 class="h1">{titleOf(detail)}</h1>
-        <StatusChip status={detail.status} />
+        <SessionTitle session={detail} onRenamed={onRenamed} />
+        <StatusChip status={detail.status} streaming={detail.streaming} />
         <span class="meta">
           {when(detail.started_at)}
           {duration(detail.started_at, detail.ended_at) &&

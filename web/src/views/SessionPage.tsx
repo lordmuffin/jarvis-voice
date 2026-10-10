@@ -61,7 +61,7 @@ export function SessionPage({ id }: { id: string }) {
       {inProgress ? (
         <LiveSession key="live" detail={detail} onFinished={setDetail} />
       ) : (
-        <PastSession key="past" detail={detail} />
+        <PastSession key="past" detail={detail} onRenamed={(s) => setDetail({ ...detail, ...s })} />
       )}
     </>
   );

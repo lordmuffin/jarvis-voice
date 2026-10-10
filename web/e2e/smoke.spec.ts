@@ -62,6 +62,8 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   await expect(page.getByTestId("copilot-action").first()).toContainText("Send the deck");
   await expect(page.getByTestId("copilot-decision").first()).toHaveText("Ship on Friday");
   await expect(page.getByTestId("suggestion").first()).toContainText("Who owns QA?");
+  // The copilot's first cycle names the untitled session; the page picks it up by polling.
+  await expect(page.locator(".session-head h1")).toHaveText("Standup kickoff");
 
   // When the session is finalized the page flips to the past view with the rendered note.
   expect(await replayDone).toBe(0);
@@ -69,14 +71,29 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   await expect(page.getByRole("heading", { name: "E2E standup" }).first()).toBeVisible();
   await expect(page.getByTestId("status-chip").first()).toHaveText(/Done/);
   await expect(page.getByTestId("segment").first()).toContainText("seg-1"); // transcript pane
+  // The copilot's name is kept over the note's title (the note renders its own heading).
+  const sessionTitle = page.locator(".session-head h1");
+  await expect(sessionTitle).toHaveText("Standup kickoff");
+
+  // Rename inline; Escape cancels, Enter saves.
+  await page.getByRole("button", { name: "Rename session" }).click();
+  await page.getByLabel("Session title").fill("Not this");
+  await page.getByLabel("Session title").press("Escape");
+  await expect(sessionTitle).toHaveText("Standup kickoff");
+  await page.getByRole("button", { name: "Rename session" }).click();
+  await page.getByLabel("Session title").fill("Friday ship plan");
+  await page.getByLabel("Session title").press("Enter");
+  await expect(sessionTitle).toHaveText("Friday ship plan");
+  await page.reload();
+  await expect(sessionTitle).toHaveText("Friday ship plan");
 
   // The list shows it, searchable by title.
   await page.getByRole("link", { name: "← Sessions" }).click();
   await expect(page.getByTestId("session-row").first()).toBeVisible();
   await page.getByLabel("Search sessions by title").fill("zzz-no-such-title");
   await expect(page.getByTestId("session-row")).toHaveCount(0);
-  await page.getByLabel("Search sessions by title").fill("untitled");
-  await expect(page.getByTestId("session-row").first()).toBeVisible();
+  await page.getByLabel("Search sessions by title").fill("ship plan");
+  await expect(page.getByTestId("session-row").first()).toContainText("Friday ship plan");
 });
 
 test("layout: two panes when wide, tabs when narrow", async ({ page, request }) => {

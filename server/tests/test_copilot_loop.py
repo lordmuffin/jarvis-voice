@@ -12,6 +12,7 @@ from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import CopilotLoop
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta, NoteUpsert, SuggestionIn
 from jarvis_live.db.models import CopilotItem
+from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLMError
 from jarvis_live.protocol import Copilot, Related, Status
 from tests.fakes import FakeClock, FakeLLM, add_segments, make_session
@@ -269,6 +270,55 @@ async def test_restart_resumes_version_and_ids(rig: Rig) -> None:
     await rig.segs(3)
     await again.tick()
     assert [n.id for n in again.state.notes] == ["n1", "n2"]
+
+
+async def title_of(sm: SM, sid: uuid.UUID) -> str | None:
+    async with sm() as db:
+        row = await db.get(SessionRow, sid)
+        assert row is not None
+        return row.title
+
+
+async def test_first_cycle_names_an_untitled_session(rig: Rig, sm: SM) -> None:
+    rig.llm.responses["CopilotDelta"] = [
+        CopilotDelta(title="  'Q3 vendor   renewal'  "),
+        CopilotDelta(title="Something else entirely"),
+    ]
+    await rig.segs(3)
+    await rig.loop.tick()
+    assert "SESSION TITLE\n(untitled: propose one)" in rig.llm.calls[0].user
+    assert await title_of(sm, rig.sid) == "Q3 vendor renewal"
+
+    await rig.segs(3)
+    await rig.loop.tick()  # named sessions keep their name; the prompt says so
+    assert "SESSION TITLE\nQ3 vendor renewal" in rig.llm.calls[1].user
+    assert await title_of(sm, rig.sid) == "Q3 vendor renewal"
+
+
+async def test_auto_name_never_overwrites_a_title(rig: Rig, sm: SM) -> None:
+    real = rig.llm.complete_json
+
+    async def rename_then_answer(**kw: Any) -> Any:
+        async with sm() as db:  # the user renames while the LLM call is in flight
+            row = await db.get(SessionRow, rig.sid)
+            assert row is not None
+            row.title = "My name"
+            await db.commit()
+        return await real(**kw)
+
+    rig.llm.complete_json = rename_then_answer  # type: ignore[method-assign]
+    rig.llm.responses["CopilotDelta"] = [CopilotDelta(title="Copilot name")]
+    await rig.segs(3)
+    await rig.loop.tick()
+    assert "(untitled: propose one)" in rig.llm.calls[0].user
+    assert await title_of(sm, rig.sid) == "My name"
+
+
+def test_delta_title_is_tidied() -> None:
+    assert CopilotDelta(title="   ").title is None
+    assert CopilotDelta(title='"Budget review"').title == "Budget review"
+    long = CopilotDelta(title="word " * 40).title
+    assert long is not None and len(long) <= 80 and not long.endswith(" ")
 
 
 def test_status_model_still_valid() -> None:

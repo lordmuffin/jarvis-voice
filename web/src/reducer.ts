@@ -7,6 +7,7 @@ import type {
   Segment,
   ServerEvent,
   SessionDetail,
+  SessionSummary,
   Status,
 } from "./types";
 
@@ -35,12 +36,15 @@ export interface LiveState {
   connection: ConnectionState;
   /** Furthest stream time seen (ms); the clock suggestions expire against. */
   streamMs: number;
+  /** The session row (title, status, streaming) as of the latest REST snapshot or rename. */
+  session: SessionSummary | null;
 }
 
 /** Events the reducer folds: every server message plus local lifecycle/bootstrap events. */
 export type Event =
   | ServerEvent
   | { type: "snapshot"; detail: SessionDetail }
+  | { type: "session"; session: SessionSummary }
   | { type: "connection"; state: ConnectionState };
 
 export const EMPTY_COPILOT: Copilot = {
@@ -63,6 +67,7 @@ export const initialState: LiveState = {
   acked: { mic: null, system: null },
   connection: "idle",
   streamMs: 0,
+  session: null,
 };
 
 const overlaps = (a: { start_ms: number; end_ms: number }, b: { start_ms: number; end_ms: number }) =>
@@ -120,6 +125,11 @@ function addMarker(markers: Marker[], m: Marker): Marker[] {
   return [...markers, { t_ms: m.t_ms, label: m.label }].sort((a, b) => a.t_ms - b.t_ms);
 }
 
+function summaryOf(s: SessionSummary): SessionSummary {
+  const { id, title, mode, status, channels, started_at, ended_at, local_only, streaming } = s;
+  return { id, title, mode, status, channels, started_at, ended_at, local_only, streaming };
+}
+
 /** Pure: `(state, event) => state`. Unknown events return the state unchanged. */
 export function reduce(state: LiveState, event: Event): LiveState {
   switch (event.type) {
@@ -154,6 +164,8 @@ export function reduce(state: LiveState, event: Event): LiveState {
       return { ...state, error: { code: event.code, message: event.message } };
     case "connection":
       return { ...state, connection: event.state };
+    case "session":
+      return { ...state, session: summaryOf(event.session) };
     case "snapshot": {
       const d = event.detail;
       let next = mergeSegments(state, d.segments);
@@ -163,7 +175,7 @@ export function reduce(state: LiveState, event: Event): LiveState {
       const finalNote = d.final_note
         ? { path: d.final_note.path, title: d.final_note.title }
         : next.finalNote;
-      return { ...next, markers, finalNote };
+      return { ...next, markers, finalNote, session: summaryOf(d) };
     }
     default:
       return state;

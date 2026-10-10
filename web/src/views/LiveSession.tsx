@@ -6,8 +6,8 @@ import type { SessionDetail } from "../types";
 import { watchSession } from "../ws";
 import { CopilotPanel } from "./CopilotPanel";
 import { Panes } from "./Panes";
+import { SessionTitle } from "./SessionTitle";
 import { StatusChip } from "./StatusChip";
-import { titleOf } from "../format";
 import { Transcript } from "./Transcript";
 
 const CONNECTION_LABEL = {
@@ -29,10 +29,11 @@ export function LiveSession({
     [detail.id],
   );
 
+  const dispatch = (e: Event) => {
+    state.value = reduce(state.value, e);
+  };
+
   useEffect(() => {
-    const dispatch = (e: Event) => {
-      state.value = reduce(state.value, e);
-    };
     return watchSession({
       sessionId: detail.id,
       token: token.value ?? "",
@@ -44,16 +45,19 @@ export function LiveSession({
 
   const s = state.value;
   const lines = transcriptLines(s);
+  // Title, status and streaming follow the REST polls in watchSession, not the first load.
+  const session = s.session ?? detail;
 
   return (
     <section>
       <div class="session-head">
-        <h1 class="h1">{titleOf(detail)}</h1>
-        <StatusChip status={detail.status} />
+        <SessionTitle session={session} onRenamed={(r) => dispatch({ type: "session", session: r })} />
+        <StatusChip status={session.status} streaming={session.streaming} />
         <span class="meta" data-testid="connection">
           {CONNECTION_LABEL[s.connection]}
         </span>
-        {s.status && (
+        {/* The last status message goes stale once audio stops; don't show it as current. */}
+        {s.status && session.streaming && (
           <span class="meta">
             {s.status.stt_tier ?? "no STT"} · lag {s.status.lag_ms} ms
             {!s.status.llm_ok && " · copilot offline"}
