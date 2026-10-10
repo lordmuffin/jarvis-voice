@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.5.0...server-v0.6.0) (2026-10-10)
+
+
+### Features
+
+* **server:** optional startup migrations; accept plain postgresql:// URLs ([2495ada](https://github.com/lordmuffin/jarvis-voice/commit/2495adace236a4adfc10aa913e717bf3d8027fa8))
+* **server:** optional startup migrations; accept plain postgresql:// URLs ([acb278c](https://github.com/lordmuffin/jarvis-voice/commit/acb278ca31f1551ce888c25d79e0194f3d3e01ff))
+
 ## [0.5.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.4.0...server-v0.5.0) (2026-10-10)
 
 
