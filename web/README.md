@@ -8,8 +8,9 @@ There is no browser-side recording: producers are the Mac app and, later, Androi
 
 ## Use
 
-Sign in with a device token (`jarvis-live create-device --name browser`). It is kept in
-`localStorage` and sent as a bearer token; WebSocket access uses short-lived **viewer** tickets.
+Sign in with a device token (`jarvis-live create-device --name browser`). Any of your device
+tokens sees every session, whichever device recorded it. The token is kept in `localStorage`
+and sent as a bearer token; WebSocket access uses short-lived **viewer** tickets.
 
 The FastAPI app serves `web/dist` at `/` (SPA fallback after the API routes). Set
 `JARVIS_LIVE_WEB_DIST_DIR` to point elsewhere; with no `index.html` there the dashboard is

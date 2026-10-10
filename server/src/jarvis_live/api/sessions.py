@@ -117,9 +117,21 @@ def _read_note(outbox: Path, name: str) -> str | None:
         return None
 
 
-async def _owned(db: AsyncSession, device: Device, session_id: uuid.UUID) -> SessionRow:
+# A deployment belongs to one person, whose devices (phone, Mac, the dashboard's own token) each
+# have a token. Any of them can read and rename every session; only the device that created a
+# session can stream into it or end it.
+
+
+async def _get(db: AsyncSession, session_id: uuid.UUID) -> SessionRow:
     row = await db.get(SessionRow, session_id)
-    if row is None or row.device_id != device.id:
+    if row is None:
+        raise HTTPException(404, "session not found")
+    return row
+
+
+async def _owned(db: AsyncSession, device: Device, session_id: uuid.UUID) -> SessionRow:
+    row = await _get(db, session_id)
+    if row.device_id != device.id:
         raise HTTPException(404, "session not found")
     return row
 
@@ -149,16 +161,11 @@ async def list_sessions(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> SessionPage:
-    total = (
-        await db.execute(
-            select(func.count()).select_from(SessionRow).where(SessionRow.device_id == device.id)
-        )
-    ).scalar_one()
+    total = (await db.execute(select(func.count()).select_from(SessionRow))).scalar_one()
     rows = (
         (
             await db.execute(
                 select(SessionRow)
-                .where(SessionRow.device_id == device.id)
                 .order_by(SessionRow.started_at.desc(), SessionRow.id.desc())
                 .limit(limit)
                 .offset(offset)
@@ -176,7 +183,7 @@ async def list_sessions(
 async def get_session(
     session_id: uuid.UUID, device: DeviceDep, db: Db, request: Request
 ) -> SessionDetail:
-    row = await _owned(db, device, session_id)
+    row = await _get(db, session_id)
     segments = (
         (
             await db.execute(
@@ -251,9 +258,11 @@ async def get_session(
 async def issue_ticket(
     session_id: uuid.UUID, body: TicketRequest, device: DeviceDep, db: Db, request: Request
 ) -> TicketResponse:
-    row = await _owned(db, device, session_id)
-    if body.role == "producer" and row.status != "live":
-        raise HTTPException(409, "session is not live")
+    if body.role == "producer":
+        if (await _owned(db, device, session_id)).status != "live":
+            raise HTTPException(409, "session is not live")
+    else:
+        await _get(db, session_id)
     ticket = request.app.state.tickets.issue(session_id, device.id, body.role)
     return TicketResponse(ticket=ticket, expires_in=60)
 
@@ -273,7 +282,7 @@ async def end_session(
 async def update_session(
     session_id: uuid.UUID, body: SessionUpdate, device: DeviceDep, db: Db, request: Request
 ) -> SessionOut:
-    row = await _owned(db, device, session_id)
+    row = await _get(db, session_id)
     row.title = body.title
     await db.commit()
     session_logger(__name__, row.id).info("session renamed")

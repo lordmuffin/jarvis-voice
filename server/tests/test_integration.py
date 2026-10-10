@@ -278,26 +278,33 @@ async def test_token_is_stored_hashed(server: ServerHandle, token: str, sm: SM) 
     assert token not in hashes
 
 
-async def test_sessions_are_private_to_their_device(
+async def test_any_device_can_view_but_only_the_owner_can_produce(
     server: ServerHandle, token: str, sm: SM
 ) -> None:
+    # One person's devices: the dashboard's token sees the phone's sessions.
     rp = ReplayProducer(server.url, token)
     sid = await rp.create_session()
     _, other = await create_device(sm, "other")
     h = {"Authorization": f"Bearer {other}"}
     async with httpx.AsyncClient(base_url=server.url, headers=h) as c:
-        assert (await c.get(f"/v1/sessions/{sid}")).status_code == 404
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["id"] == sid
+        assert (await c.get("/v1/sessions")).json()["items"][0]["id"] == sid  # newest
         assert (
             await c.post(f"/v1/sessions/{sid}/ticket", json={"role": "viewer"})
+        ).status_code == 200
+        assert (
+            await c.post(f"/v1/sessions/{sid}/ticket", json={"role": "producer"})
         ).status_code == 404
         assert (await c.post(f"/v1/sessions/{sid}/end")).status_code == 404
-        assert (await c.get("/v1/sessions")).json()["total"] == 0
+        assert (await c.get(f"/v1/sessions/{uuid.uuid4()}")).status_code == 404
 
 
 async def test_session_rest_lifecycle(server: ServerHandle, sm: SM) -> None:
     _, tok = await create_device(sm, "rest")
     h = {"Authorization": f"Bearer {tok}"}
     async with httpx.AsyncClient(base_url=server.url, headers=h) as c:
+        # Every device sees every session, including ones other tests created.
+        before = (await c.get("/v1/sessions", params={"limit": 1})).json()["total"]
         ids = []
         for i in range(3):
             r = await c.post(
@@ -309,10 +316,10 @@ async def test_session_rest_lifecycle(server: ServerHandle, sm: SM) -> None:
             await asyncio.sleep(0.01)
 
         page = (await c.get("/v1/sessions", params={"limit": 2})).json()
-        assert page["total"] == 3
+        assert page["total"] == before + 3
         assert [s["id"] for s in page["items"]] == [ids[2], ids[1]]  # newest first
         page2 = (await c.get("/v1/sessions", params={"limit": 2, "offset": 2})).json()
-        assert [s["id"] for s in page2["items"]] == [ids[0]]
+        assert page2["items"][0]["id"] == ids[0]
 
         s = (await c.get(f"/v1/sessions/{ids[0]}")).json()
         assert (s["status"], s["mode"], s["channels"], s["segments"]) == (
@@ -362,9 +369,16 @@ async def test_rename_session(server: ServerHandle, sm: SM) -> None:
         await c.post(f"/v1/sessions/{sid}/end")
         r = await c.patch(f"/v1/sessions/{sid}", json={"title": "After the fact"})
         assert r.json()["title"] == "After the fact"
+        # the dashboard renames sessions with its own device token
         r = await c.patch(
             f"/v1/sessions/{sid}",
-            json={"title": "Hijack"},
+            json={"title": "From the dashboard"},
+            headers={"Authorization": f"Bearer {other}"},
+        )
+        assert r.status_code == 200 and r.json()["title"] == "From the dashboard"
+        r = await c.patch(
+            f"/v1/sessions/{uuid.uuid4()}",
+            json={"title": "x"},
             headers={"Authorization": f"Bearer {other}"},
         )
         assert r.status_code == 404

@@ -29,6 +29,7 @@ import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.WhisperRecognizer
 import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -73,7 +74,9 @@ data class LiveUiState(
  */
 class LiveSessionService : Service() {
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, t -> onSessionFailure(t) }
+    )
     private val main = Handler(Looper.getMainLooper())
     private lateinit var settings: LiveSettings
     private lateinit var repo: SessionRepository
@@ -139,7 +142,8 @@ class LiveSessionService : Service() {
             r.transcriber?.cancel()
             r.connection?.stop()
             r.outbox.close()
-            // Not releasing the recognizer: a cancelled transcription may still be inside it.
+            // Off the main thread: freeing the model waits for a transcription still inside it.
+            r.whisper?.let { w -> Thread({ w.release() }, "jarvis-live-release").start() }
             repo.update(r.meta.id) { it.copy(state = SessionMeta.State.PENDING) }
             if (r.meta.serverId != null) LiveUploadWorker.enqueue(this, r.meta.id)
         }
@@ -216,7 +220,12 @@ class LiveSessionService : Service() {
                     } catch (e: Exception) {
                         DebugLog.e(TAG, "outbox append failed", e)
                     }
-                    r.transcriber?.feed(samples, tMs)
+                    try {
+                        r.transcriber?.feed(samples, tMs)
+                    } catch (e: Exception) {
+                        // Drafts are best-effort; a failure here must not stop the recording.
+                        DebugLog.e(TAG, "on-device draft failed", e)
+                    }
                 },
                 onError = { e -> scope.launch { stopSession("Microphone stopped: ${e.message}") } },
             )
@@ -257,14 +266,24 @@ class LiveSessionService : Service() {
             return
         }
         _ui.update { it.copy(localStt = LiveUiState.LocalStt.LOADING) }
-        val whisper = WhisperRecognizer.create(this)
-        if (!whisper.isReady || run !== r) {
-            whisper.release()
+        // Shares dictation's model when the overlay already has it loaded.
+        val whisper = try {
+            WhisperRecognizer.create(this)
+        } catch (t: Throwable) {
+            DebugLog.e(TAG, "on-device model failed to load", t)
+            null
+        }
+        if (whisper?.isReady != true || run !== r) {
+            whisper?.release()
             _ui.update { it.copy(localStt = LiveUiState.LocalStt.UNAVAILABLE) }
             return
         }
         r.whisper = whisper
-        r.transcriber = LiveTranscriber(whisper::transcribe, { onDraft(r, it) })
+        r.transcriber = LiveTranscriber(
+            whisper::transcribe,
+            { onDraft(r, it) },
+            onError = { DebugLog.e(TAG, "on-device draft failed", it) },
+        )
         _ui.update { it.copy(localStt = LiveUiState.LocalStt.READY) }
     }
 
@@ -295,8 +314,9 @@ class LiveSessionService : Service() {
 
         withContext(Dispatchers.IO) {
             r.capture.stop()
-            // Release the native recognizer only once no transcription can still be using it.
-            if (r.transcriber?.finish() != false) r.whisper?.release()
+            r.transcriber?.finish()
+            // Safe even if recognition is still running: the model is freed only after it returns.
+            r.whisper?.release()
         }
 
         var state = SessionMeta.State.PENDING
@@ -352,6 +372,27 @@ class LiveSessionService : Service() {
         )
         LocalMarkdown.write(this, LocalMarkdown.fileName(r.meta.startedAt), text)
     }.onFailure { DebugLog.e(TAG, "local note failed", it) }.getOrNull()
+
+    /**
+     * A bug in any session coroutine must end the session, not the app: without a handler an
+     * uncaught exception kills the process, and Android drops the user back on the previous tab.
+     */
+    private fun onSessionFailure(t: Throwable) {
+        DebugLog.e(TAG, "live session failed", t)
+        val message = "Live session error: ${t.message ?: t.javaClass.simpleName}"
+        if (run != null && _ui.value.phase != LiveUiState.Phase.STOPPING) {
+            scope.launch { stopSession(message) }
+            return
+        }
+        // Failed while stopping (or with nothing running): skip the rest of the stop.
+        run = null
+        releaseWakeLock()
+        _ui.update { it.copy(phase = LiveUiState.Phase.IDLE, message = message) }
+        main.post {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+        }
+    }
 
     private fun abortStart(message: String) {
         DebugLog.w(TAG, "start aborted: $message")

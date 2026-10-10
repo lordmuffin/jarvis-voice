@@ -21,6 +21,8 @@ class LiveTranscriber(
     private val channel: Channel = Channel.MIC,
     private val segmenter: VadSegmenter = VadSegmenter(),
     private val executor: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "jarvis-live-stt") },
+    /** A failed utterance is dropped and reported here; drafts are best-effort. */
+    private val onError: (Throwable) -> Unit = {},
 ) {
     private val inFlight = AtomicInteger(0)
 
@@ -56,6 +58,9 @@ class LiveTranscriber(
                     if (text.isNotEmpty() && !isNoise(text)) {
                         onDraft(DraftSegment(channel, event.startMs, event.endMs, text, final))
                     }
+                } catch (t: Throwable) {
+                    // An exception escaping an executor thread would kill the whole app.
+                    onError(t)
                 } finally {
                     inFlight.decrementAndGet()
                 }
