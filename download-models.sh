@@ -15,12 +15,23 @@ MODEL_NAME="sherpa-onnx-whisper-base.en"
 ASSETS_DIR="android/app/src/main/assets/models/whisper-base-en"
 JNILIBS_DIR="android/app/src/main/jniLibs/arm64-v8a"
 KOTLIN_DIR="android/app/src/main/java/com/k2fsa/sherpa/onnx"
+# Records which sherpa-onnx version the bindings and native libs above came from.
+STAMP="$KOTLIN_DIR/.sherpa-version"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() { rm -rf "$TMP_DIR"; }
 trap cleanup EXIT
 
 mkdir -p "$ASSETS_DIR" "$JNILIBS_DIR" "$KOTLIN_DIR"
+
+# The Kotlin bindings and the native libs must come from the same release: the JNI code
+# constructs Kotlin objects by signature, and a mismatch (e.g. OfflineRecognizerResult
+# gaining a field) aborts the process on the first transcription. Refresh both when the
+# files on disk are from another version, or predate this stamp.
+if [ "$(cat "$STAMP" 2>/dev/null)" != "$SHERPA_VERSION" ]; then
+  echo "sherpa-onnx files missing or not v${SHERPA_VERSION}; refreshing bindings and native libs."
+  rm -f "$KOTLIN_DIR"/*.kt "$JNILIBS_DIR"/libsherpa-onnx-*.so "$JNILIBS_DIR/libonnxruntime.so"
+fi
 
 dl() {
   local url="$1" dest="$2"
@@ -33,7 +44,7 @@ dl() {
 
 # ── Kotlin bindings ──────────────────────────────────────────────────────────
 echo "=== sherpa-onnx Kotlin bindings (v${SHERPA_VERSION}) ==="
-BASE="https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/master/sherpa-onnx/kotlin-api"
+BASE="https://raw.githubusercontent.com/k2-fsa/sherpa-onnx/v${SHERPA_VERSION}/sherpa-onnx/kotlin-api"
 for f in FeatureConfig OfflineRecognizer OfflineStream QnnConfig HomophoneReplacerConfig; do
   dest="$KOTLIN_DIR/$f.kt"
   if [ -f "$dest" ]; then
@@ -60,6 +71,7 @@ else
   cp "$TMP_DIR/jniLibs/arm64-v8a/libsherpa-onnx-c-api.so" "$JNILIBS_DIR/"
   echo "  .so files extracted to $JNILIBS_DIR"
 fi
+echo "$SHERPA_VERSION" > "$STAMP"
 
 # ── whisper-base.en model ────────────────────────────────────────────────────
 echo ""
