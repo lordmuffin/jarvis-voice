@@ -99,4 +99,31 @@ class VadSegmenterTest {
         assertEquals(Channel.MIC, drafts[1].channel)
         assertEquals(0L, drafts[1].startMs)
     }
+
+    @Test fun recognizerFailureIsReportedNotThrownOnTheSttThread() {
+        val errors = ArrayList<Throwable>()
+        val uncaught = ArrayList<Throwable>()
+        val drafts = ArrayList<DraftSegment>()
+        var calls = 0
+        val transcriber = LiveTranscriber(
+            recognize = { if (calls++ == 0) throw IllegalStateException("native boom") else "still here" },
+            onDraft = { synchronized(drafts) { drafts += it } },
+            executor = Executors.newSingleThreadExecutor { r ->
+                Thread(r).apply { setUncaughtExceptionHandler { _, t -> synchronized(uncaught) { uncaught += t } } }
+            },
+            onError = { synchronized(errors) { errors += it } },
+        )
+        var t = 0L
+        fun feed(speech: Boolean, n: Int) = repeat(n) {
+            transcriber.feed(if (speech) tone() else silence(), t); t += 100
+        }
+        feed(true, 25)      // partial at 2 s → recognizer throws
+        Thread.sleep(50)
+        feed(false, 30)     // commit → recognized normally
+        transcriber.finish()
+
+        assertEquals(listOf("native boom"), errors.map { it.message })
+        assertTrue(uncaught.isEmpty())
+        assertEquals(listOf("still here"), drafts.map { it.text })
+    }
 }
