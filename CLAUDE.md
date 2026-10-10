@@ -6,6 +6,7 @@
 |---|---|
 | `protocol/v1/` | Wire protocol spec, JSON Schemas, fixtures (shared by all components) |
 | `server/` | Jarvis Live backend (Python 3.12, uv, FastAPI), package `jarvis_live` |
+| `web/` | Web dashboard (viewer): Vite + TypeScript + Preact, served by the server at `/` |
 | `macos/` | Jarvis Live macOS app (Swift) — scaffold only so far |
 | `android/` | Android app |
 | `design/` | Design system: `tokens.json` (colors, type, spacing, radius, sizes) and `README.md` usage rules, extracted from the Android app |
@@ -15,6 +16,7 @@
 
 - Server: `cd server && uv sync && uv run ruff check . && uv run ruff format --check . && uv run mypy src && uv run pytest -q`
 - Legacy Python: `pip install -r requirements.txt -r requirements-dev.txt && python -m pytest -q tests/`
+- Web: `cd web && npm ci && npm test && npm run build && npx playwright test` (Playwright needs Postgres: Docker, or `JARVIS_LIVE_TEST_DATABASE_URL`)
 - Android: `cd android && ./gradlew test`
 - macOS: Swift tests (to be added with the app); must consume `protocol/v1/fixtures`.
 - Workflow lint: `uvx --from actionlint-py actionlint .github/workflows/*.yml`
