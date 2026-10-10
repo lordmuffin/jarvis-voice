@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-live"
-version = "0.5.0"
+version = "0.6.0"
 description = "Jarvis Live backend service"
 requires-python = ">=3.12"
 dependencies = [
