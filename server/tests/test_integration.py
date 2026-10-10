@@ -14,7 +14,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from jarvis_live.auth import create_device
-from jarvis_live.db.models import AudioChunk, Device, MarkerRow, SegmentRow
+from jarvis_live.db.models import AudioChunk, CopilotItem, Device, MarkerRow, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.ingest.store import AudioStore
 from jarvis_live.protocol import Frame, server_message_adapter
@@ -22,6 +22,7 @@ from jarvis_live.replay import ReplayProducer
 from jarvis_live.retention import purge_expired_audio
 from tests.audio import TWO_UTTERANCES, dominant_freq, silence, tone
 from tests.conftest import FakeSTT, ServerHandle
+from tests.fakes import make_session
 from tests.helpers import RawProducer, eventually, open_viewer
 from tests.test_segmenter import run as segment
 
@@ -561,3 +562,50 @@ async def test_retention_deletes_old_pcm_of_done_sessions_only(sm: SM, tmp_path:
                 select(func.count()).select_from(SessionRow).where(SessionRow.status == "done")
             )
         ).scalar_one() >= 2
+
+
+async def test_session_detail_includes_markers_and_final_note(
+    make_server: Callable[..., ServerHandle], sm: SM, tmp_path: Path
+) -> None:
+    outbox = tmp_path / "outbox"
+    outbox.mkdir()
+    (outbox / "2026-10-09 note.md").write_text("# Weekly sync\n\nBody\n", encoding="utf-8")
+    server = make_server(outbox_dir=outbox)
+    dev_id, tok = await create_device(sm, "detail")
+    sid = await make_session(sm, dev_id, status="done")
+    async with sm() as db:
+        db.add(MarkerRow(session_id=sid, t_ms=9000, label="later"))
+        db.add(MarkerRow(session_id=sid, t_ms=2000, label="earlier"))
+        db.add(
+            CopilotItem(
+                session_id=sid,
+                kind="final_note",
+                payload={"path": "2026-10-09 note.md", "title": "Weekly sync"},
+            )
+        )
+        await db.commit()
+    other = await make_session(sm, dev_id, status="done")
+    async with sm() as db:
+        db.add(
+            CopilotItem(
+                session_id=other,
+                kind="final_note",
+                payload={"path": "../../etc/passwd", "title": "x"},
+            )
+        )
+        await db.commit()
+
+    h = {"Authorization": f"Bearer {tok}"}
+    async with httpx.AsyncClient(base_url=server.url, headers=h) as c:
+        d = (await c.get(f"/v1/sessions/{sid}")).json()
+        assert d["markers"] == [
+            {"t_ms": 2000, "label": "earlier"},
+            {"t_ms": 9000, "label": "later"},
+        ]
+        assert d["final_note"] == {
+            "path": "2026-10-09 note.md",
+            "title": "Weekly sync",
+            "markdown": "# Weekly sync\n\nBody\n",
+        }
+        bad = (await c.get(f"/v1/sessions/{other}")).json()
+        assert bad["final_note"]["markdown"] is None  # path traversal is refused
