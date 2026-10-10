@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/jv_bg">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="64dp"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="20dp">
+
+        <!-- Header -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/live_title"
+            android:textColor="@color/jv_text"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_live_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/live_subtitle"
+            android:textColor="@color/jv_text2"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/tv_live_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/jv_warning"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <!-- Setup (idle) -->
+        <LinearLayout
+            android:id="@+id/group_live_setup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical">
+
+            <RadioGroup
+                android:id="@+id/rg_live_mode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rb_live_solo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:text="@string/live_mode_solo"
+                    android:textColor="@color/jv_text"
+                    android:buttonTint="@color/jv_accent" />
+
+                <RadioButton
+                    android:id="@+id/rb_live_meeting"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:text="@string/live_mode_meeting"
+                    android:textColor="@color/jv_text"
+                    android:buttonTint="@color/jv_accent" />
+            </RadioGroup>
+
+            <EditText
+                android:id="@+id/et_live_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/live_title_hint"
+                android:importantForAutofill="no"
+                android:inputType="textCapSentences"
+                android:maxLines="1"
+                android:textColor="@color/jv_text"
+                android:textColorHint="@color/jv_text2"
+                android:textSize="15sp" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/sw_live_local_only"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/live_local_only"
+                android:textColor="@color/jv_text"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btn_live_start"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginTop="12dp"
+                android:backgroundTint="@color/jv_accent"
+                android:text="@string/live_start"
+                android:textColor="@color/jv_on_accent"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_live_pending_header"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/live_pending"
+                android:textColor="@color/jv_text2"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/list_live_pending"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical" />
+        </LinearLayout>
+
+        <!-- Recording -->
+        <LinearLayout
+            android:id="@+id/group_live_recording"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_live_timer"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="monospace"
+                    android:text="00:00"
+                    android:textColor="@color/jv_text"
+                    android:textSize="34sp" />
+
+                <Button
+                    android:id="@+id/btn_live_marker"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:backgroundTint="@color/jv_surface2"
+                    android:text="@string/live_marker"
+                    android:textColor="@color/jv_accent"
+                    android:textSize="13sp" />
+
+                <Button
+                    android:id="@+id/btn_live_stop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_marginStart="8dp"
+                    android:backgroundTint="@color/jv_fab_stop"
+                    android:text="@string/live_stop"
+                    android:textColor="@android:color/white"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/pb_live_level"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:layout_marginTop="8dp"
+                android:max="100"
+                android:progressTint="@color/jv_accent"
+                android:progressBackgroundTint="@color/jv_surface2" />
+
+            <TextView
+                android:id="@+id/tv_live_details"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="@color/jv_text2"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+        <!-- Copilot -->
+        <TextView
+            android:id="@+id/tv_live_copilot_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@color/jv_surface"
+            android:padding="10dp"
+            android:text="@string/live_copilot"
+            android:textColor="@color/jv_accent"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <ScrollView
+            android:id="@+id/sv_live_copilot"
+            android:layout_width="match_parent"
+            android:layout_height="140dp"
+            android:background="@color/jv_surface"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/tv_live_copilot"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="10dp"
+                android:textColor="@color/jv_text"
+                android:textIsSelectable="true"
+                android:textSize="13sp" />
+        </ScrollView>
+
+        <!-- Transcript -->
+        <TextView
+            android:id="@+id/tv_live_transcript_empty"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/live_transcript_empty"
+            android:textColor="@color/jv_text2"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rv_live_transcript"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="12dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="16dp" />
+    </LinearLayout>
+
+    <include
+        layout="@layout/bottom_nav"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom" />
+
+</FrameLayout>

@@ -16,6 +16,9 @@ carApp = "1.4.0"
 media3 = "1.4.1"
 wear = "1.3.0"
 wearInput = "1.1.0"
+coroutines = "1.10.2"
+junit = "4.13.2"
+orgJson = "20240303"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -34,6 +37,11 @@ lifecycle-common-java8  = { group = "androidx.lifecycle", name = "lifecycle-comm
 androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 androidx-wear = { group = "androidx.wear", name = "wear", version.ref = "wear" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+okhttp-mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+junit = { group = "junit", name = "junit", version.ref = "junit" }
+org-json = { group = "org.json", name = "json", version.ref = "orgJson" }
 androidx-wear-input = { group = "androidx.wear", name = "wear-input", version.ref = "wearInput" }
 
 [plugins]

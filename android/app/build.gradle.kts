@@ -46,6 +46,10 @@ android {
     buildFeatures {
         buildConfig = true
     }
+    testOptions {
+        // android.jar stubs (Log, etc.) return defaults instead of throwing in JVM unit tests.
+        unitTests.isReturnDefaultValues = true
+    }
     // Don't attempt to compress ONNX model files — they're already binary
     // and compression wastes build memory on large model assets.
     androidResources {
@@ -79,4 +83,11 @@ dependencies {
     implementation(libs.mlkit.genai.prompt)
     implementation(libs.androidx.car.app)
     implementation(libs.androidx.media3.common)
+    implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.junit)
+    // Android's org.json is a stub in JVM tests; use the real one.
+    testImplementation(libs.org.json)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

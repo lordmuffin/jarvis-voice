@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="6dp"
+    android:background="@color/jv_surface"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_pending_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="@color/jv_text"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/tv_pending_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:textColor="@color/jv_text2"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_pending_upload"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:backgroundTint="@color/jv_surface2"
+        android:text="@string/live_upload"
+        android:textColor="@color/jv_accent"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/btn_pending_delete"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginStart="6dp"
+        android:backgroundTint="@color/jv_danger_fill"
+        android:text="@string/live_delete"
+        android:textColor="@color/jv_text"
+        android:textSize="12sp" />
+</LinearLayout>
