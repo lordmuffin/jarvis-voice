@@ -273,9 +273,10 @@ class LiveSessionService : Service() {
             return
         }
         _ui.update { it.copy(localStt = LiveUiState.LocalStt.LOADING) }
-        // Shares dictation's model when the overlay already has it loaded.
+        // CPU only: sessions on NNAPI died natively, with nothing logged, right when speech
+        // started, i.e. at the first decode. Base/small Whisper is fast enough on the CPU for drafts.
         val whisper = try {
-            WhisperRecognizer.create(this)
+            WhisperRecognizer.create(this, cpuOnly = true)
         } catch (t: Throwable) {
             DebugLog.e(TAG, "on-device model failed to load", t)
             null
@@ -287,11 +288,20 @@ class LiveSessionService : Service() {
         }
         r.whisper = whisper
         r.transcriber = LiveTranscriber(
-            whisper::transcribe,
+            { samples -> transcribeDraft(whisper, samples) },
             { onDraft(r, it) },
             onError = { DebugLog.e(TAG, "on-device draft failed", it) },
         )
         _ui.update { it.copy(localStt = LiveUiState.LocalStt.READY) }
+    }
+
+    /** Logged before and after, so a native crash inside the recognizer shows up in the debug log. */
+    private fun transcribeDraft(whisper: WhisperRecognizer, samples: ShortArray): String {
+        DebugLog.i(TAG, "draft: decoding ${samples.size / 16} ms on ${whisper.activeProvider}")
+        val started = SystemClock.elapsedRealtime()
+        return whisper.transcribe(samples).also {
+            DebugLog.i(TAG, "draft: ${it.length} chars in ${SystemClock.elapsedRealtime() - started} ms")
+        }
     }
 
     private fun onDraft(r: Run, draft: DraftSegment) {
