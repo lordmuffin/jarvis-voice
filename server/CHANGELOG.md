@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.1...server-v0.7.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* Live tab crash on Android and phone sessions missing from the web dashboard ([9e79195](https://github.com/lordmuffin/jarvis-voice/commit/9e791957999a8ede809497bb25c976cba30fcacf))
+* **server:** let every device view every session ([93c2ad9](https://github.com/lordmuffin/jarvis-voice/commit/93c2ad9b022661d6cf8d1a60a5f496734b531428))
+
 ## [0.7.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.0...server-v0.7.1) (2026-10-10)
 
 
