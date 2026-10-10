@@ -1,0 +1,54 @@
+name: Web CI
+
+on:
+  push:
+    paths: ["web/**", "protocol/**", ".github/workflows/web-ci.yml"]
+  pull_request:
+    paths: ["web/**", "protocol/**", ".github/workflows/web-ci.yml"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      # Avoid Docker Hub's anonymous pull limit (and the Ryuk image pull) on shared runners.
+      JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      # Playwright smoke: the real server (FakeSTT/FakeLLM + Postgres testcontainer) serves
+      # web/dist and the replay CLI streams a generated WAV into it.
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - run: uv sync --frozen
+        working-directory: server
+      - name: Pull Postgres test image
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull "$JARVIS_LIVE_TEST_POSTGRES_IMAGE" && exit 0
+            echo "pull attempt $i failed; retrying" >&2
+            sleep $((i * 15))
+          done
+          exit 1
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report
+            web/test-results

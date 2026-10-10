@@ -1,5 +1,7 @@
+import asyncio
 import uuid
 from datetime import datetime
+from pathlib import Path
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -8,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jarvis_live.auth import current_device
-from jarvis_live.db.models import CopilotItem, Device, SegmentRow
+from jarvis_live.db.models import CopilotItem, Device, MarkerRow, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import (
@@ -73,9 +75,32 @@ class SegmentOut(BaseModel):
     stt_tier: str | None
 
 
+class MarkerOut(BaseModel):
+    t_ms: int
+    label: str
+
+
+class FinalNoteOut(BaseModel):
+    path: str
+    title: str
+    markdown: str | None  # None if the file is no longer in the outbox
+
+
 class SessionDetail(SessionOut):
     segments: list[SegmentOut]
     copilot: Copilot
+    markers: list[MarkerOut]
+    final_note: FinalNoteOut | None
+
+
+def _read_note(outbox: Path, name: str) -> str | None:
+    # ``name`` is a bare file name written by the finalizer; refuse anything path-like.
+    if not name or Path(name).name != name:
+        return None
+    try:
+        return (outbox / name).read_text(encoding="utf-8")
+    except OSError:
+        return None
 
 
 async def _owned(db: AsyncSession, device: Device, session_id: uuid.UUID) -> SessionRow:
@@ -133,7 +158,9 @@ async def list_sessions(
 
 
 @router.get("/{session_id}")
-async def get_session(session_id: uuid.UUID, device: DeviceDep, db: Db) -> SessionDetail:
+async def get_session(
+    session_id: uuid.UUID, device: DeviceDep, db: Db, request: Request
+) -> SessionDetail:
     row = await _owned(db, device, session_id)
     segments = (
         (
@@ -159,8 +186,36 @@ async def get_session(session_id: uuid.UUID, device: DeviceDep, db: Db) -> Sessi
         if latest is not None
         else Copilot(version=0, notes=[], actions=[], decisions=[], suggestions=[], related=[])
     )
+    markers = (
+        (
+            await db.execute(
+                select(MarkerRow)
+                .where(MarkerRow.session_id == session_id)
+                .order_by(MarkerRow.t_ms, MarkerRow.id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    final_payload = (
+        await db.execute(
+            select(CopilotItem.payload)
+            .where(CopilotItem.session_id == session_id, CopilotItem.kind == "final_note")
+            .order_by(CopilotItem.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    final_note: FinalNoteOut | None = None
+    if final_payload is not None:
+        cfg = request.app.state.settings
+        outbox = cfg.outbox_dir or cfg.data_dir / "outbox"
+        path = str(final_payload["path"])
+        markdown = await asyncio.to_thread(_read_note, outbox, path)
+        final_note = FinalNoteOut(path=path, title=str(final_payload["title"]), markdown=markdown)
     return SessionDetail(
         **SessionOut.of(row).model_dump(),
+        markers=[MarkerOut(t_ms=m.t_ms, label=m.label) for m in markers],
+        final_note=final_note,
         segments=[
             SegmentOut(
                 id=s.id,
