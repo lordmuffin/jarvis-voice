@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.6.0...android-v1.7.0) (2026-10-10)
+
+
+### Features
+
+* **android:** Live session recording, on-device transcription and streaming ([971237f](https://github.com/lordmuffin/jarvis-voice/commit/971237faffba6437bc39d39543e78220d8e52437))
+* **android:** Live session recording, on-device transcription and streaming ([b2738e9](https://github.com/lordmuffin/jarvis-voice/commit/b2738e92206c86a924e79104864ca67c51e27d82))
+
 ## [1.6.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.5.1...android-v1.6.0) (2026-10-09)
 
 
