@@ -50,6 +50,17 @@ export function App() {
               Admin
             </Link>
           )}
+          <a class="nav-link" href="https://live.lab.apj.dev/" target="_blank" rel="noopener noreferrer">
+            Live
+          </a>
+          <a
+            class="nav-link"
+            href="https://restart.lab.apj.dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Restart
+          </a>
         </nav>
         <span class="user meta" data-testid="user-name" title={user.email ?? undefined}>
           {user.display_name}
