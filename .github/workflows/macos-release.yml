@@ -41,17 +41,14 @@ jobs:
             echo "present=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build unsigned app
+      - name: Build ad-hoc signed app
         if: steps.detect.outputs.present == 'true'
         working-directory: macos/JarvisVoiceMac
         run: |
-          # The project is generated from project.yml (*.xcodeproj is gitignored),
-          # as `make build` does.
+          # Not notarized, but sealed with an ad-hoc signature and the entitlements, so macOS keeps
+          # the microphone grant instead of asking on every use. See `make release`.
           brew install xcodegen
-          xcodegen generate
-          xcodebuild -project JarvisVoiceMac.xcodeproj -scheme JarvisVoiceMac -configuration Release \
-            -destination 'platform=macOS' -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+          make release
           app=$(find build/Build/Products/Release -maxdepth 1 -name '*.app' | head -n1)
           test -n "$app"
           ditto -c -k --keepParent "$app" "JarvisVoiceMac-${TAG#macos-v}-unsigned.zip"
