@@ -118,19 +118,27 @@ public actor LiveConnection {
 
     /// Flushes all audio, sends `end`, waits for the server to ack everything (and, briefly, for
     /// `final_note`), then closes. Returns once the connection has finished or failed.
-    public func end() async {
+    ///
+    /// If the server cannot be reached or never acks within `timeout`, the connection is dropped and
+    /// this returns anyway; the outbox stays resumable, so nothing recorded is lost.
+    public func end(timeout: Duration = .seconds(30)) async {
         guard !finished else { return }
         endRequested = true
         start()
         wake()
+        let deadline = Task { [weak self] in
+            try await Task.sleep(for: timeout)
+            await self?.stop()
+        }
         await withCheckedContinuation { endWaiters.append($0) }
+        deadline.cancel()
     }
 
     /// Drops the connection without ending the session; the outbox stays resumable.
     public func stop() {
         runTask?.cancel()
         runTask = nil
-        if !finished { finish(.idle) }
+        if !finished { finish(.idle) }  // also releases any `end()` waiters
     }
 
     // MARK: - Run loop
