@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.7.0...macos-v0.8.0) (2026-10-11)
+
+
+### Features
+
+* **server:** promote live channel to live.apj.dev ([7b61b02](https://github.com/lordmuffin/jarvis-voice/commit/7b61b02a7f68c625cfe431ebca9530cb24edb0ef))
+* **server:** promote live channel to live.apj.dev ([122483a](https://github.com/lordmuffin/jarvis-voice/commit/122483a8f88f570dcfe99554fb83a5d67eb60de5))
+
 ## [0.7.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.6.1...macos-v0.7.0) (2026-10-11)
 
 
