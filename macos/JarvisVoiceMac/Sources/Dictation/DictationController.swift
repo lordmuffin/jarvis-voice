@@ -15,6 +15,8 @@ final class DictationController {
 
     /// Stops a forgotten tap-mode dictation so the mic doesn't stay open.
     private static let maxDuration: Duration = .seconds(300)
+    /// Longest wait after the key is released for the analyzer to start, and then to finish.
+    private static let finishTimeout: Duration = .seconds(15)
 
     private(set) var state: State = .idle
     /// Finals so far plus the current volatile guess, for the pill.
@@ -30,6 +32,8 @@ final class DictationController {
     @ObservationIgnored private var capture: Capture?
     @ObservationIgnored private var messageTask: Task<Void, Never>?
     @ObservationIgnored private var trustObserver: NSObjectProtocol?
+    @ObservationIgnored private var askingForMicrophone = false
+    @ObservationIgnored private var assetsTask: Task<Void, Never>?
     /// Bumped whenever a dictation ends early, so its in-flight tasks stand down.
     @ObservationIgnored private var generation = 0
 
@@ -49,6 +53,7 @@ final class DictationController {
             self?.handle(action)
         }
         guard settings.dictationKey != .off else { return }
+        prepareAssets()
         if trustObserver == nil {
             // Posted when any app's Accessibility grant changes. A monitor installed before the
             // grant may never see key events, so it is reinstalled.
@@ -89,6 +94,18 @@ final class DictationController {
 
     func begin() {
         guard state == .idle else { return }
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+            break
+        case .notDetermined:
+            // This press only asks: the prompt outlasts it, and the next press records.
+            requestMicrophone()
+            return
+        default:
+            flash(AppError.micDenied.localizedDescription)
+            return
+        }
+
         generation &+= 1
         let gen = generation
         let capture = Capture()
@@ -98,33 +115,24 @@ final class DictationController {
         clearMessage()
         hud.show()
 
-        // Already authorised: open the mic now so the first word is kept while the analyzer starts.
-        let authorized = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
-        if authorized {
-            do {
-                try startMic(capture)
-            } catch {
-                fail(error.localizedDescription)
-                return
-            }
+        // Open the mic now so the first word is kept while the analyzer starts.
+        do {
+            try startMic(capture)
+        } catch {
+            fail(error.localizedDescription)
+            return
         }
 
         let collector = capture.collector
         capture.startTask = Task { [weak self] in
             do {
-                if !authorized {
-                    guard await AVCaptureDevice.requestAccess(for: .audio) else { throw AppError.micDenied }
-                    // The prompt usually outlasts the key press; only record if still wanted.
-                    guard let self, gen == self.generation, self.state == .listening else { return }
-                    try self.startMic(capture)
-                }
-                self?.assetProgress = 0
                 try await LocalTranscriber.ensureAssets { [weak self] fraction in
                     Task { @MainActor [weak self] in
-                        guard let self, gen == self.generation, self.assetProgress != nil else { return }
+                        guard let self, gen == self.generation, !capture.assetsReady else { return }
                         self.assetProgress = fraction
                     }
                 }
+                capture.assetsReady = true
                 self?.assetProgress = nil
                 let transcriber = LocalTranscriber(channel: .mic) { [weak self] emission in
                     let live = collector.add(emission.draft)
@@ -157,15 +165,29 @@ final class DictationController {
         guard state == .listening, let capture else { return }
         state = .finishing
         capture.limitTask?.cancel()
+        // The mic closes as soon as the user is done; audio not yet transcribed waits in the pre-roll.
+        capture.mic.stop()
         let gen = generation
+        let startTask = capture.startTask
         Task { [weak self] in
-            await capture.startTask?.value
-            capture.mic.stop()
-            if let transcriber = capture.preRoll.drain() { await transcriber.finish() }
+            // Bounded, so the pill can never hang on "Transcribing…". Esc still cancels sooner.
+            let started = await within(Self.finishTimeout) { await startTask?.value }
             guard let self, gen == self.generation else { return }
+            guard started else {
+                self.fail(self.assetProgress != nil
+                    ? "The speech model is still installing. Try again when it finishes."
+                    : "On-device transcription didn\u{2019}t start. Try again in a moment.")
+                return
+            }
+            var finished = true
+            if let transcriber = capture.preRoll.drain() {
+                finished = await within(Self.finishTimeout) { await transcriber.finish() }
+            }
+            guard gen == self.generation else { return }
             self.capture = nil
             self.assetProgress = nil
-            await self.deliver(DictationText.join(capture.collector.finals))
+            // A transcriber that never finished still leaves its finals and latest guess.
+            await self.deliver(finished ? DictationText.join(capture.collector.finals) : capture.collector.text)
         }
     }
 
@@ -179,6 +201,34 @@ final class DictationController {
     }
 
     // MARK: Helpers
+
+    /// Shows the system microphone prompt once and says what happened.
+    private func requestMicrophone() {
+        guard !askingForMicrophone else { return }
+        askingForMicrophone = true
+        Task { [weak self] in
+            let granted = await AVCaptureDevice.requestAccess(for: .audio)
+            guard let self else { return }
+            self.askingForMicrophone = false
+            let key = self.settings.dictationKey.title
+            if !granted {
+                self.flash(AppError.micDenied.localizedDescription)
+            } else if AVCaptureDevice.authorizationStatus(for: .audio) != .authorized {
+                // Allowed, but macOS kept no record of it, so it would ask again on every press.
+                // That happens to a build without a proper code signature.
+                self.flash("macOS didn\u{2019}t save the microphone permission. Reinstall Jarvis Voice from a signed build.")
+            } else {
+                self.flash("Microphone allowed. Press \(key) to dictate.")
+            }
+        }
+    }
+
+    /// Fetches the speech model in the background, once per launch, so the first dictation
+    /// doesn't wait for a download.
+    private func prepareAssets() {
+        guard assetsTask == nil else { return }
+        assetsTask = Task { _ = try? await LocalTranscriber.ensureAssets { _ in } }
+    }
 
     private func startMic(_ capture: Capture) throws {
         let preRoll = capture.preRoll
@@ -242,6 +292,26 @@ final class DictationController {
     }
 }
 
+/// Runs `operation` and waits at most `timeout` for it. Returns `false` on timeout, leaving the
+/// operation to finish on its own.
+private func within(_ timeout: Duration, _ operation: @escaping @Sendable () async -> Void) async -> Bool {
+    let (results, continuation) = AsyncStream.makeStream(of: Bool.self)
+    Task {
+        await operation()
+        continuation.yield(true)
+    }
+    let timer = Task {
+        try? await Task.sleep(for: timeout)
+        continuation.yield(false)
+    }
+    defer {
+        timer.cancel()
+        continuation.finish()
+    }
+    for await finished in results { return finished }
+    return false
+}
+
 // MARK: - Capture
 
 /// Everything that exists only while one dictation is live.
@@ -252,6 +322,8 @@ private final class Capture {
     let collector = Collector()
     var startTask: Task<Void, Never>?
     var limitTask: Task<Void, Never>?
+    /// Set once the speech model is installed, so late progress reports are dropped.
+    var assetsReady = false
 }
 
 /// Holds mic buffers until the transcriber has started, so the first word isn't lost, then hands
@@ -306,6 +378,8 @@ private final class Collector: @unchecked Sendable {
     private var volatile = ""
 
     var finals: [DraftSegment] { lock.withLock { finalSegments } }
+    /// Finals so far plus the current volatile guess.
+    var text: String { lock.withLock { Self.join(finalSegments, volatile) } }
 
     /// Records `draft` and returns the live text: finals so far plus the current volatile guess.
     func add(_ draft: DraftSegment) -> String {
@@ -316,8 +390,12 @@ private final class Collector: @unchecked Sendable {
             } else {
                 volatile = draft.text
             }
-            return [DictationText.join(finalSegments), volatile].filter { !$0.isEmpty }.joined(separator: " ")
+            return Self.join(finalSegments, volatile)
         }
+    }
+
+    private static func join(_ finals: [DraftSegment], _ volatile: String) -> String {
+        [DictationText.join(finals), volatile].filter { !$0.isEmpty }.joined(separator: " ")
     }
 }
 
