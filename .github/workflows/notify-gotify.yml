@@ -1,7 +1,16 @@
 name: notify-gotify
 
-# Reusable: send a Gotify push from a GitHub-hosted runner via an ephemeral
-# Tailscale node. Notifications never fail the calling workflow.
+# Reusable: send a Gotify push from a GitHub-hosted runner. Gotify
+# (gotify.lab.apj.dev) is LAN-only, so the runner joins the homelab NetBird
+# network (https://netbird.apj.dev) as an *ephemeral* peer with a setup key; the
+# k3s2 routing peer carries 192.168.0.0/16. Notifications never fail the calling
+# workflow: a missing secret, an unreachable NetBird or Gotify only warns.
+#
+# Secrets (repository settings -> Secrets and variables -> Actions):
+#   NB_SETUP_KEY  NetBird setup key: reusable, **ephemeral** (peers are removed
+#                 after 10 minutes offline), auto-assigned group `ci`.
+#   GOTIFY_URL    https://gotify.lab.apj.dev
+#   GOTIFY_TOKEN  Gotify application token.
 
 on:
   workflow_call:
@@ -20,14 +29,14 @@ on:
         required: false
         default: ""
     secrets:
-      TS_OAUTH_CLIENT_ID:
-        required: true
-      TS_OAUTH_SECRET:
-        required: true
+      # Optional on purpose: a required secret that is missing fails the *caller*
+      # before this workflow runs, which is exactly what this must never do.
+      NB_SETUP_KEY:
+        required: false
       GOTIFY_URL:
-        required: true
+        required: false
       GOTIFY_TOKEN:
-        required: true
+        required: false
   workflow_dispatch:
     inputs:
       title:
@@ -49,37 +58,63 @@ on:
 
 permissions: {}
 
+env:
+  NETBIRD_VERSION: "0.78.2"  # same client as the k3s2 routing peer
+  NETBIRD_SHA256: "6413c2b29d9a91c6adf3ea16c7b2dcc1faec1d463d47f01ad1a98c1cc49e1cc3"
+  NETBIRD_MANAGEMENT_URL: https://netbird.apj.dev
+
 jobs:
   notify:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Connect to tailnet
-        id: ts
+      - name: Join NetBird
+        id: nb
         continue-on-error: true
-        uses: tailscale/github-action@v3
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
-          tags: tag:ci
+        env:
+          NB_SETUP_KEY: ${{ secrets.NB_SETUP_KEY }}
+          GOTIFY_URL: ${{ secrets.GOTIFY_URL }}
+          GOTIFY_TOKEN: ${{ secrets.GOTIFY_TOKEN }}
+        run: |
+          if [ -z "$NB_SETUP_KEY" ] || [ -z "$GOTIFY_URL" ] || [ -z "$GOTIFY_TOKEN" ]; then
+            echo "::warning::NB_SETUP_KEY, GOTIFY_URL or GOTIFY_TOKEN is not set; skipping Gotify notification"
+            exit 1
+          fi
+          tarball="netbird_${NETBIRD_VERSION}_linux_amd64.tar.gz"
+          curl -fsSL -o "/tmp/${tarball}" \
+            "https://github.com/netbirdio/netbird/releases/download/v${NETBIRD_VERSION}/${tarball}"
+          echo "${NETBIRD_SHA256}  /tmp/${tarball}" | sha256sum -c -
+          tar -xzf "/tmp/${tarball}" -C /tmp netbird
+          sudo install -m 0755 /tmp/netbird /usr/local/bin/netbird
+          sudo netbird service install
+          sudo netbird service start
+          # The key travels in the environment, not on the command line.
+          sudo --preserve-env=NB_SETUP_KEY netbird up \
+            --management-url "$NETBIRD_MANAGEMENT_URL" \
+            --hostname "gh-${GITHUB_REPOSITORY#*/}-${GITHUB_RUN_ID}"
 
       - name: Check Gotify reachability
         id: health
         env:
           GOTIFY_URL: ${{ secrets.GOTIFY_URL }}
-          TS_OUTCOME: ${{ steps.ts.outcome }}
+          NB_OUTCOME: ${{ steps.nb.outcome }}
         run: |
-          if [ "$TS_OUTCOME" != "success" ]; then
-            echo "::warning::Tailscale connection failed; skipping Gotify notification"
+          if [ "$NB_OUTCOME" != "success" ]; then
+            echo "::warning::Could not join NetBird; skipping Gotify notification"
             echo "reachable=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if curl --fail --silent --show-error --max-time 10 "${GOTIFY_URL%/}/health" > /dev/null; then
-            echo "reachable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Gotify is unreachable at /health; skipping notification"
-            echo "reachable=false" >> "$GITHUB_OUTPUT"
-          fi
+          # Routes arrive a moment after the peer connects.
+          for _ in $(seq 1 12); do
+            if curl --fail --silent --show-error --max-time 5 "${GOTIFY_URL%/}/health" > /dev/null; then
+              echo "reachable=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+          sudo netbird status || true
+          echo "::warning::Gotify is unreachable at /health over NetBird; skipping notification"
+          echo "reachable=false" >> "$GITHUB_OUTPUT"
 
       - name: Send notification
         if: steps.health.outputs.reachable == 'true'
@@ -107,3 +142,7 @@ jobs:
           else
             echo "::warning::Gotify POST failed"
           fi
+
+      - name: Leave NetBird
+        if: always() && steps.nb.outcome == 'success'
+        run: sudo netbird down || true
