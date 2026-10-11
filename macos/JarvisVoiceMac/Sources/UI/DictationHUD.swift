@@ -88,12 +88,11 @@ struct DictationPill: View {
 
     private var title: String {
         if let message = dictation.message { return message }
+        if dictation.state != .idle, let progress = dictation.assetProgress {
+            return "Installing speech model \(Int(progress * 100))%"
+        }
         switch dictation.state {
-        case .listening:
-            if let progress = dictation.assetProgress {
-                return "Installing speech model \(Int(progress * 100))%"
-            }
-            return "Listening\u{2026}"
+        case .listening: return "Listening\u{2026}"
         case .finishing: return "Transcribing\u{2026}"
         case .idle: return ""
         }

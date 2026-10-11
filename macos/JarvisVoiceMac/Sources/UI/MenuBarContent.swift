@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuBarContent: View {
     @Bindable var model: AppModel
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         Button(model.isRecording ? "Stop Session" : "Start Session") {
@@ -69,13 +70,25 @@ struct MenuBarContent: View {
 
         Divider()
 
-        Button("Settings\u{2026}") {
-            NSApp.activate(ignoringOtherApps: true)
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        }
-        .keyboardShortcut(",")
+        Button("Settings\u{2026}") { showSettings() }
+            .keyboardShortcut(",")
         Button("Quit Jarvis Voice") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    /// `showSettingsWindow:` does nothing since macOS 14; `openSettings` is the supported way.
+    private func showSettings() {
+        openSettings()
+        NSApp.activate()
+        // A menu-bar app isn't frontmost, so the window can open behind the app in use. Raise it
+        // once SwiftUI has created it.
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                NSApp.windows
+                    .first { $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window" }?
+                    .orderFrontRegardless()
+            }
+        }
     }
 
     private var statusGlyph: String {
