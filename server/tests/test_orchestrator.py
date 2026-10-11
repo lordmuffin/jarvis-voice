@@ -137,3 +137,39 @@ async def test_recover_finalizes_recent_finalizing_sessions_only(rig: Any, sm: S
     await eventually(lambda: any(str(recent) in (s.url or "") for s in rig.notifier.sent))
     await rig.orch.shutdown()
     assert not any(str(stale) in (s.url or "") for s in rig.notifier.sent)
+
+
+async def test_on_final_runs_after_a_note_and_its_errors_are_contained(
+    sm: SM, tmp_path: Path
+) -> None:
+    from jarvis_live.copilot.schema import FinalNote
+    from tests.fakes import add_segments
+
+    called: list[uuid.UUID] = []
+
+    async def hook(sid: uuid.UUID) -> None:
+        called.append(sid)
+        raise RuntimeError("GitHub is down")
+
+    llm = FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S"))
+    orch = Orchestrator(
+        Settings(outbox_dir=tmp_path),
+        sm,
+        Bus(),
+        FakeSTT(),
+        llm,
+        FakeVault(),
+        FakeNotifier(),
+        on_final=hook,
+    )
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
+    written = await make_session(sm, device_id, status="finalizing")
+    await add_segments(sm, written, [(0, 1000, "me", "hi")])
+    empty = await make_session(sm, device_id, status="finalizing")  # no transcript: no note
+
+    orch.regenerate(written, None)
+    orch.on_end(empty)
+    assert orch.is_finalizing(written)
+    await eventually(lambda: not orch.is_finalizing(written) and not orch.is_finalizing(empty))
+    await orch.shutdown()
+    assert called == [written]

@@ -4,6 +4,7 @@ import { Admin } from "./views/Admin";
 import { Devices } from "./views/Devices";
 import { Link } from "./views/Link";
 import { Login } from "./views/Login";
+import { Publishing } from "./views/Publishing";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
 
@@ -13,6 +14,8 @@ function page(r: Route) {
       return <SessionPage key={r.id} id={r.id} />;
     case "devices":
       return <Devices />;
+    case "publishing":
+      return <Publishing />;
     case "admin":
       return <Admin />;
     case "sessions":
@@ -45,6 +48,11 @@ export function App() {
           <Link class="nav-link" href="/devices" aria-current={current("devices")}>
             Devices
           </Link>
+          {user.can_publish && (
+            <Link class="nav-link" href="/publishing" aria-current={current("publishing")}>
+              Publishing
+            </Link>
+          )}
           {user.is_admin && (
             <Link class="nav-link" href="/admin" aria-current={current("admin")}>
               Admin

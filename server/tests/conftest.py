@@ -20,6 +20,8 @@ from jarvis_live.db.session import make_engine, make_sessionmaker, run_migration
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.stt.backend import STTBackend, Transcription
+from tests.fake_github import TOKEN as GITHUB_TOKEN
+from tests.fake_github import FakeGitHub
 from tests.fake_oidc import CLIENT_ID, CLIENT_SECRET, FakeIssuer
 from tests.fakes import new_device
 
@@ -165,6 +167,30 @@ def oidc_settings(issuer: FakeIssuer, tmp_path: Path) -> dict[str, Any]:
         "oidc_client_id": CLIENT_ID,
         "oidc_client_secret_file": secret,
         "oidc_admin_group": "jarvis-admins",
+    }
+
+
+@pytest.fixture
+def github() -> Iterator[FakeGitHub]:
+    """A fake GitHub API (holding the vault repo) on its own port."""
+    running: list[tuple[uvicorn.Server, threading.Thread]] = []
+    port = _free_port()
+    fake = FakeGitHub(f"http://127.0.0.1:{port}")
+    _serve(fake.app(), running, port)
+    yield fake
+    _stop(running)
+
+
+@pytest.fixture
+def publish_settings(github: FakeGitHub, tmp_path: Path) -> dict[str, Any]:
+    token = tmp_path / "github-token"
+    token.write_text(GITHUB_TOKEN + "\n")
+    return {
+        "publish_repo": github.repo,
+        "github_api": github.url,
+        "github_token_file": token,
+        "publish_reconcile_interval_s": 0,
+        "public_base_url": "https://live.example",
     }
 
 

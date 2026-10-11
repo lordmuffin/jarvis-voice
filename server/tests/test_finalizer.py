@@ -275,3 +275,44 @@ async def test_other_users_notes_go_to_their_folder_without_vault_or_gotify(
     assert rig.files() == []  # nothing in the owner's outbox root
     assert rig.notifier.sent == []  # Gotify is the owner's phone
     assert await rig.status(sid) == "done"
+
+
+async def test_regeneration_replaces_its_old_note_and_can_stay_quiet(mk: Any) -> None:
+    rig: Rig = mk()
+    sid = await rig.session()
+    await add_segments(rig.sm, sid, [(1000, 4000, "me", "Hello.")])
+    outbox = rig.settings.outbox_dir
+    assert outbox is not None
+    outbox.mkdir(parents=True)
+    (outbox / "old.md").write_text(f"---\nsession_id: {sid}\n---\n")
+    (outbox / "theirs.md").write_text("---\nsession_id: someone-else\n---\n")
+
+    result = await rig.fin.run(sid, replace="old.md", notify=False)
+    assert result is not None
+    assert not (outbox / "old.md").exists()
+    assert result.path == "2026-10-09 0930 - Vendor call.md"
+    assert rig.notifier.sent == []
+
+    # Another session's file is never removed, whatever ``replace`` says.
+    rig.llm.queue("FinalNote", NOTE)
+    async with rig.sm() as db:
+        row = await db.get(SessionRow, sid)
+        assert row is not None
+        row.status = "finalizing"
+        await db.commit()
+    await rig.fin.run(sid, replace="theirs.md")
+    assert (outbox / "theirs.md").exists()
+
+
+def test_overwrite_atomic_replaces_in_place(tmp_path: Path) -> None:
+    from jarvis_live.finalize.outbox import note_file, overwrite_atomic
+
+    target = tmp_path / "sub" / "n.md"
+    overwrite_atomic(target, "one")
+    overwrite_atomic(target, "two")
+    assert target.read_text() == "two"
+    assert [p.name for p in target.parent.iterdir()] == ["n.md"]  # no temp files left
+    assert note_file(tmp_path, "../x.md") is None
+    assert note_file(tmp_path, "/etc/x.md") is None
+    assert note_file(tmp_path, "a/b/c.md") is None
+    assert note_file(tmp_path, "a/n.md") == tmp_path / "a" / "n.md"

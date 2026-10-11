@@ -4,6 +4,7 @@ on end, idle-session ending, and the STT-outage alert."""
 import asyncio
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -36,6 +37,7 @@ class Orchestrator:
         notifier: Notifier,
         *,
         clock: Clock | None = None,
+        on_final: Callable[[uuid.UUID], Awaitable[None]] | None = None,
     ) -> None:
         self._cfg = settings
         self._sm = sessionmaker
@@ -47,6 +49,8 @@ class Orchestrator:
         self._hub: IngestHub | None = None
         self._copilots: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._finals: set[asyncio.Task[object]] = set()
+        self._finalizing: set[uuid.UUID] = set()  # a finalizer run is in flight
+        self._on_final = on_final  # after a note is written (auto-publish)
         self._orphans: dict[uuid.UUID, float] = {}  # live in the DB, no ingest state: first seen
         self._outage_since: float | None = None
         self._outage_notified = False
@@ -60,7 +64,26 @@ class Orchestrator:
         self._copilots[state.session_id] = asyncio.create_task(self._run_copilot(state))
 
     def on_end(self, session_id: uuid.UUID) -> None:
-        task = asyncio.create_task(self._end(session_id))
+        self._track(session_id, self._end(session_id))
+
+    def regenerate(self, session_id: uuid.UUID, replace: str | None) -> None:
+        """Re-run the finalizer on a session the caller has put back into ``finalizing``.
+        ``replace`` is its current note, removed if the new one gets another name."""
+        self._track(session_id, self._finalize(session_id, replace=replace, notify=False))
+
+    def is_finalizing(self, session_id: uuid.UUID) -> bool:
+        return session_id in self._finalizing
+
+    def _track(self, session_id: uuid.UUID, coro: Awaitable[None]) -> None:
+        self._finalizing.add(session_id)
+
+        async def run() -> None:
+            try:
+                await coro
+            finally:
+                self._finalizing.discard(session_id)
+
+        task = asyncio.create_task(run())
         self._finals.add(task)
         task.add_done_callback(self._finals.discard)
 
@@ -94,7 +117,18 @@ class Orchestrator:
         if (task := self._copilots.pop(session_id, None)) is not None:
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)
-        await self._finalizer.run(session_id)
+        await self._finalize(session_id)
+
+    async def _finalize(
+        self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
+    ) -> None:
+        result = await self._finalizer.run(session_id, replace=replace, notify=notify)
+        if result is None or self._on_final is None:
+            return
+        try:
+            await self._on_final(session_id)
+        except Exception:  # publishing trouble never fails a finished note
+            log.exception("after-note hook failed for %s", session_id)
 
     async def recover(self) -> None:
         """Finalize recent sessions left in ``finalizing`` by a previous process."""

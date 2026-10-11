@@ -33,6 +33,9 @@ const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   final_note: null,
   owner: { id: "0b6f4a52-7c1d-4e8b-9f3a-5d2e1c0b9a87", display_name: "Alice Example" },
   audio: { mic: true, system: false },
+  publication: null,
+  can_publish: false,
+  can_regenerate: false,
   ...over,
 });
 

@@ -7,7 +7,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import account, auth, sessions, stream
+from jarvis_live.api import account, auth, publishing, sessions, stream
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
@@ -17,6 +17,8 @@ from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
 from jarvis_live.oidc import OIDCClient
 from jarvis_live.orchestrator import Orchestrator
+from jarvis_live.publish.github import GitHubClient
+from jarvis_live.publish.service import PublishService
 from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
@@ -67,9 +69,11 @@ def create_app(
     stt: STTBackend | None = None,
     llm: LLM | None = None,
     notifier: Notifier | None = None,
+    github: GitHubClient | None = None,
 ) -> FastAPI:
-    """``stt``, ``llm`` and ``notifier`` override what is built from settings (tests). The
-    copilot and finalizer run only if an LLM is configured or injected."""
+    """``stt``, ``llm``, ``notifier`` and ``github`` override what is built from settings
+    (tests). The copilot and finalizer run only if an LLM is configured or injected; notes are
+    published only if ``publish_repo`` and ``github_token_file`` are set."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -92,6 +96,19 @@ def create_app(
             )
             backend = WhisperBackend(pool)
             tasks.append(asyncio.create_task(pool.run_probe_loop()))
+        gh = github
+        if gh is None and cfg.publish_enabled:
+            if client is None:
+                client = httpx.AsyncClient()
+            assert cfg.github_token_file is not None
+            gh = GitHubClient(
+                client, api=cfg.github_api, repo=cfg.publish_repo, token_file=cfg.github_token_file
+            )
+        publisher = PublishService(cfg, sm, gh)
+        if publisher.enabled and cfg.publish_reconcile_interval_s > 0:
+            tasks.append(
+                asyncio.create_task(publisher.run_reconcile_loop(cfg.publish_reconcile_interval_s))
+            )
         orchestrator: Orchestrator | None = None
         if (
             llm is not None or cfg.litellm_base_url
@@ -121,6 +138,7 @@ def create_app(
                 ),
                 vault,
                 notifier or GotifyNotifier(cfg.gotify_url, cfg.gotify_token_file, client),
+                on_final=publisher.on_note_ready,
             )
         hub = IngestHub(
             cfg,
@@ -147,6 +165,8 @@ def create_app(
         app.state.bus = bus
         app.state.tickets = TicketStore(ttl_s=60)
         app.state.hub = hub
+        app.state.orchestrator = orchestrator
+        app.state.publishing = publisher
         tasks.append(
             asyncio.create_task(
                 run_retention_loop(
@@ -160,6 +180,7 @@ def create_app(
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            await publisher.shutdown()
             if orchestrator is not None:
                 await orchestrator.shutdown()
             await hub.shutdown()
@@ -171,6 +192,7 @@ def create_app(
     app.include_router(auth.router)
     app.include_router(account.router)
     app.include_router(sessions.router)
+    app.include_router(publishing.router)
     app.include_router(stream.router)
 
     @app.get("/healthz")

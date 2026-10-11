@@ -3,13 +3,20 @@ import {
   ApiError,
   audioUrl,
   createDevice,
+  editNote,
+  getPublishing,
   listSessions,
   loginUrl,
   logout,
   me,
   onUnauthorized,
+  publicationAction,
+  publicationRequest,
+  publishAll,
+  regenerateNote,
   revokeDevice,
   sessionsPath,
+  setAutoPublish,
 } from "../src/api";
 
 type Call = { url: string; init: RequestInit };
@@ -91,5 +98,61 @@ describe("api", () => {
       "/auth/login?client=web&return_to=%2Fsessions%2Fa%3Fb%3D1",
     );
     expect(audioUrl("s1", "system")).toBe("/v1/sessions/s1/audio/system.wav");
+  });
+
+  it("routes each publishing action to its endpoint", () => {
+    expect(publicationRequest("s 1", "publish")).toEqual({
+      path: "/v1/sessions/s%201/publication",
+      method: "POST",
+    });
+    expect(publicationRequest("s1", "merge")).toEqual({
+      path: "/v1/sessions/s1/publication/merge",
+      method: "POST",
+    });
+    expect(publicationRequest("s1", "close").path).toBe("/v1/sessions/s1/publication/close");
+    expect(publicationRequest("s1", "skip")).toEqual({
+      path: "/v1/sessions/s1/publication/skip",
+      method: "POST",
+    });
+    expect(publicationRequest("s1", "unskip")).toEqual({
+      path: "/v1/sessions/s1/publication/skip",
+      method: "DELETE",
+    });
+  });
+
+  it("edits, regenerates and publishes notes", async () => {
+    const edit = fakeFetch(200, { id: "s1" });
+    await editNote("s1", "# Note", edit.f);
+    expect(edit.calls[0]).toMatchObject({
+      url: "/v1/sessions/s1/note",
+      init: { method: "PUT", body: '{"markdown":"# Note"}' },
+    });
+
+    const regen = fakeFetch(200, { id: "s1", status: "finalizing" });
+    expect((await regenerateNote("s1", regen.f)).status).toBe("finalizing");
+    expect(regen.calls[0]).toMatchObject({ url: "/v1/sessions/s1/regenerate", init: { method: "POST" } });
+
+    const merge = fakeFetch(409, { detail: "no open pull request" });
+    await expect(publicationAction("s1", "merge", merge.f)).rejects.toMatchObject({
+      status: 409,
+      message: "no open pull request",
+    });
+  });
+
+  it("reads the queue, publishes all, and toggles auto-publish", async () => {
+    const q = fakeFetch(200, { repo: "o/r", ready: [], open: [], recent: [] });
+    expect((await getPublishing(q.f)).repo).toBe("o/r");
+    expect(q.calls[0]!.url).toBe("/v1/publishing");
+
+    const all = fakeFetch(202, { status: "started" });
+    expect((await publishAll(all.f)).status).toBe("started");
+    expect(all.calls[0]).toMatchObject({ url: "/v1/publishing/publish-all", init: { method: "POST" } });
+
+    const auto = fakeFetch(200, { auto_publish: true });
+    expect((await setAutoPublish(true, auto.f)).auto_publish).toBe(true);
+    expect(auto.calls[0]).toMatchObject({
+      url: "/v1/me",
+      init: { method: "PATCH", body: '{"auto_publish":true}' },
+    });
   });
 });

@@ -658,3 +658,81 @@ code,
   text-transform: uppercase;
   vertical-align: middle;
 }
+
+/* Note actions and publishing */
+.btn-accent {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+.btn-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.note-toolbar .spacer {
+  flex: 1;
+}
+.note-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.note-editor-field {
+  min-height: 420px;
+  padding: 12px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.warning-text {
+  color: var(--warning);
+}
+.chip-pub-none,
+.chip-pub-closed,
+.chip-pub-skipped {
+  color: var(--text2);
+}
+.chip-pub-publishing {
+  color: var(--warning);
+}
+.chip-pub-open {
+  color: var(--accent);
+}
+.chip-pub-merged {
+  color: var(--success);
+}
+.chip-pub-failed {
+  color: var(--error);
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+}
+.row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .row:has(.row-actions) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .row-actions {
+    justify-content: flex-start;
+  }
+}

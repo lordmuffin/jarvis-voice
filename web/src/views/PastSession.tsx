@@ -2,7 +2,7 @@ import { audioUrl } from "../api";
 import { duration, when } from "../format";
 import { initialState, reduce, transcriptLines } from "../reducer";
 import type { Channel, SessionDetail, SessionSummary } from "../types";
-import { NoteView } from "./NoteView";
+import { NotePane } from "./NotePane";
 import { OwnerLabel } from "./OwnerLabel";
 import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
@@ -38,18 +38,19 @@ export function Recordings({ detail }: { detail: SessionDetail }) {
 export function PastSession({
   detail,
   onRenamed,
+  onChanged,
 }: {
   detail: SessionDetail;
   onRenamed: (s: SessionSummary) => void;
+  /** The note or its publication changed (the server's updated session). */
+  onChanged: (d: SessionDetail) => void;
 }) {
   const state = reduce(initialState, { type: "snapshot", detail });
   const lines = transcriptLines(state);
   const note = detail.final_note;
 
-  const noteContent = note?.markdown ? (
-    <NoteView markdown={note.markdown} />
-  ) : note ? (
-    <p class="muted">The note “{note.title}” is no longer available on the server.</p>
+  const noteContent = note ? (
+    <NotePane detail={detail} onChanged={onChanged} />
   ) : detail.status === "failed" ? (
     <p class="error">This session failed before a note was written.</p>
   ) : detail.local_only ? (
