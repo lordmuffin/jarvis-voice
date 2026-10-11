@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.8.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.4...android-v1.8.0) (2026-10-11)
+
+
+### Features
+
+* **android:** Pocket-ID sign-in and session history ([c8e1212](https://github.com/lordmuffin/jarvis-voice/commit/c8e12125de86499d14f1bfdf88ba8576512e62a9))
+* multiple users with Pocket-ID sign-in ([23fbd10](https://github.com/lordmuffin/jarvis-voice/commit/23fbd10e48aa1bd06524d57aae47cc337e103ef7))
+
 ## [1.7.4](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.3...android-v1.7.4) (2026-10-10)
 
 

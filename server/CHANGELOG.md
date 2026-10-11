@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.8.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.2...server-v0.8.0) (2026-10-11)
+
+
+### Features
+
+* multiple users with Pocket-ID sign-in ([23fbd10](https://github.com/lordmuffin/jarvis-voice/commit/23fbd10e48aa1bd06524d57aae47cc337e103ef7))
+* **server:** users, Pocket-ID sign-in and per-user sessions ([43e7ab5](https://github.com/lordmuffin/jarvis-voice/commit/43e7ab53500ea8f01aac5c2069c8d859f8d28b8d))
+
+
+### Documentation
+
+* **server:** Pocket-ID setup, users and the owner account ([a8427de](https://github.com/lordmuffin/jarvis-voice/commit/a8427de51c028c4a9b80adb84ef49ee4b3be74d5))
+
 ## [0.7.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.1...server-v0.7.2) (2026-10-10)
 
 
