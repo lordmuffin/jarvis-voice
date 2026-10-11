@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.6.0...macos-v0.6.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **macos:** ad-hoc sign the release build so macOS keeps permission grants ([c742394](https://github.com/lordmuffin/jarvis-voice/commit/c742394f7a0bd1489f874f980cd4b67a530445de))
+* **macos:** dictation asks for the mic once and never hangs on Transcribing ([778f7ed](https://github.com/lordmuffin/jarvis-voice/commit/778f7edb90aa584dbef70651d66464ff6dc3c382))
+* **macos:** open Settings from the menu again ([951c41f](https://github.com/lordmuffin/jarvis-voice/commit/951c41f967b2fd3a1114cb4bf6cb81fcce87f65a))
+* **macos:** Settings opens, dictation mic prompt and Transcribing hang ([84ed289](https://github.com/lordmuffin/jarvis-voice/commit/84ed28926f28e9844b83d12c6d4aa8cadc35dd6a))
+
 ## [0.6.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.5.1...macos-v0.6.0) (2026-10-11)
 
 
