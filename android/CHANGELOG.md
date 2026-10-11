@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.1...android-v1.9.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* **server,android:** fix Pocket-ID admin group name and say which account sign-in refused ([e813152](https://github.com/lordmuffin/jarvis-voice/commit/e813152c72f42dfe75fe5d7b0f9df1a22e576c69))
+* **server,android:** say which account Jarvis Live refused at sign-in ([dc74a90](https://github.com/lordmuffin/jarvis-voice/commit/dc74a90676414ce798b9e54f017b1b91233bfa63))
+
 ## [1.9.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.0...android-v1.9.1) (2026-10-11)
 
 
