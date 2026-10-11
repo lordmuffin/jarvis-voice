@@ -69,7 +69,7 @@ object LocalMarkdown {
     // region Storage
 
     /**
-     * Writes the note to the Vault folder (Settings → Voice to Vault) when one is set, otherwise to
+     * Writes the note to the Vault folder (Settings → Vault Folder) when one is set, otherwise to
      * `Documents/JarvisVoice/Live/`. Returns the file path or SAF uri.
      */
     fun write(context: Context, fileName: String, text: String): String {

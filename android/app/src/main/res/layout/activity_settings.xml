@@ -798,7 +798,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Vault Capture"
+                android:text="Vault Folder"
                 android:textColor="@color/jv_text2"
                 android:textSize="11sp"
                 android:textAllCaps="true"
@@ -827,7 +827,7 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Pick any local folder — captures go to YYYY-MM-DD.md inside it. Works great pointed at a Syncthing-synced vault folder."
+                android:text="Pick any local folder — Record session notes are saved inside it. Works great pointed at a Syncthing-synced vault folder."
                 android:textColor="@color/jv_text2"
                 android:textSize="11sp"
                 android:paddingHorizontal="4dp"

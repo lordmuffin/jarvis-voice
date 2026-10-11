@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="live_title">Jarvis Live</string>
+    <string name="live_title">Record</string>
     <string name="live_subtitle">Record a session, transcribe it on-device and stream it to Jarvis Live.</string>
     <string name="live_mode_solo">Solo</string>
     <string name="live_mode_meeting">Meeting</string>

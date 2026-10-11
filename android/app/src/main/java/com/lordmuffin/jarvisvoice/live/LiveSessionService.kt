@@ -166,7 +166,7 @@ class LiveSessionService : Service() {
         if (!requestedLocalOnly && !settings.isConfigured) {
             return abortStart("Set the Jarvis Live device token in Settings, or turn on Local only")
         }
-        // Dictation and Live can't share the mic: whichever starts later wins, like Voice to Vault.
+        // Dictation and Live can't share the mic: whichever starts later wins.
         withContext(Dispatchers.Main) { VoiceOverlayService.instance?.cancelActiveRecording() }
         // The enhancement LLM sits idle during a session but can hold gigabytes, leaving Whisper
         // too little memory to transcribe. Waits for a running enhancement; reloaded in onDestroy.
