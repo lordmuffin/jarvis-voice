@@ -61,12 +61,16 @@ final class AppModel {
     private(set) var sessionIsLocalOnly = false
     var dismissedSuggestionIDs: Set<String> = []
 
-    let settings = SettingsModel()
+    let settings: SettingsModel
+    let dictation: DictationController
     @ObservationIgnored private(set) lazy var panel = PanelController(model: self)
     @ObservationIgnored private let hotkeys = HotKeys()
     @ObservationIgnored private var run: Run?
 
     init() {
+        let settings = SettingsModel()
+        self.settings = settings
+        dictation = DictationController(settings: settings)
         refreshLocalSessions()
         // The test host launches the app; global hotkeys have no place there.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
@@ -77,6 +81,8 @@ final class AppModel {
             case .marker: self.addMarker()
             }
         }
+        dictation.startMonitoring()
+        dictation.requestAccessibilityIfNeeded()
     }
 
     // MARK: Derived
@@ -96,13 +102,16 @@ final class AppModel {
     }
 
     var menuBarImage: NSImage {
-        let name = isRecording ? "record.circle.fill" : "waveform"
+        // A recording session wins over dictation.
+        let dictating = !isRecording && dictation.isActive
+        let name = isRecording ? "record.circle.fill" : dictating ? "mic.fill" : "waveform"
         let image = NSImage(systemSymbolName: name, accessibilityDescription: "Jarvis Voice")
-        guard isRecording, let image else {
+        guard isRecording || dictating, let image else {
             image?.isTemplate = true
             return image ?? NSImage()
         }
-        let configured = image.withSymbolConfiguration(.init(paletteColors: [.systemRed]))
+        let color: NSColor = isRecording ? .systemRed : .systemOrange
+        let configured = image.withSymbolConfiguration(.init(paletteColors: [color]))
         configured?.isTemplate = false
         return configured ?? image
     }
