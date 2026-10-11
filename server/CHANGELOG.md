@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.12.0...server-v0.13.0) (2026-10-11)
+
+
+### Features
+
+* **server:** move the lab channel to live.lab.apj.dev ([c8ec639](https://github.com/lordmuffin/jarvis-voice/commit/c8ec63963b2ff728504ec23b3fffaad2a3aeb294))
+* **server:** move the lab channel to live.lab.apj.dev ([2e1cd18](https://github.com/lordmuffin/jarvis-voice/commit/2e1cd181255caedfe7af78064808beb61c4859b4))
+
 ## [0.12.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.11.0...server-v0.12.0) (2026-10-11)
 
 
