@@ -7,12 +7,12 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from jarvis_live.auth import create_device
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
+from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.orchestrator import Orchestrator
 from tests.conftest import FakeSTT
-from tests.fakes import FakeClock, FakeLLM, FakeNotifier, make_session
+from tests.fakes import FakeClock, FakeLLM, FakeNotifier, make_session, new_device
 from tests.helpers import eventually
 from tests.test_copilot_loop import FakeVault
 
@@ -72,7 +72,7 @@ async def test_idle_session_is_ended_after_ten_minutes(rig: Any) -> None:
 
 
 async def test_live_session_without_producer_is_ended_after_idle_period(rig: Any, sm: SM) -> None:
-    device_id, _ = await create_device(sm, f"dev-{uuid.uuid4()}")
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}")
     sid = await make_session(sm, device_id)  # live in the DB, nothing in the hub
     await rig.orch.check_once()
     await rig.clock.advance(599)
@@ -126,7 +126,7 @@ async def test_recover_finalizes_recent_finalizing_sessions_only(rig: Any, sm: S
     from tests.fakes import add_segments
 
     rig.orch._finalizer._llm = FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S"))
-    device_id, _ = await create_device(sm, f"dev-{uuid.uuid4()}")
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
     now = datetime.now(UTC)
     recent = await make_session(sm, device_id, status="finalizing", ended_at=now)
     stale = await make_session(sm, device_id, status="finalizing", ended_at=now - timedelta(days=3))

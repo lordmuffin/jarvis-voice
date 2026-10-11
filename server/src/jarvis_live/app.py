@@ -7,7 +7,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import sessions, stream
+from jarvis_live.api import account, auth, sessions, stream
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
@@ -15,6 +15,7 @@ from jarvis_live.db.session import make_engine, make_sessionmaker, run_migration
 from jarvis_live.ingest.hub import IngestHub
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
+from jarvis_live.oidc import OIDCClient
 from jarvis_live.orchestrator import Orchestrator
 from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
@@ -40,7 +41,11 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
 
     @app.get("/{path:path}", include_in_schema=False)
     async def web(path: str) -> FileResponse:
-        if path == "v1" or path.startswith("v1/") or path in {"healthz", "readyz"}:
+        if (
+            path in {"v1", "auth"}
+            or path.startswith(("v1/", "auth/"))
+            or path in {"healthz", "readyz"}
+        ):
             raise HTTPException(404)
         candidate = (dist / path).resolve()
         if path and candidate.is_file() and candidate.is_relative_to(dist):
@@ -129,6 +134,14 @@ def create_app(
             orchestrator.attach(hub)
             await orchestrator.recover()
             tasks.append(asyncio.create_task(orchestrator.run_watchdog()))
+        oidc: OIDCClient | None = None
+        if cfg.oidc_issuer:
+            if client is None:
+                client = httpx.AsyncClient()
+            oidc = OIDCClient(
+                cfg.oidc_issuer, cfg.oidc_client_id, cfg.oidc_client_secret_file, client
+            )
+        app.state.oidc = oidc
         app.state.settings = cfg
         app.state.sessionmaker = sm
         app.state.bus = bus
@@ -155,6 +168,8 @@ def create_app(
             await engine.dispose()
 
     app = FastAPI(title="Jarvis Live", lifespan=lifespan)
+    app.include_router(auth.router)
+    app.include_router(account.router)
     app.include_router(sessions.router)
     app.include_router(stream.router)
 

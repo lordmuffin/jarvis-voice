@@ -23,6 +23,11 @@ class Base(DeclarativeBase):
     pass
 
 
+# The deployment owner. Migration 0002 creates this user and gives it every device and session
+# that existed before there were users; the owner claims it at their first Pocket-ID login.
+OWNER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
 def _uuid_pk() -> Mapped[uuid.UUID]:
     return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -31,10 +36,66 @@ def _now() -> Mapped[datetime]:
     return mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    # OIDC subject from Pocket-ID. NULL only for the owner before they first sign in.
+    oidc_sub: Mapped[str | None] = mapped_column(Text, unique=True)
+    email: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str] = mapped_column(Text)
+    is_admin: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # Final notes go to ``<outbox>/<notes_subdir>/``; NULL writes to the outbox root.
+    notes_subdir: Mapped[str | None] = mapped_column(Text, unique=True)
+    created_at: Mapped[datetime] = _now()
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class LoginSession(Base):
+    """A web dashboard sign-in, carried by the ``jarvis_live_session`` cookie."""
+
+    __tablename__ = "login_sessions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = _now()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OidcFlow(Base):
+    """An authorization request in flight, keyed by its ``state``."""
+
+    __tablename__ = "oidc_flows"
+
+    state: Mapped[str] = mapped_column(String(64), primary_key=True)
+    nonce: Mapped[str] = mapped_column(String(64))
+    pkce_verifier: Mapped[str] = mapped_column(String(128))
+    client: Mapped[str] = mapped_column(String(16))  # 'web' | 'android'
+    app_challenge: Mapped[str | None] = mapped_column(String(128))
+    return_to: Mapped[str] = mapped_column(Text, default="/")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DeviceCode(Base):
+    """One-time code handed to the Android app after sign-in, redeemed for a device token."""
+
+    __tablename__ = "device_codes"
+
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    app_challenge: Mapped[str] = mapped_column(String(128))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Device(Base):
     __tablename__ = "devices"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = _now()
@@ -49,10 +110,13 @@ class Session(Base):
         ),
         CheckConstraint("mode IN ('meeting','solo')", name="ck_sessions_mode"),
         Index("ix_sessions_device_started", "device_id", text("started_at DESC")),
+        Index("ix_sessions_user_started", "user_id", text("started_at DESC")),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id"))
+    # Copied from the device at creation, so a session stays its owner's if the device goes.
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str | None] = mapped_column(Text)
     mode: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), default="live", server_default="live")

@@ -12,13 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import Clock, CopilotLoop, RealClock
+from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.finalizer import Finalizer
 from jarvis_live.ingest.hub import IngestHub, SessionIngest
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.stt.backend import STTBackend
-from jarvis_live.vault.index import VaultContext
+from jarvis_live.vault.index import NullVault, VaultContext
 
 log = logging.getLogger(__name__)
 
@@ -81,7 +82,8 @@ class Orchestrator:
             sessionmaker=self._sm,
             bus=self._bus,
             llm=self._llm,
-            vault=self._vault,
+            # The vault is the owner's own Obsidian vault: never shown in other users' sessions.
+            vault=self._vault if row.user_id == OWNER_USER_ID else NullVault(),
             stream_ms=pipeline.position_ms,
             set_llm_ok=set_llm_ok,
             clock=self._clock,
