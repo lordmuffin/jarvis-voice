@@ -103,7 +103,8 @@ class Settings(BaseSettings):
     oidc_client_id: str = ""
     oidc_client_secret_file: Path | None = None
     oidc_admin_group: str = ""  # members are admins (see every user's sessions)
-    oidc_allowed_group: str = ""  # if set, only its members may sign in
+    # Comma-separated groups; if set, only their members may sign in.
+    oidc_allowed_groups: str = ""
     # The first sign-in with this (verified) email claims the owner account: every device and
     # session from before there were users. See also `jarvis-live claim-owner`.
     owner_email: str = ""

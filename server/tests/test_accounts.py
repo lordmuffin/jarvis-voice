@@ -106,13 +106,14 @@ async def test_admin_comes_from_the_admin_group(oidc_server: Callable[..., Serve
         assert (await c.get("/v1/admin/users")).status_code == 403
 
 
-async def test_allowed_group_gates_sign_in(oidc_server: Callable[..., ServerHandle]) -> None:
-    server = oidc_server(oidc_allowed_group="jarvis")
+async def test_allowed_groups_gate_sign_in(oidc_server: Callable[..., ServerHandle]) -> None:
+    server = oidc_server(oidc_allowed_groups=" family, jarvis-admins ,")
     async with httpx.AsyncClient(base_url=server.url) as c:
-        r = await login(c, "mallory")
-        assert r.status_code == 403 and "set-cookie" not in r.headers
-        assert (await c.get("/v1/me")).status_code == 401
-        assert (await login(c, "bob")).status_code == 303
+        for outsider in ("mallory", "bob"):  # no groups / only "jarvis"
+            r = await login(c, outsider)
+            assert r.status_code == 403 and "set-cookie" not in r.headers
+            assert (await c.get("/v1/me")).status_code == 401
+        assert (await login(c, "root")).status_code == 303  # in jarvis-admins
 
 
 async def test_bad_state_and_cancelled_sign_in(
