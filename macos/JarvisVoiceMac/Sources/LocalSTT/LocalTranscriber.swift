@@ -133,11 +133,18 @@ final class LocalTranscriber: @unchecked Sendable {
     func finish() async {
         inputContinuation?.finish()
         inputContinuation = nil
+        // Bounded: if the analyzer never finalizes, Stop must still complete.
+        let analyzer = self.analyzer
+        let watchdog = Task {
+            try await Task.sleep(for: .seconds(10))
+            await analyzer?.cancelAndFinishNow()
+        }
         do {
             try await analyzer?.finalizeAndFinishThroughEndOfInput()
         } catch {
             await analyzer?.cancelAndFinishNow()
         }
+        watchdog.cancel()
         await resultsTask?.value
         resultsTask = nil
         analyzer = nil
