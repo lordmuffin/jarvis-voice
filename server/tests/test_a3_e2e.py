@@ -50,6 +50,8 @@ async def test_session_end_produces_note_and_final_note_event(
     assert fn["title"] == "Standup"
     note = (outbox / fn["path"]).read_text()
     assert f"session_id: {sid}" in note and "**Me:** seg-1" in note
+    # the push goes out after final_note is published (it looks up the owner first)
+    await eventually(lambda: len(notifier.sent) > 0)
     assert [(s.priority, s.url) for s in notifier.sent] == [
         (5, f"https://j.example/sessions/{sid}")
     ]
