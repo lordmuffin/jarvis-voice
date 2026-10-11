@@ -1,6 +1,7 @@
 package com.lordmuffin.jarvisvoice.live
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
+import com.lordmuffin.jarvisvoice.SettingsActivity
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -31,8 +33,9 @@ class SessionsActivity : AppCompatActivity() {
 
     private val adapter = SessionsAdapter(onOpen = ::open, onFooter = { loadMore() })
     private var loadJob: Job? = null
-    /** One client (and OkHttp connection pool) for this screen. */
-    private val client: LiveApiClient by lazy { settings.apiClient() }
+    /** One client (and OkHttp connection pool) per sign-in; rebuilt when Settings changes the token or server. */
+    private var client: LiveApiClient? = null
+    private var clientKey: Pair<String, String?>? = null
     private var nextOffset = 0
     private var hasMore = false
 
@@ -61,33 +64,36 @@ class SessionsActivity : AppCompatActivity() {
         })
 
         findViewById<Button>(R.id.btn_sessions_refresh).setOnClickListener { reload() }
-        btnRetry.setOnClickListener { reload() }
+    }
 
-        reload()
+    override fun onResume() {
+        super.onResume()
+        // Also picks up a sign-in finished in Settings after this screen showed "Sign in".
+        if (adapter.sessionCount == 0 && loadJob?.isActive != true) reload()
     }
 
     private fun reload() {
         loadJob?.cancel()
         if (!settings.isConfigured) {
             adapter.replace(emptyList(), Footer.NONE)
-            showMessage(getString(R.string.history_not_signed_in), retry = false)
+            showMessage(getString(R.string.history_not_signed_in), MessageAction.SIGN_IN)
             return
         }
         groupMessage.visibility = View.GONE
         pbSessions.visibility = if (adapter.sessionCount == 0) View.VISIBLE else View.GONE
         loadJob = lifecycleScope.launch {
             try {
-                val page = client.listSessions(PAGE_SIZE, 0)
+                val page = client().listSessions(PAGE_SIZE, 0)
                 nextOffset = page.nextOffset
                 hasMore = page.hasMore
                 adapter.replace(page.items, if (hasMore) Footer.MORE else Footer.NONE)
                 rvSessions.scrollToPosition(0)
-                if (page.items.isEmpty()) showMessage(getString(R.string.history_empty), retry = false)
+                if (page.items.isEmpty()) showMessage(getString(R.string.history_empty), MessageAction.NONE)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 adapter.replace(emptyList(), Footer.NONE)
-                showMessage(errorText(e), retry = !(e is LiveHttpException && e.status == 401))
+                showMessage(errorText(e), if (e is LiveHttpException && e.status == 401) MessageAction.SIGN_IN else MessageAction.RETRY)
             } finally {
                 pbSessions.visibility = View.GONE
             }
@@ -100,7 +106,7 @@ class SessionsActivity : AppCompatActivity() {
         val offset = nextOffset
         loadJob = lifecycleScope.launch {
             try {
-                val page = client.listSessions(PAGE_SIZE, offset)
+                val page = client().listSessions(PAGE_SIZE, offset)
                 nextOffset = page.nextOffset
                 hasMore = page.hasMore
                 adapter.append(page.items, if (hasMore) Footer.MORE else Footer.NONE)
@@ -112,9 +118,23 @@ class SessionsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showMessage(text: String, retry: Boolean) {
+    private fun client(): LiveApiClient {
+        val key = settings.serverUrl to settings.deviceToken
+        if (key != clientKey) {
+            client = settings.apiClient()
+            clientKey = key
+        }
+        return client!!
+    }
+
+    private fun showMessage(text: String, action: MessageAction) {
         tvMessage.text = text
-        btnRetry.visibility = if (retry) View.VISIBLE else View.GONE
+        btnRetry.visibility = if (action == MessageAction.NONE) View.GONE else View.VISIBLE
+        btnRetry.setText(if (action == MessageAction.SIGN_IN) R.string.history_sign_in else R.string.history_retry)
+        btnRetry.setOnClickListener {
+            if (action == MessageAction.SIGN_IN) startActivity(Intent(this, SettingsActivity::class.java))
+            else reload()
+        }
         groupMessage.visibility = View.VISIBLE
     }
 
@@ -129,6 +149,8 @@ class SessionsActivity : AppCompatActivity() {
     }
 
     enum class Footer { NONE, MORE, LOADING, ERROR }
+
+    private enum class MessageAction { NONE, RETRY, SIGN_IN }
 
     private class SessionsAdapter(
         private val onOpen: (RemoteSession) -> Unit,
