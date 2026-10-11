@@ -733,7 +733,7 @@ wheels = [
 
 [[package]]
 name = "jarvis-live"
-version = "0.8.0"
+version = "0.10.1"
 source = { editable = "." }
 dependencies = [
     { name = "alembic" },
