@@ -65,6 +65,7 @@ final class AppModel {
     @ObservationIgnored private(set) lazy var panel = PanelController(model: self)
     @ObservationIgnored private let hotkeys = HotKeys()
     @ObservationIgnored private var run: Run?
+    @ObservationIgnored private var stopStage = ""
 
     init() {
         refreshLocalSessions()
@@ -150,7 +151,18 @@ final class AppModel {
     func stop() async {
         guard phase == .recording, let run else { return }
         phase = .stopping
+        stopStage = "starting"
+        // Last resort: if a teardown step never returns, report where and let the user record again.
+        let watchdog = Task { @MainActor [weak self] in
+            try await Task.sleep(for: .seconds(20))
+            guard let self, self.phase == .stopping, self.run === run else { return }
+            self.notice = "Stop timed out at: \(self.stopStage). Ready to record again."
+            self.run = nil
+            self.phase = .idle
+        }
         await tearDown(run, writeFile: run.localOnly)
+        watchdog.cancel()
+        guard self.run === run else { return }  // the watchdog already reset the state
         self.run = nil
         phase = .idle
         refreshLocalSessions()
@@ -293,18 +305,25 @@ final class AppModel {
     // MARK: Teardown
 
     private func tearDown(_ run: Run, writeFile: Bool) async {
+        stopStage = "stopping mic and system capture"
         run.mic.stop()
         run.system?.stop()
+        stopStage = "flushing audio pipelines"
         for pipeline in run.pipelines.values { pipeline.finish() }
         run.sink.continuation.finish()
+        stopStage = "storing remaining audio"
         await run.consumer?.value
+        stopStage = "finishing on-device transcription"
         for transcriber in run.transcribers { await transcriber.finish() }
         run.emissions.continuation.finish()
+        stopStage = "delivering last drafts"
         await run.emissionTask?.value
         if let connection = run.connection {
+            stopStage = "ending the server session"
             await connection.end()
             run.store.detach()
         }
+        stopStage = "closing the outbox"
         await run.outbox.close()
         if let activity = run.activity { ProcessInfo.processInfo.endActivity(activity) }
         run.activity = nil
