@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.9.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.8.0...server-v0.9.0) (2026-10-11)
+
+
+### Features
+
+* publish, merge and manage Jarvis Live notes in git (capture parity) ([8bb86f0](https://github.com/lordmuffin/jarvis-voice/commit/8bb86f04d5eab973822e1d949d47b5e5d6f632b1))
+* **server:** allow several Pocket-ID groups to sign in ([8533608](https://github.com/lordmuffin/jarvis-voice/commit/85336087adbe26a491ce530a2e7c07b09a805cc3))
+* **server:** allow several Pocket-ID groups to sign in ([f8cb28b](https://github.com/lordmuffin/jarvis-voice/commit/f8cb28b00979c44a1b2ba14f686daf66d1f0f22f))
+* **server:** publish notes to the vault repo, edit and regenerate them ([0e70d62](https://github.com/lordmuffin/jarvis-voice/commit/0e70d6220ae0355ce290875c31f95e352e88cc92))
+
 ## [0.8.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.2...server-v0.8.0) (2026-10-11)
 
 

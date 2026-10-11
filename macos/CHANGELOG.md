@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.5.0...macos-v0.5.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **macos:** bound LiveConnection.end so Stop never leaves the app stuck in stopping ([c04be6c](https://github.com/lordmuffin/jarvis-voice/commit/c04be6c7b3e7a585ce32bffd453601d99c2bf6ea))
+* **macos:** don't get stuck in "stopping" after Stop Session ([b479f62](https://github.com/lordmuffin/jarvis-voice/commit/b479f6218041f4f189d93a336850deb8e187d1d4))
+
 ## [0.5.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.4.0...macos-v0.5.0) (2026-10-11)
 
 
