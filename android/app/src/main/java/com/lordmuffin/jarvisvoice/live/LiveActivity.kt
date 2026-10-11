@@ -134,8 +134,6 @@ class LiveActivity : AppCompatActivity() {
         // Finish online sessions a crash or network loss left behind.
         LiveUploadWorker.enqueueInterrupted(this, LiveSessionService.ui.value.sessionId)
         if (!settings.isConfigured) swLocalOnly.isChecked = true
-        btnHistory.isEnabled = settings.isConfigured
-        btnHistory.alpha = if (settings.isConfigured) 1f else 0.5f
     }
 
     private fun onStartTapped() {
