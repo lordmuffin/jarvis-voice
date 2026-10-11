@@ -369,6 +369,11 @@ class SettingsActivity : AppCompatActivity() {
         etUrl.setText(live.serverUrl)
         if (live.isConfigured) etToken.hint = getString(R.string.live_settings_token_saved)
 
+        findViewById<SwitchCompat>(R.id.switch_live_away)?.let { sw ->
+            sw.isChecked = live.awayMode.enabled
+            sw.setOnCheckedChangeListener { _, checked -> live.awayMode = live.awayMode.withEnabled(checked) }
+        }
+
         fun validUrl(text: String) = text.startsWith("https://") || text.startsWith("http://")
         fun updateSignInEnabled() {
             btnSignIn.isEnabled = validUrl(etUrl.text.toString().trim())

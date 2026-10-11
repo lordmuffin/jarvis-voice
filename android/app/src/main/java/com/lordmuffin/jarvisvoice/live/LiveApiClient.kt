@@ -12,6 +12,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
@@ -46,6 +47,23 @@ class LiveApiClient(
     /** Checks the URL and token: `GET /v1/sessions?limit=1`. */
     suspend fun ping() {
         execute(request(url("v1/sessions").newBuilder().addQueryParameter("limit", "1").build()).get().build())
+    }
+
+    /**
+     * `GET /healthz` within [PROBE_TIMEOUT_S]: can this network reach the server at all? Any
+     * failure is false. Checks the body so a captive portal answering 200 doesn't count.
+     */
+    suspend fun isReachable(): Boolean = withContext(Dispatchers.IO) {
+        val client = http.newBuilder().callTimeout(PROBE_TIMEOUT_S, TimeUnit.SECONDS).build()
+        try {
+            client.newCall(Request.Builder().url(url("healthz")).get().build()).execute().use { res ->
+                res.isSuccessful && JSONObject(res.body?.string().orEmpty()).optString("status") == "ok"
+            }
+        } catch (e: IOException) {
+            false
+        } catch (e: JSONException) {
+            false
+        }
     }
 
     /** `GET /v1/me`: who the device token belongs to. */
@@ -164,6 +182,9 @@ class LiveApiClient(
 
     companion object {
         private val JSON = "application/json".toMediaType()
+
+        /** Away, the server's address usually times out rather than refusing; don't wait long. */
+        const val PROBE_TIMEOUT_S = 4L
 
         fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)

@@ -128,4 +128,23 @@ class LiveApiClientTest {
         assertEquals("PATCH", req.method)
         assertEquals("New name", JSONObject(req.body.readUtf8()).getString("title"))
     }
+
+    @Test fun reachableWhenHealthzSaysOk() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setBody("""{"status": "ok"}"""))
+        assertTrue(client.isReachable())
+        val req = server.takeRequest()
+        assertEquals("/healthz", req.path)
+    }
+
+    @Test fun unreachableOnAnythingElse() = runBlocking<Unit> {
+        // A captive portal's login page, a proxy error, then nothing listening at all.
+        server.enqueue(MockResponse().setBody("<html>Sign in to Hotel Wi-Fi</html>"))
+        assertFalse(client.isReachable())
+        server.enqueue(MockResponse().setResponseCode(502).setBody("""{"status": "ok"}"""))
+        assertFalse(client.isReachable())
+        val gone = MockWebServer().apply { start() }
+        val url = gone.url("/").toString()
+        gone.shutdown()
+        assertFalse(LiveApiClient(url, "tok-123").isReachable())
+    }
 }

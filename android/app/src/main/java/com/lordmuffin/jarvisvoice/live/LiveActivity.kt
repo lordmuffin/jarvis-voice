@@ -35,6 +35,7 @@ import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /** The Record tab: start/stop a session, watch the transcript and copilot, manage pending uploads. */
@@ -42,6 +43,7 @@ class LiveActivity : AppCompatActivity() {
 
     private lateinit var settings: LiveSettings
     private lateinit var repo: SessionRepository
+    private lateinit var networkMonitor: NetworkPlaceMonitor
 
     private lateinit var tvStatus: TextView
     private lateinit var tvMessage: TextView
@@ -50,6 +52,7 @@ class LiveActivity : AppCompatActivity() {
     private lateinit var rgMode: RadioGroup
     private lateinit var etTitle: EditText
     private lateinit var swLocalOnly: SwitchCompat
+    private lateinit var tvNetwork: TextView
     private lateinit var btnStart: Button
     private lateinit var btnHistory: Button
     private lateinit var tvPendingHeader: TextView
@@ -66,6 +69,9 @@ class LiveActivity : AppCompatActivity() {
 
     private var copilotExpanded = true
     private var lastPending: List<SessionMeta> = emptyList()
+    /** Set while [renderAwayMode] moves the switch, so it doesn't count as the user's choice. */
+    private var settingSwitch = false
+    private var checkingNetwork = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -74,6 +80,7 @@ class LiveActivity : AppCompatActivity() {
         BottomNav.wire(this, BottomNav.Tab.RECORD)
         settings = LiveSettings(this)
         repo = SessionRepository(settings.sessionsRoot)
+        networkMonitor = NetworkPlaceMonitor(this)
 
         tvStatus = findViewById(R.id.tv_live_status)
         tvMessage = findViewById(R.id.tv_live_message)
@@ -82,6 +89,7 @@ class LiveActivity : AppCompatActivity() {
         rgMode = findViewById(R.id.rg_live_mode)
         etTitle = findViewById(R.id.et_live_title)
         swLocalOnly = findViewById(R.id.sw_live_local_only)
+        tvNetwork = findViewById(R.id.tv_live_network)
         btnStart = findViewById(R.id.btn_live_start)
         btnHistory = findViewById(R.id.btn_live_history)
         tvPendingHeader = findViewById(R.id.tv_live_pending_header)
@@ -99,6 +107,11 @@ class LiveActivity : AppCompatActivity() {
         rvTranscript.adapter = adapter
 
         btnStart.setOnClickListener { onStartTapped() }
+        swLocalOnly.setOnCheckedChangeListener { _, checked ->
+            if (settingSwitch || !settings.isConfigured) return@setOnCheckedChangeListener
+            settings.awayMode = settings.awayMode.withManual(checked)
+            renderAwayMode()
+        }
         btnHistory.setOnClickListener { startActivity(Intent(this, SessionsActivity::class.java)) }
         findViewById<Button>(R.id.btn_live_stop).setOnClickListener { LiveSessionService.stop(this) }
         findViewById<Button>(R.id.btn_live_marker).setOnClickListener {
@@ -114,6 +127,14 @@ class LiveActivity : AppCompatActivity() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { LiveSessionService.ui.collect { render(it) } }
+                launch {
+                    // A burst of network callbacks settles into one check; a newer change
+                    // cancels a check still waiting on the server.
+                    networkMonitor.changes().collectLatest {
+                        delay(NETWORK_SETTLE_MS)
+                        checkNetwork()
+                    }
+                }
                 launch {
                     // Timer and pending list (upload workers update metadata in the background).
                     while (true) {
@@ -133,7 +154,21 @@ class LiveActivity : AppCompatActivity() {
         super.onResume()
         // Finish online sessions a crash or network loss left behind.
         LiveUploadWorker.enqueueInterrupted(this, LiveSessionService.ui.value.sessionId)
-        if (!settings.isConfigured) swLocalOnly.isChecked = true
+        renderAwayMode()
+    }
+
+    /** Away from home and off NetBird → Local only, unless the user chose otherwise. */
+    private suspend fun checkNetwork() {
+        if (!settings.isConfigured || !settings.awayMode.enabled) return renderAwayMode()
+        checkingNetwork = true
+        renderAwayMode()
+        try {
+            val place = networkMonitor.check(settings.apiClient())
+            settings.awayMode = settings.awayMode.withPlace(place)
+        } finally {
+            checkingNetwork = false
+            renderAwayMode()
+        }
     }
 
     private fun onStartTapped() {
@@ -157,6 +192,35 @@ class LiveActivity : AppCompatActivity() {
     }
 
     // region Rendering
+
+    private fun renderAwayMode() {
+        val away = settings.awayMode
+        settingSwitch = true
+        swLocalOnly.isChecked = !settings.isConfigured || away.localOnly
+        settingSwitch = false
+        val label = awayLabel(away)
+        tvNetwork.text = label
+        tvNetwork.visibility = if (label == null) View.GONE else View.VISIBLE
+    }
+
+    private fun awayLabel(away: AutoLocalOnly): String? {
+        if (!settings.isConfigured || !away.enabled) return null
+        val where = when (away.place) {
+            NetworkPlace.HOME -> R.string.live_away_home
+            NetworkPlace.NETBIRD -> R.string.live_away_netbird
+            NetworkPlace.AWAY -> R.string.live_away_away
+            null -> return getString(R.string.live_away_checking)
+        }
+        val what = when {
+            away.manual != null && away.automatic == true -> R.string.live_away_manual_until_back
+            away.manual != null -> R.string.live_away_manual_until_leave
+            away.localOnly -> R.string.live_away_local
+            else -> R.string.live_away_streaming
+        }
+        return listOfNotNull(
+            getString(where), getString(what), if (checkingNetwork) getString(R.string.live_away_rechecking) else null,
+        ).joinToString(" · ")
+    }
 
     private fun render(state: LiveUiState) {
         val idle = state.phase == LiveUiState.Phase.IDLE
@@ -319,5 +383,6 @@ class LiveActivity : AppCompatActivity() {
 
     private companion object {
         const val REQ_MIC = 7101
+        const val NETWORK_SETTLE_MS = 750L
     }
 }
