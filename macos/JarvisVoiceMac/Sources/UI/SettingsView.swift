@@ -1,3 +1,4 @@
+import JarvisLiveKit
 import SwiftUI
 
 struct SettingsView: View {
@@ -15,6 +16,14 @@ struct SettingsView: View {
                     Text("Enter an http(s) URL.").font(.caption).foregroundStyle(.red)
                 }
                 Text("The token is stored in the Keychain.").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("Away from home") {
+                Toggle("Local only away from home", isOn: Binding(
+                    get: { settings.awayMode.enabled },
+                    set: { settings.awayMode = settings.awayMode.withEnabled($0) }
+                ))
+                Text("Records on this Mac when the server can\u{2019}t be reached and NetBird is off. Flip Local only in the menu to override until you next leave or get home.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Input") {
                 Picker("Microphone", selection: $settings.inputDeviceUID) {
@@ -60,6 +69,9 @@ struct SettingsView: View {
             model.dictation.refreshTrust()
         }
         .onChange(of: settings.dictationKey) { model.dictation.startMonitoring() }
+        .onChange(of: settings.serverURL) { model.recheckNetwork() }
+        .onChange(of: settings.deviceToken) { model.recheckNetwork() }
+        .onChange(of: settings.awayMode.enabled) { model.recheckNetwork() }
         .onChange(of: settings.dictationMode) { model.dictation.startMonitoring() }
     }
 }
