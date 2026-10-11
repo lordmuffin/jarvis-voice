@@ -1,10 +1,9 @@
-# live.apj.dev: the live channel's PRIMARY hostname, promoted from live.lab.apj.dev
-# (np-home-homelab docs/service-promotion.md). The base Ingress keeps serving
-# live.lab.apj.dev as a second name for the same Service while the promotion
-# dual-serves; it is redirected, then retired, in later phases.
+# live.apj.dev: the live channel's only hostname, promoted from live.lab.apj.dev
+# (np-home-homelab docs/service-promotion.md). Live no longer answers on
+# live.lab.apj.dev: that host now belongs to the lab channel
+# (../jarvis-live-lab/ingress.yaml).
 #
-# Live overlay only: lab stays on live-next.lab.apj.dev and must never answer on
-# a live host (Deploy CI checks).
+# Live overlay only: lab must never answer on a live host (Deploy CI checks).
 #
 # TLS is the shared *.apj.dev wildcard. The `jarvis-live` namespace MUST be in
 # BOTH reflector namespace lists in np-home-homelab

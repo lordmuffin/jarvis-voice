@@ -5,7 +5,7 @@ name: Server Image
 # Deploying is GitOps from this repo: the cluster's Flux follows two branches,
 # each applying one overlay of server/deploy/k8s (see server/deploy/README.md):
 #
-#   deploy/lab   -> k8s/jarvis-live-lab, live-next.lab.apj.dev. Every push to main
+#   deploy/lab   -> k8s/jarvis-live-lab, live.lab.apj.dev. Every push to main
 #                   builds :sha-<7>, and `deploy-lab` moves deploy/lab to that commit
 #                   plus one generated commit pinning the lab overlay to that image.
 #   deploy/live  -> k8s/jarvis-live, live.apj.dev. The release PR (release-please)
@@ -274,7 +274,7 @@ jobs:
     uses: ./.github/workflows/notify-gotify.yml
     with:
       title: "jarvis-live [lab] sha-${{ needs.deploy-lab.outputs.short || inputs.lab_sha || github.sha }} ${{ needs.deploy-lab.result == 'success' && 'deploying' || 'NOT deployed' }}"
-      message: "deploy/lab: **${{ needs.deploy-lab.result }}**. live-next.lab.apj.dev updates within a couple of minutes."
+      message: "deploy/lab: **${{ needs.deploy-lab.result }}**. live.lab.apj.dev updates within a couple of minutes."
       priority: ${{ needs.deploy-lab.result == 'success' && 3 || 8 }}
       url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     secrets: inherit

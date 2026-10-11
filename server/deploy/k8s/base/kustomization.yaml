@@ -1,11 +1,12 @@
 # jarvis-live, shared by both release channels. Not applied on its own: Flux
 # applies an overlay, which sets the namespace and adds its Namespace object.
 #
-#   ../jarvis-live/      live channel: namespace jarvis-live, live.apj.dev (plus
-#                        live.lab.apj.dev while the promotion dual-serves),
+#   ../jarvis-live/      live channel: namespace jarvis-live, live.apj.dev,
 #                        image pinned by release-please (deployment.yaml).
 #   ../jarvis-live-lab/  lab channel: namespace jarvis-live-lab,
-#                        live-next.lab.apj.dev, image = the main commit being tested.
+#                        live.lab.apj.dev, image = the main commit being tested.
+#
+# No Ingress here: each channel owns its host, so each overlay brings its own.
 #
 # See server/deploy/README.md §Release channels.
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -19,5 +20,4 @@ resources:
   - pvc-vault-clone.yaml
   - deployment.yaml
   - service.yaml
-  - ingress.yaml
   - cronjob-vault-clone.yaml

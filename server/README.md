@@ -24,7 +24,7 @@ In Pocket-ID, create an OIDC client:
 
 | Setting | Value |
 |---|---|
-| Callback URL | `https://live.apj.dev/auth/callback` (that is, `<public_base_url>/auth/callback`). The lab channel adds `https://live-next.lab.apj.dev/auth/callback` to the same client. |
+| Callback URL | `https://live.apj.dev/auth/callback` (that is, `<public_base_url>/auth/callback`). The lab channel adds `https://live.lab.apj.dev/auth/callback` to the same client. |
 | Public client | off (the server keeps a client secret) |
 | PKCE | on |
 | Allowed groups | optional, see `OIDC_ALLOWED_GROUPS` below |
