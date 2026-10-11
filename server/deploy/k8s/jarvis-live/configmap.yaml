@@ -1,0 +1,75 @@
+# Endpoints live here rather than in the image so a backend can move without a
+# rebuild. In-cluster Service names only: scripts/ci/validate-model-profiles.py
+# fails the build on a hardcoded DGX NodePort literal.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jarvis-live-config
+  labels:
+    app: jarvis-live
+data:
+  # Ordered Whisper backends (`<name> <endpoint> <model>`); first reachable wins.
+  # Same tier names and semantics as capture-pipeline's WHISPER_TIERS.
+  #   spark     vllm-whisper on the DGX Spark (jarvis-ai). Down whenever the
+  #             Spark's active profile parks the whisper role.
+  #   pve       speaches (faster-whisper large-v3) on pve's RTX 2070 -- the
+  #             everyday tier while the Spark runs a whisper-less profile.
+  #   gamingpc  whisper.cpp on andrew-gamingpc; up only under its `whisper` profile.
+  JARVIS_LIVE_WHISPER_TIERS: |
+    spark     http://vllm-role-whisper.jarvis-ai.svc.cluster.local:8000/v1   whisper-large-v3
+    pve       http://speaches.speech.svc.cluster.local:8000/v1               Systran/faster-whisper-large-v3
+    gamingpc  http://whisper-cpp.jarvis.svc.cluster.local:8080/v1            whisper-large-v3
+
+  # LiteLLM fronts every chat model; aliases are defined in np-home-homelab apps/ai/litellm-proxy.yaml.
+  # The app reads LITELLM_BASE_URL; unset, the copilot and the final note never run.
+  JARVIS_LIVE_LITELLM_BASE_URL: "http://litellm-proxy-service.open-webui.svc.cluster.local:4000/v1"
+  JARVIS_LIVE_COPILOT_MODEL: "fast-chat"
+  JARVIS_LIVE_FINAL_MODEL: "heavy"
+
+  JARVIS_LIVE_GOTIFY_URL: "http://gotify.gotify.svc.cluster.local"
+  # Also the base of the Pocket ID callback (<url>/auth/callback); https makes the
+  # web session cookie Secure.
+  JARVIS_LIVE_PUBLIC_BASE_URL: "https://live.lab.apj.dev"
+
+  # Sign-in with Pocket ID (client: np-home-homelab scripts/pocket-id-client/apps.d/jarvis-live.json,
+  # credentials: secret-oidc.yaml). See np-home-homelab docs/jarvis-live.md §Users and sign-in.
+  JARVIS_LIVE_OIDC_ISSUER: "https://pocket-id.apj.dev"
+  JARVIS_LIVE_OIDC_CLIENT_SECRET_FILE: "/secrets/oidc/client_secret"
+  # Admins see every user's sessions. Only these groups may sign in (comma list;
+  # needs server >= 0.8.1, older images ignore it and let any Pocket ID user in).
+  JARVIS_LIVE_OIDC_ADMIN_GROUP: "homelab-admins"
+  JARVIS_LIVE_OIDC_ALLOWED_GROUPS: "homelab-admins,family"
+  # The first sign-in with this verified email claims the owner account: every
+  # device and session from before there were users. The owner alone gets the
+  # vault context and Gotify notifications, and notes at the outbox root.
+  # JARVIS_LIVE_OWNER_EMAIL is set by np-home-homelab's ai-jarvis-live Flux
+  # Kustomization (spec.patches), not here: this repository is public.
+
+  # Apply DB migrations on startup (needs a server image that has the setting; older
+  # images ignore it). Safe only at replicas: 1 -- there is no migration lock.
+  JARVIS_LIVE_AUTO_MIGRATE: "true"
+
+  JARVIS_LIVE_DATA_DIR: "/data"
+  JARVIS_LIVE_INDEX_DIR: "/index"
+  # Finished notes. The owner's go to the outbox root, other users' to
+  # outbox/<username>/. (Mounted at /capture for historical reasons: the retired
+  # vault-writer CronJob read $CAPTURE_ROOT/outbox.) Notes stay here after they are
+  # published; the dashboard reads, edits and regenerates them in place.
+  JARVIS_LIVE_OUTBOX_DIR: "/capture/outbox"
+  JARVIS_LIVE_VAULT_CLONE_DIR: "/vault/repo"
+  JARVIS_LIVE_AUDIO_RETENTION_DAYS: "90"
+
+  # Publishing notes to the vault (needs a server image with publishing; older
+  # images ignore these). The app opens one branch + PR per session against main
+  # through the GitHub API with notes-vault-pat (Contents + Pull requests RW), and
+  # the owner/admins merge or close it from the dashboard or on GitHub. Only the
+  # owner's and admins' own notes are published. See np-home-homelab docs/jarvis-live.md §Publishing.
+  JARVIS_LIVE_PUBLISH_REPO: "lordmuffin/Notes"
+  JARVIS_LIVE_GITHUB_TOKEN_FILE: "/secrets/github/password"
+  JARVIS_LIVE_PUBLISH_BASE_BRANCH: "main"
+  JARVIS_LIVE_PUBLISH_SUBDIR: "00 Inbox/Live Sessions"
+  # Same prefix the retired vault-writer CronJob used: distinct from capture's
+  # capture/..., and reserved for this app (it resets a leftover branch of its own).
+  JARVIS_LIVE_PUBLISH_BRANCH_PREFIX: "jarvis-live/"
+  JARVIS_LIVE_PUBLISH_MERGE_METHOD: "squash"

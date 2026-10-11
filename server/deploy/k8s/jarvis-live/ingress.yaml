@@ -1,0 +1,45 @@
+# live.lab.apj.dev, on the shared *.lab.apj.dev wildcard cert. The `jarvis-live`
+# namespace MUST be in BOTH reflector namespace lists in
+# np-home-homelab apps/networking/certmanager/resources/lab-apj-dev.yaml, or lab-apj-dev-tls never
+# materializes here and Traefik serves its default cert.
+#
+# DO NOT add a router.middlewares annotation for traefik-pocket-id-forward-auth.
+# forwardAuth fails closed on every path, and this host carries a WebSocket
+# (audio in / live transcript out) and a bearer-token API that non-browser clients
+# call -- neither can complete an SSO redirect. Auth is app-native: the app is its
+# own Pocket ID client (web session cookie, Android sign-in) plus per-device bearer
+# tokens (see np-home-homelab docs/jarvis-live.md). Same reasoning as gotify and open-webui.
+#
+# Websockets need no special Traefik config: it preserves Host and upgrades
+# natively. No external-dns .../target annotation (that is for bare apj.dev hosts).
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jarvis-live
+  labels:
+    app: jarvis-live
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    external-dns.alpha.kubernetes.io/hostname: live.lab.apj.dev
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+    external-dns.alpha.kubernetes.io/ttl: "120"
+spec:
+  # MUST be traefik-traefik; bare `traefik` does not match.
+  ingressClassName: traefik-traefik
+  rules:
+    - host: live.lab.apj.dev
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jarvis-live
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - live.lab.apj.dev
+      secretName: lab-apj-dev-tls

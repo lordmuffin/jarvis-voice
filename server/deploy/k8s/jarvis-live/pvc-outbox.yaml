@@ -1,0 +1,23 @@
+# Notes the app has finished: outbox/*.md (owner) and outbox/<username>/*.md. The
+# app publishes them to the vault as PRs itself and keeps them here afterwards (the
+# dashboard reads and edits them), so this is NOT disposable.
+#
+# ReadWriteMany is a leftover of the retired vault-writer CronJob, which mounted it
+# alongside the app; kept as is, since changing accessModes means a new PVC.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jarvis-live-outbox
+  annotations:
+    # Never pruned by Flux: freenas-nfs-csi is reclaimPolicy Delete, so removing
+    # this object (a moved path, a deleted file) would destroy its data.
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    app: jarvis-live
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: freenas-nfs-csi
+  resources:
+    requests:
+      storage: 1Gi

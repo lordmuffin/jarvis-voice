@@ -1,0 +1,42 @@
+name: Deploy CI
+
+# The jarvis-live Kubernetes manifests that Flux applies from the deploy/live branch
+# (see server/deploy/README.md). Catch a broken render or a drifted image pin on the
+# PR, not in the cluster.
+
+on:
+  pull_request:
+    paths: ["server/deploy/**", "release-please-config.json", ".release-please-manifest.json", ".github/workflows/deploy-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["server/deploy/**", "release-please-config.json", ".release-please-manifest.json", ".github/workflows/deploy-ci.yml"]
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Render
+        run: kubectl kustomize server/deploy/k8s/jarvis-live > /dev/null
+
+      - name: Image pin matches the server version
+        run: |
+          version=$(jq -r .server .release-please-manifest.json)
+          want="image: ghcr.io/lordmuffin/jarvis-live:${version} # x-release-please-version"
+          if ! grep -qF "$want" server/deploy/k8s/jarvis-live/deployment.yaml; then
+            echo "::error file=server/deploy/k8s/jarvis-live/deployment.yaml::expected the line \`$want\` (release-please bumps it; the marker must stay)"
+            exit 1
+          fi
+
+      - name: Stateful objects are never pruned
+        run: |
+          # freenas-nfs-csi PVCs are reclaimPolicy Delete: a Flux prune destroys data.
+          bad=$(kubectl kustomize server/deploy/k8s/jarvis-live | yq '
+            select((.kind == "PersistentVolumeClaim" or .kind == "Namespace")
+                   and .metadata.annotations["kustomize.toolkit.fluxcd.io/prune"] != "disabled")
+            | .kind + "/" + .metadata.name')
+          if [ -n "$bad" ]; then
+            echo "::error::missing kustomize.toolkit.fluxcd.io/prune: disabled on: $bad"
+            exit 1
+          fi
