@@ -41,10 +41,16 @@ enum TriggerKey: String, CaseIterable, Identifiable, Sendable {
 }
 
 enum TriggerMode: String, CaseIterable, Identifiable, Sendable {
-    case hold, tap
+    case hold, tap, doubleTap
 
     var id: String { rawValue }
-    var title: String { self == .hold ? "Hold to talk" : "Tap to start, tap to stop" }
+    var title: String {
+        switch self {
+        case .hold: "Hold to talk"
+        case .tap: "Tap to start, tap to stop"
+        case .doubleTap: "Double-tap to start, tap to stop"
+        }
+    }
 }
 
 /// Turns presses of a lone modifier key into dictation actions, without AppKit so it can be tested.
@@ -52,14 +58,17 @@ enum TriggerMode: String, CaseIterable, Identifiable, Sendable {
 /// The key only counts when nothing else happens while it is down: any other key, modifier or
 /// mouse button makes the press a chord (⌘C, ⌘-click), which never starts dictation and cancels a
 /// hold that already began. Whether dictation is running is the controller's business, so a tap
-/// reports `.toggle` and the controller decides between starting and stopping.
+/// reports `.toggle` (or, in double-tap mode, `.tap` and `.doubleTap`) and the controller decides
+/// between starting and stopping.
 struct DictationTrigger: Sendable {
-    enum Action: Equatable, Sendable { case begin, commit, cancel, toggle }
+    enum Action: Equatable, Sendable { case begin, commit, cancel, toggle, tap, doubleTap }
 
     /// Hold mode starts listening only after this long, so ordinary ⌘ shortcuts never open the mic.
     static let holdThreshold: TimeInterval = 0.2
     /// Tap mode: a longer press is not a tap.
     static let tapMaxDuration: TimeInterval = 0.35
+    /// Double-tap mode: the longest gap between releasing the first tap and pressing the second.
+    static let doubleTapGap: TimeInterval = 0.4
     /// Timer slack when `tick` fires right at the threshold.
     private static let tolerance: TimeInterval = 0.01
 
@@ -68,6 +77,8 @@ struct DictationTrigger: Sendable {
     private(set) var pressedAt: TimeInterval?
     private var chorded = false
     private var began = false
+    /// Double-tap mode: when the last lone tap was released, while it can still open a double tap.
+    private var lastTapAt: TimeInterval?
 
     init(key: TriggerKey, mode: TriggerMode) {
         self.key = key
@@ -101,11 +112,23 @@ struct DictationTrigger: Sendable {
             return began ? .commit : nil
         case .tap:
             return !chorded && time - pressedAt <= Self.tapMaxDuration ? .toggle : nil
+        case .doubleTap:
+            guard !chorded, time - pressedAt <= Self.tapMaxDuration else {
+                lastTapAt = nil
+                return nil
+            }
+            if let lastTapAt, pressedAt - lastTapAt <= Self.doubleTapGap {
+                self.lastTapAt = nil
+                return .doubleTap
+            }
+            lastTapAt = time
+            return .tap
         }
     }
 
-    /// Any other key, modifier or mouse button.
+    /// Any other key, modifier or mouse button. Between two taps it also breaks the double tap.
     mutating func otherInput() -> Action? {
+        lastTapAt = nil
         guard pressedAt != nil else { return nil }
         chorded = true
         guard began else { return nil }

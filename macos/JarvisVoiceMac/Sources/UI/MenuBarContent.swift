@@ -113,7 +113,11 @@ struct MenuBarContent: View {
 
     private var dictationHint: String {
         let key = model.settings.dictationKey.title
-        return model.settings.dictationMode == .hold ? "hold \(key)" : "tap \(key)"
+        switch model.settings.dictationMode {
+        case .hold: return "hold \(key)"
+        case .tap: return "tap \(key)"
+        case .doubleTap: return "double-tap \(key)"
+        }
     }
 
     private var sttText: String {
