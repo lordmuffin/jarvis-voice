@@ -95,8 +95,9 @@ async def sign_in(
     sessionmaker: "async_sessionmaker[AsyncSession]", claims: Claims, settings: Settings
 ) -> User:
     """Find or create the user for verified ID-token claims and refresh their profile."""
-    if settings.oidc_allowed_group and settings.oidc_allowed_group not in claims.groups:
-        raise SignInDenied(f"not a member of {settings.oidc_allowed_group!r}")
+    allowed = {g.strip() for g in settings.oidc_allowed_groups.split(",") if g.strip()}
+    if allowed and not allowed & claims.groups:
+        raise SignInDenied(f"not a member of any of {sorted(allowed)}")
     now = datetime.now(UTC)
     async with sessionmaker() as db:
         user = (
