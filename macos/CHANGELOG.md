@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.5.1...macos-v0.6.0) (2026-10-11)
+
+
+### Features
+
+* **macos:** on-device push-to-talk dictation on Right ⌘ with clipboard + paste ([03f7c69](https://github.com/lordmuffin/jarvis-voice/commit/03f7c69d9dd13936c3416f8a8ae63edd1517ff59))
+* **macos:** on-device push-to-talk dictation on Right ⌘ with clipboard + paste ([41a6d4b](https://github.com/lordmuffin/jarvis-voice/commit/41a6d4b9bf7afecfac9c97e2977fdb704efa149a))
+
 ## [0.5.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.5.0...macos-v0.5.1) (2026-10-11)
 
 

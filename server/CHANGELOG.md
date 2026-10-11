@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.10.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.10.0...server-v0.10.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **server,android:** fix Pocket-ID admin group name and say which account sign-in refused ([e813152](https://github.com/lordmuffin/jarvis-voice/commit/e813152c72f42dfe75fe5d7b0f9df1a22e576c69))
+* **server,android:** say which account Jarvis Live refused at sign-in ([dc74a90](https://github.com/lordmuffin/jarvis-voice/commit/dc74a90676414ce798b9e54f017b1b91233bfa63))
+* **server:** log the groups a refused sign-in actually had ([25e3839](https://github.com/lordmuffin/jarvis-voice/commit/25e3839a2b24abf04c302e9d57e0c82ecdce9ac7))
+* **server:** use the Pocket-ID group "admins", not "homelab-admins" ([7c1be50](https://github.com/lordmuffin/jarvis-voice/commit/7c1be50468927c056504198c4654324452355edd))
+
 ## [0.10.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.9.0...server-v0.10.0) (2026-10-11)
 
 
