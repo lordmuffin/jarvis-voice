@@ -5,10 +5,10 @@ Flux applies them from this repository, as two release channels:
 
 | Channel | Runs | Host | Namespace | Overlay | Branch Flux follows |
 |---|---|---|---|---|---|
-| **live** | the latest release (`server-vX.Y.Z`) | `live.apj.dev` (also `live.lab.apj.dev` until its promotion retires it) | `jarvis-live` | `k8s/jarvis-live/` | `deploy/live` |
-| **lab** | the latest commit on `main` | `live-next.lab.apj.dev` | `jarvis-live-lab` | `k8s/jarvis-live-lab/` | `deploy/lab` |
+| **live** | the latest release (`server-vX.Y.Z`) | `live.apj.dev` | `jarvis-live` | `k8s/jarvis-live/` | `deploy/live` |
+| **lab** | the latest commit on `main` | `live.lab.apj.dev` | `jarvis-live-lab` | `k8s/jarvis-live-lab/` | `deploy/lab` |
 
-Both overlays share `k8s/base/`. Live is what you depend on. Lab is where a change runs for
+Both overlays share `k8s/base/`; each brings its own Ingress. Live is what you depend on. Lab is where a change runs for
 real first, against real Postgres, real Whisper and real clients, before a release
 vouches for it. Lab may be broken at any time.
 
@@ -22,8 +22,8 @@ vouches for it. Lab may be broken at any time.
    to that commit plus one generated commit (`chore(deploy): lab -> sha-<7>`) that pins the
    lab overlay to that image. Flux (`ai-jarvis-live-lab`) rolls lab a minute or two later,
    and lab's own database takes any new migration first. Gotify reports it as `[lab]`.
-3. **Use lab.** Point a client at `https://live-next.lab.apj.dev` and record real sessions.
-   Check `curl https://live-next.lab.apj.dev/healthz` for the version and channel. Meanwhile
+3. **Use lab.** Point a client at `https://live.lab.apj.dev` and record real sessions.
+   Check `curl https://live.lab.apj.dev/healthz` for the version and channel. Meanwhile
    the release PR collects the changes.
 4. **The release PR** (release-please's `chore: release main`) is the promotion PR. Besides
    the version and changelog, it bumps the image tag in `k8s/base/deployment.yaml` (the
@@ -61,7 +61,7 @@ what live owns. *Deploy CI* enforces each of these:
 - **No writes to the vault.** Lab doesn't get `notes-vault-pat` and has publishing off
   (no `PUBLISH_REPO`), so it can never open or merge a PR on `lordmuffin/Notes`. It still
   has a read-only vault clone for search context.
-- **Its own host, marked as lab.** Lab is at `live-next.lab.apj.dev` and has
+- **Its own host, marked as lab.** Lab is at `live.lab.apj.dev` and has
   `JARVIS_LIVE_ENVIRONMENT=lab`. The dashboard shows a LAB badge and Gotify titles start
   with `[lab]`.
 - **Admins only.** `OIDC_ALLOWED_GROUPS` is the admin group.

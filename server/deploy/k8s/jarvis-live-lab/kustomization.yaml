@@ -1,4 +1,4 @@
-# jarvis-live, lab channel: the unstable instance at live-next.lab.apj.dev.
+# jarvis-live, lab channel: the unstable instance at live.lab.apj.dev (ingress.yaml).
 #
 # Flux applies this path from the deploy/lab branch, which the Server Image workflow
 # moves on every push to main (server/deploy/README.md §Release channels). That
@@ -19,6 +19,7 @@ namespace: jarvis-live-lab
 resources:
   - namespace.yaml
   - ../base
+  - ingress.yaml
 images:
   - name: ghcr.io/lordmuffin/jarvis-live
     newTag: sha-0000000
@@ -30,7 +31,7 @@ patches:
         value: lab
       - op: replace
         path: /data/JARVIS_LIVE_PUBLIC_BASE_URL
-        value: https://live-next.lab.apj.dev
+        value: https://live.lab.apj.dev
       - op: replace
         path: /data/JARVIS_LIVE_OIDC_ALLOWED_GROUPS
         value: admins
@@ -38,17 +39,6 @@ patches:
         path: /data/JARVIS_LIVE_PUBLISH_REPO
       - op: remove
         path: /data/JARVIS_LIVE_GITHUB_TOKEN_FILE
-  - target: {kind: Ingress, name: jarvis-live}
-    patch: |
-      - op: replace
-        path: /metadata/annotations/external-dns.alpha.kubernetes.io~1hostname
-        value: live-next.lab.apj.dev
-      - op: replace
-        path: /spec/rules/0/host
-        value: live-next.lab.apj.dev
-      - op: replace
-        path: /spec/tls/0/hosts/0
-        value: live-next.lab.apj.dev
   - target: {kind: PersistentVolumeClaim, name: jarvis-live-data}
     patch: |
       - op: replace

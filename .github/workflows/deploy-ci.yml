@@ -59,5 +59,9 @@ jobs:
           check "lab publishes" "$(yq 'select(.kind == "ConfigMap") | .data | to_entries | .[] | select(.key == "JARVIS_LIVE_PUBLISH_REPO" or .key == "JARVIS_LIVE_GITHUB_TOKEN_FILE") | .key' lab.yaml)"
           check "lab uses live's database" "$(grep -n 'name: jarvis-live-db-app' lab.yaml || true)"
           check "lab does not say it is lab" "$(yq 'select(.kind == "ConfigMap") | select(.data.JARVIS_LIVE_ENVIRONMENT != "lab") | .metadata.name' lab.yaml)"
-          check "lab serves live's host" "$(grep -nE '\blive\.(lab\.)?apj\.dev' lab.yaml || true)"
+          # The channels' hosts never overlap: every name an Ingress routes, holds a
+          # cert for or asks external-dns for, and lab never points at live's host.
+          hosts() { yq 'select(.kind == "Ingress") | (.spec.rules[].host, .spec.tls[].hosts[], .metadata.annotations["external-dns.alpha.kubernetes.io/hostname"] | split(",") | .[])' "$1" | sort -u; }
+          check "lab serves live's host" "$(comm -12 <(hosts live.yaml) <(hosts lab.yaml))"
+          check "lab points at live's host" "$(grep -nE '\blive\.apj\.dev' lab.yaml || true)"
           exit "$fail"

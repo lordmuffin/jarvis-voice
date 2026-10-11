@@ -1,8 +1,8 @@
 # jarvis-live, live channel: live-session transcription / copilot service. See
 # np-home-homelab docs/jarvis-live.md. Flux applies this path from the deploy/live
 # branch, which moves only when a server-v* release is promoted (server/deploy/README.md).
-# Everything but the Namespace and the promoted live.apj.dev Ingress is in ../base,
-# shared with the lab channel.
+# Everything but the Namespace and the live.apj.dev Ingress is in ../base, shared
+# with the lab channel.
 #
 # Own namespace (not jarvis-ai, which is created by a bare-metal workflow and must
 # never be pruned by Flux -- see np-home-homelab apps/ai/model-dashboard/kustomization.yaml).
