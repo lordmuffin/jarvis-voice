@@ -22,9 +22,21 @@ jobs:
       - run: swift build
       - run: swift test
 
+  # The menu-bar app: generated from project.yml with XcodeGen, built unsigned (no
+  # Local.xcconfig). Catches a broken app build here rather than at release time.
+  jarvis-voice-mac:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: macos/JarvisVoiceMac
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: make build
+
   notify-failure:
     if: failure() && github.ref == 'refs/heads/main'
-    needs: jarvis-live-kit
+    needs: [jarvis-live-kit, jarvis-voice-mac]
     uses: ./.github/workflows/notify-gotify.yml
     with:
       title: "macOS CI failed on main"
