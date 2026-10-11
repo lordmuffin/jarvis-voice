@@ -29,8 +29,9 @@ data:
 
   JARVIS_LIVE_GOTIFY_URL: "http://gotify.gotify.svc.cluster.local"
   # Also the base of the Pocket ID callback (<url>/auth/callback); https makes the
-  # web session cookie Secure.
-  JARVIS_LIVE_PUBLIC_BASE_URL: "https://live.lab.apj.dev"
+  # web session cookie Secure. Every host it names needs its callback registered in
+  # np-home-homelab scripts/pocket-id-client/apps.d/jarvis-live.json, or sign-in fails.
+  JARVIS_LIVE_PUBLIC_BASE_URL: "https://live.apj.dev"
 
   # Sign-in with Pocket ID (client: np-home-homelab scripts/pocket-id-client/apps.d/jarvis-live.json,
   # credentials: secret-oidc.yaml). See np-home-homelab docs/jarvis-live.md §Users and sign-in.
