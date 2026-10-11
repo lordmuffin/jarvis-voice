@@ -5,6 +5,7 @@ import XCTest
 final class DictationTriggerTests: XCTestCase {
     private let hold = DictationTrigger.holdThreshold
     private let tapMax = DictationTrigger.tapMaxDuration
+    private let gap = DictationTrigger.doubleTapGap
 
     // MARK: Hold
 
@@ -85,6 +86,74 @@ final class DictationTriggerTests: XCTestCase {
         _ = trigger.keyDown(at: 10)
         XCTAssertNil(trigger.otherInput())
         XCTAssertNil(trigger.keyUp(at: 10.1))
+    }
+
+    // MARK: Double tap
+
+    func testDoubleTapReportsTapThenDoubleTap() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        XCTAssertNil(trigger.keyDown(at: 10))
+        XCTAssertNil(trigger.tick(at: 10 + hold), "double-tap mode ignores the hold timer")
+        XCTAssertEqual(trigger.keyUp(at: 10.1), .tap)
+        _ = trigger.keyDown(at: 10.1 + gap - 0.05)
+        XCTAssertEqual(trigger.keyUp(at: 10.2 + gap - 0.05), .doubleTap)
+    }
+
+    func testTapAfterDoubleTapIsASingleTap() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        _ = trigger.keyDown(at: 10)
+        _ = trigger.keyUp(at: 10.1)
+        _ = trigger.keyDown(at: 10.2)
+        XCTAssertEqual(trigger.keyUp(at: 10.3), .doubleTap)
+        _ = trigger.keyDown(at: 10.4)
+        XCTAssertEqual(trigger.keyUp(at: 10.5), .tap, "a double tap doesn't open another one")
+        _ = trigger.keyDown(at: 10.6)
+        XCTAssertEqual(trigger.keyUp(at: 10.7), .doubleTap)
+    }
+
+    func testSlowSecondTapIsASingleTap() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        _ = trigger.keyDown(at: 10)
+        XCTAssertEqual(trigger.keyUp(at: 10.1), .tap)
+        _ = trigger.keyDown(at: 10.1 + gap + 0.05)
+        XCTAssertEqual(trigger.keyUp(at: 10.2 + gap + 0.05), .tap)
+    }
+
+    func testLongPressBreaksADoubleTap() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        _ = trigger.keyDown(at: 10)
+        _ = trigger.keyUp(at: 10.1)
+        _ = trigger.keyDown(at: 10.2)
+        XCTAssertNil(trigger.keyUp(at: 10.2 + tapMax + 0.05))
+        _ = trigger.keyDown(at: 10.7)
+        XCTAssertEqual(trigger.keyUp(at: 10.8), .tap, "the long press doesn't leave a tap behind")
+    }
+
+    func testInputBetweenTapsBreaksADoubleTap() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        _ = trigger.keyDown(at: 10)
+        _ = trigger.keyUp(at: 10.1)
+        XCTAssertNil(trigger.otherInput(), "typing a letter after the tap")
+        _ = trigger.keyDown(at: 10.2)
+        XCTAssertEqual(trigger.keyUp(at: 10.3), .tap)
+    }
+
+    func testChordIsNotADoubleTap() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        _ = trigger.keyDown(at: 10)
+        _ = trigger.keyUp(at: 10.1)
+        _ = trigger.keyDown(at: 10.2)
+        XCTAssertNil(trigger.otherInput(), "⌘C right after a tap")
+        XCTAssertNil(trigger.keyUp(at: 10.3))
+    }
+
+    func testEscapeCancelsInDoubleTapMode() {
+        var trigger = DictationTrigger(key: .rightCommand, mode: .doubleTap)
+        _ = trigger.keyDown(at: 10)
+        _ = trigger.keyUp(at: 10.1)
+        XCTAssertEqual(trigger.escape(), .cancel)
+        _ = trigger.keyDown(at: 10.2)
+        XCTAssertEqual(trigger.keyUp(at: 10.3), .tap, "Esc also breaks a double tap")
     }
 
     // MARK: Keys

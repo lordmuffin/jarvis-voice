@@ -13,7 +13,7 @@ import Observation
 final class DictationController {
     enum State: Equatable { case idle, listening, finishing }
 
-    /// Stops a forgotten tap-mode dictation so the mic doesn't stay open.
+    /// Stops a forgotten tap- or double-tap-mode dictation so the mic doesn't stay open.
     private static let maxDuration: Duration = .seconds(300)
     /// Longest wait after the key is released for the analyzer to start, and then to finish.
     private static let finishTimeout: Duration = .seconds(15)
@@ -36,6 +36,9 @@ final class DictationController {
     @ObservationIgnored private var assetsTask: Task<Void, Never>?
     /// Bumped whenever a dictation ends early, so its in-flight tasks stand down.
     @ObservationIgnored private var generation = 0
+    /// Double-tap mode: the last lone tap came while idle, so the double tap it opens may start.
+    /// A tap that stopped dictation never does, so double-tapping to stop doesn't start it again.
+    @ObservationIgnored private var tapMayStart = false
 
     init(settings: SettingsModel) {
         self.settings = settings
@@ -87,6 +90,12 @@ final class DictationController {
         case .commit: commit()
         case .cancel: cancel()
         case .toggle: state == .idle ? begin() : commit()
+        case .tap:
+            tapMayStart = state == .idle
+            if state == .listening { commit() }
+        case .doubleTap:
+            if tapMayStart { begin() }
+            tapMayStart = false
         }
     }
 
