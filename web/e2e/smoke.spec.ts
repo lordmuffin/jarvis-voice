@@ -283,3 +283,22 @@ test("publishing: edit a note, open its pull request, merge it", async ({ page }
     .first();
   await expect(recent.getByTestId("publication-chip")).toHaveText(/Merged/);
 });
+
+test("lab: LAB next to the wordmark, signed out and in; nothing on live", async ({ page }) => {
+  // This server is live: no tag.
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Jarvis Live" })).toBeVisible();
+  await expect(page.getByTestId("release-channel")).toHaveCount(0);
+
+  // The same app, told it is the lab server.
+  await page.route("**/healthz", (route) =>
+    route.fulfill({ json: { status: "ok", environment: "lab", version: "0.0.0" } }),
+  );
+  await page.goto("/");
+  const heading = page.getByRole("heading", { name: "Jarvis Live" });
+  await expect(heading.getByTestId("release-channel")).toHaveText("lab");
+  await expect(heading.getByTestId("release-channel")).toHaveCSS("text-transform", "uppercase");
+  await signIn(page, "alice");
+  const brand = page.getByRole("banner").getByRole("link", { name: /Jarvis Live/ });
+  await expect(brand.getByTestId("release-channel")).toBeVisible();
+});

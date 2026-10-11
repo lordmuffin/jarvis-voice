@@ -1,4 +1,4 @@
-import { me, releaseChannel, route, signOut } from "./store";
+import { me, route, signOut } from "./store";
 import type { Route } from "./route";
 import { Admin } from "./views/Admin";
 import { Devices } from "./views/Devices";
@@ -7,6 +7,7 @@ import { Login } from "./views/Login";
 import { Publishing } from "./views/Publishing";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
+import { Wordmark } from "./views/Wordmark";
 
 function page(r: Route) {
   switch (r.name) {
@@ -39,17 +40,8 @@ export function App() {
     <div class="shell">
       <header class="bar">
         <Link class="brand" href="/">
-          Jarvis Live
+          <Wordmark />
         </Link>
-        {releaseChannel.value && (
-          <span
-            class="release-channel"
-            data-testid="release-channel"
-            title={`This is the ${releaseChannel.value} server, not live`}
-          >
-            {releaseChannel.value}
-          </span>
-        )}
         <nav class="nav" aria-label="Main">
           <Link class="nav-link" href="/" aria-current={current("sessions")}>
             Sessions
