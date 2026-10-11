@@ -38,8 +38,8 @@ data:
   JARVIS_LIVE_OIDC_CLIENT_SECRET_FILE: "/secrets/oidc/client_secret"
   # Admins see every user's sessions. Only these groups may sign in (comma list;
   # needs server >= 0.8.1, older images ignore it and let any Pocket ID user in).
-  JARVIS_LIVE_OIDC_ADMIN_GROUP: "homelab-admins"
-  JARVIS_LIVE_OIDC_ALLOWED_GROUPS: "homelab-admins,family"
+  JARVIS_LIVE_OIDC_ADMIN_GROUP: "admins"
+  JARVIS_LIVE_OIDC_ALLOWED_GROUPS: "admins,family"
   # The first sign-in with this verified email claims the owner account: every
   # device and session from before there were users. The owner alone gets the
   # vault context and Gotify notifications, and notes at the outbox root.

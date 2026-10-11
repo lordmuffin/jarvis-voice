@@ -25,6 +25,10 @@ _SLUG_UNSAFE = re.compile(r"[^a-z0-9._-]+")
 class SignInDenied(Exception):
     """The identity provider vouched for the user, but this deployment does not let them in."""
 
+    def __init__(self, reason: str, account: str) -> None:
+        super().__init__(reason)
+        self.account = account  # email or name, so the user can tell which account was refused
+
 
 @dataclass(frozen=True)
 class Claims:
@@ -97,7 +101,10 @@ async def sign_in(
     """Find or create the user for verified ID-token claims and refresh their profile."""
     allowed = {g.strip() for g in settings.oidc_allowed_groups.split(",") if g.strip()}
     if allowed and not allowed & claims.groups:
-        raise SignInDenied(f"not a member of any of {sorted(allowed)}")
+        raise SignInDenied(
+            f"groups {sorted(claims.groups)} include none of {sorted(allowed)}",
+            account=claims.email or claims.name,
+        )
     now = datetime.now(UTC)
     async with sessionmaker() as db:
         user = (
