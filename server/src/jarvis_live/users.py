@@ -102,7 +102,8 @@ async def sign_in(
     allowed = {g.strip() for g in settings.oidc_allowed_groups.split(",") if g.strip()}
     if allowed and not allowed & claims.groups:
         raise SignInDenied(
-            f"not a member of any of {sorted(allowed)}", account=claims.email or claims.name
+            f"groups {sorted(claims.groups)} include none of {sorted(allowed)}",
+            account=claims.email or claims.name,
         )
     now = datetime.now(UTC)
     async with sessionmaker() as db:
