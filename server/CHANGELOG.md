@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.10.1...server-v0.11.0) (2026-10-11)
+
+
+### Features
+
+* **server:** lab release channel ahead of live ([66853a6](https://github.com/lordmuffin/jarvis-voice/commit/66853a6eb72cfe9d0d8ea74fa2622dac6fe59057))
+* **server:** lab release channel ahead of live ([58b7c91](https://github.com/lordmuffin/jarvis-voice/commit/58b7c91eaeda4a70765155479c19a9d1d98009a4))
+
 ## [0.10.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.10.0...server-v0.10.1) (2026-10-11)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.10.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.2...android-v1.10.0) (2026-10-11)
+
+
+### Features
+
+* **android:** turn on Local only automatically away from home ([9849075](https://github.com/lordmuffin/jarvis-voice/commit/9849075c87fd7ede9346ee35f00a18ef9789f9af))
+* turn on Local only automatically away from home (Android + macOS) ([a33ef5d](https://github.com/lordmuffin/jarvis-voice/commit/a33ef5dc6a07334cd11658233773b96d7c06077f))
+
 ## [1.9.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.1...android-v1.9.2) (2026-10-11)
 
 
