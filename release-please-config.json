@@ -7,7 +7,7 @@
     "server": {
       "release-type": "python", "package-name": "server", "component": "server",
       "extra-files": [
-        { "type": "generic", "path": "deploy/k8s/jarvis-live/deployment.yaml" },
+        { "type": "generic", "path": "deploy/k8s/base/deployment.yaml" },
         { "type": "toml", "path": "uv.lock", "jsonpath": "$.package[?(@.name.value=='jarvis-live')].version" }
       ]
     },

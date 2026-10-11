@@ -1,13 +1,22 @@
 name: Server Image
 
-# Build the jarvis-live image, and on a server-v* release tag deploy it.
+# Build the jarvis-live image and move the two release channels.
 #
-# Deploying is GitOps from this repo: the cluster's Flux follows the branch
-# `deploy/live` and applies server/deploy/k8s/jarvis-live from it. The release PR
-# (release-please) bumps the image tag in those manifests; merging it tags
-# server-vX.Y.Z, this workflow builds and pushes :X.Y.Z, and only then `promote`
-# moves deploy/live to that commit -- so Flux never sees a tag before its image
-# exists. Roll back (or re-deploy) with "Run workflow" and an earlier tag.
+# Deploying is GitOps from this repo: the cluster's Flux follows two branches,
+# each applying one overlay of server/deploy/k8s (see server/deploy/README.md):
+#
+#   deploy/lab   -> k8s/jarvis-live-lab, live-next.lab.apj.dev. Every push to main
+#                   builds :sha-<7>, and `deploy-lab` moves deploy/lab to that commit
+#                   plus one generated commit pinning the lab overlay to that image.
+#   deploy/live  -> k8s/jarvis-live, live.lab.apj.dev. The release PR (release-please)
+#                   bumps the image tag; merging it pushes the release commit to main
+#                   (so lab gets it first) and tags server-vX.Y.Z. `promote` waits
+#                   until lab has that exact commit, gives its image the :X.Y.Z tag --
+#                   the same digest, not a rebuild -- and only then moves deploy/live,
+#                   so Flux never sees a tag before its image exists.
+#
+# "Run workflow" redeploys either channel: `tag` (an earlier server-v* release) rolls
+# live back; `lab_sha` (a commit on main) puts lab on that commit.
 
 on:
   pull_request:
@@ -19,8 +28,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release to deploy, e.g. server-v0.9.0 (its image must already be built)"
-        required: true
+        description: "Live: release to deploy, e.g. server-v0.9.0 (its image must already exist)"
+        required: false
+        type: string
+      lab_sha:
+        description: "Lab: commit on main to deploy (its sha-<7> image must already exist)"
+        required: false
         type: string
 
 env:
@@ -28,37 +41,20 @@ env:
 
 jobs:
   build:
-    if: github.event_name != 'workflow_dispatch'
+    # Release tags are not rebuilt: promote retags the image lab already ran.
+    if: github.event_name != 'workflow_dispatch' && github.ref_type != 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    outputs:
-      digest: ${{ steps.push.outputs.digest }}
-      version: ${{ steps.tags.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Compute tags
+      - name: Compute tag
         id: tags
         env:
-          REF_NAME: ${{ github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
           SHA: ${{ github.sha }}
-        run: |
-          short="${SHA::7}"
-          tags="${IMAGE}:sha-${short}"
-          version=""
-          if [ "$REF_TYPE" = "tag" ]; then
-            version="${REF_NAME#server-v}"
-            tags="${IMAGE}:${version}"$'\n'"${tags}"
-          fi
-          {
-            echo "version=${version}"
-            echo "tags<<EOF"
-            echo "$tags"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+        run: echo "tag=${IMAGE}:sha-${SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -71,7 +67,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build${{ github.event_name != 'pull_request' && ' and push' || '' }}
-        id: push
         uses: docker/build-push-action@v6
         with:
           context: server
@@ -83,32 +78,113 @@ jobs:
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
-          tags: ${{ steps.tags.outputs.tags }}
+          tags: ${{ steps.tags.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Smoke test (read-only root)
         if: github.event_name == 'pull_request'
         env:
-          SHA: ${{ github.sha }}
+          TAG: ${{ steps.tags.outputs.tag }}
         run: |
           docker run --rm --read-only --tmpfs /tmp \
             -e JARVIS_LIVE_DATA_DIR=/tmp/data -e JARVIS_LIVE_INDEX_DIR=/tmp/idx \
-            "${IMAGE}:sha-${SHA::7}" python -c "import jarvis_live.app"
-          docker run --rm "${IMAGE}:sha-${SHA::7}" test -f /app/web/dist/index.html
+            "$TAG" python -c "import jarvis_live.app"
+          docker run --rm "$TAG" test -f /app/web/dist/index.html
 
-  promote:
-    # After the image is pushed (release tag), or on its own (workflow_dispatch).
+  deploy-lab:
+    # Every main push whose image built, or "Run workflow" with lab_sha.
     if: >-
       !cancelled()
-      && (needs.build.result == 'success' || needs.build.result == 'skipped')
-      && ((github.ref_type == 'tag' && startsWith(github.ref_name, 'server-v'))
-          || github.event_name == 'workflow_dispatch')
+      && ((github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.result == 'success')
+          || (github.event_name == 'workflow_dispatch' && inputs.lab_sha != '' && inputs.tag == ''))
     needs: build
     runs-on: ubuntu-latest
+    # One move of deploy/lab at a time, in order; never cancel one half-way.
+    concurrency:
+      group: deploy-lab
+      cancel-in-progress: false
     permissions:
       contents: write
       packages: read
+    outputs:
+      short: ${{ steps.resolve.outputs.short }}
+      moved: ${{ steps.move.outputs.moved }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the commit
+        id: resolve
+        env:
+          REQUESTED: ${{ inputs.lab_sha || github.sha }}
+        run: |
+          sha=$(git rev-parse --verify "${REQUESTED}^{commit}")
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::${REQUESTED} is not on main; lab only runs merged code"
+            exit 1
+          fi
+          if ! git cat-file -e "${sha}:server/deploy/k8s/jarvis-live-lab/kustomization.yaml" 2>/dev/null; then
+            echo "::error::${sha::7} predates the lab channel (no server/deploy/k8s/jarvis-live-lab)"
+            exit 1
+          fi
+          {
+            echo "sha=${sha}"
+            echo "short=${sha::7}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the image exists
+        env:
+          SHORT: ${{ steps.resolve.outputs.short }}
+        run: docker manifest inspect "${IMAGE}:sha-${SHORT}" > /dev/null
+
+      - name: Move deploy/lab
+        id: move
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+          SHORT: ${{ steps.resolve.outputs.short }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # A push whose build finished after a newer commit's did must not drag lab
+          # backwards. ("Run workflow" may, on purpose.)
+          if [ "$EVENT" = push ] && git rev-parse -q --verify origin/deploy/lab > /dev/null; then
+            current=$(git rev-parse origin/deploy/lab^1)
+            if [ "$current" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$current"; then
+              echo "::notice::deploy/lab is already on newer ${current::7}; leaving it"
+              echo "moved=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          git checkout -q --detach "$SHA"
+          overlay=server/deploy/k8s/jarvis-live-lab
+          NEW_TAG="sha-${SHORT}" yq -i \
+            '(.images[] | select(.name == strenv(IMAGE))).newTag = strenv(NEW_TAG)' \
+            "${overlay}/kustomization.yaml"
+          kubectl kustomize "$overlay" | grep -qF "image: ${IMAGE}:sha-${SHORT}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "chore(deploy): lab -> sha-${SHORT}" -- "${overlay}/kustomization.yaml"
+          git push --force origin "HEAD:refs/heads/deploy/lab"
+          echo "moved=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::deploy/lab -> ${SHORT}; Flux applies it within a couple of minutes"
+
+  promote:
+    # A release tag (after lab has run it), or "Run workflow" with tag (rollback).
+    if: >-
+      (github.ref_type == 'tag' && startsWith(github.ref_name, 'server-v'))
+      || (github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.lab_sha == '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
     outputs:
       tag: ${{ steps.resolve.outputs.tag }}
     steps:
@@ -124,10 +200,16 @@ jobs:
           case "$TAG" in server-v*) ;; *) echo "::error::$TAG is not a server-v* tag"; exit 1 ;; esac
           sha=$(git rev-parse --verify "refs/tags/${TAG}^{commit}")
           version="${TAG#server-v}"
-          manifest=server/deploy/k8s/jarvis-live/deployment.yaml
-          # The manifests at that commit must pin exactly this release's image.
-          if ! git show "${sha}:${manifest}" 2>/dev/null | grep -Eq "image: ${IMAGE}:${version}( |$)"; then
-            echo "::error::${manifest} at ${TAG} does not pin ${IMAGE}:${version} (releases before the manifests moved here cannot be deployed this way)"
+          # The manifests at that commit must pin exactly this release's image
+          # (k8s/base since the lab channel; k8s/jarvis-live before it).
+          pinned=false
+          for manifest in server/deploy/k8s/base/deployment.yaml server/deploy/k8s/jarvis-live/deployment.yaml; do
+            if git show "${sha}:${manifest}" 2>/dev/null | grep -Eq "image: ${IMAGE}:${version}( |$)"; then
+              pinned=true
+            fi
+          done
+          if [ "$pinned" != true ]; then
+            echo "::error::the manifests at ${TAG} do not pin ${IMAGE}:${version} (releases before the manifests moved here cannot be deployed this way)"
             exit 1
           fi
           {
@@ -143,6 +225,36 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Wait for lab to run this commit
+        if: github.ref_type == 'tag'
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          # The release commit is also a push to main: its build makes :sha-<7> and
+          # deploy-lab puts it on lab. Live only ever gets a commit lab has had.
+          for _ in $(seq 1 50); do
+            git fetch -q origin deploy/lab 2>/dev/null || true
+            if docker manifest inspect "${IMAGE}:sha-${SHA::7}" > /dev/null 2>&1 \
+               && git rev-parse -q --verify origin/deploy/lab > /dev/null \
+               && git merge-base --is-ancestor "$SHA" origin/deploy/lab; then
+              echo "lab has ${SHA::7}"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::after 25 minutes lab still does not have ${SHA::7} (did its main build or deploy-lab fail?). Fix that, then re-run this job."
+          exit 1
+
+      - uses: docker/setup-buildx-action@v3
+        if: github.ref_type == 'tag'
+
+      - name: Tag lab's image as the release
+        if: github.ref_type == 'tag'
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: docker buildx imagetools create -t "${IMAGE}:${VERSION}" "${IMAGE}:sha-${SHA::7}"
+
       - name: Check the image exists
         env:
           VERSION: ${{ steps.resolve.outputs.version }}
@@ -156,9 +268,20 @@ jobs:
           git push --force origin "${SHA}:refs/heads/deploy/live"
           echo "::notice::deploy/live -> ${TAG} (${SHA::7}); Flux applies it within a couple of minutes"
 
-  notify:
+  notify-lab:
+    if: ${{ !cancelled() && needs.deploy-lab.result != 'skipped' && needs.deploy-lab.outputs.moved != 'false' }}
+    needs: deploy-lab
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-live [lab] sha-${{ needs.deploy-lab.outputs.short || inputs.lab_sha || github.sha }} ${{ needs.deploy-lab.result == 'success' && 'deploying' || 'NOT deployed' }}"
+      message: "deploy/lab: **${{ needs.deploy-lab.result }}**. live-next.lab.apj.dev updates within a couple of minutes."
+      priority: ${{ needs.deploy-lab.result == 'success' && 3 || 8 }}
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit
+
+  notify-live:
     if: ${{ !cancelled() && needs.promote.result != 'skipped' }}
-    needs: [build, promote]
+    needs: promote
     uses: ./.github/workflows/notify-gotify.yml
     with:
       title: "jarvis-live ${{ needs.promote.outputs.tag || inputs.tag || github.ref_name }} ${{ needs.promote.result == 'success' && 'deploying' || 'NOT deployed' }}"

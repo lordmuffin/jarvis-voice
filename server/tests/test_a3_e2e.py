@@ -103,5 +103,5 @@ async def test_settings_driven_wiring_starts_and_builds_the_vault_index(
         finalize_recover_max_age_s=0,
     )
     async with httpx.AsyncClient() as c:
-        assert (await c.get(f"{server.url}/healthz")).json() == {"status": "ok"}
+        assert (await c.get(f"{server.url}/healthz")).json()["status"] == "ok"
     await eventually(lambda: (tmp_path / "index" / "vault.sqlite").exists())

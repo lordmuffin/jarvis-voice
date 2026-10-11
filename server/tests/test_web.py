@@ -45,7 +45,7 @@ def test_missing_files_404_instead_of_index(client: TestClient) -> None:
 
 
 def test_api_routes_win_and_unknown_api_paths_404(client: TestClient) -> None:
-    assert client.get("/healthz").json() == {"status": "ok"}
+    assert client.get("/healthz").json()["status"] == "ok"
     r = client.get("/v1/nope")
     assert r.status_code == 404
     assert "<title>" not in r.text

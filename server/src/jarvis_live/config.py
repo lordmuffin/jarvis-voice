@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     # by hand. Run with a single replica: concurrent upgrades are not serialised.
     auto_migrate: bool = False
     log_level: str = "info"
+    # Release channel this instance runs as: "live" (the stable instance) or e.g. "lab"
+    # (the unstable one fed from main; server/deploy/README.md). Anything but "live" is
+    # marked as such: in /healthz, the dashboard header and Gotify titles.
+    environment: str = "live"
     data_dir: Path = Path("/data")
 
     # Ingest
@@ -132,8 +136,20 @@ class Settings(BaseSettings):
     publish_reconcile_interval_s: float = 300.0
 
     @property
+    def notify_title_prefix(self) -> str:
+        return "" if self.environment == "live" else f"[{self.environment}] "
+
+    @property
     def publish_enabled(self) -> bool:
         return bool(self.publish_repo and self.github_token_file)
+
+    @field_validator("environment")
+    @classmethod
+    def _channel_name(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not v:
+            raise ValueError("environment must not be empty")
+        return v
 
     @field_validator("publish_subdir")
     @classmethod

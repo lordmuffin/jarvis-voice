@@ -45,3 +45,20 @@ def test_publish_subdir_and_repo_are_normalised() -> None:
     assert s.publish_repo == "o/r"
     with pytest.raises(ValueError, match="owner/name"):
         Settings(publish_repo="just-a-name")
+
+
+def test_environment_defaults_to_live_with_no_title_prefix() -> None:
+    assert Settings().environment == "live"
+    assert Settings().notify_title_prefix == ""
+
+
+def test_non_live_environment_prefixes_notification_titles(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JARVIS_LIVE_ENVIRONMENT", " Lab ")
+    s = Settings()
+    assert s.environment == "lab"
+    assert s.notify_title_prefix == "[lab] "
+
+
+def test_environment_must_not_be_empty() -> None:
+    with pytest.raises(ValueError):
+        Settings(environment=" ")

@@ -1,4 +1,4 @@
-import { me, route, signOut } from "./store";
+import { me, releaseChannel, route, signOut } from "./store";
 import type { Route } from "./route";
 import { Admin } from "./views/Admin";
 import { Devices } from "./views/Devices";
@@ -41,6 +41,15 @@ export function App() {
         <Link class="brand" href="/">
           Jarvis Live
         </Link>
+        {releaseChannel.value && (
+          <span
+            class="release-channel"
+            data-testid="release-channel"
+            title={`This is the ${releaseChannel.value} server, not live`}
+          >
+            {releaseChannel.value}
+          </span>
+        )}
         <nav class="nav" aria-label="Main">
           <Link class="nav-link" href="/" aria-current={current("sessions")}>
             Sessions

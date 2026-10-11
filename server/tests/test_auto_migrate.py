@@ -25,7 +25,7 @@ def test_migrations_run_at_startup_when_enabled(
 ) -> None:
     handle = make_server(auto_migrate=True)
     assert migrations == [postgres_url]
-    assert httpx.get(f"{handle.url}/healthz").json() == {"status": "ok"}
+    assert httpx.get(f"{handle.url}/healthz").json()["status"] == "ok"
 
 
 def test_migrations_are_not_run_by_default(

@@ -1,8 +1,9 @@
 name: Deploy CI
 
-# The jarvis-live Kubernetes manifests that Flux applies from the deploy/live branch
-# (see server/deploy/README.md). Catch a broken render or a drifted image pin on the
-# PR, not in the cluster.
+# The jarvis-live Kubernetes manifests that Flux applies: the live overlay from the
+# deploy/live branch, the lab overlay from deploy/lab (see server/deploy/README.md).
+# Catch a broken render, a drifted image pin or a lab that could write to the vault
+# on the PR, not in the cluster.
 
 on:
   pull_request:
@@ -18,25 +19,45 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Render
-        run: kubectl kustomize server/deploy/k8s/jarvis-live > /dev/null
+        run: |
+          kubectl kustomize server/deploy/k8s/jarvis-live > live.yaml
+          kubectl kustomize server/deploy/k8s/jarvis-live-lab > lab.yaml
 
       - name: Image pin matches the server version
         run: |
           version=$(jq -r .server .release-please-manifest.json)
           want="image: ghcr.io/lordmuffin/jarvis-live:${version} # x-release-please-version"
-          if ! grep -qF "$want" server/deploy/k8s/jarvis-live/deployment.yaml; then
-            echo "::error file=server/deploy/k8s/jarvis-live/deployment.yaml::expected the line \`$want\` (release-please bumps it; the marker must stay)"
+          if ! grep -qF "$want" server/deploy/k8s/base/deployment.yaml; then
+            echo "::error file=server/deploy/k8s/base/deployment.yaml::expected the line \`$want\` (release-please bumps it; the marker must stay)"
             exit 1
           fi
 
       - name: Stateful objects are never pruned
         run: |
           # freenas-nfs-csi PVCs are reclaimPolicy Delete: a Flux prune destroys data.
-          bad=$(kubectl kustomize server/deploy/k8s/jarvis-live | yq '
-            select((.kind == "PersistentVolumeClaim" or .kind == "Namespace")
-                   and .metadata.annotations["kustomize.toolkit.fluxcd.io/prune"] != "disabled")
-            | .kind + "/" + .metadata.name')
-          if [ -n "$bad" ]; then
-            echo "::error::missing kustomize.toolkit.fluxcd.io/prune: disabled on: $bad"
-            exit 1
-          fi
+          for f in live.yaml lab.yaml; do
+            bad=$(yq '
+              select((.kind == "PersistentVolumeClaim" or .kind == "Namespace")
+                     and .metadata.annotations["kustomize.toolkit.fluxcd.io/prune"] != "disabled")
+              | .kind + "/" + .metadata.name' "$f")
+            if [ -n "$bad" ]; then
+              echo "::error::${f%.yaml}: missing kustomize.toolkit.fluxcd.io/prune: disabled on: $bad"
+              exit 1
+            fi
+          done
+
+      - name: Channels stay apart
+        run: |
+          fail=0
+          check() { if [ -n "$2" ]; then echo "::error::$1: $2"; fail=1; fi; }
+          # Every namespaced object lands in its channel's namespace.
+          check "live objects outside jarvis-live" "$(yq 'select(.kind != "Namespace" and .metadata.namespace != "jarvis-live") | .kind + "/" + .metadata.name' live.yaml)"
+          check "lab objects outside jarvis-live-lab" "$(yq 'select(.kind != "Namespace" and .metadata.namespace != "jarvis-live-lab") | .kind + "/" + .metadata.name' lab.yaml)"
+          # Lab runs unreleased code: it must hold no credential that writes the
+          # vault and must not publish (server/deploy/README.md §Release channels).
+          check "lab has the vault write PAT" "$(grep -n 'notes-vault-pat' lab.yaml || true)"
+          check "lab publishes" "$(yq 'select(.kind == "ConfigMap") | .data | to_entries | .[] | select(.key == "JARVIS_LIVE_PUBLISH_REPO" or .key == "JARVIS_LIVE_GITHUB_TOKEN_FILE") | .key' lab.yaml)"
+          check "lab uses live's database" "$(grep -n 'name: jarvis-live-db-app' lab.yaml || true)"
+          check "lab does not say it is lab" "$(yq 'select(.kind == "ConfigMap") | select(.data.JARVIS_LIVE_ENVIRONMENT != "lab") | .metadata.name' lab.yaml)"
+          check "lab serves live's host" "$(grep -n 'live\.lab\.apj\.dev' lab.yaml || true)"
+          exit "$fail"

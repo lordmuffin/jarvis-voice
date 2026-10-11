@@ -5,6 +5,7 @@ import {
   createDevice,
   editNote,
   getPublishing,
+  health,
   listSessions,
   loginUrl,
   logout,
@@ -154,5 +155,11 @@ describe("api", () => {
       url: "/v1/me",
       init: { method: "PATCH", body: '{"auto_publish":true}' },
     });
+  });
+
+  it("reads the release channel from /healthz", async () => {
+    const { f, calls } = fakeFetch(200, { status: "ok", environment: "lab", version: "0.11.0" });
+    expect((await health(f)).environment).toBe("lab");
+    expect(calls[0]).toMatchObject({ url: "/healthz" });
   });
 });

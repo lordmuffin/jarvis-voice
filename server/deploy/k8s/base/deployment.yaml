@@ -6,7 +6,8 @@
 #
 # The image tag is the server version. release-please bumps it (the
 # x-release-please-version marker) in the release PR, and merging that PR is the
-# deploy: see server/deploy/README.md. Do not hand-edit it.
+# deploy: see server/deploy/README.md. Do not hand-edit it. The lab overlay
+# (../jarvis-live-lab) overrides it with the main commit under test.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -27,20 +28,21 @@ spec:
         app: jarvis-live
     spec:
       automountServiceAccountToken: false
-      # amd64-only image, and keep it off andrew-gamingpc (untainted, sleeps,
-      # wrong subnet for the NFS export). An exclusion rather than an allow-list,
-      # exactly as in np-home-homelab apps/ai/capture-pipeline.
+      # Single replica on an RWO volume: losing the node is losing the service, so
+      # only the critical-stateful allowlist (the six lxc-k3s2-* nodes; never a
+      # bare-metal GPU host) is eligible. np-home-homelab docs/node-scheduling.md §1.
+      # amd64-only image as well.
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
+                  - key: homelab.apj.dev/critical-stateful
+                    operator: In
+                    values: ["true"]
                   - key: kubernetes.io/arch
                     operator: In
                     values: ["amd64"]
-                  - key: kubernetes.io/hostname
-                    operator: NotIn
-                    values: ["andrew-gamingpc"]
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
