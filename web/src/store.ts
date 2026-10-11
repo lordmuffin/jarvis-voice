@@ -1,5 +1,5 @@
 import { signal } from "@preact/signals";
-import { ApiError, logout, me as fetchMe, onUnauthorized } from "./api";
+import { ApiError, health, logout, me as fetchMe, onUnauthorized } from "./api";
 import { parseRoute, type Route } from "./route";
 import type { Me } from "./types";
 
@@ -25,6 +25,19 @@ export async function loadMe(): Promise<void> {
     me.value = null;
     authError.value =
       e instanceof ApiError && e.status === 401 ? null : "Couldn't reach the server. Try again.";
+  }
+}
+
+/** The release channel when it is not "live" (e.g. "lab"), so an unstable server is never
+ * mistaken for the real one. null on live, or while unknown. */
+export const releaseChannel = signal<string | null>(null);
+
+export async function loadChannel(): Promise<void> {
+  try {
+    const env = (await health()).environment;
+    releaseChannel.value = env && env !== "live" ? env : null;
+  } catch {
+    /* an old server without the field, or offline: show nothing */
   }
 }
 

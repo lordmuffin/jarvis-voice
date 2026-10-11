@@ -1,5 +1,6 @@
 import type {
   AdminUser,
+  Health,
   Channel,
   Device,
   Me,
@@ -82,6 +83,8 @@ export function sessionsPath({ limit = 100, offset = 0, all, userId }: ListOptio
 }
 
 export const me = (f?: typeof fetch) => request<Me>("/v1/me", {}, f);
+
+export const health = (f?: typeof fetch) => request<Health>("/healthz", {}, f);
 
 /** End the browser session; the server clears the cookie. */
 export const logout = (f?: typeof fetch) => send("/auth/logout", { method: "POST" }, f);

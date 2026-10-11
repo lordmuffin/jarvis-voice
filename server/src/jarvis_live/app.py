@@ -1,4 +1,5 @@
 import asyncio
+import importlib.metadata
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -23,6 +24,13 @@ from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
+
+
+def _version() -> str:
+    try:
+        return importlib.metadata.version("jarvis-live")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
 
 
 def find_web_dist(cfg: Settings) -> Path | None:
@@ -137,7 +145,13 @@ def create_app(
                     cfg.litellm_base_url, client, api_key_file=cfg.litellm_api_key_file
                 ),
                 vault,
-                notifier or GotifyNotifier(cfg.gotify_url, cfg.gotify_token_file, client),
+                notifier
+                or GotifyNotifier(
+                    cfg.gotify_url,
+                    cfg.gotify_token_file,
+                    client,
+                    title_prefix=cfg.notify_title_prefix,
+                ),
                 on_final=publisher.on_note_ready,
             )
         hub = IngestHub(
@@ -195,10 +209,14 @@ def create_app(
     app.include_router(publishing.router)
     app.include_router(stream.router)
 
+    environment = (settings or get_settings()).environment
+    version = _version()
+
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
-        """Liveness: the process is up."""
-        return {"status": "ok"}
+        """Liveness: the process is up. Also says which release channel and version this
+        is, so lab and live can be told apart (and checked after a deploy)."""
+        return {"status": "ok", "environment": environment, "version": version}
 
     @app.get("/readyz")
     async def readyz() -> dict[str, str]:

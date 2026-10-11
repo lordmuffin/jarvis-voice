@@ -1,0 +1,13 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jarvis-live-lab
+  annotations:
+    # Never pruned by Flux: deleting the namespace deletes every PVC in it. Lab data
+    # is disposable, but resetting it is a deliberate step (server/deploy/README.md
+    # §Resetting lab), not a side effect of a moved path.
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted

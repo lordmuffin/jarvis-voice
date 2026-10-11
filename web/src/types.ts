@@ -199,6 +199,13 @@ export interface PublishingQueue {
 }
 
 /** The signed-in user (`GET /v1/me`). `device_id` is null for a browser. */
+/** GET /healthz: which release channel ("live", or e.g. "lab") and version this server is. */
+export interface Health {
+  status: string;
+  environment?: string;
+  version?: string;
+}
+
 export interface Me {
   id: string;
   email: string | null;

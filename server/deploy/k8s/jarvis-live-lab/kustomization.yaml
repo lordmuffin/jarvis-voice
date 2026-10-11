@@ -1,0 +1,91 @@
+# jarvis-live, lab channel: the unstable instance at live-next.lab.apj.dev.
+#
+# Flux applies this path from the deploy/lab branch, which the Server Image workflow
+# moves on every push to main (server/deploy/README.md §Release channels). That
+# branch is main plus one generated commit setting `images[0].newTag` below to the
+# commit's own image (sha-<7>); the placeholder here is never deployed.
+#
+# Lab runs code no release has vouched for, so it is fenced off from what live owns:
+#   - its own namespace, PVCs and Postgres database (jarvis_live_lab);
+#   - no write credential to the vault: notes-vault-pat is removed and publishing
+#     is off (no PUBLISH_REPO), so lab can never open PRs on lordmuffin/Notes. It
+#     still reads the vault through its own read-only clone, for search context;
+#   - only the admin group may sign in;
+#   - Gotify titles carry a [lab] prefix (JARVIS_LIVE_ENVIRONMENT).
+# It shares the Whisper tiers and LiteLLM with live.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: jarvis-live-lab
+resources:
+  - namespace.yaml
+  - ../base
+images:
+  - name: ghcr.io/lordmuffin/jarvis-live
+    newTag: sha-0000000
+patches:
+  - target: {kind: ConfigMap, name: jarvis-live-config}
+    patch: |
+      - op: add
+        path: /data/JARVIS_LIVE_ENVIRONMENT
+        value: lab
+      - op: replace
+        path: /data/JARVIS_LIVE_PUBLIC_BASE_URL
+        value: https://live-next.lab.apj.dev
+      - op: replace
+        path: /data/JARVIS_LIVE_OIDC_ALLOWED_GROUPS
+        value: admins
+      - op: remove
+        path: /data/JARVIS_LIVE_PUBLISH_REPO
+      - op: remove
+        path: /data/JARVIS_LIVE_GITHUB_TOKEN_FILE
+  - target: {kind: Ingress, name: jarvis-live}
+    patch: |
+      - op: replace
+        path: /metadata/annotations/external-dns.alpha.kubernetes.io~1hostname
+        value: live-next.lab.apj.dev
+      - op: replace
+        path: /spec/rules/0/host
+        value: live-next.lab.apj.dev
+      - op: replace
+        path: /spec/tls/0/hosts/0
+        value: live-next.lab.apj.dev
+  - target: {kind: PersistentVolumeClaim, name: jarvis-live-data}
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 10Gi
+  # No vault write PAT in lab at all, not merely unused.
+  - patch: |
+      $patch: delete
+      apiVersion: onepassword.com/v1
+      kind: OnePasswordItem
+      metadata:
+        name: notes-vault-pat
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: jarvis-live
+      spec:
+        template:
+          spec:
+            containers:
+              - name: jarvis-live
+                env:
+                  # Reflected from the postgres namespace (np-home-homelab
+                  # apps/secrets/external-secret-jarvis-live-lab-db.yaml).
+                  - name: JARVIS_LIVE_DATABASE_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: jarvis-live-lab-db-app
+                        key: connection
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 256Mi
+                volumeMounts:
+                  - mountPath: /secrets/github
+                    $patch: delete
+            volumes:
+              - name: github-token
+                $patch: delete

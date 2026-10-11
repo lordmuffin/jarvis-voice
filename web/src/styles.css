@@ -87,6 +87,16 @@ code,
   color: var(--text);
   text-decoration: none;
 }
+/* Release channel (lab): a state, so a state color and the word itself. */
+.release-channel {
+  padding: 2px 6px;
+  border: 1px solid var(--warning);
+  color: var(--warning);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
 .nav {
   display: flex;
   gap: 4px;
