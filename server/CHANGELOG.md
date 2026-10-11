@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.9.0...server-v0.10.0) (2026-10-11)
+
+
+### Features
+
+* **server:** deploy jarvis-live from this repo via Flux ([8fe9dcd](https://github.com/lordmuffin/jarvis-voice/commit/8fe9dcddcf3fc73d58c46780dd49aeb77adb1d40))
+* **server:** deploy jarvis-live from this repo via Flux ([66ed2ef](https://github.com/lordmuffin/jarvis-voice/commit/66ed2ef697eb73c3bbc1f3fbf9f641c8f333d683))
+
 ## [0.9.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.8.0...server-v0.9.0) (2026-10-11)
 
 
