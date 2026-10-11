@@ -1,0 +1,121 @@
+# jarvis-live-vault-clone: keep a shallow, READ-ONLY mirror of lordmuffin/Notes on
+# the jarvis-live-vault-clone PVC for the app to read.
+#
+# Uses notes-ro-pat (Contents: Read-only). This job can never push, so it cannot
+# touch the vault regardless of what the script does; the write path is the
+# separate vault-writer CronJob, which opens PRs and never touches main.
+#
+# The token is passed to git through environment config (GIT_CONFIG_*), never in a
+# URL or .git/config, so it is neither on a command line nor persisted on the PVC
+# that the app mounts.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jarvis-live-vault-clone
+  labels:
+    app: jarvis-live-vault-clone
+spec:
+  schedule: "*/30 * * * *"
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app: jarvis-live-vault-clone
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        metadata:
+          labels:
+            app: jarvis-live-vault-clone
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values: ["amd64"]
+                      - key: kubernetes.io/hostname
+                        operator: NotIn
+                        values: ["andrew-gamingpc"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: git
+              # alpine/git v2.47.2, multi-arch index digest. The image's entrypoint
+              # is `git`; command overrides it so we can run a script.
+              image: alpine/git@sha256:062a01ad7a0eb17cff382bc5e26086b4d710e56dfdfdf001109a49b6d9bd378c
+              command: ["/bin/sh", "-ec"]
+              args:
+                - |
+                  repo=/vault/repo
+                  url=https://github.com/lordmuffin/Notes.git
+                  auth="$(printf 'x-access-token:%s' "$(cat /secrets/github/password)" | base64 | tr -d '\n')"
+                  export GIT_CONFIG_COUNT=2
+                  export GIT_CONFIG_KEY_0=http.extraHeader
+                  export GIT_CONFIG_VALUE_0="Authorization: Basic ${auth}"
+                  # The NFS export may not map to uid 10001; don't trip git's
+                  # dubious-ownership check on our own clone.
+                  export GIT_CONFIG_KEY_1=safe.directory
+                  export GIT_CONFIG_VALUE_1='*'
+                  if [ -d "$repo/.git" ]; then
+                    rm -f "$repo/.git/index.lock"
+                    if git -C "$repo" fetch --depth 1 "$url" main \
+                       && git -C "$repo" reset -q --hard FETCH_HEAD \
+                       && git -C "$repo" clean -fdq; then
+                      echo "refreshed $(git -C "$repo" rev-parse --short HEAD)"
+                      exit 0
+                    fi
+                    echo "existing clone unusable -- re-cloning" >&2
+                  fi
+                  rm -rf "$repo"
+                  git clone --depth 1 --branch main "$url" "$repo"
+                  echo "cloned $(git -C "$repo" rev-parse --short HEAD)"
+              env:
+                - name: HOME
+                  value: /tmp
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: "1"
+                  memory: 512Mi
+              volumeMounts:
+                - name: vault
+                  mountPath: /vault
+                - name: github-token
+                  mountPath: /secrets/github
+                  readOnly: true
+                - name: scratch
+                  mountPath: /tmp
+          volumes:
+            - name: vault
+              persistentVolumeClaim:
+                claimName: jarvis-live-vault-clone
+            - name: github-token
+              secret:
+                secretName: notes-ro-pat
+                defaultMode: 0400
+            - name: scratch
+              emptyDir:
+                sizeLimit: 256Mi

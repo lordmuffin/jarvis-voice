@@ -1,0 +1,174 @@
+# jarvis-live: FastAPI app on :8080 (/healthz, /readyz).
+#
+# replicas: 1 + Recreate, deliberately. The data PVC is RWO and session state
+# (open WebSockets, in-progress audio) lives in this process; a second replica
+# would split it, and RollingUpdate would briefly run two against one volume.
+#
+# The image tag is the server version. release-please bumps it (the
+# x-release-please-version marker) in the release PR, and merging that PR is the
+# deploy: see server/deploy/README.md. Do not hand-edit it.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jarvis-live
+  labels:
+    app: jarvis-live
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jarvis-live
+  template:
+    metadata:
+      labels:
+        app: jarvis-live
+    spec:
+      automountServiceAccountToken: false
+      # amd64-only image, and keep it off andrew-gamingpc (untainted, sleeps,
+      # wrong subnet for the NFS export). An exclusion rather than an allow-list,
+      # exactly as in np-home-homelab apps/ai/capture-pipeline.
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/arch
+                    operator: In
+                    values: ["amd64"]
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values: ["andrew-gamingpc"]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: jarvis-live
+          image: ghcr.io/lordmuffin/jarvis-live:0.9.0 # x-release-please-version
+          envFrom:
+            - configMapRef:
+                name: jarvis-live-config
+          env:
+            - name: PORT
+              value: "8080"
+            # Postgres on the CNPG postgres-cluster. Reflected from the postgres
+            # namespace (np-home-homelab apps/secrets/external-secret-jarvis-live-db.yaml).
+            - name: JARVIS_LIVE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-live-db-app
+                  key: connection
+            - name: JARVIS_LIVE_GOTIFY_TOKEN_FILE
+              value: /secrets/gotify/password
+            # Pocket ID client (secret-oidc.yaml). Optional so the pod starts before
+            # the 1Password item exists; sign-in fails until it does.
+            - name: JARVIS_LIVE_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: jarvis-live-oidc
+                  key: client_id
+                  optional: true
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          # Cold start on these LXC agents is slow (NFS mounts + rootfs prepare;
+          # 2m45s measured for capture-ingest-api). 30 x 10s = 5m of grace before
+          # the tight readiness/liveness pair takes over.
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: outbox
+              mountPath: /capture
+            # READ-ONLY: only the vault-clone CronJob writes this tree.
+            - name: vault
+              mountPath: /vault
+              readOnly: true
+            - name: index
+              mountPath: /index
+            - name: gotify-token
+              mountPath: /secrets/gotify
+              readOnly: true
+            - name: oidc
+              mountPath: /secrets/oidc
+              readOnly: true
+            # notes-vault-pat: the app publishes finished notes to lordmuffin/Notes
+            # itself (one branch + PR per session, merge from the dashboard).
+            - name: github-token
+              mountPath: /secrets/github
+              readOnly: true
+            - name: scratch
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: jarvis-live-data
+        - name: outbox
+          persistentVolumeClaim:
+            claimName: jarvis-live-outbox
+        - name: vault
+          persistentVolumeClaim:
+            claimName: jarvis-live-vault-clone
+            readOnly: true
+        # Search index: rebuilt from the vault clone on start, so it is disposable
+        # and must not live on NFS.
+        - name: index
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: gotify-token
+          secret:
+            secretName: jarvis-live-gotify-token
+            defaultMode: 0400
+        - name: oidc
+          secret:
+            secretName: jarvis-live-oidc
+            optional: true
+            defaultMode: 0400
+            items:
+              - key: client_secret
+                path: client_secret
+        - name: github-token
+          secret:
+            secretName: notes-vault-pat
+            defaultMode: 0400
+        - name: scratch
+          emptyDir:
+            sizeLimit: 256Mi

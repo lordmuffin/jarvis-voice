@@ -1,0 +1,23 @@
+# jarvis-live: live-session transcription / copilot service. See np-home-homelab docs/jarvis-live.md.
+#
+# Own namespace (not jarvis-ai, which is created by a bare-metal workflow and must
+# never be pruned by Flux -- see np-home-homelab apps/ai/model-dashboard/kustomization.yaml).
+# `jarvis-live` is created here, so it is safe for this Kustomization to own it.
+#
+# Flux deploy alerts to Gotify are deliberately absent: Flux v2.7.5's Provider
+# has no `gotify` type. See np-home-homelab docs/jarvis-live.md §Notifications.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: jarvis-live
+resources:
+  - namespace.yaml
+  - onepassword-items.yaml
+  - secret-oidc.yaml
+  - configmap.yaml
+  - pvc-data.yaml
+  - pvc-outbox.yaml
+  - pvc-vault-clone.yaml
+  - deployment.yaml
+  - service.yaml
+  - ingress.yaml
+  - cronjob-vault-clone.yaml

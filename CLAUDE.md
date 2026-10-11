@@ -6,6 +6,7 @@
 |---|---|
 | `protocol/v1/` | Wire protocol spec, JSON Schemas, fixtures (shared by all components) |
 | `server/` | Jarvis Live backend (Python 3.12, uv, FastAPI), package `jarvis_live` |
+| `server/deploy/k8s/jarvis-live/` | Kubernetes manifests Flux applies to the homelab cluster from branch `deploy/live` (see `server/deploy/README.md`) |
 | `web/` | Web dashboard (viewer): Vite + TypeScript + Preact, served by the server at `/` |
 | `macos/` | Jarvis Live macOS app (Swift) — scaffold only so far |
 | `android/` | Android app |
@@ -27,3 +28,4 @@
 - `src/jarvis_voice/` is legacy — bugfix only. New work goes in `server/`.
 - `protocol/` changes need fixtures + both server and Swift tests updated, in the same PR.
 - Releases are per component, tagged `server-vX.Y.Z`, `macos-vX.Y.Z`, `android-vX.Y.Z`. Only `android-v*` tags build the APK.
+- Deploying jarvis-live = merging the release PR: it bumps the image tag in `server/deploy/`, and the `server-v*` tag builds the image and then moves `deploy/live`, which Flux follows. Ship manifest changes (new settings, volumes) in the same PR as the code that needs them. Never hand-edit the image line or push to `deploy/live`; roll back with the *Server Image* workflow's "Run workflow". The repo is public: environment-private values stay in np-home-homelab.
