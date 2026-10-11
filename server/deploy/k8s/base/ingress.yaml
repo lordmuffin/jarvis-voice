@@ -1,4 +1,8 @@
-# live.lab.apj.dev, on the shared *.lab.apj.dev wildcard cert. The `jarvis-live`
+# live.lab.apj.dev, on the shared *.lab.apj.dev wildcard cert. For the live channel
+# this is now the SECONDARY name: live.apj.dev (../jarvis-live/ingress-promoted.yaml)
+# is primary, and this host dual-serves until the promotion redirects and retires it
+# (np-home-homelab docs/service-promotion.md). The lab overlay rewrites it to
+# live-next.lab.apj.dev. The `jarvis-live`
 # namespace MUST be in BOTH reflector namespace lists in
 # np-home-homelab apps/networking/certmanager/resources/lab-apj-dev.yaml, or lab-apj-dev-tls never
 # materializes here and Traefik serves its default cert.

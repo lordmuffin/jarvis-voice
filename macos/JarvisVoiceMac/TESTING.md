@@ -11,7 +11,7 @@ Status key: **PASS** / **FAIL** (fill in) · **NOT RUN** (needs hands-on; steps 
 
 1. `brew install xcodegen`, then `cp Local.xcconfig.template Local.xcconfig` and set `DEVELOPMENT_TEAM` to your personal team ID.
 2. `make install`. This copies the app into `~/Applications`. Launch it from there every time, so the signing identity (and therefore every TCC grant) stays stable.
-3. Settings: server URL `https://live.lab.apj.dev`, paste a device token (create one on the web dashboard's **Devices** page), choose an input.
+3. Settings: server URL `https://live.apj.dev`, paste a device token (create one on the web dashboard's **Devices** page), choose an input.
 4. To reset a permission for a clean first-run test: `tccutil reset Microphone dev.apj.JarvisVoiceMac` and `tccutil reset AudioCapture dev.apj.JarvisVoiceMac` (the exact service name for audio capture may differ by OS build; use System Settings > Privacy & Security if it doesn't take).
 
 ## A. Automated (no hardware)

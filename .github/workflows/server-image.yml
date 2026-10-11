@@ -8,7 +8,7 @@ name: Server Image
 #   deploy/lab   -> k8s/jarvis-live-lab, live-next.lab.apj.dev. Every push to main
 #                   builds :sha-<7>, and `deploy-lab` moves deploy/lab to that commit
 #                   plus one generated commit pinning the lab overlay to that image.
-#   deploy/live  -> k8s/jarvis-live, live.lab.apj.dev. The release PR (release-please)
+#   deploy/live  -> k8s/jarvis-live, live.apj.dev. The release PR (release-please)
 #                   bumps the image tag; merging it pushes the release commit to main
 #                   (so lab gets it first) and tags server-vX.Y.Z. `promote` waits
 #                   until lab has that exact commit, gives its image the :X.Y.Z tag --

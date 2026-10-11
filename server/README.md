@@ -24,7 +24,7 @@ In Pocket-ID, create an OIDC client:
 
 | Setting | Value |
 |---|---|
-| Callback URL | `https://live.lab.apj.dev/auth/callback` (that is, `<public_base_url>/auth/callback`). The lab channel adds `https://live-next.lab.apj.dev/auth/callback` to the same client. |
+| Callback URL | `https://live.apj.dev/auth/callback` (that is, `<public_base_url>/auth/callback`). The lab channel adds `https://live-next.lab.apj.dev/auth/callback` to the same client. |
 | Public client | off (the server keeps a client secret) |
 | PKCE | on |
 | Allowed groups | optional, see `OIDC_ALLOWED_GROUPS` below |
@@ -35,8 +35,8 @@ The server asks for the scopes `openid email profile groups`. The Android app ne
 
 | Variable | |
 |---|---|
-| `JARVIS_LIVE_PUBLIC_BASE_URL` | e.g. `https://live.lab.apj.dev`. Used to build the callback URL. When it is `https://…`, cookies are `Secure`. |
-| `JARVIS_LIVE_OIDC_ISSUER` | Pocket-ID's URL, e.g. `https://id.lab.apj.dev`. If this is unset, sign-in is off and only device tokens work. |
+| `JARVIS_LIVE_PUBLIC_BASE_URL` | e.g. `https://live.apj.dev`. Used to build the callback URL. When it is `https://…`, cookies are `Secure`. |
+| `JARVIS_LIVE_OIDC_ISSUER` | Pocket-ID's URL, e.g. `https://pocket-id.apj.dev`. If this is unset, sign-in is off and only device tokens work. |
 | `JARVIS_LIVE_OIDC_CLIENT_ID` | The client ID from Pocket-ID. |
 | `JARVIS_LIVE_OIDC_CLIENT_SECRET_FILE` | A file holding the client secret, e.g. a mounted Kubernetes Secret. The server re-reads it on every sign-in, so you can rotate the secret without a restart. |
 | `JARVIS_LIVE_OIDC_ADMIN_GROUP` | Members of this Pocket-ID group are admins. If unset, manage admins with `jarvis-live set-admin <email>`. |

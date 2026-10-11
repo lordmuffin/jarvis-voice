@@ -5,7 +5,7 @@ Flux applies them from this repository, as two release channels:
 
 | Channel | Runs | Host | Namespace | Overlay | Branch Flux follows |
 |---|---|---|---|---|---|
-| **live** | the latest release (`server-vX.Y.Z`) | `live.lab.apj.dev` | `jarvis-live` | `k8s/jarvis-live/` | `deploy/live` |
+| **live** | the latest release (`server-vX.Y.Z`) | `live.apj.dev` (also `live.lab.apj.dev` until its promotion retires it) | `jarvis-live` | `k8s/jarvis-live/` | `deploy/live` |
 | **lab** | the latest commit on `main` | `live-next.lab.apj.dev` | `jarvis-live-lab` | `k8s/jarvis-live-lab/` | `deploy/lab` |
 
 Both overlays share `k8s/base/`. Live is what you depend on. Lab is where a change runs for

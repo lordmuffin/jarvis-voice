@@ -1,7 +1,8 @@
 # jarvis-live, shared by both release channels. Not applied on its own: Flux
 # applies an overlay, which sets the namespace and adds its Namespace object.
 #
-#   ../jarvis-live/      live channel: namespace jarvis-live, live.lab.apj.dev,
+#   ../jarvis-live/      live channel: namespace jarvis-live, live.apj.dev (plus
+#                        live.lab.apj.dev while the promotion dual-serves),
 #                        image pinned by release-please (deployment.yaml).
 #   ../jarvis-live-lab/  lab channel: namespace jarvis-live-lab,
 #                        live-next.lab.apj.dev, image = the main commit being tested.

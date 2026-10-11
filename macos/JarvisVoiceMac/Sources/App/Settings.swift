@@ -14,7 +14,7 @@ final class SettingsModel {
     private static let dictationModeKey = "dictationMode"
     private static let dictationPasteKey = "dictationPaste"
     private static let awayModeKey = "awayMode"
-    private static let defaultServer = "https://live.lab.apj.dev"
+    private static let defaultServer = "https://live.apj.dev"
 
     var serverURL: String {
         didSet { UserDefaults.standard.set(serverURL, forKey: Self.urlKey) }

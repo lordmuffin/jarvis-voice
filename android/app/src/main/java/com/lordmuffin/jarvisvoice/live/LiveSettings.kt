@@ -108,7 +108,7 @@ class LiveSettings(private val context: Context) {
     val sessionsRoot: File get() = File(context.filesDir, "live/sessions").also { it.mkdirs() }
 
     companion object {
-        const val DEFAULT_SERVER_URL = "https://live.lab.apj.dev"
+        const val DEFAULT_SERVER_URL = "https://live.apj.dev"
         private const val KEY_SERVER_URL = "live_server_url"
         private const val KEY_TOKEN = "live_device_token_enc"
         private const val KEY_ACCOUNT_NAME = "live_account_name"

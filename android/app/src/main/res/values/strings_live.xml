@@ -38,7 +38,7 @@
 
     <string name="live_settings_header">Jarvis Live</string>
     <string name="live_settings_desc">Stream Live sessions to your Jarvis Live server and see your history.</string>
-    <string name="live_settings_url_hint">https://live.lab.apj.dev</string>
+    <string name="live_settings_url_hint">https://live.apj.dev</string>
     <string name="live_settings_token_hint">Device token</string>
     <string name="live_settings_token_saved">Token saved — enter a new one to replace it</string>
     <string name="live_away_setting">Local only away from home</string>
