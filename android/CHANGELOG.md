@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.0...android-v1.9.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **android:** keep Record history reachable when signed out ([143c276](https://github.com/lordmuffin/jarvis-voice/commit/143c27683f3fc50587a67abcd2f7348f0a63090a))
+* **android:** keep Record history reachable when signed out ([23eeec9](https://github.com/lordmuffin/jarvis-voice/commit/23eeec9185a295e69f26f6491b6f176505f21821))
+
 ## [1.9.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.8.0...android-v1.9.0) (2026-10-11)
 
 
