@@ -37,6 +37,13 @@ struct MenuBarContent: View {
             if !model.voiceProcessing { Text("\u{26A0} Echo cancellation unavailable on this input") }
         }
         if let notice = model.notice { Text(notice) }
+        if model.settings.dictationKey != .off {
+            if model.dictation.accessibilityTrusted {
+                Text("Dictation: \(dictationHint)")
+            } else {
+                Text("\u{26A0} Dictation needs Accessibility (see Settings)")
+            }
+        }
 
         Divider()
 
@@ -89,6 +96,11 @@ struct MenuBarContent: View {
         case .failed(let why): "Failed: \(why)"
         case .idle: model.isRecording ? "Recording" : "Idle"
         }
+    }
+
+    private var dictationHint: String {
+        let key = model.settings.dictationKey.title
+        return model.settings.dictationMode == .hold ? "hold \(key)" : "tap \(key)"
     }
 
     private var sttText: String {

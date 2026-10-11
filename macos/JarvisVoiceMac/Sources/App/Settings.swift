@@ -9,6 +9,9 @@ final class SettingsModel {
     private static let urlKey = "serverURL"
     private static let deviceKey = "inputDeviceUID"
     private static let onTopKey = "panelAlwaysOnTop"
+    private static let dictationKeyKey = "dictationKey"
+    private static let dictationModeKey = "dictationMode"
+    private static let dictationPasteKey = "dictationPaste"
     private static let defaultServer = "https://live.lab.apj.dev"
 
     var serverURL: String {
@@ -21,6 +24,17 @@ final class SettingsModel {
     var panelAlwaysOnTop: Bool {
         didSet { UserDefaults.standard.set(panelAlwaysOnTop, forKey: Self.onTopKey) }
     }
+    /// The lone modifier key that starts quick dictation.
+    var dictationKey: TriggerKey {
+        didSet { UserDefaults.standard.set(dictationKey.rawValue, forKey: Self.dictationKeyKey) }
+    }
+    var dictationMode: TriggerMode {
+        didSet { UserDefaults.standard.set(dictationMode.rawValue, forKey: Self.dictationModeKey) }
+    }
+    /// Paste at the cursor after copying; off means copy only.
+    var dictationPaste: Bool {
+        didSet { UserDefaults.standard.set(dictationPaste, forKey: Self.dictationPasteKey) }
+    }
     var deviceToken: String {
         didSet { Keychain.set(deviceToken, account: "device-token") }
     }
@@ -30,6 +44,9 @@ final class SettingsModel {
         serverURL = defaults.string(forKey: Self.urlKey) ?? Self.defaultServer
         inputDeviceUID = defaults.string(forKey: Self.deviceKey)
         panelAlwaysOnTop = defaults.object(forKey: Self.onTopKey) as? Bool ?? true
+        dictationKey = defaults.string(forKey: Self.dictationKeyKey).flatMap(TriggerKey.init(rawValue:)) ?? .rightCommand
+        dictationMode = defaults.string(forKey: Self.dictationModeKey).flatMap(TriggerMode.init(rawValue:)) ?? .hold
+        dictationPaste = defaults.object(forKey: Self.dictationPasteKey) as? Bool ?? true
         deviceToken = Keychain.get(account: "device-token") ?? ""
     }
 

@@ -26,10 +26,40 @@ struct SettingsView: View {
             Section("Panel") {
                 Toggle("Keep copilot panel on top", isOn: $settings.panelAlwaysOnTop)
             }
+            Section("Dictation") {
+                Picker("Key", selection: $settings.dictationKey) {
+                    ForEach(TriggerKey.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Mode", selection: $settings.dictationMode) {
+                    ForEach(TriggerMode.allCases) { Text($0.title).tag($0) }
+                }
+                .disabled(settings.dictationKey == .off)
+                Toggle("Paste at the cursor (always copied to the clipboard)", isOn: $settings.dictationPaste)
+                    .disabled(settings.dictationKey == .off)
+                if settings.dictationKey != .off {
+                    if model.dictation.accessibilityTrusted {
+                        Text("Accessibility: allowed").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        HStack {
+                            Text("Allow Jarvis Voice under Accessibility to use the key and paste.")
+                                .font(.caption).foregroundStyle(.orange)
+                            Spacer()
+                            Button("Open Accessibility Settings\u{2026}") { TextInserter.openAccessibilitySettings() }
+                        }
+                    }
+                }
+                Text("Runs entirely on this Mac; nothing is sent to the server. Pressing the key together with another key (\u{2318}C, \u{2318}-click) never starts dictation.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .frame(width: 460)
         .padding(.vertical, 8)
-        .onAppear { devices = AudioDevices.inputDevices() }
+        .onAppear {
+            devices = AudioDevices.inputDevices()
+            model.dictation.refreshTrust()
+        }
+        .onChange(of: settings.dictationKey) { model.dictation.startMonitoring() }
+        .onChange(of: settings.dictationMode) { model.dictation.startMonitoring() }
     }
 }

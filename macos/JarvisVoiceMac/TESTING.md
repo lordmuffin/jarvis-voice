@@ -20,7 +20,7 @@ Status key: **PASS** / **FAIL** (fill in) · **NOT RUN** (needs hands-on; steps 
 |---|---|---|---|
 | A1 | `make generate` | **PASS** | XcodeGen 2.46.0 |
 | A2 | `make build` (unsigned, no `Local.xcconfig`) | **PASS** | Build succeeded, no errors or warnings from our targets |
-| A3 | `make test` | **PASS** | 4/4 `LocalMarkdownTests` |
+| A3 | `make test` | **PASS** | 4/4 `LocalMarkdownTests`; not yet re-run with the new `DictationTriggerTests` and `DictationTextTests` |
 | A4 | `swift test` in `JarvisLiveKit` | **PASS** | 48 tests in 8 suites; package API unchanged |
 | A5 | App launches and stays up (smoke) | **PASS** | Alive after 5 s, no crash output; menu-bar only (`LSUIElement`) |
 | A6 | Info.plist keys present | **PASS** | `LSUIElement`, `NSMicrophoneUsageDescription`, `NSAudioCaptureUsageDescription` |
@@ -46,9 +46,16 @@ Record the result and a line of evidence for each.
 | B12 | Panel behaviour | Start a session, click into another app. | Panel stays visible and does not steal focus; "On top" toggle works; resizable. Suggestions are dismissable and fade near expiry; Related opens in Obsidian. | NOT RUN |
 | B13 | Keep awake | Record, leave the Mac idle past the display-sleep timer. | Session keeps recording. After stop, `pmset -g assertions` no longer lists "Jarvis Voice is recording". | NOT RUN |
 | B14 | Hotkeys | From another app press ⌃⌥J, ⌃⌥M. | Start/stop toggles; marker appears in the panel and the final note. | NOT RUN |
+| B15 | Dictation: Accessibility | Fresh grant (`tccutil reset Accessibility dev.apj.JarvisVoiceMac`), launch. | The Accessibility prompt appears once. Before granting, the menu shows "Dictation needs Accessibility" and Settings offers the button. After granting (no relaunch), the menu shows "Dictation: hold Right ⌘". | NOT RUN |
+| B16 | Dictation: hold to talk | Focus TextEdit, then Safari's address bar, then a Slack message. Hold Right ⌘, say a sentence, release. | The pill shows "Listening…" and live words, never takes focus. On release the text is pasted at the cursor and is on the clipboard (⌘V again pastes it). The first word is not cut off. | NOT RUN |
+| B17 | Dictation: tap mode | Settings › Dictation › Mode: Tap. Tap Right ⌘, speak 20 s, tap again. Then tap, speak, press Esc. | First run pastes; Esc discards with nothing pasted. | NOT RUN |
+| B18 | Dictation leaves shortcuts alone | Hold mode. Press Right-⌘C, Right-⌘V, Right-⌘-click, Right-⌘-Tab. Hold Right ⌘ 1 s, then press C. | Every shortcut behaves as before. The orange mic indicator doesn't flash for quick shortcuts; the long hold + C cancels with nothing pasted. | NOT RUN |
+| B19 | Dictation during a session | Start a Meeting session (⌃⌥J), dictate into another app twice, stop the session. Repeat with Wi-Fi off and **Local only**. | Session keeps recording throughout (no echo-cancellation warning appears, the system channel stays live); its final note / local file is intact. Dictation still works offline, and no dictation request reaches the server. | NOT RUN |
 
 ## Known limits to check while testing
 
 - **Audio-capture permission has no public pre-flight.** A denied tap delivers silence, so the app can only warn after ~8 s of pure silence. A genuinely silent meeting start will show the same warning until sound arrives, then clears.
 - **Local-only outbox is not compacted.** Audio stays on disk until uploaded (≈ 2 × 115 MB/hour in meeting mode). Delete `~/Library/Application Support/JarvisVoice/sessions/<id>` after a successful upload if space matters.
+- **Dictation is heard by a running session.** The session mic hears you too, so dictated words also appear in the session's Me channel.
+- **Dictation pastes with a synthetic ⌘V** using the US key position of V, so on layouts that move V (Dvorak without "⌘ QWERTY") the paste may land on another key. The text is always on the clipboard regardless.
 - Draft timestamps are anchored to the first buffer of each channel; expect ±100–300 ms of alignment between channels.
