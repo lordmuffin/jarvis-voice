@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.4.0...macos-v0.5.0) (2026-10-11)
+
+
+### Features
+
+* multiple users with Pocket-ID sign-in ([23fbd10](https://github.com/lordmuffin/jarvis-voice/commit/23fbd10e48aa1bd06524d57aae47cc337e103ef7))
+
 ## [0.4.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.3.0...macos-v0.4.0) (2026-10-10)
 
 
