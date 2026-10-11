@@ -117,6 +117,11 @@ export type ServerEvent =
 
 // --- REST ---
 
+export interface Owner {
+  id: string;
+  display_name: string;
+}
+
 export interface SessionSummary {
   id: string;
   title: string | null;
@@ -128,6 +133,7 @@ export interface SessionSummary {
   local_only: boolean;
   /** Audio is arriving now. A `live` session that is not streaming lost its recorder. */
   streaming: boolean;
+  owner: Owner;
 }
 
 export interface SessionPage {
@@ -146,4 +152,39 @@ export interface SessionDetail extends SessionSummary {
   copilot: Copilot;
   markers: Marker[];
   final_note: FinalNoteDoc | null;
+  /** Per channel of the session: whether its recording can be played. */
+  audio: Partial<Record<Channel, boolean>>;
+}
+
+/** The signed-in user (`GET /v1/me`). `device_id` is null for a browser. */
+export interface Me {
+  id: string;
+  email: string | null;
+  display_name: string;
+  is_admin: boolean;
+  device_id: string | null;
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  created_at: string;
+  revoked_at: string | null;
+  /** The device making the request; never true from the web. */
+  current: boolean;
+}
+
+/** `POST /v1/devices`: the token is returned this once only. */
+export interface NewDevice extends Device {
+  token: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string | null;
+  display_name: string;
+  is_admin: boolean;
+  created_at: string;
+  last_login_at: string | null;
+  sessions: number;
 }

@@ -1,31 +1,64 @@
-import { navigate, route, signOut, token } from "./store";
+import { me, route, signOut } from "./store";
+import type { Route } from "./route";
+import { Admin } from "./views/Admin";
+import { Devices } from "./views/Devices";
+import { Link } from "./views/Link";
 import { Login } from "./views/Login";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
 
+function page(r: Route) {
+  switch (r.name) {
+    case "session":
+      return <SessionPage key={r.id} id={r.id} />;
+    case "devices":
+      return <Devices />;
+    case "admin":
+      return <Admin />;
+    case "sessions":
+      // A new filter is a new list: remount so paging and polling start over.
+      return <SessionsView key={`${r.all ?? ""}:${r.user ?? ""}`} all={!!r.all} userId={r.user} />;
+  }
+}
+
 export function App() {
-  if (!token.value) return <Login />;
+  const user = me.value;
+  if (user === "loading")
+    return (
+      <div class="login">
+        <p class="muted">Loading…</p>
+      </div>
+    );
+  if (!user) return <Login />;
   const r = route.value;
+  const current = (name: Route["name"]) => (r.name === name ? ("page" as const) : undefined);
   return (
     <div class="shell">
       <header class="bar">
-        <a
-          class="brand"
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("/");
-          }}
-        >
+        <Link class="brand" href="/">
           Jarvis Live
-        </a>
-        <button class="btn btn-quiet" onClick={signOut}>
+        </Link>
+        <nav class="nav" aria-label="Main">
+          <Link class="nav-link" href="/" aria-current={current("sessions")}>
+            Sessions
+          </Link>
+          <Link class="nav-link" href="/devices" aria-current={current("devices")}>
+            Devices
+          </Link>
+          {user.is_admin && (
+            <Link class="nav-link" href="/admin" aria-current={current("admin")}>
+              Admin
+            </Link>
+          )}
+        </nav>
+        <span class="user meta" data-testid="user-name" title={user.email ?? undefined}>
+          {user.display_name}
+        </span>
+        <button class="btn btn-quiet" onClick={() => void signOut()}>
           Sign out
         </button>
       </header>
-      <main class="main">
-        {r.name === "session" ? <SessionPage key={r.id} id={r.id} /> : <SessionsView />}
-      </main>
+      <main class="main">{page(r)}</main>
     </div>
   );
 }

@@ -1,31 +1,17 @@
-import type { SessionDetail, SessionPage, SessionSummary } from "./types";
+import type {
+  AdminUser,
+  Channel,
+  Device,
+  Me,
+  NewDevice,
+  SessionDetail,
+  SessionPage,
+  SessionSummary,
+} from "./types";
 
-const TOKEN_KEY = "jarvis-live.device-token";
-
-// localStorage can throw (blocked site data, private windows); the app must still work.
-export function loadToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function saveToken(token: string): void {
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    /* kept in memory only */
-  }
-}
-
-export function clearToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* nothing to clear */
-  }
-}
+// The browser is authenticated by the server's HttpOnly session cookie (set by /auth/login),
+// so nothing here holds a credential. Same-origin fetches add the Origin header the server
+// checks on writes.
 
 export class ApiError extends Error {
   constructor(
@@ -37,17 +23,20 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
-  token: string,
-  path: string,
-  init: RequestInit = {},
-  fetchImpl: typeof fetch = fetch,
-): Promise<T> {
+let unauthorized: () => void = () => undefined;
+
+/** Called on every 401: the session cookie is missing or expired. */
+export function onUnauthorized(fn: () => void): void {
+  unauthorized = fn;
+}
+
+async function call(path: string, init: RequestInit, fetchImpl: typeof fetch): Promise<Response> {
   const res = await fetchImpl(path, {
     ...init,
+    credentials: "same-origin",
     headers: {
+      Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
-      Authorization: `Bearer ${token}`,
     },
   });
   if (!res.ok) {
@@ -58,37 +47,74 @@ async function request<T>(
     } catch {
       /* non-JSON error body */
     }
+    if (res.status === 401) unauthorized();
     throw new ApiError(res.status, detail || `HTTP ${res.status}`);
   }
-  return (await res.json()) as T;
+  return res;
 }
 
-export const listSessions = (token: string, limit = 100, offset = 0, f?: typeof fetch) =>
-  request<SessionPage>(token, `/v1/sessions?limit=${limit}&offset=${offset}`, {}, f);
+async function request<T>(path: string, init: RequestInit = {}, f: typeof fetch = fetch): Promise<T> {
+  return (await (await call(path, init, f)).json()) as T;
+}
 
-export const getSession = (token: string, id: string, f?: typeof fetch) =>
-  request<SessionDetail>(token, `/v1/sessions/${encodeURIComponent(id)}`, {}, f);
+async function send(path: string, init: RequestInit, f: typeof fetch = fetch): Promise<void> {
+  await call(path, init, f);
+}
 
-export const viewerTicket = async (token: string, id: string, f?: typeof fetch) =>
+const sid = (id: string) => `/v1/sessions/${encodeURIComponent(id)}`;
+
+export interface ListOptions {
+  limit?: number;
+  offset?: number;
+  /** Admins only: everyone's sessions. */
+  all?: boolean;
+  /** Admins only: one user's sessions. */
+  userId?: string;
+}
+
+export function sessionsPath({ limit = 100, offset = 0, all, userId }: ListOptions = {}): string {
+  const q = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (userId) q.set("user_id", userId);
+  else if (all) q.set("all", "true");
+  return `/v1/sessions?${q}`;
+}
+
+export const me = (f?: typeof fetch) => request<Me>("/v1/me", {}, f);
+
+/** End the browser session; the server clears the cookie. */
+export const logout = (f?: typeof fetch) => send("/auth/logout", { method: "POST" }, f);
+
+/** Where the browser goes to sign in; Pocket-ID sends it back to `returnTo`. */
+export const loginUrl = (returnTo: string) =>
+  `/auth/login?client=web&return_to=${encodeURIComponent(returnTo)}`;
+
+export const listSessions = (opts: ListOptions = {}, f?: typeof fetch) =>
+  request<SessionPage>(sessionsPath(opts), {}, f);
+
+export const getSession = (id: string, f?: typeof fetch) => request<SessionDetail>(sid(id), {}, f);
+
+export const viewerTicket = async (id: string, f?: typeof fetch) =>
   (
     await request<{ ticket: string; expires_in: number }>(
-      token,
-      `/v1/sessions/${encodeURIComponent(id)}/ticket`,
+      `${sid(id)}/ticket`,
       { method: "POST", body: JSON.stringify({ role: "viewer" }) },
       f,
     )
   ).ticket;
 
 /** Set a session's title; a blank title clears it. */
-export const renameSession = (token: string, id: string, title: string, f?: typeof fetch) =>
-  request<SessionSummary>(
-    token,
-    `/v1/sessions/${encodeURIComponent(id)}`,
-    { method: "PATCH", body: JSON.stringify({ title }) },
-    f,
-  );
+export const renameSession = (id: string, title: string, f?: typeof fetch) =>
+  request<SessionSummary>(sid(id), { method: "PATCH", body: JSON.stringify({ title }) }, f);
 
-/** Validate a token by making a cheap authenticated call. */
-export async function checkToken(token: string, f?: typeof fetch): Promise<void> {
-  await listSessions(token, 1, 0, f);
-}
+/** A channel's recording as WAV; the cookie authenticates `<audio src>` too. */
+export const audioUrl = (id: string, channel: Channel) => `${sid(id)}/audio/${channel}.wav`;
+
+export const listDevices = (f?: typeof fetch) => request<Device[]>("/v1/devices", {}, f);
+
+export const createDevice = (name: string, f?: typeof fetch) =>
+  request<NewDevice>("/v1/devices", { method: "POST", body: JSON.stringify({ name }) }, f);
+
+export const revokeDevice = (id: string, f?: typeof fetch) =>
+  send(`/v1/devices/${encodeURIComponent(id)}`, { method: "DELETE" }, f);
+
+export const listUsers = (f?: typeof fetch) => request<AdminUser[]>("/v1/admin/users", {}, f);

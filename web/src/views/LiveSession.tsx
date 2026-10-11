@@ -1,10 +1,10 @@
 import { signal } from "@preact/signals";
 import { useEffect, useMemo } from "preact/hooks";
 import { initialState, reduce, transcriptLines, type Event } from "../reducer";
-import { signOut, token } from "../store";
 import type { SessionDetail } from "../types";
 import { watchSession } from "../ws";
 import { CopilotPanel } from "./CopilotPanel";
+import { OwnerLabel } from "./OwnerLabel";
 import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
 import { StatusChip } from "./StatusChip";
@@ -36,10 +36,8 @@ export function LiveSession({
   useEffect(() => {
     return watchSession({
       sessionId: detail.id,
-      token: token.value ?? "",
       dispatch,
       onFinished,
-      onUnauthorized: signOut,
     });
   }, [detail.id]);
 
@@ -53,6 +51,7 @@ export function LiveSession({
       <div class="session-head">
         <SessionTitle session={session} onRenamed={(r) => dispatch({ type: "session", session: r })} />
         <StatusChip status={session.status} streaming={session.streaming} />
+        <OwnerLabel owner={session.owner} />
         <span class="meta" data-testid="connection">
           {CONNECTION_LABEL[s.connection]}
         </span>

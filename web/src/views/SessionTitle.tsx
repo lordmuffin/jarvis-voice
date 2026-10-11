@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, renameSession } from "../api";
 import { titleOf } from "../format";
-import { signOut, token } from "../store";
 import type { SessionSummary } from "../types";
 
 /** The session heading, with an inline rename. `onRenamed` gets the server's updated row. */
@@ -32,11 +31,11 @@ export function SessionTitle({
     if (draft.trim() === (session.title ?? "").trim()) return setEditing(false);
     setSaving(true);
     try {
-      onRenamed(await renameSession(token.value ?? "", session.id, draft));
+      onRenamed(await renameSession(session.id, draft));
       setEditing(false);
       setError(null);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) return signOut();
+      if (e instanceof ApiError && e.status === 401) return; // signed out: Login replaces this
       setError("Couldn't rename. Try again.");
     } finally {
       setSaving(false);
