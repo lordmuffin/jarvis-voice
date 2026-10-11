@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.9.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.8.0...android-v1.9.0) (2026-10-11)
+
+
+### Features
+
+* **android:** merge Live into the Record tab ([a7eb5ba](https://github.com/lordmuffin/jarvis-voice/commit/a7eb5ba11a902a740118ba4738012dc6b4c2fa7f))
+* **android:** merge Live into the Record tab ([1861226](https://github.com/lordmuffin/jarvis-voice/commit/186122656986be21356ec45f1d4afa42d36dd7ed))
+
 ## [1.8.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.4...android-v1.8.0) (2026-10-11)
 
 
