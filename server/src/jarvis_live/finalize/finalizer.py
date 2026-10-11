@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-import os
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
@@ -28,6 +27,13 @@ from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.copilot.transcript import Line, load_lines, render_lines
 from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User
 from jarvis_live.db.models import Session as SessionRow
+from jarvis_live.finalize.outbox import (
+    FINAL_NOTE_KIND,
+    note_file,
+    outbox_dir,
+    overwrite_atomic,
+    owned_by,
+)
 from jarvis_live.finalize.render import NoteMeta, render_filename, render_note
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
@@ -39,7 +45,6 @@ log = logging.getLogger(__name__)
 
 CHARS_PER_TOKEN = 4
 MAX_RELATED = 8
-FINAL_NOTE_KIND = "final_note"
 
 
 def estimate_tokens(text: str) -> int:
@@ -78,13 +83,19 @@ class Finalizer:
 
     @property
     def outbox(self) -> Path:
-        return self._cfg.outbox_dir or self._cfg.data_dir / "outbox"
+        return outbox_dir(self._cfg)
 
-    async def run(self, session_id: uuid.UUID) -> FinalResult | None:
-        """Finalize one session. Never raises: failures set status ``failed`` and notify."""
+    async def run(
+        self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
+    ) -> FinalResult | None:
+        """Finalize one session. Never raises: failures set status ``failed`` and notify.
+
+        ``replace`` is the outbox path of an earlier note of this session (a regeneration): if
+        the new note lands under a different name, the old file is removed. ``notify=False``
+        skips the "note ready" push (a regeneration the user asked for and is watching)."""
         slog = session_logger(__name__, session_id)
         try:
-            result = await self._finalize(session_id)
+            result = await self._finalize(session_id, replace=replace, notify=notify)
         except asyncio.CancelledError:
             raise  # shutdown: stays ``finalizing`` and is retried on the next start
         except Exception as e:
@@ -100,7 +111,9 @@ class Finalizer:
             return None
         return result
 
-    async def _finalize(self, session_id: uuid.UUID) -> FinalResult | None:
+    async def _finalize(
+        self, session_id: uuid.UUID, *, replace: str | None, notify: bool
+    ) -> FinalResult | None:
         async with self._sm() as db:
             row = await db.get(SessionRow, session_id)
             if row is None or row.status != "finalizing":
@@ -152,19 +165,28 @@ class Finalizer:
         )
         if subdir:
             written = f"{subdir}/{written}"
+        if replace and replace != written:
+            await asyncio.to_thread(self._remove_old, replace, str(session_id))
 
         await self._persist_final(session_id, written, note.title)
         await self._fill_title(session_id, note.title)
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
-        await self._notify_owner(
-            session_id,
-            "Jarvis: note ready",
-            f"**{note.title}**\n\n{note.summary.strip()}",
-            5,
-            self._session_url(session_id),
-        )
+        if notify:
+            await self._notify_owner(
+                session_id,
+                "Jarvis: note ready",
+                f"**{note.title}**\n\n{note.summary.strip()}",
+                5,
+                self._session_url(session_id),
+            )
         return FinalResult(written, note.title)
+
+    def _remove_old(self, name: str, session_id: str) -> None:
+        """Drop a regenerated session's previous note, but never another session's file."""
+        path = note_file(self.outbox, name)
+        if path is not None and owned_by(path, session_id):
+            path.unlink(missing_ok=True)
 
     # --- LLM --------------------------------------------------------------------------------
 
@@ -294,18 +316,8 @@ def write_atomic(outbox: Path, name: str, content: str, session_id: str) -> str:
     stem, suffix = Path(name).stem, Path(name).suffix
     target = outbox / name
     n = 1
-    while target.exists() and f"session_id: {session_id}" not in target.read_text(
-        encoding="utf-8", errors="replace"
-    ):
+    while target.exists() and not owned_by(target, session_id):
         n += 1
         target = outbox / f"{stem} ({n}){suffix}"
-    tmp = outbox / f".{target.name}.{uuid.uuid4().hex[:8]}.tmp"
-    try:
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(content)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp, target)
-    finally:
-        tmp.unlink(missing_ok=True)
+    overwrite_atomic(target, content)
     return target.name

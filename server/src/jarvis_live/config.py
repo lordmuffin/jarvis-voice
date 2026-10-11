@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -113,6 +114,42 @@ class Settings(BaseSettings):
     # Retention
     audio_retention_days: int = 90
     retention_interval_s: float = 86_400.0
+
+    # Publishing finished notes to the Obsidian vault's git repo, one branch + PR per session,
+    # through the GitHub REST API (no git binary, no clone). Off unless both the repo
+    # ("owner/name") and the token file are set. The token needs Contents and Pull requests
+    # read+write on that repo.
+    publish_repo: str = ""
+    github_token_file: Path | None = None
+    github_api: str = "https://api.github.com"
+    publish_base_branch: str = "main"
+    publish_subdir: str = "00 Inbox/Live Sessions"  # vault folder the outbox maps onto
+    publish_branch_prefix: str = "jarvis-live/"
+    publish_merge_method: Literal["squash", "merge", "rebase"] = "squash"
+    publish_committer_name: str = "jarvis-live"
+    publish_committer_email: str = "jarvis-live@apj.dev"
+    # Pick up PRs merged or closed on GitHub. 0 disables the loop (the dashboard still syncs).
+    publish_reconcile_interval_s: float = 300.0
+
+    @property
+    def publish_enabled(self) -> bool:
+        return bool(self.publish_repo and self.github_token_file)
+
+    @field_validator("publish_subdir")
+    @classmethod
+    def _vault_relative(cls, v: str) -> str:
+        v = v.strip().strip("/")
+        if any(p in {".", ".."} for p in v.split("/")):
+            raise ValueError("publish_subdir must stay inside the repository")
+        return v
+
+    @field_validator("publish_repo")
+    @classmethod
+    def _owner_slash_name(cls, v: str) -> str:
+        v = v.strip()
+        if v and (v.count("/") != 1 or not all(v.split("/"))):
+            raise ValueError('publish_repo is "owner/name"')
+        return v
 
     @field_validator("database_url")
     @classmethod

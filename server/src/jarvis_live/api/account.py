@@ -33,10 +33,11 @@ class MeOut(BaseModel):
     display_name: str
     is_admin: bool
     device_id: uuid.UUID | None  # set when calling with a device token
+    can_publish: bool  # may publish notes to the vault repo (owner and admins, if configured)
+    auto_publish: bool  # new notes open their PR without asking
 
 
-@router.get("/me")
-async def me(principal: PrincipalDep) -> MeOut:
+def _me(principal: Principal, request: Request) -> MeOut:
     u = principal.user
     return MeOut(
         id=u.id,
@@ -44,7 +45,30 @@ async def me(principal: PrincipalDep) -> MeOut:
         display_name=u.display_name,
         is_admin=u.is_admin,
         device_id=principal.device.id if principal.device else None,
+        can_publish=request.app.state.publishing.can_publish(u),
+        auto_publish=u.auto_publish,
     )
+
+
+@router.get("/me")
+async def me(principal: PrincipalDep, request: Request) -> MeOut:
+    return _me(principal, request)
+
+
+class MeUpdate(BaseModel):
+    auto_publish: bool
+
+
+@router.patch("/me")
+async def update_me(body: MeUpdate, principal: PrincipalDep, db: Db, request: Request) -> MeOut:
+    if body.auto_publish and not request.app.state.publishing.can_publish(principal.user):
+        raise HTTPException(403, "only the owner and admins publish notes")
+    user = await db.get(User, principal.user.id)
+    assert user is not None
+    user.auto_publish = body.auto_publish
+    await db.commit()
+    principal.user.auto_publish = body.auto_publish
+    return _me(principal, request)
 
 
 class DeviceOut(BaseModel):

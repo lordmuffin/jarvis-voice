@@ -77,3 +77,30 @@ jarvis-live claim-owner <email>
 ### Recordings
 
 `GET /v1/sessions/{id}/audio/{mic|system}.wav` serves a session's recording as WAV and supports `Range` requests. Retention removes recordings after `JARVIS_LIVE_AUDIO_RETENTION_DAYS` (default 90); once a recording is removed, this endpoint returns 404.
+
+## Notes: edit, regenerate, publish to the vault
+
+Each finished session's note sits in the outbox. From the session page in the dashboard you can:
+
+- **Edit** the note's Markdown (`PUT /v1/sessions/{id}/note`). Keep the frontmatter line `session_id: <id>`: the finalizer recognises its own file by it.
+- **Regenerate** it from the transcript (`POST /v1/sessions/{id}/regenerate`). The session goes back to `finalizing` while the LLM runs, and the new note replaces the old one. This is refused while the note's pull request is open.
+
+**Publishing** works like capture's vault-writer. Each session gets one branch and one pull request in the vault repo, against its base branch, and nothing is pushed straight to `main`. The server does this through the GitHub REST API, so it needs no git binary and no clone.
+
+- **Who.** Only the owner and admins can publish, and only notes from their own sessions. Other users' notes stay in the outbox.
+- **Where.** A note at `<outbox>/<path>` goes to `<PUBLISH_SUBDIR>/<path>` on the branch `<PUBLISH_BRANCH_PREFIX><date>-<session id prefix>`. The first publish fixes the file's path in the repo, so a later republish updates the same file.
+- **Actions.** Publish (opens the PR), Merge (`PUBLISH_MERGE_METHOD`, only if the PR head is still what was pushed), Close, and Skip. Skip keeps the note out of publishing and closes an open PR. An edit made while the PR is open is pushed to its branch.
+- **Auto-publish.** A toggle on the Publishing page (`PATCH /v1/me {"auto_publish": true}`). With it on, each new note opens its PR as soon as it is written. A skipped or already-published note is not re-proposed when it is regenerated.
+- **Merges on GitHub.** A PR merged or closed on GitHub is picked up every `PUBLISH_RECONCILE_INTERVAL_S` seconds, when its session is opened, or with *Sync now*.
+- **The Publishing page** (`GET /v1/publishing`) lists notes ready to publish, open PRs, and recent results. *Publish all* publishes every ready note, one PR each.
+
+| Variable | |
+|---|---|
+| `JARVIS_LIVE_PUBLISH_REPO` | `owner/name` of the vault repo, e.g. `lordmuffin/Notes`. If unset, publishing is off. |
+| `JARVIS_LIVE_GITHUB_TOKEN_FILE` | A file holding a fine-grained PAT with **Contents** and **Pull requests** read+write on that repo. Contents alone lets the push through and then fails at the PR. The server re-reads the file on every call. |
+| `JARVIS_LIVE_PUBLISH_BASE_BRANCH` | Default `main`. |
+| `JARVIS_LIVE_PUBLISH_SUBDIR` | Default `00 Inbox/Live Sessions`. |
+| `JARVIS_LIVE_PUBLISH_BRANCH_PREFIX` | Default `jarvis-live/`. This prefix is reserved for this app, which resets a leftover branch of the same name. |
+| `JARVIS_LIVE_PUBLISH_MERGE_METHOD` | `squash` (default), `merge` or `rebase`. |
+| `JARVIS_LIVE_PUBLISH_RECONCILE_INTERVAL_S` | Default 300; `0` turns the background check off. |
+| `JARVIS_LIVE_PUBLISH_COMMITTER_NAME` / `_EMAIL` | Default `jarvis-live` / `jarvis-live@apj.dev`. |

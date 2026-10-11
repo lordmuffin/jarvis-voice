@@ -1,7 +1,6 @@
 import asyncio
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -11,8 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from jarvis_live.api.audio import audio_available, wav_response
 from jarvis_live.auth import Principal, current_principal
-from jarvis_live.db.models import CopilotItem, MarkerRow, SegmentRow, User
+from jarvis_live.db.models import CopilotItem, MarkerRow, NotePublication, SegmentRow, User
 from jarvis_live.db.models import Session as SessionRow
+from jarvis_live.finalize.outbox import latest_final_note, outbox_dir, read_note
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import (
     Copilot,
@@ -21,6 +21,7 @@ from jarvis_live.protocol import (
     TicketRequest,
     TicketResponse,
 )
+from jarvis_live.publish.service import PublishService, may_publish_for, sha256
 
 router = APIRouter(prefix="/v1/sessions")
 
@@ -108,6 +109,38 @@ class FinalNoteOut(BaseModel):
     markdown: str | None  # None if the file is no longer in the outbox
 
 
+class PublicationOut(BaseModel):
+    """Where a session's note stands on its way to the vault repo (see ``publish/``)."""
+
+    state: Literal["publishing", "open", "merged", "closed", "skipped", "failed"]
+    repo_path: str | None
+    branch: str | None
+    pr_number: int | None
+    pr_url: str | None
+    last_error: str | None
+    updated_at: datetime
+    merged_at: datetime | None
+    # The note in the outbox differs from what was last pushed. None: not known here.
+    changed: bool | None = None
+
+    @classmethod
+    def of(cls, p: NotePublication, markdown: str | None = None) -> "PublicationOut":
+        changed = None
+        if markdown is not None and p.content_sha256 is not None:
+            changed = sha256(markdown) != p.content_sha256
+        return cls(
+            state=p.state,
+            repo_path=p.repo_path,
+            branch=p.branch,
+            pr_number=p.pr_number,
+            pr_url=p.pr_url,
+            last_error=p.last_error,
+            updated_at=p.updated_at,
+            merged_at=p.merged_at,
+            changed=changed,
+        )
+
+
 class SessionDetail(SessionOut):
     segments: list[SegmentOut]
     copilot: Copilot
@@ -115,20 +148,10 @@ class SessionDetail(SessionOut):
     final_note: FinalNoteOut | None
     # Which channels' recordings can be played (``GET .../audio/{channel}.wav``).
     audio: dict[str, bool]
-
-
-def _read_note(outbox: Path, name: str) -> str | None:
-    # ``name`` is what the finalizer wrote: a file name, optionally under the user's notes
-    # folder. Refuse anything else.
-    parts = Path(name).parts
-    if not name or not 1 <= len(parts) <= 2 or any(p in {"", ".", ".."} for p in parts):
-        return None
-    if Path(name).is_absolute():
-        return None
-    try:
-        return (outbox / name).read_text(encoding="utf-8")
-    except OSError:
-        return None
+    publication: PublicationOut | None
+    # What the caller may do with the note: publish it to the vault repo, re-run the LLM.
+    can_publish: bool
+    can_regenerate: bool
 
 
 # Every session belongs to a user. Its owner (from any of their devices or the web dashboard)
@@ -259,26 +282,23 @@ async def get_session(
         .scalars()
         .all()
     )
-    final_payload = (
-        await db.execute(
-            select(CopilotItem.payload)
-            .where(CopilotItem.session_id == session_id, CopilotItem.kind == "final_note")
-            .order_by(CopilotItem.id.desc())
-            .limit(1)
-        )
-    ).scalar_one_or_none()
     final_note: FinalNoteOut | None = None
-    if final_payload is not None:
-        cfg = request.app.state.settings
-        outbox = cfg.outbox_dir or cfg.data_dir / "outbox"
-        path = str(final_payload["path"])
-        markdown = await asyncio.to_thread(_read_note, outbox, path)
-        final_note = FinalNoteOut(path=path, title=str(final_payload["title"]), markdown=markdown)
+    if (found := await latest_final_note(db, session_id)) is not None:
+        path, title = found
+        markdown = await asyncio.to_thread(read_note, outbox_dir(request.app.state.settings), path)
+        final_note = FinalNoteOut(path=path, title=title, markdown=markdown)
+    pub = await db.get(NotePublication, session_id, populate_existing=True)
+    service: PublishService = request.app.state.publishing
     data_dir = request.app.state.settings.data_dir
     audio = {c: await asyncio.to_thread(audio_available, data_dir, row.id, c) for c in row.channels}
     return SessionDetail(
         **SessionOut.of(row, owner, request).model_dump(),
         audio=audio,
+        publication=PublicationOut.of(pub, final_note.markdown if final_note else None)
+        if pub
+        else None,
+        can_publish=service.can_publish(principal.user) and may_publish_for(owner),
+        can_regenerate=request.app.state.orchestrator is not None and not row.local_only,
         markers=[MarkerOut(t_ms=m.t_ms, label=m.label) for m in markers],
         final_note=final_note,
         segments=[

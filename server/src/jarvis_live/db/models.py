@@ -47,6 +47,8 @@ class User(Base):
     is_admin: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Final notes go to ``<outbox>/<notes_subdir>/``; NULL writes to the outbox root.
     notes_subdir: Mapped[str | None] = mapped_column(Text, unique=True)
+    # Open a PR for each new note automatically (owner and admins only; see publish/).
+    auto_publish: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     created_at: Mapped[datetime] = _now()
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -191,3 +193,41 @@ class CopilotItem(Base):
     kind: Mapped[str] = mapped_column(String(32))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = _now()
+
+
+PUBLICATION_STATES = ("publishing", "open", "merged", "closed", "skipped", "failed")
+
+
+class NotePublication(Base):
+    """A session's note on its way to the vault repo: one branch and PR per session.
+
+    ``repo_path`` is fixed by the first publish, so a republish after a merge updates the same
+    file. ``skipped`` keeps the note out of publishing (and out of auto-publish)."""
+
+    __tablename__ = "note_publications"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in PUBLICATION_STATES) + ")",
+            name="ck_note_publications_state",
+        ),
+        Index("ix_note_publications_state", "state"),
+    )
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True
+    )
+    state: Mapped[str] = mapped_column(String(16))
+    repo_path: Mapped[str | None] = mapped_column(Text)
+    branch: Mapped[str | None] = mapped_column(Text)
+    pr_number: Mapped[int | None] = mapped_column(Integer)
+    pr_url: Mapped[str | None] = mapped_column(Text)
+    head_sha: Mapped[str | None] = mapped_column(String(64))
+    # sha256 of the note as last pushed, so the dashboard can tell an edit since then.
+    content_sha256: Mapped[str | None] = mapped_column(String(64))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
