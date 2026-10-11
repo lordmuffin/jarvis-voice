@@ -1,12 +1,15 @@
 import { loginUrl } from "../api";
 import { authError } from "../store";
+import { Wordmark } from "./Wordmark";
 
 export function Login() {
   const error = authError.value;
   return (
     <div class="login">
       <div class="login-card">
-        <h1>Jarvis Live</h1>
+        <h1>
+          <Wordmark />
+        </h1>
         <p class="muted">Sign in to watch your sessions.</p>
         {error && (
           <p class="error" role="alert">
