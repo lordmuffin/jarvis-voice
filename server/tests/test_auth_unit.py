@@ -19,7 +19,7 @@ def test_ticket_is_single_use() -> None:
     sid, did = uuid.uuid4(), uuid.uuid4()
     t = store.issue(sid, did, "viewer")
     ticket = store.redeem(t, sid)
-    assert ticket is not None and ticket.role == "viewer" and ticket.device_id == did
+    assert ticket is not None and ticket.role == "viewer" and ticket.user_id == did
     assert store.redeem(t, sid) is None
 
 

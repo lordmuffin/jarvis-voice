@@ -1,6 +1,7 @@
 package com.lordmuffin.jarvisvoice
 
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -17,10 +18,13 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import androidx.browser.customtabs.CustomTabColorSchemeParams
+import androidx.browser.customtabs.CustomTabsIntent
 import androidx.lifecycle.lifecycleScope
 import com.lordmuffin.jarvisvoice.live.LiveApiClient
 import com.lordmuffin.jarvisvoice.live.LiveHttpException
 import com.lordmuffin.jarvisvoice.live.LiveSettings
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import com.lordmuffin.jarvisvoice.speech.SttModelManager
@@ -49,6 +53,10 @@ class SettingsActivity : AppCompatActivity() {
 
     // Vault capture
     private lateinit var tvVaultFolder: TextView
+
+    // Jarvis Live account line ("Signed in as …")
+    private var tvLiveAccount: TextView? = null
+    private var liveAccountJob: Job? = null
 
     // Overlay status
     private lateinit var tvOverlayStatus: TextView
@@ -238,6 +246,7 @@ class SettingsActivity : AppCompatActivity() {
         runCatching { refreshSttLabel() }
         runCatching { refreshStorageLabel() }
         runCatching { refreshVaultFolderLabel() }
+        runCatching { refreshLiveAccount() }
     }
 
     private fun refreshOverlayStatus() {
@@ -345,40 +354,78 @@ class SettingsActivity : AppCompatActivity() {
     }
 
 
-    /** Jarvis Live server URL + device token (token stored encrypted; never shown again). */
+    /**
+     * Jarvis Live: server URL, Pocket-ID sign-in (browser handoff; [com.lordmuffin.jarvisvoice.live.AuthCallbackActivity]
+     * stores the token), and a manual device token as a fallback (stored encrypted; never shown again).
+     */
     private fun wireLiveSettings() {
         val live     = LiveSettings(this)
         val etUrl    = findViewById<EditText>(R.id.et_live_server_url) ?: return
         val etToken  = findViewById<EditText>(R.id.et_live_device_token)
         val tvStatus = findViewById<TextView>(R.id.tv_live_settings_status)
+        val btnSignIn = findViewById<Button>(R.id.btn_live_sign_in)
+        tvLiveAccount = findViewById(R.id.tv_live_account)
 
         etUrl.setText(live.serverUrl)
         if (live.isConfigured) etToken.hint = getString(R.string.live_settings_token_saved)
 
+        fun validUrl(text: String) = text.startsWith("https://") || text.startsWith("http://")
+        fun updateSignInEnabled() {
+            btnSignIn.isEnabled = validUrl(etUrl.text.toString().trim())
+            btnSignIn.alpha = if (btnSignIn.isEnabled) 1f else 0.5f
+        }
+        updateSignInEnabled()
+        etUrl.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable?) = updateSignInEnabled()
+        })
+
         fun save(): Boolean {
             val url = etUrl.text.toString().trim().ifBlank { LiveSettings.DEFAULT_SERVER_URL }
-            if (!url.startsWith("https://") && !url.startsWith("http://")) {
+            if (!validUrl(url)) {
                 tvStatus.text = "Server URL must start with https://"
                 return false
             }
+            if (url != live.serverUrl) live.accountName = null
             live.serverUrl = url
             val token = etToken.text.toString().trim()
             if (token.isNotEmpty()) {
                 live.deviceToken = token
+                live.accountName = null
                 etToken.setText("")
                 etToken.hint = getString(R.string.live_settings_token_saved)
             }
             return true
         }
 
+        btnSignIn.setOnClickListener {
+            val url = etUrl.text.toString().trim()
+            if (url.isBlank()) {
+                tvStatus.text = getString(R.string.live_signin_need_url)
+                return@setOnClickListener
+            }
+            if (!save()) return@setOnClickListener
+            val loginUrl = try {
+                live.beginSignIn(live.serverUrl)
+            } catch (e: IllegalArgumentException) {
+                tvStatus.text = "✗ Invalid server URL"
+                return@setOnClickListener
+            }
+            openSignInPage(Uri.parse(loginUrl), tvStatus)
+        }
+
         findViewById<Button>(R.id.btn_live_save).setOnClickListener {
-            if (save()) tvStatus.text = if (live.isConfigured) "Saved." else "Saved. Add a device token to stream."
+            if (save()) {
+                tvStatus.text = if (live.isConfigured) "Saved." else "Saved. Sign in or add a device token to stream."
+                refreshLiveAccount()
+            }
         }
         findViewById<Button>(R.id.btn_live_test).setOnClickListener {
             if (!save()) return@setOnClickListener
             val token = live.deviceToken
             if (token.isNullOrBlank()) {
-                tvStatus.text = "Enter a device token first."
+                tvStatus.text = "Sign in or enter a device token first."
                 return@setOnClickListener
             }
             tvStatus.text = "Testing…"
@@ -390,6 +437,67 @@ class SettingsActivity : AppCompatActivity() {
                     if (e.status == 401) "✗ Token rejected (401)" else "✗ HTTP ${e.status}"
                 } catch (e: Exception) {
                     "✗ ${e.message ?: e.javaClass.simpleName}"
+                }
+                refreshLiveAccount()
+            }
+        }
+    }
+
+    /** Opens the Pocket-ID login page in a Custom Tab, falling back to any browser. */
+    private fun openSignInPage(uri: Uri, tvStatus: TextView) {
+        val colors = CustomTabColorSchemeParams.Builder()
+            .setToolbarColor(getColor(R.color.jv_surface))
+            .setNavigationBarColor(getColor(R.color.jv_bg))
+            .build()
+        val tab = CustomTabsIntent.Builder()
+            .setDefaultColorSchemeParams(colors)
+            .setShowTitle(true)
+            .build()
+        try {
+            tab.launchUrl(this, uri)
+        } catch (e: ActivityNotFoundException) {
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW, uri))
+            } catch (e2: ActivityNotFoundException) {
+                tvStatus.text = getString(R.string.live_signin_no_browser)
+            }
+        }
+    }
+
+    /** "Signed in as <name>" from `GET /v1/me` (cached name first, so it shows immediately). */
+    private fun refreshLiveAccount() {
+        val tv = tvLiveAccount ?: return
+        val live = LiveSettings(this)
+        liveAccountJob?.cancel()
+        val token = live.deviceToken
+        if (token.isNullOrBlank()) {
+            tv.text = getString(R.string.live_signin_desc)
+            tv.setTextColor(getColor(R.color.jv_text2))
+            return
+        }
+        val cached = live.accountName
+        tv.text = cached?.let { getString(R.string.live_signin_as, it) } ?: getString(R.string.live_signin_checking)
+        tv.setTextColor(getColor(if (cached != null) R.color.jv_success else R.color.jv_text2))
+        val serverUrl = live.serverUrl
+        liveAccountJob = lifecycleScope.launch {
+            try {
+                val me = LiveApiClient(serverUrl, token).me()
+                live.accountName = me.displayName.ifBlank { me.email }
+                tv.text = getString(R.string.live_signin_as, live.accountName ?: me.id)
+                tv.setTextColor(getColor(R.color.jv_success))
+            } catch (e: LiveHttpException) {
+                if (e.status == 401 || e.status == 403) {
+                    live.accountName = null
+                    tv.text = getString(R.string.live_signin_rejected)
+                    tv.setTextColor(getColor(R.color.jv_error))
+                } else if (cached == null) {
+                    tv.text = getString(R.string.live_signin_offline, "HTTP ${e.status}")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (cached == null) {
+                    tv.text = getString(R.string.live_signin_offline, e.message ?: e.javaClass.simpleName)
                 }
             }
         }

@@ -4,6 +4,7 @@ import com.lordmuffin.jarvisvoice.live.protocol.Channel
 import com.lordmuffin.jarvisvoice.live.protocol.RestBodies
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -12,6 +13,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.File
 import java.io.IOException
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -46,6 +48,88 @@ class LiveApiClient(
         execute(request(url("v1/sessions").newBuilder().addQueryParameter("limit", "1").build()).get().build())
     }
 
+    /** `GET /v1/me`: who the device token belongs to. */
+    suspend fun me(): RemoteUser = RemoteSessions.parseMe(execute(request(url("v1/me")).get().build()))
+
+    /** `GET /v1/sessions?limit=&offset=`: the caller's own sessions, newest first. */
+    suspend fun listSessions(limit: Int = 20, offset: Int = 0): SessionPage {
+        val url = url("v1/sessions").newBuilder()
+            .addQueryParameter("limit", limit.toString())
+            .addQueryParameter("offset", offset.toString())
+            .build()
+        return RemoteSessions.parsePage(execute(request(url).get().build()))
+    }
+
+    /** `GET /v1/sessions/{id}`: segments, copilot, markers, the final note and audio availability. */
+    suspend fun getSession(id: String): RemoteSessionDetail =
+        RemoteSessions.parseDetail(execute(request(sessionUrl(id)).get().build()))
+
+    /** `PATCH /v1/sessions/{id}` `{title}`; a blank title clears it. */
+    suspend fun renameSession(id: String, title: String?) {
+        val body = JSONObject().put("title", title?.trim()?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL)
+        execute(request(sessionUrl(id)).patch(body.toString().toRequestBody(JSON)).build())
+    }
+
+    /**
+     * `GET /v1/sessions/{id}/audio/{mic|system}.wav` into [dest] (written to a temp file first, so
+     * a failed download never leaves a truncated WAV behind). 404 when there is no recording.
+     * [onProgress] gets (bytes so far, total or -1) on the IO thread.
+     */
+    suspend fun downloadAudio(
+        id: String,
+        channel: String,
+        dest: File,
+        onProgress: ((Long, Long) -> Unit)? = null,
+    ): File = withContext(Dispatchers.IO) {
+        val url = sessionUrl(id).newBuilder().addPathSegment("audio").addPathSegment("$channel.wav").build()
+        val req = request(url).get().build()
+        // Long recordings stream for a while; don't let the 30 s read timeout cut them off.
+        val client = http.newBuilder().readTimeout(2, TimeUnit.MINUTES).build()
+        client.newCall(req).execute().use { res ->
+            if (!res.isSuccessful) throw LiveHttpException(res.code, res.body?.string().orEmpty().take(300))
+            val body = res.body ?: throw IOException("empty response")
+            val total = body.contentLength()
+            dest.parentFile?.mkdirs()
+            val tmp = File(dest.path + ".part")
+            try {
+                body.byteStream().use { input ->
+                    tmp.outputStream().use { out ->
+                        val buf = ByteArray(64 * 1024)
+                        var done = 0L
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            ensureActive()
+                            out.write(buf, 0, n)
+                            done += n
+                            onProgress?.invoke(done, total)
+                        }
+                    }
+                }
+                if (dest.exists()) dest.delete()
+                if (!tmp.renameTo(dest)) throw IOException("could not save ${dest.name}")
+            } finally {
+                tmp.delete()
+            }
+            dest
+        }
+    }
+
+    /**
+     * `POST /v1/auth/device-code` `{code, verifier, device_name}` → a new device token for the
+     * signed-in user. Unauthenticated; 400 when the code is invalid, expired or already used.
+     */
+    suspend fun redeemDeviceCode(code: String, verifier: String, deviceName: String): DeviceToken {
+        val body = JSONObject()
+            .put("code", code)
+            .put("verifier", verifier)
+            .put("device_name", deviceName)
+        val req = Request.Builder().url(url("v1/auth/device-code"))
+            .post(body.toString().toRequestBody(JSON))
+            .build()
+        return RemoteSessions.parseDeviceToken(execute(req))
+    }
+
     /** `wss://…/v1/sessions/{id}/stream?ticket=…` */
     fun streamUrl(sessionId: String, ticket: String): String {
         val url = url("v1/sessions/$sessionId/stream").newBuilder()
@@ -58,6 +142,9 @@ class LiveApiClient(
     }
 
     private fun url(path: String): HttpUrl = baseUrl.newBuilder().addPathSegments(path).build()
+
+    /** `v1/sessions/{id}`, with the id encoded as a single path segment. */
+    private fun sessionUrl(id: String): HttpUrl = url("v1/sessions").newBuilder().addPathSegment(id).build()
 
     private fun request(url: HttpUrl): Request.Builder =
         Request.Builder().url(url).header("Authorization", "Bearer $deviceToken")

@@ -8,9 +8,16 @@ There is no browser-side recording: producers are the Mac app and, later, Androi
 
 ## Use
 
-Sign in with a device token (`jarvis-live create-device --name browser`). Any of your device
-tokens sees every session, whichever device recorded it. The token is kept in `localStorage`
-and sent as a bearer token; WebSocket access uses short-lived **viewer** tickets.
+Sign in with **Sign in with Pocket-ID**: the browser goes to `/auth/login`, through Pocket-ID,
+and back to the page it started on with an HttpOnly session cookie. The dashboard holds no
+credential of its own; every request rides on that cookie, and WebSocket access uses
+short-lived **viewer** tickets. Any 401 returns to the sign-in screen.
+
+You see your own sessions. **Devices** lists your device tokens: add one there to set up the
+Mac app (the token is shown once, with a copy button) and revoke tokens you no longer use.
+Admins also get **Admin** (every user, with session counts and last sign-in; a name opens
+that user's sessions) and an **All users** switch on the sessions list. Past sessions play
+their recordings, one player per channel (Me = mic, Them = system audio).
 
 The FastAPI app serves `web/dist` at `/` (SPA fallback after the API routes). Set
 `JARVIS_LIVE_WEB_DIST_DIR` to point elsewhere; with no `index.html` there the dashboard is
@@ -21,7 +28,7 @@ simply not served.
 ```bash
 cd web
 npm ci
-npm run dev        # proxies /v1 to JARVIS_LIVE_URL (default http://127.0.0.1:8000)
+npm run dev        # proxies /v1 and /auth to JARVIS_LIVE_URL (default http://127.0.0.1:8000)
 npm test           # vitest: reducer driven by protocol/v1/fixtures/valid/*
 npm run build      # typecheck + vite build -> dist/
 npx playwright test
@@ -32,9 +39,9 @@ npx playwright test
 | Path | What |
 |---|---|
 | `src/reducer.ts` | Pure `(state, event) => state` for every server event type |
-| `src/api.ts`, `src/ws.ts` | REST client, token storage, viewer WebSocket with reconnect |
-| `src/views/` | Sessions list, live session, past session, shared panes |
-| `tests/` | vitest; events built from the protocol fixtures |
+| `src/api.ts`, `src/ws.ts` | REST client (cookie auth), viewer WebSocket with reconnect |
+| `src/views/` | Sessions list, live and past session, devices, admin, shared panes |
+| `tests/` | vitest: reducer (events from the protocol fixtures), API client, routes |
 | `e2e/` | Playwright smoke against the real server (`server/tests/e2e_server.py`) |
 
 Reducer rules: final segments replace overlapping drafts on the same channel; a `copilot`
@@ -47,10 +54,12 @@ tokens in [`design/`](../design).
 ## Playwright smoke
 
 `playwright.config.ts` starts `server/tests/e2e_server.py` (the real app with `FakeSTT` /
-`FakeLLM`, serving `web/dist`), then the test streams a generated WAV through
-`jarvis-live replay` and checks the live and past views. It needs Postgres: set
-`JARVIS_LIVE_TEST_DATABASE_URL`, or have Docker available for a testcontainer. Run
-`npm run build` first.
+`FakeLLM`, serving `web/dist`, plus a fake Pocket-ID on the next port whose page lists the test
+users alice, bob, root (admin) and mallory). The tests sign in by clicking a user; one streams
+a generated WAV as alice through `jarvis-live replay` and checks the live and past views
+(recording included), others check that bob can't see alice's session, the Devices page, and
+the admin views. It needs Postgres: set `JARVIS_LIVE_TEST_DATABASE_URL`, or have Docker
+available for a testcontainer. Run `npm run build` first.
 
 ## Image
 

@@ -1,26 +1,51 @@
 import { signal } from "@preact/signals";
-import { clearToken, loadToken, saveToken } from "./api";
+import { ApiError, logout, me as fetchMe, onUnauthorized } from "./api";
 import { parseRoute, type Route } from "./route";
+import type { Me } from "./types";
 
-export const token = signal<string | null>(loadToken());
+/** The signed-in user; null shows the sign-in screen. */
+export const me = signal<Me | null | "loading">("loading");
+/** Why the sign-in check failed, when it was not simply "signed out". */
+export const authError = signal<string | null>(null);
 
-export function signIn(value: string): void {
-  saveToken(value);
-  token.value = value;
+// Any 401 from the API means the session cookie is gone: back to sign-in.
+onUnauthorized(() => {
+  me.value = null;
+  authError.value = null;
+});
+
+/** The signed-in user, once known. */
+export const currentUser = (): Me | null => (me.value === "loading" ? null : me.value);
+
+export async function loadMe(): Promise<void> {
+  try {
+    me.value = await fetchMe();
+    authError.value = null;
+  } catch (e) {
+    me.value = null;
+    authError.value =
+      e instanceof ApiError && e.status === 401 ? null : "Couldn't reach the server. Try again.";
+  }
 }
 
-export function signOut(): void {
-  clearToken();
-  token.value = null;
+export async function signOut(): Promise<void> {
+  try {
+    await logout();
+  } catch {
+    /* the cookie may already be gone */
+  }
+  me.value = null;
 }
 
-export const route = signal<Route>(parseRoute(location.pathname));
+const here = () => location.pathname + location.search;
+
+export const route = signal<Route>(parseRoute(location.pathname, location.search));
 
 export function navigate(path: string): void {
-  if (location.pathname !== path) history.pushState(null, "", path);
-  route.value = parseRoute(path);
+  if (here() !== path) history.pushState(null, "", path);
+  route.value = parseRoute(location.pathname, location.search);
 }
 
 window.addEventListener("popstate", () => {
-  route.value = parseRoute(location.pathname);
+  route.value = parseRoute(location.pathname, location.search);
 });

@@ -8,17 +8,18 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from jarvis_live.auth import create_device
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.prompts import FINAL_SYSTEM, MAP_SYSTEM, REDUCE_SYSTEM
 from jarvis_live.copilot.schema import FinalAction, FinalNote
-from jarvis_live.db.models import CopilotItem
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.finalizer import Finalizer, split_windows, write_atomic
+from jarvis_live.finalize.render import _yaml
 from jarvis_live.llm.client import LLMError
 from jarvis_live.protocol import FinalNote as FinalNoteMsg
-from tests.fakes import FakeLLM, FakeNotifier, add_segments, make_session
+from jarvis_live.users import create_user
+from tests.fakes import FakeLLM, FakeNotifier, add_segments, make_session, new_device
 from tests.test_copilot_loop import FakeVault
 
 SM = async_sessionmaker  # type: ignore[type-arg]
@@ -52,7 +53,11 @@ class Rig:
         self.fin = Finalizer(self.settings, sm, self.bus, llm, Vault(), self.notifier)
 
     async def session(self, **kw: Any) -> uuid.UUID:
-        device_id, _ = await create_device(self.sm, f"Andrew's Mac {uuid.uuid4().hex[:6]}")
+        device_id, _ = await new_device(
+            self.sm,
+            f"Andrew's Mac {uuid.uuid4().hex[:6]}",
+            user_id=kw.pop("user_id", OWNER_USER_ID),
+        )
         kw.setdefault("status", "finalizing")
         kw.setdefault("ended_at", datetime(2026, 10, 9, 15, 12, tzinfo=UTC))
         return await make_session(self.sm, device_id, **kw)
@@ -248,3 +253,25 @@ def test_write_atomic_collisions_and_idempotence(tmp_path: Path) -> None:
     assert write_atomic(out, "n.md", "session_id: A\nthree", "A") == "n.md"  # same session
     assert (out / "n.md").read_text().endswith("three")
     assert sorted(p.name for p in out.iterdir()) == ["n (2).md", "n.md"]  # no tmp left behind
+
+
+async def test_other_users_notes_go_to_their_folder_without_vault_or_gotify(
+    mk: Any, sm: SM
+) -> None:
+    rig: Rig = mk()
+    user = await create_user(
+        sm, f"Dana {uuid.uuid4().hex[:6]}", email=f"d{uuid.uuid4().hex[:6]}@x.io"
+    )
+    sid = await rig.session(user_id=user.id)
+    await add_segments(rig.sm, sid, [(1000, 4000, "me", "Hello.")])
+
+    result = await rig.fin.run(sid)
+
+    assert result is not None and user.notes_subdir
+    assert result.path == f"{user.notes_subdir}/2026-10-09 0930 - Vendor call.md"
+    text = (rig.settings.outbox_dir / result.path).read_text()  # type: ignore[operator]
+    assert f"user: {_yaml(user.display_name)}" in text
+    assert "Acme Renewal" not in text  # the owner's vault is not theirs
+    assert rig.files() == []  # nothing in the owner's outbox root
+    assert rig.notifier.sent == []  # Gotify is the owner's phone
+    assert await rig.status(sid) == "done"

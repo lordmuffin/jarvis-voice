@@ -1,6 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, getSession } from "../api";
-import { navigate, signOut, token } from "../store";
+import { navigate } from "../store";
 import type { SessionDetail } from "../types";
 import { LiveSession } from "./LiveSession";
 import { PastSession } from "./PastSession";
@@ -11,12 +11,11 @@ export function SessionPage({ id }: { id: string }) {
 
   useEffect(() => {
     let stopped = false;
-    getSession(token.value ?? "", id).then(
+    getSession(id).then(
       (d) => !stopped && setDetail(d),
       (e) => {
-        if (e instanceof ApiError && e.status === 401) return signOut();
-        if (!stopped)
-          setError(e instanceof ApiError && e.status === 404 ? "Session not found." : "Couldn't load session.");
+        if (stopped || (e instanceof ApiError && e.status === 401)) return;
+        setError(e instanceof ApiError && e.status === 404 ? "Session not found." : "Couldn't load session.");
       },
     );
     return () => {

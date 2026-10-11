@@ -19,6 +19,7 @@ class NoteMeta:
     device: str
     mode: str
     duration_minutes: int
+    user: str | None = None
 
 
 def _yaml(value: str) -> str:
@@ -54,6 +55,7 @@ def render_note(note: FinalNote, meta: NoteMeta, transcript: list[Line]) -> str:
         "source: jarvis-live",
         f"session_id: {meta.session_id}",
         f"device: {_yaml(meta.device)}",
+        *([f"user: {_yaml(meta.user)}"] if meta.user else []),
         f"mode: {meta.mode}",
         f"duration_minutes: {meta.duration_minutes}",
         "tags: [live-session, inbox]",

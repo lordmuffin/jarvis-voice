@@ -14,7 +14,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 /**
  * Jarvis Live connection settings. The server URL lives in `jarvis_prefs`; the device token
- * (from `jarvis-live create-device`) is encrypted with an Android Keystore key, the counterpart of
+ * (from Pocket-ID sign-in, or pasted from the dashboard's Devices page) is encrypted with an Android Keystore key, the counterpart of
  * the Mac app's Keychain item.
  */
 class LiveSettings(private val context: Context) {
@@ -31,6 +31,45 @@ class LiveSettings(private val context: Context) {
             else prefs.edit().putString(KEY_TOKEN, SecretStore.encrypt(value.trim())).apply()
         }
 
+    /** Display name from `GET /v1/me`, cached so Settings can show it before the request returns. */
+    var accountName: String?
+        get() = prefs.getString(KEY_ACCOUNT_NAME, null)?.takeIf { it.isNotBlank() }
+        set(value) {
+            if (value.isNullOrBlank()) prefs.edit().remove(KEY_ACCOUNT_NAME).apply()
+            else prefs.edit().putString(KEY_ACCOUNT_NAME, value).apply()
+        }
+
+    /** A Pocket-ID sign-in waiting for its browser callback. */
+    data class PendingSignIn(val verifier: String, val serverUrl: String, val startedAt: Long)
+
+    /**
+     * Starts a sign-in against [serverUrl]: stores a fresh PKCE verifier (encrypted, in prefs, so it
+     * survives the activity or process being recreated while the browser is up) and returns the
+     * login URL to open.
+     */
+    fun beginSignIn(serverUrl: String, now: Long = System.currentTimeMillis()): String {
+        val verifier = Pkce.newVerifier()
+        prefs.edit()
+            .putString(KEY_PENDING_VERIFIER, SecretStore.encrypt(verifier))
+            .putString(KEY_PENDING_URL, serverUrl)
+            .putLong(KEY_PENDING_AT, now)
+            .apply()
+        return SignIn.loginUrl(serverUrl, Pkce.challenge(verifier))
+    }
+
+    /** The sign-in in progress, or null if there is none or it is older than [SignIn.PENDING_TTL_MS]. */
+    fun pendingSignIn(now: Long = System.currentTimeMillis()): PendingSignIn? {
+        val verifier = prefs.getString(KEY_PENDING_VERIFIER, null)?.let { SecretStore.decrypt(it) } ?: return null
+        val url = prefs.getString(KEY_PENDING_URL, null) ?: return null
+        val at = prefs.getLong(KEY_PENDING_AT, 0)
+        if (now - at !in 0..SignIn.PENDING_TTL_MS) return null
+        return PendingSignIn(verifier, url, at)
+    }
+
+    fun clearPendingSignIn() {
+        prefs.edit().remove(KEY_PENDING_VERIFIER).remove(KEY_PENDING_URL).remove(KEY_PENDING_AT).apply()
+    }
+
     val isConfigured: Boolean get() = !deviceToken.isNullOrBlank()
 
     /** `hello.device`: free-form on the wire; the server only logs it. */
@@ -45,6 +84,10 @@ class LiveSettings(private val context: Context) {
         const val DEFAULT_SERVER_URL = "https://live.lab.apj.dev"
         private const val KEY_SERVER_URL = "live_server_url"
         private const val KEY_TOKEN = "live_device_token_enc"
+        private const val KEY_ACCOUNT_NAME = "live_account_name"
+        private const val KEY_PENDING_VERIFIER = "live_signin_verifier_enc"
+        private const val KEY_PENDING_URL = "live_signin_server_url"
+        private const val KEY_PENDING_AT = "live_signin_started_at"
     }
 }
 

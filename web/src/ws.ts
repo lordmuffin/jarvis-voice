@@ -4,10 +4,10 @@ import type { ServerEvent, SessionDetail } from "./types";
 
 export interface WatchOptions {
   sessionId: string;
-  token: string;
   dispatch: (event: Event) => void;
   /** Called once the session has reached a terminal state (done/failed). */
   onFinished?: (detail: SessionDetail) => void;
+  /** The global 401 handler (see api.onUnauthorized) has already signed the viewer out. */
   onUnauthorized?: () => void;
 }
 
@@ -59,7 +59,7 @@ export function watchSession(opts: WatchOptions): () => void {
     });
 
   async function snapshot(): Promise<SessionDetail> {
-    const detail = await getSession(opts.token, opts.sessionId);
+    const detail = await getSession(opts.sessionId);
     opts.dispatch({ type: "snapshot", detail });
     return detail;
   }
@@ -69,7 +69,7 @@ export function watchSession(opts: WatchOptions): () => void {
     while (!stopped) {
       opts.dispatch({ type: "connection", state: "connecting" });
       try {
-        const ticket = await viewerTicket(opts.token, opts.sessionId);
+        const ticket = await viewerTicket(opts.sessionId);
         const ws = await openSocket(streamUrl(opts.sessionId, ticket), (e) => opts.dispatch(e));
         socket = ws;
         const closed = new Promise<void>((resolve) => {

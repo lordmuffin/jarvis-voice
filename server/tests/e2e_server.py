@@ -4,8 +4,11 @@
     python -m tests.e2e_server wav out.wav            # the audio the smoke test replays
 
 The database is ``JARVIS_LIVE_TEST_DATABASE_URL`` if set, else a Postgres testcontainer.
-The device token is the fixed ``E2E_TOKEN`` so the browser test can sign in; this is a test
-double, never for real deployments.
+
+Sign-in goes through a fake Pocket-ID (``tests.fake_oidc``) on ``port + 1``: its page lists
+the test users (alice, bob, root, mallory) as links. ``E2E_TOKEN`` is a fixed device token of
+alice's, so the browser test can stream a session as her. Test doubles only, never for real
+deployments.
 """
 
 import argparse
@@ -13,6 +16,7 @@ import asyncio
 import os
 import sys
 import tempfile
+import threading
 import wave
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -32,12 +36,15 @@ from jarvis_live.copilot.schema import (
     NoteUpsert,
     SuggestionIn,
 )
-from jarvis_live.db.models import Device
+from jarvis_live.db.models import Device, User
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
+from jarvis_live.users import create_user
 from tests.audio import SR, TWO_UTTERANCES
+from tests.fake_oidc import CLIENT_ID, CLIENT_SECRET, DEFAULT_USERS, FakeIssuer
 from tests.fakes import FakeLLM, FakeNotifier
 
 E2E_TOKEN = "e2e-device-token"  # noqa: S105
+E2E_USER = "alice"
 REPO = Path(__file__).resolve().parents[2]
 
 
@@ -65,21 +72,41 @@ def database_url() -> Iterator[str]:
 
 
 async def ensure_device(url: str) -> None:
+    """alice (as the fake issuer will sign her in) and her fixed device token."""
     engine = make_engine(url)
     sm = make_sessionmaker(engine)
     try:
+        async with sm() as db:
+            alice = (
+                await db.execute(select(User).where(User.oidc_sub == E2E_USER))
+            ).scalar_one_or_none()
+        if alice is None:
+            claims = DEFAULT_USERS[E2E_USER]
+            alice = await create_user(sm, claims["name"], email=claims["email"], oidc_sub=E2E_USER)
         async with sm() as db:
             found = (
                 await db.execute(select(Device).where(Device.token_hash == hash_token(E2E_TOKEN)))
             ).scalar_one_or_none()
             if found is None:
-                db.add(Device(name="e2e", token_hash=hash_token(E2E_TOKEN)))
-                await db.commit()
+                db.add(Device(name="e2e", token_hash=hash_token(E2E_TOKEN), user_id=alice.id))
+            else:
+                found.user_id, found.revoked_at = alice.id, None
+            await db.commit()
     finally:
         await engine.dispose()
 
 
+def start_issuer(port: int) -> None:
+    """The fake Pocket-ID, in a daemon thread."""
+    fake = FakeIssuer(f"http://127.0.0.1:{port}")
+    server = uvicorn.Server(
+        uvicorn.Config(fake.app(), host="127.0.0.1", port=port, log_level="warning")
+    )
+    threading.Thread(target=server.run, daemon=True).start()
+
+
 def serve(port: int, web_dist: Path) -> int:
+    issuer_port = port + 1
     from tests.conftest import FakeSTT
 
     llm = (
@@ -107,6 +134,9 @@ def serve(port: int, web_dist: Path) -> int:
     with database_url() as url:
         asyncio.run(ensure_device(url))
         state = Path(tempfile.mkdtemp(prefix="jarvis-e2e-"))
+        secret = state / "oidc-secret"
+        secret.write_text(CLIENT_SECRET)
+        start_issuer(issuer_port)
         settings = Settings(
             database_url=url,
             data_dir=state / "data",
@@ -116,6 +146,11 @@ def serve(port: int, web_dist: Path) -> int:
             copilot_min_segments=1,
             copilot_poll_s=0.1,
             status_interval_s=0.5,
+            public_base_url=f"http://127.0.0.1:{port}",
+            oidc_issuer=f"http://127.0.0.1:{issuer_port}",
+            oidc_client_id=CLIENT_ID,
+            oidc_client_secret_file=secret,
+            oidc_admin_group="jarvis-admins",
         )
         app = create_app(settings, stt=FakeSTT(), llm=llm, notifier=FakeNotifier())
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")

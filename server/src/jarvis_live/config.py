@@ -97,6 +97,18 @@ class Settings(BaseSettings):
     public_base_url: str = ""
     stt_outage_notify_s: float = 120.0
 
+    # Sign-in with Pocket-ID (OIDC). Unset issuer: no web sign-in; device tokens still work.
+    # The redirect URI is <public_base_url>/auth/callback.
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret_file: Path | None = None
+    oidc_admin_group: str = ""  # members are admins (see every user's sessions)
+    oidc_allowed_group: str = ""  # if set, only its members may sign in
+    # The first sign-in with this (verified) email claims the owner account: every device and
+    # session from before there were users. See also `jarvis-live claim-owner`.
+    owner_email: str = ""
+    login_session_days: int = 30
+
     # Retention
     audio_retention_days: int = 90
     retention_interval_s: float = 86_400.0

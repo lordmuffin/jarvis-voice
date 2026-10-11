@@ -14,6 +14,7 @@
   --error: #f85149;
   --border: #ffffff24;
   --violet: #7b2fd4;
+  --danger-fill: #442222;
 
   /* No external fonts: Roboto if installed, else the platform face. */
   --sans: Roboto, "Helvetica Neue", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -34,6 +35,7 @@
     --error: #cf222e;
     --border: #1f23282e;
     --violet: #7b2fd4;
+    --danger-fill: #ffebe9;
   }
 }
 
@@ -72,7 +74,8 @@ code,
 .bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
   padding: 8px 16px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -83,6 +86,44 @@ code,
   font-size: 18px;
   color: var(--text);
   text-decoration: none;
+}
+.nav {
+  display: flex;
+  gap: 4px;
+  margin-right: auto;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--text2);
+  text-decoration: none;
+}
+.nav-link:hover {
+  color: var(--text);
+}
+.nav-link[aria-current="page"] {
+  color: var(--accent);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.user {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .main {
@@ -158,6 +199,10 @@ code,
   background: transparent;
   color: var(--text2);
   padding: 0 10px;
+}
+.btn-danger {
+  background: var(--danger-fill);
+  color: var(--text);
 }
 
 .field {
@@ -454,4 +499,162 @@ code,
 }
 .wiki {
   color: var(--accent);
+}
+
+/* Sessions filters (admins) */
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  color: var(--text2);
+  cursor: pointer;
+}
+.toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 0 0 10px;
+  background: var(--surface2);
+  font-size: 12px;
+}
+.chip-clear {
+  min-width: 32px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  cursor: pointer;
+}
+.chip-clear:hover {
+  color: var(--text);
+}
+.owner {
+  color: var(--text);
+}
+.session-head .owner {
+  font-size: 11px;
+  color: var(--text2);
+}
+
+/* Recordings */
+.recordings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-bottom: 12px;
+}
+.recording {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 280px;
+  min-width: 0;
+  padding: 4px 4px 4px 8px;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+}
+.recording-system {
+  border-left-color: var(--violet);
+}
+.recording-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 40px;
+}
+.recording audio {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+}
+
+/* Devices, admin */
+.page > p {
+  max-width: 640px;
+}
+.inline-form {
+  margin: 16px 0;
+  max-width: 640px;
+}
+.inline-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.inline-row .field {
+  flex: 1 1 220px;
+  width: auto;
+  min-width: 0;
+}
+.token-card {
+  max-width: 640px;
+  margin: 0 0 16px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+}
+.token-card p {
+  margin: 0 0 8px;
+}
+.token-card .meta {
+  margin: 8px 0 0;
+}
+.row-static:hover {
+  background: var(--surface);
+}
+.chip-revoked {
+  color: var(--error);
+}
+.table-wrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+}
+.table th,
+.table td {
+  padding: 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+.table thead th {
+  padding-bottom: 4px;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text2);
+}
+.table tbody th,
+.table tbody td {
+  background: var(--surface);
+}
+.table tbody th {
+  font-weight: 700;
+}
+.table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tag {
+  margin-left: 8px;
+  padding: 2px 6px;
+  background: var(--surface2);
+  color: var(--accent);
+  font-size: 9px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  vertical-align: middle;
 }

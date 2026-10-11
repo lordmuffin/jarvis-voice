@@ -31,6 +31,8 @@ const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   copilot: { version: 0, notes: [], actions: [], decisions: [], suggestions: [], related: [] },
   markers: [],
   final_note: null,
+  owner: { id: "0b6f4a52-7c1d-4e8b-9f3a-5d2e1c0b9a87", display_name: "Alice Example" },
+  audio: { mic: true, system: false },
   ...over,
 });
 
@@ -246,9 +248,10 @@ describe("snapshot bootstrap (REST) merged with the live stream", () => {
 
   it("applies a rename immediately", () => {
     const s0 = reduce(initialState, { type: "snapshot", detail: detail() });
-    const { segments: _s, copilot: _c, markers: _m, final_note: _f, ...row } = detail();
+    const { segments: _s, copilot: _c, markers: _m, final_note: _f, audio: _a, ...row } = detail();
     const s = reduce(s0, { type: "session", session: { ...row, title: "Renamed" } });
     expect(s.session?.title).toBe("Renamed");
+    expect(s.session?.owner.display_name).toBe("Alice Example");
     expect(s.segments).toBe(s0.segments);
   });
 

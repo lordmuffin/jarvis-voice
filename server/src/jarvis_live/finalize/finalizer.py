@@ -26,14 +26,14 @@ from jarvis_live.copilot.prompts import (
 )
 from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.copilot.transcript import Line, load_lines, render_lines
-from jarvis_live.db.models import CopilotItem, Device
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.render import NoteMeta, render_filename, render_note
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
-from jarvis_live.vault.index import VaultContext
+from jarvis_live.vault.index import NullVault, VaultContext
 
 log = logging.getLogger(__name__)
 
@@ -90,7 +90,8 @@ class Finalizer:
         except Exception as e:
             slog.exception("finalizer failed")
             await self._set_status(session_id, "failed")
-            await self._notifier.notify(
+            await self._notify_owner(
+                session_id,
                 "Jarvis: note failed",
                 f"Could not finalize session `{session_id}`: {e!r}",
                 8,
@@ -105,6 +106,7 @@ class Finalizer:
             if row is None or row.status != "finalizing":
                 return None
             device = await db.get(Device, row.device_id)
+            user = await db.get(User, row.user_id)
             lines = await load_lines(db, session_id)
             related_names = await self._shown_related(db, session_id)
         if row.local_only:
@@ -123,12 +125,15 @@ class Finalizer:
 
         candidates = "\n".join(f"- {n}" for n in related_names)
         note = await self._summarize(row.mode, today, candidates, lines)
-        note.related = await self._resolve_related(note.related, related_names)
+        # The vault is the owner's own: other users' notes link nothing from it.
+        vault = self._vault if row.user_id == OWNER_USER_ID else NullVault()
+        note.related = await self._resolve_related(vault, note.related, related_names)
 
         meta = NoteMeta(
             created=created,
             session_id=str(session_id),
             device=device.name if device else "unknown",
+            user=user.display_name if user else None,
             mode=row.mode,
             duration_minutes=max(1, round(duration_s / 60)),
         )
@@ -136,15 +141,24 @@ class Finalizer:
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
+        # Each user's notes go to their own folder; the owner's (no folder) to the outbox root.
+        subdir = user.notes_subdir if user else None
         written = await asyncio.to_thread(
-            write_atomic, self.outbox, name, markdown, str(session_id)
+            write_atomic,
+            self.outbox / subdir if subdir else self.outbox,
+            name,
+            markdown,
+            str(session_id),
         )
+        if subdir:
+            written = f"{subdir}/{written}"
 
         await self._persist_final(session_id, written, note.title)
         await self._fill_title(session_id, note.title)
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
-        await self._notifier.notify(
+        await self._notify_owner(
+            session_id,
             "Jarvis: note ready",
             f"**{note.title}**\n\n{note.summary.strip()}",
             5,
@@ -207,12 +221,14 @@ class Finalizer:
                 stems[Path(h["path"]).stem] = None
         return list(stems)
 
-    async def _resolve_related(self, suggested: list[str], shown: list[str]) -> list[str]:
+    async def _resolve_related(
+        self, vault: VaultContext, suggested: list[str], shown: list[str]
+    ) -> list[str]:
         """Wikilinks only to notes that exist: what the copilot showed, plus any model
         suggestion the vault index can resolve."""
         out: dict[str, None] = dict.fromkeys(shown)
         for name in suggested:
-            if stem := await self._vault.resolve_name(name):
+            if stem := await vault.resolve_name(name):
                 out[stem] = None
         return list(out)[:MAX_RELATED]
 
@@ -248,6 +264,21 @@ class Finalizer:
                 .values(status=status)
             )
             await db.commit()
+
+    async def _notify_owner(
+        self, session_id: uuid.UUID, title: str, message: str, priority: int, url: str | None
+    ) -> None:
+        """Gotify reaches the deployment owner's phone, so only their sessions notify: other
+        users' note titles and summaries are not the owner's to read."""
+        try:
+            async with self._sm() as db:
+                user_id = await db.scalar(
+                    select(SessionRow.user_id).where(SessionRow.id == session_id)
+                )
+        except Exception:  # e.g. the database outage that failed the note: tell the owner
+            user_id = OWNER_USER_ID
+        if user_id == OWNER_USER_ID:
+            await self._notifier.notify(title, message, priority, url)
 
     def _session_url(self, session_id: uuid.UUID) -> str | None:
         base = self._cfg.public_base_url.rstrip("/")

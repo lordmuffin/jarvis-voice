@@ -5,6 +5,7 @@ import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pytest
 import uvicorn
@@ -13,12 +14,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from testcontainers.community.postgres import PostgresContainer
 
 from jarvis_live.app import create_app
-from jarvis_live.auth import create_device
 from jarvis_live.config import Settings
+from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.stt.backend import STTBackend, Transcription
+from tests.fake_oidc import CLIENT_ID, CLIENT_SECRET, FakeIssuer
+from tests.fakes import new_device
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -99,6 +102,29 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
+def _serve(
+    app: Any, running: list[tuple[uvicorn.Server, threading.Thread]], port: int | None = None
+) -> int:
+    port = port or _free_port()
+    server = uvicorn.Server(
+        uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning", lifespan="on")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 10
+    while not server.started:
+        assert time.monotonic() < deadline, "server did not start"
+        time.sleep(0.02)
+    running.append((server, thread))
+    return port
+
+
+def _stop(running: list[tuple[uvicorn.Server, threading.Thread]]) -> None:
+    for server, thread in running:
+        server.should_exit = True
+        thread.join(timeout=10)
+
+
 @pytest.fixture
 def make_server(postgres_url: str, tmp_path: Path) -> Iterator[Callable[..., ServerHandle]]:
     """Run the real app under uvicorn in a thread (own event loop), like production."""
@@ -112,29 +138,34 @@ def make_server(postgres_url: str, tmp_path: Path) -> Iterator[Callable[..., Ser
     ) -> ServerHandle:
         settings = Settings(database_url=postgres_url, data_dir=tmp_path / "data", **overrides)  # type: ignore[arg-type]
         stt = stt or FakeSTT()
-        port = _free_port()
-        server = uvicorn.Server(
-            uvicorn.Config(
-                create_app(settings, stt=stt, llm=llm, notifier=notifier),
-                host="127.0.0.1",
-                port=port,
-                log_level="warning",
-                lifespan="on",
-            )
-        )
-        thread = threading.Thread(target=server.run, daemon=True)
-        thread.start()
-        deadline = time.monotonic() + 10
-        while not server.started:
-            assert time.monotonic() < deadline, "server did not start"
-            time.sleep(0.02)
-        running.append((server, thread))
+        port = _serve(create_app(settings, stt=stt, llm=llm, notifier=notifier), running)
         return ServerHandle(f"http://127.0.0.1:{port}", settings, stt)
 
     yield start
-    for server, thread in running:
-        server.should_exit = True
-        thread.join(timeout=10)
+    _stop(running)
+
+
+@pytest.fixture
+def issuer() -> Iterator[FakeIssuer]:
+    """A fake Pocket-ID on its own port."""
+    running: list[tuple[uvicorn.Server, threading.Thread]] = []
+    port = _free_port()
+    fake = FakeIssuer(f"http://127.0.0.1:{port}")
+    _serve(fake.app(), running, port)
+    yield fake
+    _stop(running)
+
+
+@pytest.fixture
+def oidc_settings(issuer: FakeIssuer, tmp_path: Path) -> dict[str, Any]:
+    secret = tmp_path / "oidc-secret"
+    secret.write_text(CLIENT_SECRET + "\n")
+    return {
+        "oidc_issuer": issuer.issuer,
+        "oidc_client_id": CLIENT_ID,
+        "oidc_client_secret_file": secret,
+        "oidc_admin_group": "jarvis-admins",
+    }
 
 
 @pytest.fixture
@@ -156,5 +187,6 @@ async def sm(engine: AsyncEngine) -> async_sessionmaker:  # type: ignore[type-ar
 
 @pytest.fixture
 async def token(sm: async_sessionmaker) -> str:  # type: ignore[type-arg]
-    _, tok = await create_device(sm, "test-device")
+    """A device of the deployment owner (whose sessions notify and see the vault)."""
+    _, tok = await new_device(sm, "test-device", user_id=OWNER_USER_ID)
     return tok

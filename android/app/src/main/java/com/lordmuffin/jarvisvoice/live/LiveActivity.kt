@@ -1,6 +1,7 @@
 package com.lordmuffin.jarvisvoice.live
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.os.Bundle
@@ -50,6 +51,7 @@ class LiveActivity : AppCompatActivity() {
     private lateinit var etTitle: EditText
     private lateinit var swLocalOnly: SwitchCompat
     private lateinit var btnStart: Button
+    private lateinit var btnHistory: Button
     private lateinit var tvPendingHeader: TextView
     private lateinit var pendingList: LinearLayout
     private lateinit var tvTimer: TextView
@@ -81,6 +83,7 @@ class LiveActivity : AppCompatActivity() {
         etTitle = findViewById(R.id.et_live_title)
         swLocalOnly = findViewById(R.id.sw_live_local_only)
         btnStart = findViewById(R.id.btn_live_start)
+        btnHistory = findViewById(R.id.btn_live_history)
         tvPendingHeader = findViewById(R.id.tv_live_pending_header)
         pendingList = findViewById(R.id.list_live_pending)
         tvTimer = findViewById(R.id.tv_live_timer)
@@ -96,6 +99,7 @@ class LiveActivity : AppCompatActivity() {
         rvTranscript.adapter = adapter
 
         btnStart.setOnClickListener { onStartTapped() }
+        btnHistory.setOnClickListener { startActivity(Intent(this, SessionsActivity::class.java)) }
         findViewById<Button>(R.id.btn_live_stop).setOnClickListener { LiveSessionService.stop(this) }
         findViewById<Button>(R.id.btn_live_marker).setOnClickListener {
             LiveSessionService.marker(this)
@@ -130,6 +134,8 @@ class LiveActivity : AppCompatActivity() {
         // Finish online sessions a crash or network loss left behind.
         LiveUploadWorker.enqueueInterrupted(this, LiveSessionService.ui.value.sessionId)
         if (!settings.isConfigured) swLocalOnly.isChecked = true
+        btnHistory.isEnabled = settings.isConfigured
+        btnHistory.alpha = if (settings.isConfigured) 1f else 0.5f
     }
 
     private fun onStartTapped() {

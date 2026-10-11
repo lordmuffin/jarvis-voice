@@ -6,7 +6,6 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from jarvis_live.auth import create_device
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import CopilotLoop
@@ -15,7 +14,7 @@ from jarvis_live.db.models import CopilotItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLMError
 from jarvis_live.protocol import Copilot, Related, Status
-from tests.fakes import FakeClock, FakeLLM, add_segments, make_session
+from tests.fakes import FakeClock, FakeLLM, add_segments, make_session, new_device
 
 SM = async_sessionmaker  # type: ignore[type-arg]
 
@@ -79,7 +78,7 @@ class Rig:
 
 @pytest.fixture
 async def rig(sm: SM) -> Rig:
-    device_id, _ = await create_device(sm, f"dev-{uuid.uuid4()}")
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}")
     sid = await make_session(sm, device_id)
     llm = FakeLLM().queue("CopilotDelta", CopilotDelta())
     r = Rig(sm, sid, llm, FakeVault())
