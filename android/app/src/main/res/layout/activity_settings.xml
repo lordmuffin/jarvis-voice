@@ -323,6 +323,35 @@
                 android:fontFamily="monospace"
                 android:layout_marginBottom="6dp" />
 
+            <Button
+                android:id="@+id/btn_live_sign_in"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:text="@string/live_signin_button"
+                android:backgroundTint="@color/jv_accent"
+                android:textColor="@color/jv_on_accent"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tv_live_account"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/live_signin_desc"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:paddingHorizontal="4dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/live_signin_token_label"
+                android:textColor="@color/jv_text2"
+                android:textSize="11sp"
+                android:paddingHorizontal="4dp"
+                android:layout_marginBottom="4dp" />
+
             <EditText
                 android:id="@+id/et_live_device_token"
                 android:layout_width="match_parent"
@@ -350,8 +379,8 @@
                     android:layout_height="44dp"
                     android:layout_weight="1"
                     android:text="@string/live_settings_save"
-                    android:backgroundTint="@color/jv_accent"
-                    android:textColor="@color/jv_on_accent"
+                    android:backgroundTint="@color/jv_surface2"
+                    android:textColor="@color/jv_text"
                     android:textSize="13sp" />
 
                 <Button

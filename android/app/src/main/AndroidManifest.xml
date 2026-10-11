@@ -102,6 +102,37 @@
             android:label="Jarvis Live" />
 
         <activity
+            android:name=".live.SessionsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Session History" />
+
+        <activity
+            android:name=".live.SessionDetailActivity"
+            android:exported="false"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Session" />
+
+        <!-- Pocket-ID sign-in: the server redirects the browser to
+             com.lordmuffin.jarvisvoice://auth/callback?code=… (or ?error=…). -->
+        <activity
+            android:name=".live.AuthCallbackActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
+            android:theme="@style/Theme.JarvisVoice"
+            android:label="Jarvis Live sign-in">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.lordmuffin.jarvisvoice"
+                    android:host="auth"
+                    android:path="/callback" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".AgentTaskActivity"
             android:exported="false"
             android:theme="@style/Theme.JarvisVoice"

@@ -14,13 +14,34 @@
         android:paddingTop="20dp">
 
         <!-- Header -->
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/live_title"
-            android:textColor="@color/jv_text"
-            android:textSize="22sp"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/live_title"
+                android:textColor="@color/jv_text"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btn_live_history"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:backgroundTint="@color/jv_surface2"
+                android:text="@string/live_history"
+                android:textAllCaps="false"
+                android:textColor="@color/jv_accent"
+                android:textSize="13sp" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/tv_live_status"
