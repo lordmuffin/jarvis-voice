@@ -243,3 +243,43 @@ test("admin: users table, one user's sessions, all users", async ({ page, reques
   await page.goto(`/sessions/${id}`);
   await expect(page.locator(".session-head").getByTestId("owner")).toHaveText(/Alice Example/);
 });
+
+test("publishing: edit a note, open its pull request, merge it", async ({ page }) => {
+  page.on("dialog", (d) => void d.accept());
+  // e2e_server seeds a finished "E2E publish me" session for root (an admin) on every start.
+  await signIn(page, "root", "/publishing");
+  await expect(page.getByRole("heading", { name: "Publishing" })).toBeVisible();
+  const ready = page
+    .getByTestId("publishing-ready")
+    .getByTestId("publishing-item")
+    .filter({ hasText: "E2E publish me" })
+    .first();
+  await ready.getByRole("link", { name: "E2E publish me" }).click();
+
+  const chip = page.getByTestId("publication-chip");
+  await expect(page.getByTestId("note")).toContainText("Ready for the vault.");
+  await expect(chip).toHaveText("Not published");
+
+  // Edit the Markdown in place.
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const field = page.getByLabel("Note Markdown");
+  await field.fill((await field.inputValue()).replace("Ready for the vault.", "Edited in the browser."));
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByTestId("note")).toContainText("Edited in the browser.");
+
+  // Publish opens a PR; Merge (confirmed) merges it.
+  await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(chip).toHaveText("PR open");
+  await expect(page.getByRole("link", { name: "Review" })).toHaveAttribute("href", /\/pull\/\d+\/files$/);
+  await expect(page.getByRole("button", { name: "Regenerate" })).toBeDisabled();
+  await page.getByRole("button", { name: "Merge", exact: true }).click();
+  await expect(chip).toHaveText(/Merged/);
+
+  await page.getByRole("link", { name: "Publishing", exact: true }).click();
+  const recent = page
+    .getByTestId("publishing-recent")
+    .getByTestId("publishing-item")
+    .filter({ hasText: "E2E publish me" })
+    .first();
+  await expect(recent.getByTestId("publication-chip")).toHaveText(/Merged/);
+});

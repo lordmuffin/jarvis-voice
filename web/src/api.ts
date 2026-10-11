@@ -4,6 +4,8 @@ import type {
   Device,
   Me,
   NewDevice,
+  Publication,
+  PublishingQueue,
   SessionDetail,
   SessionPage,
   SessionSummary,
@@ -118,3 +120,50 @@ export const revokeDevice = (id: string, f?: typeof fetch) =>
   send(`/v1/devices/${encodeURIComponent(id)}`, { method: "DELETE" }, f);
 
 export const listUsers = (f?: typeof fetch) => request<AdminUser[]>("/v1/admin/users", {}, f);
+
+/** Replace the note's Markdown; an open pull request gets the edit too. */
+export const editNote = (id: string, markdown: string, f?: typeof fetch) =>
+  request<SessionDetail>(`${sid(id)}/note`, { method: "PUT", body: JSON.stringify({ markdown }) }, f);
+
+/** Write the note again from the transcript; the session is `finalizing` meanwhile. */
+export const regenerateNote = (id: string, f?: typeof fetch) =>
+  request<SessionDetail>(`${sid(id)}/regenerate`, { method: "POST" }, f);
+
+/** The publication, after the server checked an open PR on GitHub. */
+export const getPublication = (id: string, f?: typeof fetch) =>
+  request<{ publication: Publication | null }>(`${sid(id)}/publication`, {}, f);
+
+export type PublishAction = "publish" | "merge" | "close" | "skip" | "unskip";
+
+export function publicationRequest(id: string, action: PublishAction): { path: string; method: string } {
+  const base = `${sid(id)}/publication`;
+  switch (action) {
+    case "publish":
+      return { path: base, method: "POST" };
+    case "skip":
+      return { path: `${base}/skip`, method: "POST" };
+    case "unskip":
+      return { path: `${base}/skip`, method: "DELETE" };
+    default:
+      return { path: `${base}/${action}`, method: "POST" };
+  }
+}
+
+/** Publish (open the PR), merge, close, skip or unskip; returns the updated session. */
+export const publicationAction = (id: string, action: PublishAction, f?: typeof fetch) => {
+  const { path, method } = publicationRequest(id, action);
+  return request<SessionDetail>(path, { method }, f);
+};
+
+export const getPublishing = (f?: typeof fetch) => request<PublishingQueue>("/v1/publishing", {}, f);
+
+/** Check every open PR on GitHub now. */
+export const syncPublishing = (f?: typeof fetch) =>
+  request<PublishingQueue>("/v1/publishing/sync", { method: "POST" }, f);
+
+/** Publish every ready note in the background; poll `getPublishing` for progress. */
+export const publishAll = (f?: typeof fetch) =>
+  request<{ status: "started" | "running" }>("/v1/publishing/publish-all", { method: "POST" }, f);
+
+export const setAutoPublish = (on: boolean, f?: typeof fetch) =>
+  request<Me>("/v1/me", { method: "PATCH", body: JSON.stringify({ auto_publish: on }) }, f);

@@ -29,6 +29,7 @@ describe("routes", () => {
   it("parses the devices and admin pages", () => {
     expect(parseRoute("/devices")).toEqual({ name: "devices" });
     expect(parseRoute("/admin/")).toEqual({ name: "admin" });
+    expect(parseRoute("/publishing")).toEqual({ name: "publishing" });
   });
 
   it("reads the admin session filters from the query", () => {

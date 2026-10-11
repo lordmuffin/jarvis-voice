@@ -154,6 +154,48 @@ export interface SessionDetail extends SessionSummary {
   final_note: FinalNoteDoc | null;
   /** Per channel of the session: whether its recording can be played. */
   audio: Partial<Record<Channel, boolean>>;
+  /** The note's way to the vault repo; null until it is published or skipped. */
+  publication: Publication | null;
+  /** The caller may publish this session's note (owner/admin, own notes, configured). */
+  can_publish: boolean;
+  /** The note can be written again from the transcript (an LLM is configured). */
+  can_regenerate: boolean;
+}
+
+export type PublicationState = "publishing" | "open" | "merged" | "closed" | "skipped" | "failed";
+
+/** A note's branch and pull request in the vault repo (one per session). */
+export interface Publication {
+  state: PublicationState;
+  repo_path: string | null;
+  branch: string | null;
+  pr_number: number | null;
+  pr_url: string | null;
+  last_error: string | null;
+  updated_at: string;
+  merged_at: string | null;
+  /** The note was edited since it was last pushed; null when unknown. */
+  changed: boolean | null;
+}
+
+export interface PublishingItem {
+  session_id: string;
+  title: string;
+  started_at: string;
+  owner: string;
+  note_path: string;
+  publication: Publication | null;
+}
+
+/** `GET /v1/publishing`: what is waiting to be proposed, under review, and done. */
+export interface PublishingQueue {
+  repo: string;
+  base_branch: string;
+  auto_publish: boolean;
+  publishing_all: boolean;
+  ready: PublishingItem[];
+  open: PublishingItem[];
+  recent: PublishingItem[];
 }
 
 /** The signed-in user (`GET /v1/me`). `device_id` is null for a browser. */
@@ -163,6 +205,10 @@ export interface Me {
   display_name: string;
   is_admin: boolean;
   device_id: string | null;
+  /** May publish notes to the vault repo. */
+  can_publish: boolean;
+  /** New notes open their pull request without asking. */
+  auto_publish: boolean;
 }
 
 export interface Device {
