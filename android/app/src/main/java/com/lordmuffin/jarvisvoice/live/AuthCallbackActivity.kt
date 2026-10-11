@@ -13,7 +13,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
- * Receives `com.lordmuffin.jarvisvoice://auth/callback?code=…` (or `?error=…`) after the Pocket-ID
+ * Receives `com.lordmuffin.jarvisvoice://auth/callback?code=…` (or `?error=…`, with `account=…`
+ * naming the refused account on `access_denied`) after the Pocket-ID
  * sign-in that Settings opened in the browser, redeems the one-time code with the stored PKCE
  * verifier for a device token, then returns to Settings.
  */
@@ -41,7 +42,9 @@ class AuthCallbackActivity : AppCompatActivity() {
                 settings.clearPendingSignIn()
                 finishWith(
                     when (result.error) {
-                        "access_denied" -> getString(R.string.live_signin_denied)
+                        "access_denied" -> data?.getQueryParameter("account")?.takeIf { it.isNotBlank() }
+                            ?.let { getString(R.string.live_signin_denied_as, it) }
+                            ?: getString(R.string.live_signin_denied)
                         "cancelled" -> getString(R.string.live_signin_cancelled)
                         "server_error" -> getString(R.string.live_signin_server_error)
                         else -> getString(R.string.live_signin_failed, result.error)

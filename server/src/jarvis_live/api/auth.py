@@ -96,8 +96,17 @@ async def login(
     return RedirectResponse(url, status_code=303)
 
 
-def _android_error(error: str) -> RedirectResponse:
-    return RedirectResponse(f"{ANDROID_REDIRECT}?{urlencode({'error': error})}", status_code=303)
+def _android_error(error: str, **extra: str) -> RedirectResponse:
+    query = urlencode({"error": error, **extra})
+    return RedirectResponse(f"{ANDROID_REDIRECT}?{query}", status_code=303)
+
+
+def _idp_error(error: str) -> str:
+    """The app's error for one the identity provider sent back. ``access_denied`` from the
+    provider is the user declining, not Jarvis Live refusing the account."""
+    if not error or error == "access_denied":
+        return "cancelled"
+    return f"idp_{error}"
 
 
 @router.get("/auth/callback", include_in_schema=False)
@@ -120,7 +129,7 @@ async def callback(
     if error or not code:
         log.info("sign-in cancelled at the identity provider: %s", error or "no code")
         if android:
-            return _android_error(error or "cancelled")
+            return _android_error(_idp_error(error))
         return PlainTextResponse(f"Sign-in failed: {error or 'no code'}", 400)
     try:
         claims = await oidc.exchange(
@@ -133,8 +142,10 @@ async def callback(
     except SignInDenied as e:
         log.info("sign-in denied: %s", e)
         if android:
-            return _android_error("access_denied")
-        return PlainTextResponse("Your account is not allowed to use Jarvis Live.", 403)
+            return _android_error("access_denied", account=e.account)
+        return PlainTextResponse(
+            f"Your account ({e.account}) is not allowed to use Jarvis Live.", 403
+        )
     except (OIDCError, KeyError) as e:
         log.warning("sign-in failed: %s", e)
         if android:

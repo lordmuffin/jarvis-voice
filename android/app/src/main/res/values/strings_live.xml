@@ -50,6 +50,7 @@
     <string name="live_signin_success_unknown">Signed in.</string>
     <string name="live_signin_no_pending">No sign-in in progress. Start again from Settings.</string>
     <string name="live_signin_denied">This account is not allowed to use Jarvis Live.</string>
+    <string name="live_signin_denied_as">Pocket-ID signed you in as %1$s, which isn\'t allowed to use Jarvis Live. Check which account the browser uses, or ask an admin to add it to an allowed group.</string>
     <string name="live_signin_cancelled">Sign-in cancelled.</string>
     <string name="live_signin_server_error">Sign-in failed on the server. Try again.</string>
     <string name="live_signin_failed">Sign-in failed: %1$s</string>

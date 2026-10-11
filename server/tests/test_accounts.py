@@ -263,8 +263,18 @@ async def test_android_sign_in_needs_a_challenge_and_reports_errors_to_the_app(
         assert (await c.get("/auth/login", params={"client": "android"})).status_code == 400
         bad = {"client": "android", "challenge": "short"}
         assert (await c.get("/auth/login", params=bad)).status_code == 422
+        # Declining at the identity provider is a cancel, not Jarvis Live refusing the account.
         q = await android_code(c, "deny", pkce()[1])
-        assert q == {"error": ["access_denied"]}
+        assert q == {"error": ["cancelled"]}
+
+
+async def test_android_sign_in_names_the_refused_account(
+    oidc_server: Callable[..., ServerHandle],
+) -> None:
+    server = oidc_server(oidc_allowed_groups="family")
+    async with httpx.AsyncClient(base_url=server.url) as c:
+        q = await android_code(c, "mallory", pkce()[1])
+        assert q == {"error": ["access_denied"], "account": ["mallory@example.com"]}
 
 
 # --- the owner account -------------------------------------------------------------------------
