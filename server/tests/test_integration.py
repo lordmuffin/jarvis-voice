@@ -132,10 +132,13 @@ async def test_resume_has_no_gaps_or_duplicates(server: ServerHandle, token: str
     assert not [e for e in res.events if e["type"] == "error"]
     stored_at_abort = len(await chunk_rows(sm, sid))
     assert 0 < stored_at_abort <= 45
-    # the client is behind the server, so the resume below must re-send already-stored frames
-    assert res.acked["mic"] is None or res.acked["mic"] < stored_at_abort - 1
+    # The client must be behind the server so the resume re-sends already-stored frames. Acks
+    # usually trail the store, but on a slow runner they can have caught up by the time the
+    # socket dies; then act as if the last ack was lost in flight. None re-sends from seq 0.
+    acked = res.acked["mic"]
+    resume_from = None if acked is None or stored_at_abort < 2 else min(acked, stored_at_abort - 2)
 
-    res = await rp.run(TWO_UTTERANCES, session_id=sid, resume_from=res.acked["mic"], result=res)
+    res = await rp.run(TWO_UTTERANCES, session_id=sid, resume_from=resume_from, result=res)
 
     rows = await chunk_rows(sm, sid)
     assert [r.seq for r in rows] == list(range(N_FRAMES)), "gap or duplicate in audio_chunks"
