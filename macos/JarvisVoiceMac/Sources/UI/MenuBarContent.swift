@@ -1,4 +1,5 @@
 import AppKit
+import JarvisLiveKit
 import SwiftUI
 
 struct MenuBarContent: View {
@@ -19,6 +20,9 @@ struct MenuBarContent: View {
 
         Toggle("Local only (no network)", isOn: $model.localOnly)
             .disabled(model.phase != .idle)
+        if let networkText {
+            Text(networkText)
+        }
 
         Divider()
 
@@ -109,6 +113,27 @@ struct MenuBarContent: View {
         case .failed(let why): "Failed: \(why)"
         case .idle: model.isRecording ? "Recording" : "Idle"
         }
+    }
+
+    /// Where the Mac is and why Local only is what it is; nil when the automation is off.
+    private var networkText: String? {
+        let away = model.settings.awayMode
+        guard away.enabled, model.settings.hasCredentials else { return nil }
+        let place = switch away.place {
+        case .home: "Home network"
+        case .netbird: "On NetBird"
+        case .away: "Away from home"
+        case nil: "Checking the network\u{2026}"
+        }
+        guard away.place != nil else { return place }
+        let why = if away.manual == nil {
+            away.localOnly ? "Local only turned on" : "streaming"
+        } else if away.automatic == true {
+            "your choice until you\u{2019}re home or on NetBird"
+        } else {
+            "your choice until you leave home"
+        }
+        return "\(place) \u{00B7} \(why)"
     }
 
     private var dictationHint: String {

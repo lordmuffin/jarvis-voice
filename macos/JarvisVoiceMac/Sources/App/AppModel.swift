@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import Foundation
 import JarvisLiveKit
+import Network
 import Observation
 
 /// A local-only session file waiting to be (or already) uploaded.
@@ -48,7 +49,11 @@ final class AppModel {
 
     private(set) var phase: Phase = .idle
     var mode: Mode = .meeting
-    var localOnly = false
+    /// Follows the network (on when away from home and off NetBird) until the user flips it.
+    var localOnly: Bool {
+        get { settings.awayMode.localOnly }
+        set { settings.awayMode = settings.awayMode.withManual(newValue) }
+    }
     private(set) var store = SessionStore()
     private(set) var assetProgress: Double?
     private(set) var systemState: SystemCapture.State = .idle
@@ -66,6 +71,8 @@ final class AppModel {
     @ObservationIgnored private(set) lazy var panel = PanelController(model: self)
     @ObservationIgnored private let hotkeys = HotKeys()
     @ObservationIgnored private var run: Run?
+    @ObservationIgnored private let pathMonitor = NWPathMonitor()
+    @ObservationIgnored private var networkCheck: Task<Void, Never>?
 
     init() {
         let settings = SettingsModel()
@@ -83,6 +90,11 @@ final class AppModel {
         }
         dictation.startMonitoring()
         dictation.requestAccessibilityIfNeeded()
+        // Wi-Fi joined or lost, a VPN up or down: work out home / NetBird / away again.
+        pathMonitor.pathUpdateHandler = { [weak self] _ in
+            Task { @MainActor in self?.recheckNetwork() }
+        }
+        pathMonitor.start(queue: .main)
     }
 
     // MARK: Derived
@@ -114,6 +126,22 @@ final class AppModel {
         let configured = image.withSymbolConfiguration(.init(paletteColors: [color]))
         configured?.isTemplate = false
         return configured ?? image
+    }
+
+    // MARK: Network
+
+    /// Checks where the Mac is, once path updates settle; a newer change cancels a check still
+    /// waiting on the server.
+    func recheckNetwork() {
+        networkCheck?.cancel()
+        networkCheck = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(750))
+            guard !Task.isCancelled, let self else { return }
+            guard settings.awayMode.enabled, settings.hasCredentials, let base = settings.serverBaseURL else { return }
+            let place = await NetworkPlaceDetector.detect(baseURL: base)
+            guard !Task.isCancelled else { return }
+            settings.awayMode = settings.awayMode.withPlace(place)
+        }
     }
 
     // MARK: Session control

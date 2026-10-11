@@ -1,4 +1,5 @@
 import Foundation
+import JarvisLiveKit
 import Observation
 import Security
 
@@ -12,6 +13,7 @@ final class SettingsModel {
     private static let dictationKeyKey = "dictationKey"
     private static let dictationModeKey = "dictationMode"
     private static let dictationPasteKey = "dictationPaste"
+    private static let awayModeKey = "awayMode"
     private static let defaultServer = "https://live.lab.apj.dev"
 
     var serverURL: String {
@@ -35,6 +37,11 @@ final class SettingsModel {
     var dictationPaste: Bool {
         didSet { UserDefaults.standard.set(dictationPaste, forKey: Self.dictationPasteKey) }
     }
+    /// The Local only toggle and what drives it. The last network check is kept too, so the
+    /// toggle starts from where the Mac last was while the next check runs.
+    var awayMode: AutoLocalOnly {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(awayMode), forKey: Self.awayModeKey) }
+    }
     var deviceToken: String {
         didSet { Keychain.set(deviceToken, account: "device-token") }
     }
@@ -47,6 +54,8 @@ final class SettingsModel {
         dictationKey = defaults.string(forKey: Self.dictationKeyKey).flatMap(TriggerKey.init(rawValue:)) ?? .rightCommand
         dictationMode = defaults.string(forKey: Self.dictationModeKey).flatMap(TriggerMode.init(rawValue:)) ?? .hold
         dictationPaste = defaults.object(forKey: Self.dictationPasteKey) as? Bool ?? true
+        awayMode = defaults.data(forKey: Self.awayModeKey)
+            .flatMap { try? JSONDecoder().decode(AutoLocalOnly.self, from: $0) } ?? AutoLocalOnly()
         deviceToken = Keychain.get(account: "device-token") ?? ""
     }
 

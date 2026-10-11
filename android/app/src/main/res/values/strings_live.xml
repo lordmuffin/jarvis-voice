@@ -6,6 +6,15 @@
     <string name="live_mode_meeting">Meeting</string>
     <string name="live_title_hint">Title (optional)</string>
     <string name="live_local_only">Local only (no network)</string>
+    <string name="live_away_checking">Checking whether Jarvis Live is reachable…</string>
+    <string name="live_away_home">Home network</string>
+    <string name="live_away_netbird">On NetBird</string>
+    <string name="live_away_away">Away from home</string>
+    <string name="live_away_streaming">streaming to Jarvis Live</string>
+    <string name="live_away_local">Local only turned on</string>
+    <string name="live_away_manual_until_back">your choice until you\'re home or on NetBird</string>
+    <string name="live_away_manual_until_leave">your choice until you leave home</string>
+    <string name="live_away_rechecking">checking…</string>
     <string name="live_start">Start session</string>
     <string name="live_stop">Stop</string>
     <string name="live_marker">Marker</string>
@@ -32,6 +41,8 @@
     <string name="live_settings_url_hint">https://live.lab.apj.dev</string>
     <string name="live_settings_token_hint">Device token</string>
     <string name="live_settings_token_saved">Token saved — enter a new one to replace it</string>
+    <string name="live_away_setting">Local only away from home</string>
+    <string name="live_away_setting_desc">Records on the phone when Jarvis Live can\'t be reached and NetBird is off. Flip the switch on the Record tab to override.</string>
     <string name="live_settings_save">Save</string>
     <string name="live_settings_test">Test connection</string>
 

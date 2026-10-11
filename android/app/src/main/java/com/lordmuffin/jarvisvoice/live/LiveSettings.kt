@@ -1,6 +1,7 @@
 package com.lordmuffin.jarvisvoice.live
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -38,6 +39,32 @@ class LiveSettings(private val context: Context) {
             if (value.isNullOrBlank()) prefs.edit().remove(KEY_ACCOUNT_NAME).apply()
             else prefs.edit().putString(KEY_ACCOUNT_NAME, value).apply()
         }
+
+    /**
+     * The Record tab's Local only switch and what drives it. The last network check is kept too,
+     * so the switch starts from where the phone last was while the next check runs.
+     */
+    var awayMode: AutoLocalOnly
+        get() = AutoLocalOnly(
+            enabled = prefs.getBoolean(KEY_AWAY_ENABLED, true),
+            place = NetworkPlace.fromName(prefs.getString(KEY_AWAY_PLACE, null)),
+            manual = prefs.getTriState(KEY_AWAY_MANUAL),
+            manualAgainst = prefs.getTriState(KEY_AWAY_AGAINST),
+        )
+        set(value) {
+            prefs.edit()
+                .putBoolean(KEY_AWAY_ENABLED, value.enabled)
+                .putString(KEY_AWAY_PLACE, value.place?.name)
+                .putTriState(KEY_AWAY_MANUAL, value.manual)
+                .putTriState(KEY_AWAY_AGAINST, value.manualAgainst)
+                .apply()
+        }
+
+    private fun SharedPreferences.getTriState(key: String): Boolean? =
+        if (contains(key)) getBoolean(key, false) else null
+
+    private fun SharedPreferences.Editor.putTriState(key: String, value: Boolean?) =
+        if (value == null) remove(key) else putBoolean(key, value)
 
     /** A Pocket-ID sign-in waiting for its browser callback. */
     data class PendingSignIn(val verifier: String, val serverUrl: String, val startedAt: Long)
@@ -88,6 +115,10 @@ class LiveSettings(private val context: Context) {
         private const val KEY_PENDING_VERIFIER = "live_signin_verifier_enc"
         private const val KEY_PENDING_URL = "live_signin_server_url"
         private const val KEY_PENDING_AT = "live_signin_started_at"
+        private const val KEY_AWAY_ENABLED = "live_away_local_only"
+        private const val KEY_AWAY_PLACE = "live_away_place"
+        private const val KEY_AWAY_MANUAL = "live_away_manual"
+        private const val KEY_AWAY_AGAINST = "live_away_manual_against"
     }
 }
 
