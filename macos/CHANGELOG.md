@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.6.1...macos-v0.7.0) (2026-10-11)
+
+
+### Features
+
+* **macos:** double-tap the dictation key to start, tap to stop ([6666fb6](https://github.com/lordmuffin/jarvis-voice/commit/6666fb66b9e093f3b32418c1b13efaf033ac6aa9))
+* **macos:** double-tap the dictation key to start, tap to stop ([298619e](https://github.com/lordmuffin/jarvis-voice/commit/298619e7dcea20bd25eb9255bfda1a62282ea145))
+
 ## [0.6.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.6.0...macos-v0.6.1) (2026-10-11)
 
 
