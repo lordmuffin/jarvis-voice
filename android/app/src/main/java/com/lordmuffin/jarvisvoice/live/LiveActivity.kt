@@ -37,7 +37,7 @@ import java.util.Date
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** The Live tab: start/stop a session, watch the transcript and copilot, manage pending uploads. */
+/** The Record tab: start/stop a session, watch the transcript and copilot, manage pending uploads. */
 class LiveActivity : AppCompatActivity() {
 
     private lateinit var settings: LiveSettings
@@ -71,7 +71,7 @@ class LiveActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_live)
         supportActionBar?.title = getString(R.string.live_title)
-        BottomNav.wire(this, BottomNav.Tab.LIVE)
+        BottomNav.wire(this, BottomNav.Tab.RECORD)
         settings = LiveSettings(this)
         repo = SessionRepository(settings.sessionsRoot)
 

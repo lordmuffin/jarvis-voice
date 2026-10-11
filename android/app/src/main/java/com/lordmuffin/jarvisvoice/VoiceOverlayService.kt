@@ -352,7 +352,7 @@ class VoiceOverlayService : Service() {
         return true
     }
 
-    /** Release the microphone so another component (e.g. VaultCaptureActivity) can use it. */
+    /** Release the microphone so another component (e.g. LiveSessionService) can use it. */
     fun cancelActiveRecording() {
         if (state == OverlayState.RECORDING) {
             stopRecording()
