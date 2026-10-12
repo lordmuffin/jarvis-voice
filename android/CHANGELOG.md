@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.0...android-v1.11.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **android:** take the app version from version.txt ([8e36818](https://github.com/lordmuffin/jarvis-voice/commit/8e368188ef42ded1f72f7577491434683659ffa6))
+* **android:** take the app version from version.txt ([3922aca](https://github.com/lordmuffin/jarvis-voice/commit/3922acaab11c5ee57a2095141b09111d2f214263))
+
 ## [1.11.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.10.0...android-v1.11.0) (2026-10-11)
 
 
