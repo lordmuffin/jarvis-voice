@@ -54,7 +54,18 @@ test_lab_dispatches_only_to_the_sandbox if {
 		"JARVIS_LIVE_ENVIRONMENT": "lab",
 		"JARVIS_LIVE_DISPATCH_ENABLED": "true",
 		"JARVIS_LIVE_DISPATCH_REPOS": "lordmuffin/jarvis-dispatch-sandbox  lab only\n",
+		"JARVIS_LIVE_WORK_REPOS": "lordmuffin/jarvis-voice  real\nlordmuffin/jarvis-dispatch-sandbox  lab only\n",
 	})
+}
+
+test_lab_sandbox_must_be_a_work_repo if {
+	some msg in deny with input as cm({
+		"JARVIS_LIVE_ENVIRONMENT": "lab",
+		"JARVIS_LIVE_DISPATCH_ENABLED": "true",
+		"JARVIS_LIVE_DISPATCH_REPOS": "lordmuffin/jarvis-dispatch-sandbox  lab only\n",
+		"JARVIS_LIVE_WORK_REPOS": "lordmuffin/jarvis-voice  real\n",
+	})
+	contains(msg, "JARVIS_LIVE_WORK_REPOS")
 }
 
 test_lab_must_not_dispatch_to_real_repos if {

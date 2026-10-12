@@ -136,3 +136,25 @@ def test_a_missing_app_key_file_is_a_problem(tmp_path: Path) -> None:
     assert dispatch_config_problems(cfg) == [
         f"the GitHub App key {tmp_path / 'absent.pem'} is missing"
     ]
+
+
+def test_dispatch_repos_must_be_work_repos(tmp_path: Path) -> None:
+    """A run targets the item's repo, and items only target work repos: a dispatch repo
+    outside them could never run (lab's sandbox, before it was added to lab's work repos)."""
+    key = tmp_path / "app.pem"
+    key.write_text("k")
+    cfg = Settings(
+        dispatch_enabled=True,
+        work_items_enabled=True,
+        work_repos="o/real  the real repo\n",
+        dispatch_repos="o/sandbox  scratch\n",
+        git_sha="abc",
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=key,
+    )
+    assert dispatch_config_problems(cfg) == [
+        "o/sandbox is not a work repo (JARVIS_LIVE_WORK_REPOS), so no item can target it"
+    ]
+    both = cfg.model_copy(update={"work_repos": "o/real  real\no/sandbox  scratch\n"})
+    assert dispatch_config_problems(both) == []

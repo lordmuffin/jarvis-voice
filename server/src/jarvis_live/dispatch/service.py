@@ -69,6 +69,12 @@ def dispatch_config_problems(cfg: Settings, *, own_tokens: bool = True) -> list[
         problems.append("no GitHub App (JARVIS_LIVE_GITHUB_APP_ID, _INSTALLATION_ID, _KEY_FILE)")
     elif own_tokens and key and not key.is_file():
         problems.append(f"the GitHub App key {key} is missing")
+    # A run targets its item's repo, and items only target work repos.
+    for repo in cfg.dispatch_repo_allowlist:
+        if repo not in cfg.work_repo_allowlist:
+            problems.append(
+                f"{repo} is not a work repo (JARVIS_LIVE_WORK_REPOS), so no item can target it"
+            )
     return problems
 
 
