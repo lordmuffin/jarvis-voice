@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.15.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.14.0...server-v0.15.0) (2026-10-12)
+
+
+### Features
+
+* **deploy:** fence, RBAC and mirrors for dispatch; lab dispatches to its sandbox ([5c464bf](https://github.com/lordmuffin/jarvis-voice/commit/5c464bf94fc89b0522e2b3916654eafb68305f83))
+* dispatch approved work items as headless Claude Code (phase b) ([66df8e8](https://github.com/lordmuffin/jarvis-voice/commit/66df8e87de7456196766d6a421b7c90cc69f6292))
+* **server:** dispatch API, status on work items, and startup wiring ([412571a](https://github.com/lordmuffin/jarvis-voice/commit/412571a79d329a422b23366c29687af672a56fa6))
+* **server:** Kubernetes calls for dispatch and reading a run's outcome ([944edd0](https://github.com/lordmuffin/jarvis-voice/commit/944edd045d90233af26dec415831261e24cdb9ad))
+* **server:** mint per-run GitHub App tokens for one repo ([44df7e1](https://github.com/lordmuffin/jarvis-voice/commit/44df7e1e311c00159e8f51a8339f23f7d094dcdc))
+* **server:** queue, run and track dispatches of approved work items ([d40e8e7](https://github.com/lordmuffin/jarvis-voice/commit/d40e8e7dd525187d75a659c2282ca658a203e0ae))
+* **server:** the dispatch runner image: prepare, claude, push ([5d011d1](https://github.com/lordmuffin/jarvis-voice/commit/5d011d10065cf3005ae1ed82083462e4a323907b))
+* **server:** the Job and Secret a dispatch runs as ([01ceda3](https://github.com/lordmuffin/jarvis-voice/commit/01ceda3ecac67219490dcc1ae07f6b2f5e8f8cd8))
+* **web:** run approved work items in Claude Code and follow the run ([47c64aa](https://github.com/lordmuffin/jarvis-voice/commit/47c64aa8f4738d99421afdf84aa6c411b11db18c))
+
+
+### Bug Fixes
+
+* **server:** a misconfigured dispatch stays off instead of crashing ([04b5d44](https://github.com/lordmuffin/jarvis-voice/commit/04b5d442760a0349241f23672aca52870ce6e059))
+
+
+### Documentation
+
+* dispatch as built, settings, the lab fence and one-time setup ([188e711](https://github.com/lordmuffin/jarvis-voice/commit/188e7110b741a28cf2bf8960b62646f631bc51cd))
+
 ## [0.14.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.13.0...server-v0.14.0) (2026-10-12)
 
 
