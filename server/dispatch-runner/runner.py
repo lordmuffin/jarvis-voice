@@ -18,6 +18,12 @@ push never runs git in Claude's worktree and never reads its config: it takes on
 core.fsmonitor that Claude planted never executes with the token. It refuses changes to
 .github/workflows (the token cannot push those either).
 
+Claude runs unattended: it is told never to stop and ask, to commit as it goes (it has a git
+author, but no GitHub credential), and to end with a `NEEDS INPUT:` section when only the owner
+can unblock it. Those questions travel separately from its summary, and the owner's answer
+starts a follow-up run on the same branch: prepare starts from the branch when it already
+exists, and push reuses the branch's open PR instead of opening another.
+
 push reports its outcome as JSON on $TERMINATION_LOG (the pod's termination message, max
 4 KiB), which the server reads through the Kubernetes API."""
 
@@ -30,6 +36,7 @@ import re
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
@@ -41,6 +48,29 @@ MAX_BODY = 60_000
 FORBIDDEN = (".github/workflows/",)
 AUTHOR = ("Claude (jarvis-dispatch)", "claude-dispatch@apj.dev")
 LIMIT = re.compile(r"(usage|rate)[ -]limit", re.IGNORECASE)
+# The marker Claude ends with when it needs the owner, in any markdown dress: at the start of
+# a line, upper case, and with a colon or alone on its line (so prose never matches).
+ASK = re.compile(r"^[ \t#>*_]*NEEDS INPUT(?:[ \t*_]*:|[ \t*_]*$)[ \t*_]*", re.MULTILINE)
+NO_QUESTIONS = {"", "none", "n/a", "nothing", "no"}
+MAX_QUESTIONS = 1500
+UNATTENDED = """\
+You are running unattended, as a Jarvis dispatch run in a sandboxed container. Nobody can \
+answer while you work, so never stop to ask, wait for confirmation, or end early with a \
+question you could answer yourself.
+
+- When something is ambiguous, pick the most reasonable reading that fits the repository's \
+own conventions, note the assumption, and keep going.
+- Commit on the current branch as you go, with Conventional Commits messages; git already has \
+an author. Do not push and do not open a pull request (there is no GitHub credential here): \
+when you finish, the runner pushes this branch and opens or updates its draft PR.
+- If the branch already has commits from an earlier run, build on them.
+- Your final message becomes the PR description and the owner's notification: say what you \
+changed, how you verified it, and the assumptions you made.
+- Only if you truly cannot finish (a decision only the owner can make, access you lack, a \
+check you cannot fix): do everything you can, commit it, then end your final message with a \
+line that says only `NEEDS INPUT:` followed by numbered, answerable questions. The owner's \
+answers start a follow-up run on this branch.
+"""
 
 
 def env(name: str, default: str | None = None) -> str:
@@ -70,6 +100,16 @@ def auth_env(url: str) -> dict[str, str]:
     }
 
 
+def identity() -> dict[str, str]:
+    """The author of every commit a run makes, Claude's own included."""
+    return {
+        "GIT_AUTHOR_NAME": AUTHOR[0],
+        "GIT_AUTHOR_EMAIL": AUTHOR[1],
+        "GIT_COMMITTER_NAME": AUTHOR[0],
+        "GIT_COMMITTER_EMAIL": AUTHOR[1],
+    }
+
+
 def git(*args: str, cwd: Path | None = None, extra: dict[str, str] | None = None) -> str:
     """git with hooks and fsmonitor off, and no system or global config."""
     full = {
@@ -77,10 +117,7 @@ def git(*args: str, cwd: Path | None = None, extra: dict[str, str] | None = None
         "GIT_CONFIG_NOSYSTEM": "1",
         "GIT_CONFIG_GLOBAL": os.devnull,
         "GIT_TERMINAL_PROMPT": "0",
-        "GIT_AUTHOR_NAME": AUTHOR[0],
-        "GIT_AUTHOR_EMAIL": AUTHOR[1],
-        "GIT_COMMITTER_NAME": AUTHOR[0],
-        "GIT_COMMITTER_EMAIL": AUTHOR[1],
+        **identity(),
         **(extra or {}),
     }
     cmd = ["git", "-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"]
@@ -116,13 +153,19 @@ def prepare() -> None:
         else:
             git("clone", "--mirror", "--quiet", url, str(mirror), extra=auth_env(url))
         default = git("symbolic-ref", "--short", "HEAD", cwd=mirror)
-    local = work / "repo.git"
+    local, branch = work / "repo.git", env("BRANCH")
     git("clone", "--bare", "--shared", "--quiet", str(mirror), str(local))
-    base = git("rev-parse", default, cwd=local)
-    git("worktree", "add", "--quiet", "-b", env("BRANCH"), str(work / "tree"), base, cwd=local)
+    try:  # a follow-up run: the branch an earlier run pushed
+        base = git("rev-parse", "--verify", "--quiet", f"refs/heads/{branch}", cwd=local)
+        git("worktree", "add", "--quiet", str(work / "tree"), branch, cwd=local)
+        start = branch
+    except RuntimeError:
+        base = git("rev-parse", default, cwd=local)
+        git("worktree", "add", "--quiet", "-b", branch, str(work / "tree"), base, cwd=local)
+        start = default
     (work / "base").write_text(base + "\n")
     (work / "default").write_text(default + "\n")
-    print(f"worktree {work / 'tree'} on {env('BRANCH')} from {default} at {base[:12]}")
+    print(f"worktree {work / 'tree'} on {branch} from {start} at {base[:12]}")
 
 
 # --- claude -------------------------------------------------------------------------------
@@ -139,11 +182,15 @@ def run_claude(prompt: str, cwd: Path) -> dict[str, Any]:
         "--output-format",
         "stream-json",
         "--verbose",
+        "--append-system-prompt",
+        UNATTENDED,
         # The pod is the sandbox: no cluster or LAN access, no GitHub credential in this step.
         "--dangerously-skip-permissions",
     ]
     result: dict[str, Any] = {}
-    proc = subprocess.Popen(cmd, cwd=cwd, stdout=subprocess.PIPE, text=True)
+    proc = subprocess.Popen(
+        cmd, cwd=cwd, stdout=subprocess.PIPE, text=True, env={**os.environ, **identity()}
+    )
     assert proc.stdout is not None
     for line in proc.stdout:
         sys.stdout.write(line)
@@ -155,6 +202,18 @@ def run_claude(prompt: str, cwd: Path) -> dict[str, Any]:
             result = event
     code = proc.wait()
     return {**result, "exit_code": code}
+
+
+def split_questions(text: str) -> tuple[str, str]:
+    """Claude's final message as (summary, questions): what follows its last NEEDS INPUT."""
+    marks = list(ASK.finditer(text))
+    if not marks:
+        return text.strip(), ""
+    m = marks[-1]
+    questions = text[m.end() :].strip()
+    if questions.strip(" .*_").lower() in NO_QUESTIONS:
+        return text.strip(), ""
+    return text[: m.start()].strip(), questions
 
 
 def claude() -> None:
@@ -174,10 +233,12 @@ def claude() -> None:
     (out / "commits.txt").write_text(
         git("log", "--reverse", "--format=%B", f"{base}..HEAD", cwd=tree)
     )
-    summary = text[:MAX_REPORT] or ("Claude Code failed" if failed else "")
+    summary, questions = split_questions(text)
+    summary = summary[:MAX_REPORT] or ("" if questions or not failed else "Claude Code failed")
     result = {
         "status": status,
         "summary": summary,
+        "questions": questions[:MAX_QUESTIONS],
         "turns": r.get("num_turns"),
         "base": base,
         "default": (work / "default").read_text().strip(),
@@ -192,9 +253,10 @@ def claude() -> None:
 def report(**fields: Any) -> None:
     fields = {k: v for k, v in fields.items() if v is not None}
     data = json.dumps(fields)
-    while len(data.encode()) > 4096 and fields.get("summary"):
-        fields["summary"] = fields["summary"][: len(fields["summary"]) // 2] + "…"
-        data = json.dumps(fields)
+    for key in ("summary", "questions"):
+        while len(data.encode()) > 4096 and len(fields.get(key) or "") > 1:
+            fields[key] = fields[key][: len(fields[key]) // 2] + "…"
+            data = json.dumps(fields)
     Path(env("TERMINATION_LOG", "/dev/termination-log")).write_text(data)
     print(data)
 
@@ -211,30 +273,44 @@ def touched(patch: str) -> set[str]:
     return paths
 
 
-def open_pr(repo: str, branch: str, base: str, title: str, body: str) -> dict[str, Any]:
+def github(path: str, body: dict[str, Any] | None = None) -> Any:
     req = urllib.request.Request(
-        f"{env('GITHUB_API', 'https://api.github.com').rstrip('/')}/repos/{repo}/pulls",
-        data=json.dumps(
-            {"title": title, "head": branch, "base": base, "body": body, "draft": True}
-        ).encode(),
+        f"{env('GITHUB_API', 'https://api.github.com').rstrip('/')}{path}",
+        data=json.dumps(body).encode() if body is not None else None,
         headers={
             "Authorization": f"Bearer {token()}",
             "Accept": "application/vnd.github+json",
             "Content-Type": "application/json",
         },
-        method="POST",
+        method="POST" if body is not None else "GET",
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            data: dict[str, Any] = json.loads(resp.read())
-            return data
+            return json.loads(resp.read())
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"opening the PR failed: {e.code} {e.read()[:300]!r}") from e
+        what = "opening the PR" if body is not None else "looking up the PR"
+        raise RuntimeError(f"{what} failed: {e.code} {e.read()[:300]!r}") from e
 
 
-def pr_body(summary: str, meta: dict[str, Any], prompt: str, commits: str) -> str:
-    body = (
-        f"{summary or 'Claude Code made these changes.'}\n\n---\n\n"
+def open_pr(repo: str, branch: str, base: str, title: str, body: str) -> dict[str, Any]:
+    """The branch's open PR (a follow-up run), else a new draft one."""
+    query = urllib.parse.urlencode({"head": f"{repo.split('/')[0]}:{branch}", "state": "open"})
+    found = github(f"/repos/{repo}/pulls?{query}")
+    if isinstance(found, list) and found and isinstance(found[0], dict):
+        return found[0]
+    pr = {"title": title, "head": branch, "base": base, "body": body, "draft": True}
+    data: dict[str, Any] = github(f"/repos/{repo}/pulls", pr)
+    return data
+
+
+def pr_body(
+    summary: str, meta: dict[str, Any], prompt: str, commits: str, questions: str = ""
+) -> str:
+    body = f"{summary or 'Claude Code made these changes.'}\n\n"
+    if questions:
+        body += f"## Needs input\n\n{questions}\n\n"
+    body += (
+        "---\n\n"
         f"Dispatched from a Jarvis Live work item: {meta.get('item_url') or '(no link)'} "
         f"(dispatch `{meta.get('dispatch_id')}`). Headless Claude Code in its own worktree.\n\n"
     )
@@ -257,9 +333,14 @@ def push() -> None:
         report(outcome="failed", error="the claude step left no result", branch=branch)
         return
     summary = result.get("summary") or ""
+    questions = result.get("questions") or ""
     patch = (out / "changes.patch").read_text()
     if not patch.strip():
-        if result["status"] == "ok":
+        if questions:
+            report(
+                outcome="needs_input", summary=summary or None, questions=questions, branch=branch
+            )
+        elif result["status"] == "ok":
             report(outcome="no_changes", summary=summary, branch=branch)
         else:
             outcome = "rate_limited" if result["status"] == "rate_limited" else "failed"
@@ -293,17 +374,18 @@ def push() -> None:
             branch,
             result["default"],
             message.splitlines()[0][:200],
-            pr_body(summary, meta, prompt, commits),
+            pr_body(summary, meta, prompt, commits, questions),
         )
     except Exception as e:  # reported, not raised: the outcome travels in the report
         report(outcome="failed", error=str(e)[:1500], branch=branch, summary=summary[:1500] or None)
         return
     report(
-        outcome="pr_opened",
+        outcome="needs_input" if questions else "pr_opened",
         pr_url=pr.get("html_url"),
         pr_number=pr.get("number"),
         branch=branch,
         summary=summary[:1500],
+        questions=questions or None,
     )
 
 

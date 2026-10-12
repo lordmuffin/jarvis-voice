@@ -28,8 +28,10 @@ class Dispatcher(Protocol):
         prompt: str,
         prompt_sha256: str,
         actor_user_id: uuid.UUID,
+        guidance: str | None = None,
     ) -> None:
-        """Start running an approved item. Called only after ``refusal`` returned None."""
+        """Start running an approved item. Called only after ``refusal`` returned None.
+        With ``guidance``, the run continues the item's last run, on its branch."""
         ...
 
 

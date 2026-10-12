@@ -145,8 +145,10 @@ When you think out loud in a session, the copilot picks out the ideas that are w
 - **Tokens:** each run mints a GitHub App token for its one repo: Contents and Pull requests write, never Workflows. It is refreshed every 30 minutes while the run lasts.
 - **One run at a time** (`DISPATCH_MAX_CONCURRENT`): the runs share your subscription's usage limits.
 - **Gating a queued run:** it starts only if its item still has the prompt you approved. One active run per item; a retry gets its own branch (`…-2`).
-- **Status:** the card shows queued, running, the PR, no changes, failed, timed out (1 h deadline) or the usage limit. You get a Gotify push when a run ends. **Cancel** deletes the Job.
-- **Audit:** every step is in `work_item_events`: requested (with the prompt), started (job, image, model), finished (outcome, PR, error) and cancelled.
+- **Unattended:** the runner tells Claude that nobody can answer mid-run. It must not stop to ask: it notes its assumptions and keeps going, and commits as it goes (it has a git author but no GitHub credential). Only when it truly cannot finish does it end with `NEEDS INPUT:` and its questions. That run ends **needs your input**, with whatever work it did pushed to the draft PR. The Gotify push links to the Work Items page.
+- **Steering** (`POST /v1/work-items/{id}/dispatch/continue`, `{"guidance": "…"}`): **Answer Claude** (open when a run asks) or **↪ Steer Next Run** on any finished run queues a follow-up through the same gate. It continues on the last run's branch and draft PR, not a new one. Its prompt is the approved prompt plus the last run's report and questions, then your reply, which wins where they conflict. **Run Again** still starts over on a fresh branch.
+- **Status:** the card shows queued, running, the PR, needs your input (with Claude's questions), no changes, failed, timed out (1 h deadline) or the usage limit, plus your reply on a follow-up. You get a Gotify push when a run ends. **Cancel** deletes the Job.
+- **Audit:** every step is in `work_item_events`: requested (with the prompt, and the guidance on a follow-up), started (job, image, model, the run it continues), finished (outcome, PR, questions, error) and cancelled.
 - **Misconfiguration:** dispatch stays off, with an error in the log listing what is missing. The server still starts.
 
 | Variable | |

@@ -315,13 +315,18 @@ DISPATCH_STATES = (
     "rate_limited",
     "timed_out",
     "cancelled",
+    "needs_input",
 )
 
 
 class WorkItemDispatch(Base):
     """One run of an approved work item as headless Claude Code: a Kubernetes Job with its own
     git worktree (``dispatch/``). ``prompt_sha256`` is the approved prompt it was queued with;
-    a run whose item no longer carries that prompt never starts."""
+    a run whose item no longer carries that prompt never starts.
+
+    A follow-up run ``continues`` an earlier one on its branch, with the owner's ``guidance``
+    appended to the approved prompt; ``questions`` are what a run asked the owner (it ended
+    ``needs_input``)."""
 
     __tablename__ = "work_item_dispatches"
     __table_args__ = (
@@ -352,3 +357,8 @@ class WorkItemDispatch(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     token_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    questions: Mapped[str | None] = mapped_column(Text)
+    guidance: Mapped[str | None] = mapped_column(Text)
+    continues: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("work_item_dispatches.id", ondelete="SET NULL")
+    )

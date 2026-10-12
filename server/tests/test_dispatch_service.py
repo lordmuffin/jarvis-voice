@@ -240,3 +240,101 @@ async def test_another_user_cannot_cancel(rig: Rig) -> None:
     with pytest.raises(WorkItemError) as e:
         await rig.svc.cancel(item, Actor(uuid.uuid4(), "web"))
     assert e.value.status == 404
+
+
+async def test_a_run_that_needs_input_asks_the_owner(rig: Rig) -> None:
+    item = await rig.approved()
+    await rig.work.dispatch(item, OWNER)
+    await rig.svc.tick()
+    (run,) = await rig.runs(item)
+    rig.kube.report(
+        run.job_name,
+        outcome="needs_input",
+        pr_url="https://github.com/lordmuffin/jarvis-voice/pull/140",
+        pr_number=140,
+        summary="Added the retry loop.",
+        questions="1. Back off past 60 s?",
+    )
+    await rig.svc.tick()
+    (run,) = await rig.runs(item)
+    assert (run.state, run.questions, run.pr_number) == (
+        "needs_input",
+        "1. Back off past 60 s?",
+        140,
+    )
+    (sent,) = rig.notifier.sent
+    assert sent.title == "Jarvis: run needs your input"
+    assert "Back off past 60 s?" in sent.message
+    assert sent.url == "https://live.example/work-items"
+
+
+async def finish(rig: Rig, item: uuid.UUID, **report: Any) -> WorkItemDispatch:
+    await rig.svc.tick()
+    run = (await rig.runs(item))[-1]
+    rig.kube.report(run.job_name, **report)
+    await rig.svc.tick()
+    return (await rig.runs(item))[-1]
+
+
+async def test_guidance_continues_the_last_run_on_its_branch(rig: Rig) -> None:
+    item = await rig.approved()
+    await rig.work.dispatch(item, OWNER)
+    first = await finish(
+        rig,
+        item,
+        outcome="needs_input",
+        pr_url="https://github.com/lordmuffin/jarvis-voice/pull/140",
+        pr_number=140,
+        summary="Added the retry loop.",
+        questions="1. Back off past 60 s?",
+    )
+
+    await rig.work.dispatch(item, OWNER, guidance="  No, cap it at 60 s.  ")
+
+    _, second = await rig.runs(item)
+    assert (second.state, second.attempt, second.branch) == ("queued", 2, first.branch)
+    assert (second.continues, second.guidance) == (first.id, "No, cap it at 60 s.")
+    async with rig.sm() as db:
+        payload = (
+            (
+                await db.execute(
+                    select(WorkItemEvent.payload)
+                    .where(WorkItemEvent.work_item_id == item)
+                    .where(WorkItemEvent.event == "dispatch_requested")
+                    .order_by(WorkItemEvent.id.desc())
+                )
+            )
+            .scalars()
+            .first()
+        )
+    assert payload is not None and payload["guidance"] == "No, cap it at 60 s."
+
+    await rig.svc.tick()
+    (second,) = [r for r in await rig.runs(item) if r.attempt == 2]
+    prompt = rig.kube.secrets[second.job_name]["stringData"]["prompt.md"]
+    assert prompt.startswith("You are working in the GitHub repository")
+    follow_up = prompt[prompt.index("## Follow-up run") :]
+    assert f"`{first.branch}`" in follow_up and "draft PR #140" in follow_up
+    assert "Added the retry loop." in follow_up and "1. Back off past 60 s?" in follow_up
+    assert follow_up.rstrip().endswith("No, cap it at 60 s.")
+
+
+async def test_guidance_needs_an_earlier_finished_run(rig: Rig) -> None:
+    item = await rig.approved()
+    with pytest.raises(WorkItemError, match="nothing to continue"):
+        await rig.work.dispatch(item, OWNER, guidance="go on")
+    await rig.work.dispatch(item, OWNER)
+    with pytest.raises(WorkItemError, match="already"):
+        await rig.work.dispatch(item, OWNER, guidance="go on")
+    with pytest.raises(WorkItemError, match="guidance"):
+        await rig.work.dispatch(item, OWNER, guidance="   ")
+    assert [r.attempt for r in await rig.runs(item)] == [1]
+
+
+async def test_guidance_still_needs_the_approved_prompt(rig: Rig) -> None:
+    item = await rig.approved()
+    await rig.work.dispatch(item, OWNER)
+    await finish(rig, item, outcome="failed", error="tests failed")
+    await rig.work.unapprove(item, OWNER)
+    with pytest.raises(WorkItemError, match="not approved"):
+        await rig.work.dispatch(item, OWNER, guidance="fix the tests")

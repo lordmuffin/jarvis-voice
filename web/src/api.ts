@@ -220,6 +220,14 @@ export const workItemCopied = (id: string, f?: typeof fetch) =>
 export const dispatchWorkItem = (id: string, f?: typeof fetch) =>
   request<WorkItem>(`${wi(id)}/dispatch`, { method: "POST" }, f);
 
+/** Reply to the item's last run: a follow-up run continues its branch and draft PR. */
+export const continueDispatch = (id: string, guidance: string, f?: typeof fetch) =>
+  request<WorkItem>(
+    `${wi(id)}/dispatch/continue`,
+    { method: "POST", body: JSON.stringify({ guidance }) },
+    f,
+  );
+
 /** Stop the item's queued or running run. */
 export const cancelDispatch = (id: string, f?: typeof fetch) =>
   request<WorkItem>(`${wi(id)}/dispatch/cancel`, { method: "POST" }, f);

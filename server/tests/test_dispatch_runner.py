@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
@@ -43,6 +44,17 @@ def git(*args: str, cwd: Path | None = None) -> str:
 
 class PRs(BaseHTTPRequestHandler):
     created: list[dict[str, Any]] = []
+    queries: list[str] = []
+    existing: list[dict[str, Any]] = []  # open PRs a lookup by head finds
+
+    def do_GET(self) -> None:  # noqa: N802
+        PRs.queries.append(self.path)
+        out = json.dumps(PRs.existing).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(out)))
+        self.end_headers()
+        self.wfile.write(out)
 
     def do_POST(self) -> None:  # noqa: N802
         body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
@@ -62,7 +74,7 @@ class PRs(BaseHTTPRequestHandler):
 
 @pytest.fixture
 def api() -> Iterator[str]:
-    PRs.created = []
+    PRs.created, PRs.queries, PRs.existing = [], [], []
     server = HTTPServer(("127.0.0.1", 0), PRs)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     yield f"http://127.0.0.1:{server.server_port}"
@@ -110,6 +122,9 @@ def world(tmp_path: Path, api: str, monkeypatch: pytest.MonkeyPatch) -> dict[str
         "TOKEN_FILE": str(dirs["secrets"] / "token"),
         "MODEL": "claude-sonnet-5-5",
         "TERMINATION_LOG": str(tmp_path / "termination-log"),
+        # Like the pod: no global git config, so no identity unless the runner gives one.
+        "GIT_CONFIG_GLOBAL": os.devnull,
+        "HOME": str(tmp_path),
     }
     for k, v in env.items():
         monkeypatch.setenv(k, v)
@@ -121,8 +136,10 @@ def fake_claude(world: dict[str, Path], script: str, result: dict[str, Any]) -> 
     """A `claude` that runs ``script`` in the worktree, then prints a stream-json result."""
     path = world["root"] / "claude"
     events = [{"type": "system", "subtype": "init"}, {"type": "result", **result}]
-    lines = "\n".join(f"echo '{json.dumps(e)}'" for e in events)
-    path.write_text(f"#!/bin/sh\nset -e\n{script}\n{lines}\n")
+    lines = "\n".join(f"printf '%s\\n' '{json.dumps(e)}'" for e in events)
+    args = world["root"] / "claude-args"
+    record = f'for a in "$@"; do printf \'%s\\0\' "$a"; done > {args}'
+    path.write_text(f"#!/bin/sh\nset -e\n{record}\n{script}\n{lines}\n")
     path.chmod(path.stat().st_mode | stat.S_IEXEC)
     os.environ["CLAUDE_BIN"] = str(path)
 
@@ -279,3 +296,144 @@ def test_nothing_claude_plants_in_its_worktree_runs_in_push(world: dict[str, Pat
     runner.push()
     assert report(world)["outcome"] == "pr_opened"
     assert not marker.exists()
+
+
+def claude_args(world: dict[str, Path]) -> list[str]:
+    return (world["root"] / "claude-args").read_text().split("\0")[:-1]
+
+
+PLAIN_COMMIT = (
+    "printf 'print(\"retry\")\\n' >> app.py\n"
+    "git add -A && git -c user.useConfigOnly=true commit -qm 'feat(server): retry Gotify pushes'"
+)
+
+
+def test_claude_can_commit_without_any_git_config(world: dict[str, Path]) -> None:
+    runner = load()
+    runner.prepare()
+    fake_claude(world, PLAIN_COMMIT, OK)
+    runner.claude()
+    assert json.loads((world["out"] / "result.json").read_text())["status"] == "ok"
+    assert (world["out"] / "commits.txt").read_text().startswith("feat(server): retry")
+    author = git("log", "-1", "--format=%an <%ae>", cwd=world["work"] / "tree")
+    assert author == "Claude (jarvis-dispatch) <claude-dispatch@apj.dev>"
+
+
+def test_claude_is_told_it_runs_unattended(world: dict[str, Path]) -> None:
+    runner = load()
+    runner.prepare()
+    fake_claude(world, "true", OK)
+    runner.claude()
+    args = claude_args(world)
+    assert args[args.index("-p") + 1] == "# Task: retry\n"
+    system = args[args.index("--append-system-prompt") + 1]
+    assert "never stop to ask" in system and "NEEDS INPUT:" in system
+    assert "Do not push" in system
+
+
+ASKS = {
+    **OK,
+    "result": (
+        "Added the retry loop and its tests.\n\n"
+        "**NEEDS INPUT:**\n1. Should retries back off past 60 s?\n2. Keep the old flag?"
+    ),
+}
+
+
+def test_questions_claude_ends_with_are_split_from_its_summary(world: dict[str, Path]) -> None:
+    runner = load()
+    runner.prepare()
+    fake_claude(world, PLAIN_COMMIT, ASKS)
+    runner.claude()
+    result = json.loads((world["out"] / "result.json").read_text())
+    assert result["summary"] == "Added the retry loop and its tests."
+    assert result["questions"] == "1. Should retries back off past 60 s?\n2. Keep the old flag?"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Needs input validation was added to the form.",
+        "Done.\n\nNEEDS INPUT handling stays as it was.",
+        "Done.\n\nNEEDS INPUT: none",
+    ],
+)
+def test_only_the_marker_with_real_questions_asks(text: str) -> None:
+    assert load().split_questions(text) == (text.strip(), "")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Done.\n**NEEDS INPUT:**\n1. Q?", "Done.\n## NEEDS INPUT\n1. Q?", "Done.\nNEEDS INPUT: 1. Q?"],
+)
+def test_the_marker_in_any_markdown_dress_asks(text: str) -> None:
+    assert load().split_questions(text) == ("Done.", "1. Q?")
+
+
+def test_a_run_with_questions_pushes_its_work_and_asks(world: dict[str, Path]) -> None:
+    runner = load()
+    runner.prepare()
+    fake_claude(world, PLAIN_COMMIT, ASKS)
+    runner.claude()
+    runner.push()
+    r = report(world)
+    assert r["outcome"] == "needs_input" and r["pr_number"] == 41
+    assert r["questions"].startswith("1. Should retries")
+    assert r["summary"] == "Added the retry loop and its tests."
+    (pr,) = PRs.created
+    assert "## Needs input" in pr["body"] and "Keep the old flag?" in pr["body"]
+
+
+def test_questions_without_changes_still_ask(world: dict[str, Path]) -> None:
+    runner = load()
+    runner.prepare()
+    fake_claude(world, "true", {**OK, "result": "NEEDS INPUT: which repo owns the config?"})
+    runner.claude()
+    runner.push()
+    r = report(world)
+    assert r == {
+        "outcome": "needs_input",
+        "questions": "which repo owns the config?",
+        "branch": BRANCH,
+    }
+    assert PRs.created == []
+
+
+def test_a_follow_up_run_continues_the_branch_and_its_pr(
+    world: dict[str, Path], tmp_path: Path
+) -> None:
+    runner = load()
+    runner.prepare()
+    fake_claude(world, PLAIN_COMMIT, ASKS)
+    runner.claude()
+    runner.push()
+    first = git("rev-parse", BRANCH, cwd=world["remote"])
+    PRs.existing = [
+        {"html_url": "https://github.com/lordmuffin/jarvis-voice/pull/41", "number": 41}
+    ]
+    PRs.created = []
+
+    for step in ("work", "out", "scratch"):
+        fresh = tmp_path / f"{step}2"
+        fresh.mkdir()
+        os.environ[step.upper()] = str(fresh)
+    runner.prepare()
+    tree = tmp_path / "work2" / "tree"
+    assert git("rev-parse", "HEAD", cwd=tree) == first  # starts from the earlier run's work
+    fake_claude(
+        world,
+        "printf 'x\\n' > more.txt && git add -A && git commit -qm 'test: more'",
+        {**OK, "result": "Answered: no back-off past 60 s."},
+    )
+    runner.claude()
+    runner.push()
+    r = report(world)
+    assert r["outcome"] == "pr_opened" and r["pr_number"] == 41
+    assert PRs.created == []  # the open PR is reused, not duplicated
+    for q in PRs.queries:
+        url = urlsplit(q)
+        assert url.path == f"/repos/{REPO}/pulls"
+        assert parse_qs(url.query) == {"head": [f"lordmuffin:{BRANCH}"], "state": ["open"]}
+    assert len(PRs.queries) == 2
+    assert git("rev-parse", f"{BRANCH}~1", cwd=world["remote"]) == first  # a fast-forward
+    assert git("show", f"{BRANCH}:more.txt", cwd=world["remote"]) == "x"

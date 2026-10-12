@@ -71,6 +71,7 @@ export const DISPATCH_LABEL: Record<DispatchState, string> = {
   rate_limited: "Hit the Claude usage limit",
   timed_out: "Timed out",
   cancelled: "Cancelled",
+  needs_input: "Needs your input",
 };
 
 /** A run that is still going: poll, offer cancel, no second run. */

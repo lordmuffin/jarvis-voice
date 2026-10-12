@@ -27,12 +27,14 @@ class KubeError(Exception):
 @dataclass(frozen=True)
 class RunState:
     done: bool
-    outcome: str | None = None  # pr_opened | no_changes | failed | rate_limited | timed_out
+    # pr_opened | needs_input | no_changes | failed | rate_limited | timed_out
+    outcome: str | None = None
     pr_url: str | None = None
     pr_number: int | None = None
     branch: str | None = None
     summary: str | None = None
     error: str | None = None
+    questions: str | None = None  # needs_input: what the run asks the owner
 
 
 class KubeClient:
@@ -169,6 +171,7 @@ def _report(statuses: list[dict[str, Any]]) -> RunState | None:
             branch=r.get("branch"),
             summary=r.get("summary"),
             error=r.get("error"),
+            questions=r.get("questions"),
         )
     return None
 

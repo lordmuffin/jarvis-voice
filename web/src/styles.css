@@ -894,9 +894,19 @@ code,
 }
 .wi-run p {
   margin: 4px 0 0;
+  white-space: pre-wrap;
+}
+.wi-run-questions {
+  margin-top: 8px;
+  padding: 6px 8px;
+  background: var(--surface2);
+}
+.wi-steer {
+  margin-top: 10px;
 }
 .wi-run-queued,
-.wi-run-running {
+.wi-run-running,
+.wi-run-needs_input {
   border-left-color: var(--warning);
 }
 .wi-run-pr_opened {

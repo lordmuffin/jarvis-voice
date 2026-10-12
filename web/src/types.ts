@@ -263,7 +263,8 @@ export type DispatchState =
   | "failed"
   | "rate_limited"
   | "timed_out"
-  | "cancelled";
+  | "cancelled"
+  | "needs_input";
 
 /** An item's latest run as headless Claude Code. */
 export interface Dispatch {
@@ -276,6 +277,10 @@ export interface Dispatch {
   pr_number: number | null;
   summary: string | null;
   error: string | null;
+  /** What the run asked the owner (`needs_input`). */
+  questions: string | null;
+  /** The owner's reply this follow-up run was given. */
+  guidance: string | null;
   created_at: string;
   started_at: string | null;
   finished_at: string | null;

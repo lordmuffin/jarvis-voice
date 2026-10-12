@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import {
   ApiError,
   cancelDispatch,
+  continueDispatch,
   dispatchWorkItem,
   editWorkItem,
   mergeWorkItems,
@@ -172,7 +173,7 @@ export function WorkItemList({
   );
 }
 
-type Busy = WorkItemAction | "save" | "copy" | "prompt" | "run" | "cancel" | null;
+type Busy = WorkItemAction | "save" | "copy" | "prompt" | "run" | "cancel" | "steer" | null;
 
 export function WorkItemCard({
   item,
@@ -196,6 +197,9 @@ export function WorkItemCard({
   const [busy, setBusy] = useState<Busy>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // The owner's open/close of the reply box, for one run; otherwise it is open while that run
+  // waits on the owner.
+  const [steering, setSteering] = useState<{ run: string; open: boolean } | null>(null);
 
   async function run(kind: Busy, fn: () => Promise<unknown>, fallback: string) {
     setBusy(kind);
@@ -225,6 +229,12 @@ export function WorkItemCard({
     if (await run("run", () => dispatchWorkItem(item.id), "Couldn't start the run.")) onChanged();
   }
 
+  async function steer(guidance: string) {
+    if (await run("steer", () => continueDispatch(item.id, guidance), "Couldn't start the follow-up run.")) {
+      onChanged();
+    }
+  }
+
   async function cancelRun() {
     if (await run("cancel", () => cancelDispatch(item.id), "Couldn't cancel the run.")) onChanged();
   }
@@ -249,6 +259,10 @@ export function WorkItemCard({
   }
 
   const open = item.state === "draft" || item.state === "approved";
+  const canSteer = dispatchEnabled && item.state === "approved" && !!item.dispatch && !runActive(item);
+  const chosen = steering && steering.run === item.dispatch?.id ? steering.open : null;
+  const steerOpen = canSteer && (chosen ?? item.dispatch?.state === "needs_input");
+  const setSteer = (open: boolean) => item.dispatch && setSteering({ run: item.dispatch.id, open });
   return (
     <article class={`wi wi-${item.state}`} data-testid="work-item" data-state={item.state}>
       <header class="wi-head">
@@ -333,12 +347,25 @@ export function WorkItemCard({
       )}
 
       {item.dispatch && <DispatchStatus run={item.dispatch} />}
+      {steerOpen && item.dispatch && !editing && (
+        <SteerForm
+          run={item.dispatch}
+          busy={busy === "steer"}
+          onSend={(guidance) => void steer(guidance)}
+          onCancel={() => setSteer(false)}
+        />
+      )}
 
       {!editing && (
         <div class="wi-actions">
           {dispatchEnabled && item.state === "approved" && !runActive(item) && (
             <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => void runIt()}>
               {busy === "run" ? "Starting…" : item.dispatch ? "▶ Run Again" : "▶ Run in Claude Code"}
+            </button>
+          )}
+          {canSteer && !steerOpen && (
+            <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => setSteer(true)}>
+              ↪ Steer Next Run
             </button>
           )}
           {runActive(item) && (
@@ -425,9 +452,77 @@ function DispatchStatus({ run }: { run: NonNullable<WorkItem["dispatch"]> }) {
           </>
         )}
       </span>
+      {run.guidance && (
+        <p class="small wi-run-guidance">
+          <span class="muted">You: </span>
+          {run.guidance}
+        </p>
+      )}
       {run.summary && <p class="small">{run.summary}</p>}
+      {run.questions && (
+        <div class="wi-run-questions" data-testid="dispatch-questions">
+          <span class="meta">Claude asks</span>
+          <p class="small">{run.questions}</p>
+        </div>
+      )}
       {bad && run.error && <p class="small error">{run.error}</p>}
     </div>
+  );
+}
+
+/** The owner's reply to a finished run: a follow-up run continues its branch with it. */
+function SteerForm({
+  run,
+  busy,
+  onSend,
+  onCancel,
+}: {
+  run: NonNullable<WorkItem["dispatch"]>;
+  busy: boolean;
+  onSend: (guidance: string) => void;
+  onCancel: () => void;
+}) {
+  const [text, setText] = useState("");
+  const guidance = text.trim();
+  const id = `steer-${run.id}`;
+  return (
+    <form
+      class="wi-form wi-steer"
+      data-testid="steer"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (guidance) onSend(guidance);
+      }}
+    >
+      <label class="label" for={id}>
+        {run.state === "needs_input" ? "Answer Claude" : "Steer the next run"}
+      </label>
+      <textarea
+        id={id}
+        class="field wi-textarea"
+        rows={3}
+        maxLength={4000}
+        placeholder={
+          run.state === "needs_input"
+            ? "Answer its questions, or tell it what to do instead…"
+            : "What should it fix, try or leave alone next time?"
+        }
+        value={text}
+        onInput={(e) => setText(e.currentTarget.value)}
+      />
+      <p class="small muted">
+        A follow-up run continues on <code>{run.branch}</code>
+        {run.pr_number ? ` and draft PR #${run.pr_number}` : ""}, with your reply added to the approved prompt.
+      </p>
+      <div class="wi-actions">
+        <button class="btn btn-sm btn-accent" type="submit" disabled={busy || !guidance}>
+          {busy ? "Starting…" : "↪ Continue"}
+        </button>
+        <button class="btn btn-sm btn-quiet" type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

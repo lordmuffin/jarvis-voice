@@ -39,6 +39,8 @@ from jarvis_live.workitems.template import (
 
 log = logging.getLogger(__name__)
 
+MAX_GUIDANCE = 4000
+
 
 class WorkItemError(Exception):
     """A refused action; ``status`` is the HTTP status to answer with."""
@@ -296,8 +298,18 @@ class WorkItemService:
                 payload={"prompt_sha256": item.prompt_sha256, "frozen": item.state == "approved"},
             )
 
-    async def dispatch(self, item_id: uuid.UUID, actor: Actor) -> WorkItem:
-        """Hand an approved item to the dispatcher, after the gate. Refusals are logged too."""
+    async def dispatch(
+        self, item_id: uuid.UUID, actor: Actor, guidance: str | None = None
+    ) -> WorkItem:
+        """Hand an approved item to the dispatcher, after the gate. Refusals are logged too.
+        ``guidance``: the owner's reply to the last run, which a follow-up run continues with.
+        It goes through the same gate: it steers the approved prompt, never replaces it."""
+        if guidance is not None:
+            guidance = guidance.strip()
+            if not guidance:
+                raise WorkItemError(422, "the guidance is empty")
+            if len(guidance) > MAX_GUIDANCE:
+                raise WorkItemError(422, f"the guidance is longer than {MAX_GUIDANCE} characters")
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             reason = refusal(item, actor, self.allowlist, self._cfg.dispatch_repo_allowlist)
@@ -317,14 +329,24 @@ class WorkItemService:
                     item.id,
                     "dispatch_requested",
                     **self._who(actor),
-                    payload={"repo": repo, "prompt": prompt, "prompt_sha256": digest},
+                    payload={
+                        "repo": repo,
+                        "prompt": prompt,
+                        "prompt_sha256": digest,
+                        **({"guidance": guidance} if guidance is not None else {}),
+                    },
                 )
         if reason is not None:
             raise WorkItemError(status, reason)
         assert self._dispatcher is not None and repo and prompt and digest
         try:
             await self._dispatcher.dispatch(
-                item.id, repo=repo, prompt=prompt, prompt_sha256=digest, actor_user_id=actor.user_id
+                item.id,
+                repo=repo,
+                prompt=prompt,
+                prompt_sha256=digest,
+                actor_user_id=actor.user_id,
+                **({"guidance": guidance} if guidance is not None else {}),
             )
         except WorkItemError as e:  # e.g. already running: refused, and said so in the log
             async with self._sm() as db, db.begin():
