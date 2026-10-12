@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.8.0...macos-v0.9.0) (2026-10-12)
+
+
+### Features
+
+* **macos:** show the app version in the menu bar dropdown ([c3fd396](https://github.com/lordmuffin/jarvis-voice/commit/c3fd396a9456edb817a69b9004534584bcc993e9))
+* **macos:** show the app version in the menu bar dropdown ([c48f3ea](https://github.com/lordmuffin/jarvis-voice/commit/c48f3ea05db428ef7d4f499758c933dc8693d124))
+
 ## [0.8.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.7.0...macos-v0.8.0) (2026-10-11)
 
 
