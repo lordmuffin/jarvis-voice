@@ -139,3 +139,15 @@ def test_a_missing_job_failed() -> None:
 def test_an_unreadable_report_is_a_failure() -> None:
     state = interpret(job(succeeded=1), [pod(push=terminated(0, "not json"))])
     assert state.outcome == "failed" and "report" in (state.error or "")
+
+
+def test_a_run_that_needs_input_carries_its_questions() -> None:
+    report = {
+        "outcome": "needs_input",
+        "pr_url": "https://github.com/o/r/pull/3",
+        "pr_number": 3,
+        "summary": "Did most of it.",
+        "questions": "1. Which flag?",
+    }
+    state = interpret(job(succeeded=1), [pod(push=terminated(0, json.dumps(report)))])
+    assert (state.outcome, state.pr_number, state.questions) == ("needs_input", 3, "1. Which flag?")

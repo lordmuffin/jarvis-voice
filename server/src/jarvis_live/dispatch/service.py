@@ -7,7 +7,12 @@ of long runs, and tells the owner how each run ended. Runs and their outcomes ar
 ``work_item_dispatches``; every step is in ``work_item_events``.
 
 A queued run starts only if its item still carries the approved prompt it was queued with:
-an item unapproved or edited in between never runs."""
+an item unapproved or edited in between never runs.
+
+Runs never wait on a person mid-run (the runner tells Claude so). A run that needs the owner
+ends ``needs_input`` with its questions; the owner's reply (``guidance``) queues a follow-up
+run that continues the last run's branch and PR, its prompt the approved one plus the last
+run's report and the reply."""
 
 import asyncio
 import logging
@@ -35,6 +40,44 @@ log = logging.getLogger(__name__)
 
 ACTIVE = ("queued", "running")
 TOKEN_REFRESH = timedelta(minutes=30)  # installation tokens last an hour
+ENDED = {
+    "pr_opened": "it opened a draft PR",
+    "needs_input": "it needs the owner's input",
+    "no_changes": "it made no changes",
+    "failed": "it failed",
+    "rate_limited": "it hit the Claude usage limit",
+    "timed_out": "it timed out",
+    "cancelled": "the owner cancelled it",
+}
+
+
+def _quote(text: str) -> str:
+    return "\n".join(f"> {line}".rstrip() for line in text.strip().splitlines())
+
+
+def follow_up_prompt(prompt: str, run: WorkItemDispatch, previous: WorkItemDispatch | None) -> str:
+    """The approved prompt, then what the last run left and the owner's guidance for this one."""
+    pr = f", which has draft PR #{previous.pr_number}" if previous and previous.pr_number else ""
+    parts = [
+        prompt.rstrip(),
+        f"## Follow-up run (attempt {run.attempt})",
+        f"This task ran before. This run continues on the branch `{run.branch}`{pr}: commits "
+        "from earlier runs are already checked out, so build on them instead of starting over.",
+    ]
+    if previous is not None:
+        parts.append(f"The previous run ended because {ENDED.get(previous.state, previous.state)}.")
+        if previous.summary:
+            parts.append("It reported:\n\n" + _quote(previous.summary))
+        if previous.questions:
+            parts.append("It asked:\n\n" + _quote(previous.questions))
+        if previous.error:
+            parts.append("Its error:\n\n" + _quote(previous.error))
+    parts += [
+        "### The owner's guidance for this run",
+        "Follow it. Where it conflicts with the task above, the guidance wins.",
+        (run.guidance or "").strip(),
+    ]
+    return "\n\n".join(parts) + "\n"
 
 
 class Kube(Protocol):
@@ -123,6 +166,7 @@ class DispatchService:
         prompt: str,
         prompt_sha256: str,
         actor_user_id: uuid.UUID,
+        guidance: str | None = None,
     ) -> None:
         async with self._sm() as db, db.begin():
             item = await db.get(WorkItem, item_id, with_for_update=True)
@@ -138,8 +182,15 @@ class DispatchService:
             )
             if any(r.state in ACTIVE for r in runs):
                 raise WorkItemError(409, "this work item is already queued or running")
-            attempt = max((r.attempt for r in runs), default=0) + 1
-            branch = branch_name(str(item.session_id), item.ref, item.title)
+            last = max(runs, key=lambda r: r.attempt, default=None)
+            attempt = (last.attempt if last else 0) + 1
+            if guidance is not None:
+                if last is None:
+                    raise WorkItemError(409, "nothing to continue: the work item has not run yet")
+                branch = last.branch
+            else:
+                branch = branch_name(str(item.session_id), item.ref, item.title)
+                branch = branch if attempt == 1 else f"{branch}-{attempt}"
             db.add(
                 WorkItemDispatch(
                     id=uuid.uuid4(),
@@ -147,9 +198,11 @@ class DispatchService:
                     attempt=attempt,
                     state="queued",
                     repo=repo,
-                    branch=branch if attempt == 1 else f"{branch}-{attempt}",
+                    branch=branch,
                     prompt_sha256=prompt_sha256,
                     requested_by=actor_user_id,
+                    guidance=guidance,
+                    continues=last.id if guidance is not None and last else None,
                 )
             )
         self._wake.set()
@@ -268,6 +321,10 @@ class DispatchService:
                 postgres_image=self._cfg.dispatch_postgres_image,
                 node_selector=_node_selector(self._cfg.dispatch_node_selector),
             )
+            prompt = item.prompt_md
+            if run.guidance is not None:
+                previous = await db.get(WorkItemDispatch, run.continues) if run.continues else None
+                prompt = follow_up_prompt(prompt, run, previous)
             try:
                 token = await self._tokens.mint(run.repo)
             except TokenError as e:
@@ -275,9 +332,7 @@ class DispatchService:
                 return
             name = spec.job_name
             try:
-                await self._kube.create_secret(
-                    secret_manifest(spec, token=token, prompt=item.prompt_md)
-                )
+                await self._kube.create_secret(secret_manifest(spec, token=token, prompt=prompt))
                 job = await self._kube.create_job(job_manifest(spec))
                 owner = {
                     "apiVersion": "batch/v1",
@@ -305,6 +360,7 @@ class DispatchService:
                     "branch": run.branch,
                     "image": spec.image,
                     "model": spec.model,
+                    "continues": str(run.continues) if run.continues else None,
                 },
             )
 
@@ -347,7 +403,7 @@ class DispatchService:
     def _end(self, db: AsyncSession, run: WorkItemDispatch, state: RunState) -> None:
         run.state = state.outcome or "failed"
         run.pr_url, run.pr_number = state.pr_url, state.pr_number
-        run.summary, run.error = state.summary, state.error
+        run.summary, run.error, run.questions = state.summary, state.error, state.questions
         run.finished_at = self._now()
         if state.branch:
             run.branch = state.branch
@@ -364,6 +420,7 @@ class DispatchService:
                 "branch": run.branch,
                 "pr_url": run.pr_url,
                 "summary": run.summary,
+                "questions": run.questions,
                 "error": run.error,
             },
         )
@@ -377,19 +434,25 @@ class DispatchService:
     async def _tell(
         self, run: WorkItemDispatch, item: WorkItem | None, session: SessionRow | None
     ) -> None:
-        """The owner's phone, like a finished note. Lab's notifier marks itself [lab]."""
+        """The owner's phone, like a finished note. Lab's notifier marks itself [lab]. A run
+        that needs input links to the work items page, where the owner replies."""
         if item is None:
             return
         titles = {
             "pr_opened": "Jarvis: draft PR ready",
+            "needs_input": "Jarvis: run needs your input",
             "no_changes": "Jarvis: run made no changes",
             "rate_limited": "Jarvis: run hit the Claude usage limit",
             "timed_out": "Jarvis: run timed out",
         }
         title = titles.get(run.state, "Jarvis: run failed")
         detail = run.summary or run.error or ""
-        message = f"**{item.title}** ({run.repo})" + (f"\n\n{detail.strip()}" if detail else "")
         url = run.pr_url or (session_url(self._cfg, str(session.id)) if session else None) or None
+        if run.state == "needs_input":
+            detail = run.questions or detail
+            base = self._cfg.public_base_url.rstrip("/")
+            url = f"{base}/work-items" if base else url
+        message = f"**{item.title}** ({run.repo})" + (f"\n\n{detail.strip()}" if detail else "")
         try:
             await self._notifier.notify(title, message, 5 if run.state == "pr_opened" else 7, url)
         except Exception:

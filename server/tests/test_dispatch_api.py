@@ -158,3 +158,38 @@ def test_dispatch_repos_must_be_work_repos(tmp_path: Path) -> None:
     ]
     both = cfg.model_copy(update={"work_repos": "o/real  real\no/sandbox  scratch\n"})
     assert dispatch_config_problems(both) == []
+
+
+async def test_reply_to_a_run_continues_it(dserver: ServerHandle, sm: SM, kube: FakeKube) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(dserver, sm, OWNER_USER_ID) as web:
+        await web.post(f"/v1/work-items/{item}/approve")
+        r = await web.post(f"/v1/work-items/{item}/dispatch/continue", json={"guidance": "go"})
+        assert r.status_code == 409, r.text  # nothing ran yet
+        await web.post(f"/v1/work-items/{item}/dispatch")
+
+        async def started() -> bool:
+            return bool(kube.jobs)
+
+        await until(started)
+        (job,) = kube.jobs
+        kube.report(job, outcome="needs_input", summary="Half done.", questions="1. Which flag?")
+
+        async def asked() -> bool:
+            d = (await web.get(f"/v1/work-items/{item}")).json()["dispatch"]
+            return bool(d and d["state"] == "needs_input")
+
+        await until(asked)
+        d = (await web.get(f"/v1/work-items/{item}")).json()["dispatch"]
+        assert (d["questions"], d["guidance"]) == ("1. Which flag?", None)
+
+        r = await web.post(f"/v1/work-items/{item}/dispatch/continue", json={"guidance": ""})
+        assert r.status_code == 422
+        r = await web.post(
+            f"/v1/work-items/{item}/dispatch/continue", json={"guidance": "Use --retry."}
+        )
+        assert r.status_code == 202, r.text
+        d = r.json()["dispatch"]
+        assert (d["attempt"], d["guidance"]) == (2, "Use --retry.")
+        assert d["state"] in ("queued", "running")

@@ -16,7 +16,12 @@ from jarvis_live.auth import Principal
 from jarvis_live.db.models import WorkItem, WorkItemDispatch, WorkItemEvent
 from jarvis_live.dispatch.service import DispatchService, latest_runs
 from jarvis_live.workitems.dispatch import Actor
-from jarvis_live.workitems.service import WorkItemError, WorkItemService, approval_problems
+from jarvis_live.workitems.service import (
+    MAX_GUIDANCE,
+    WorkItemError,
+    WorkItemService,
+    approval_problems,
+)
 from jarvis_live.workitems.template import branch_name
 
 router = APIRouter(prefix="/v1")
@@ -58,6 +63,7 @@ class DispatchOut(BaseModel):
         "rate_limited",
         "timed_out",
         "cancelled",
+        "needs_input",
     ]
     repo: str
     branch: str
@@ -65,6 +71,9 @@ class DispatchOut(BaseModel):
     pr_number: int | None
     summary: str | None
     error: str | None
+    # What the run asked the owner (``needs_input``); the owner's reply it ran with, if any.
+    questions: str | None
+    guidance: str | None
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
@@ -81,6 +90,8 @@ class DispatchOut(BaseModel):
             pr_number=d.pr_number,
             summary=d.summary,
             error=d.error,
+            questions=d.questions,
+            guidance=d.guidance,
             created_at=d.created_at,
             started_at=d.started_at,
             finished_at=d.finished_at,
@@ -163,6 +174,10 @@ class WorkItemEdit(BaseModel):
 class MergeRequest(BaseModel):
     into: uuid.UUID
     sources: list[uuid.UUID] = Field(min_length=1, max_length=20)
+
+
+class ContinueRequest(BaseModel):
+    guidance: str = Field(min_length=1, max_length=MAX_GUIDANCE)
 
 
 class PromptOut(BaseModel):
@@ -347,6 +362,18 @@ async def dispatch_work_item(
     approved, its prompt is unchanged since, it was approved from the dashboard by the caller,
     and its repo is still on the allowlist. 503 while no dispatcher is configured."""
     return await _act(request, lambda s: s.dispatch(item_id, _actor(principal)))
+
+
+@router.post("/work-items/{item_id}/dispatch/continue", status_code=202)
+async def continue_dispatch(
+    item_id: uuid.UUID, body: ContinueRequest, principal: PrincipalDep, request: Request
+) -> WorkItemOut:
+    """Reply to the item's last run: a follow-up run continues its branch and draft PR, with
+    ``guidance`` added to the approved prompt. The same gate as a first run; 409 while a run is
+    active or before any has run."""
+    return await _act(
+        request, lambda s: s.dispatch(item_id, _actor(principal), guidance=body.guidance)
+    )
 
 
 @router.post("/work-items/{item_id}/dispatch/cancel")

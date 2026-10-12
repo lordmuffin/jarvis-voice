@@ -69,6 +69,13 @@ def test_prompt_has_plan_first_tests_and_done_when() -> None:
     assert f"`{branch_name(SID, 'w1', ITEM.title)}`" in out
 
 
+def test_an_ambiguous_task_is_worked_through_not_stopped() -> None:
+    """Dispatched runs are unattended: a run that stops to ask is a stuck run."""
+    out = render_prompt(template(), ITEM, CFG)
+    assert "stop and explain" not in out
+    assert "note the assumption in your plan and keep going" in out
+
+
 def test_source_links_jump_to_the_moment() -> None:
     out = render_prompt(template(), ITEM, CFG)
     assert f"- [21:03](https://live.example/sessions/{SID}#t=1263000): “Cap it at three.”" in out

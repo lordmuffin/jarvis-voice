@@ -9,8 +9,9 @@ You are working in the GitHub repository **{{repo}}**.
 1. Read the repository's CLAUDE.md, README and contributing notes, then the code this task
    touches.
 2. Before changing anything, write a short plan: the files you will change, the approach, and
-   the tests you will add. If the task is ambiguous, or conflicts with the repo's own rules,
-   stop and explain the problem instead of guessing.
+   the tests you will add. If the task is ambiguous, choose the reading that best fits the
+   repo's own rules, note the assumption in your plan and keep going. If it truly conflicts
+   with those rules, do what you safely can and say exactly what you need decided.
 
 ## Acceptance criteria
 
