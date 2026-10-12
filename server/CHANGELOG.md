@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.16.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.15.0...server-v0.16.0) (2026-10-12)
+
+
+### Features
+
+* **server:** publish notes to the vault's AI Output inbox using its template ([99ddd11](https://github.com/lordmuffin/jarvis-voice/commit/99ddd1144abb937094f7b6bee3766a2397efa372))
+* **server:** publish notes to the vault's AI Output inbox using its template ([72cc8fe](https://github.com/lordmuffin/jarvis-voice/commit/72cc8fe720340277f758023c812191fc0c2752f9))
+* **server:** unattended dispatch runs that ask instead of stalling, and steerable follow-ups ([1cce02d](https://github.com/lordmuffin/jarvis-voice/commit/1cce02d234d4d5880917157b804516798010dd12))
+* **server:** unattended dispatch runs that ask instead of stalling, and steerable follow-ups ([d298550](https://github.com/lordmuffin/jarvis-voice/commit/d2985502a579ffe4691f04cd95b80c63f9b49969))
+
+
+### Bug Fixes
+
+* **server:** let lab dispatch reach its sandbox repo ([b0bdd3c](https://github.com/lordmuffin/jarvis-voice/commit/b0bdd3cb6dc408699fabeeeb21b5084eabdfc129))
+* **server:** let lab dispatch reach its sandbox repo ([1811bd4](https://github.com/lordmuffin/jarvis-voice/commit/1811bd4866a3a6b5cd4b39a5f7281c6cc0f4b100))
+* **server:** only an upper-case NEEDS INPUT marker with questions asks the owner ([b7cd976](https://github.com/lordmuffin/jarvis-voice/commit/b7cd976fd7a4e1447bc87a82e74bb6b5453f5973))
+
+
+### Documentation
+
+* unattended dispatch runs and follow-up runs ([6bba3b8](https://github.com/lordmuffin/jarvis-voice/commit/6bba3b80d3a72ffdb2796d49b77e2bc35bd6cf8b))
+
 ## [0.15.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.14.0...server-v0.15.0) (2026-10-12)
 
 
