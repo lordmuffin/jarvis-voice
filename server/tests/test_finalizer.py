@@ -101,9 +101,9 @@ async def test_writes_note_sets_done_publishes_and_notifies(mk: Any) -> None:
 
     assert result is not None and result.title == "Vendor call"
     (f,) = rig.files()
-    assert f.name == "2026-10-09 0930 - Vendor call.md"  # 14:30Z in America/Chicago
+    assert f.name == "2026-10-09 - Vendor call.md"  # 14:30Z in America/Chicago
     text = f.read_text()
-    assert f"session_id: {sid}" in text and "type: live-session" in text
+    assert f"session_id: {sid}" in text and "type: ai-output" in text
     assert "duration_minutes: 42" in text
     assert "- [ ] Send quote (owner: Dana)" in text
     assert "[00:00:05] **Me:** Send the quote." in text
@@ -268,7 +268,7 @@ async def test_other_users_notes_go_to_their_folder_without_vault_or_gotify(
     result = await rig.fin.run(sid)
 
     assert result is not None and user.notes_subdir
-    assert result.path == f"{user.notes_subdir}/2026-10-09 0930 - Vendor call.md"
+    assert result.path == f"{user.notes_subdir}/2026-10-09 - Vendor call.md"
     text = (rig.settings.outbox_dir / result.path).read_text()  # type: ignore[operator]
     assert f"user: {_yaml(user.display_name)}" in text
     assert "Acme Renewal" not in text  # the owner's vault is not theirs
@@ -290,7 +290,7 @@ async def test_regeneration_replaces_its_old_note_and_can_stay_quiet(mk: Any) ->
     result = await rig.fin.run(sid, replace="old.md", notify=False)
     assert result is not None
     assert not (outbox / "old.md").exists()
-    assert result.path == "2026-10-09 0930 - Vendor call.md"
+    assert result.path == "2026-10-09 - Vendor call.md"
     assert rig.notifier.sent == []
 
     # Another session's file is never removed, whatever ``replace`` says.

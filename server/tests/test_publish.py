@@ -20,11 +20,11 @@ from tests.fake_github import FakeGitHub
 from tests.fakes import FakeLLM, add_segments, make_session, new_device
 
 SM = async_sessionmaker  # type: ignore[type-arg]
-SUBDIR = "00 Inbox/Live Sessions"
+SUBDIR = "00 Inbox/AI Output"
 
 
 def note_md(sid: uuid.UUID, body: str = "Talked about things.") -> str:
-    return f"---\nsession_id: {sid}\ntype: live-session\n---\n\n# Note\n\n{body}\n"
+    return f"---\nsession_id: {sid}\ntype: ai-output\n---\n\n# Note\n\n{body}\n"
 
 
 async def finished(

@@ -169,7 +169,7 @@ async def seed_publishable(url: str, outbox: Path) -> None:
             rel = f"{root.notes_subdir}/{name}" if root.notes_subdir else name
             (outbox / rel).parent.mkdir(parents=True, exist_ok=True)
             (outbox / rel).write_text(
-                f"---\nsession_id: {row.id}\ntype: live-session\n---\n\n"
+                f"---\nsession_id: {row.id}\ntype: ai-output\n---\n\n"
                 f"# {PUBLISH_TITLE}\n\n## Summary\n\nReady for the vault.\n"
             )
             db.add(

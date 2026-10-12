@@ -84,7 +84,7 @@ class Settings(BaseSettings):
 
     # Finalizer
     outbox_dir: Path | None = None  # default: <data_dir>/outbox
-    final_filename_template: str = "{date} {time} - {slug}.md"
+    final_filename_template: str = "{date} - {slug}.md"  # the vault inbox style
     final_max_input_tokens: int = 24_000
     final_window_s: float = 1200.0
     # On startup, finalize sessions left in `finalizing` that ended within this window. Older
@@ -127,7 +127,7 @@ class Settings(BaseSettings):
     github_token_file: Path | None = None
     github_api: str = "https://api.github.com"
     publish_base_branch: str = "main"
-    publish_subdir: str = "00 Inbox/Live Sessions"  # vault folder the outbox maps onto
+    publish_subdir: str = "00 Inbox/AI Output"  # vault folder the outbox maps onto
     publish_branch_prefix: str = "jarvis-live/"
     publish_merge_method: Literal["squash", "merge", "rebase"] = "squash"
     publish_committer_name: str = "jarvis-live"

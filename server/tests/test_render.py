@@ -66,6 +66,32 @@ def test_sections_in_order_and_empty_sections_omitted() -> None:
     ]
 
 
+def frontmatter(md: str) -> dict[str, str]:
+    head = md.split("---\n", 2)[1]
+    return dict(line.split(": ", 1) for line in head.splitlines())
+
+
+def test_frontmatter_follows_the_vault_ai_output_template() -> None:
+    fm = frontmatter(render_note(NOTE, META, LINES))
+    assert fm["type"] == "ai-output"
+    assert fm["date"] == "2026-10-09"
+    assert fm["created"] == "2026-10-09T09:30:00-05:00"
+    assert fm["status"] == "draft"
+    assert fm["generated-by"] == "jarvis-live"
+    assert fm["session_id"] == META.session_id  # the finalizer finds its own file by this line
+    assert fm["tags"] == "[ai-output, jarvis-live, inbox]"
+
+
+def test_default_filename_is_the_vault_inbox_style() -> None:
+    from jarvis_live.config import Settings
+
+    template = Settings().final_filename_template
+    assert (
+        render_filename(template, META.created, NOTE.title, "sid")
+        == "2026-10-09 - Acme renewal pricing & SLA.md"
+    )
+
+
 def test_filename_template_and_slug() -> None:
     assert (
         render_filename("{date} {time} - {slug}.md", META.created, NOTE.title, "sid")

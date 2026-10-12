@@ -65,7 +65,7 @@ describe("markdown", () => {
   it("renders a finalizer note and drops the transcript section", () => {
     const md = [
       "---",
-      "type: live-session",
+      "type: ai-output",
       "---",
       "",
       "# Weekly sync",
@@ -92,6 +92,6 @@ describe("markdown", () => {
     const ul = blocks.find((b) => b.t === "ul");
     expect(ul && ul.t === "ul" && ul.items.map((i) => i.checked)).toEqual([false, true]);
     expect(JSON.stringify(blocks)).not.toContain("transcript-line");
-    expect(JSON.stringify(blocks)).not.toContain("live-session");
+    expect(JSON.stringify(blocks)).not.toContain("ai-output");
   });
 });
