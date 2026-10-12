@@ -215,3 +215,11 @@ export const workItemPrompt = (id: string, f?: typeof fetch) =>
 /** Record the copy in the audit log. */
 export const workItemCopied = (id: string, f?: typeof fetch) =>
   send(`${wi(id)}/copied`, { method: "POST" }, f);
+
+/** Run an approved item as headless Claude Code (a draft PR comes back). */
+export const dispatchWorkItem = (id: string, f?: typeof fetch) =>
+  request<WorkItem>(`${wi(id)}/dispatch`, { method: "POST" }, f);
+
+/** Stop the item's queued or running run. */
+export const cancelDispatch = (id: string, f?: typeof fetch) =>
+  request<WorkItem>(`${wi(id)}/dispatch/cancel`, { method: "POST" }, f);

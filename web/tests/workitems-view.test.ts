@@ -2,7 +2,8 @@
 import { h, render } from "preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkItem, WorkItemPage } from "../src/types";
-import { WorkItemList } from "../src/views/WorkItems";
+import { me } from "../src/store";
+import { POLL, SessionWorkItems, WorkItemList } from "../src/views/WorkItems";
 import { copyText } from "../src/workitems";
 
 const item = (over: Partial<WorkItem>): WorkItem => ({
@@ -28,9 +29,9 @@ const item = (over: Partial<WorkItem>): WorkItem => ({
   ...over,
 });
 
-const page = (items: WorkItem[]): WorkItemPage => ({
+const page = (items: WorkItem[], dispatch = false): WorkItemPage => ({
   enabled: true,
-  dispatch_enabled: false,
+  dispatch_enabled: dispatch,
   repos: [
     { name: "lordmuffin/jarvis-voice", description: "app" },
     { name: "lordmuffin/np-home-homelab", description: "homelab" },
@@ -66,10 +67,26 @@ const settle = async () => {
   for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
 };
 
-function show(items: WorkItem[], onChanged = vi.fn(), showSession = false) {
-  render(h(WorkItemList, { page: page(items), onChanged, showSession }), root);
+function show(items: WorkItem[], onChanged = vi.fn(), showSession = false, dispatch = false) {
+  render(h(WorkItemList, { page: page(items, dispatch), onChanged, showSession }), root);
   return onChanged;
 }
+
+const run = (over: Partial<NonNullable<WorkItem["dispatch"]>>): NonNullable<WorkItem["dispatch"]> => ({
+  id: "r1",
+  attempt: 1,
+  state: "running",
+  repo: "lordmuffin/jarvis-voice",
+  branch: "claude/work-s1-w1-retry-gotify",
+  pr_url: null,
+  pr_number: null,
+  summary: null,
+  error: null,
+  created_at: "2026-10-12T10:00:00Z",
+  started_at: "2026-10-12T10:00:05Z",
+  finished_at: null,
+  ...over,
+});
 
 const button = (name: string) => {
   const b = [...root.querySelectorAll("button")].find((x) => x.textContent?.trim() === name);
@@ -241,6 +258,104 @@ describe("work item cards", () => {
     await settle();
     expect(calls[0]).toMatchObject({ url: "/v1/work-items/i1/restore", method: "POST" });
     expect(changed).toHaveBeenCalledOnce();
+  });
+});
+
+describe("dispatch", () => {
+  it("runs an approved item in Claude Code after confirming", async () => {
+    define(window, "confirm", () => true);
+    serve(item({ state: "approved", dispatch: run({ state: "queued" }) }));
+    const changed = show([item({ state: "approved" })], vi.fn(), false, true);
+    button("▶ Run in Claude Code").click();
+    await settle();
+    expect(calls).toEqual([{ url: "/v1/work-items/i1/dispatch", method: "POST", body: undefined }]);
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it("offers no run when dispatch is off or the item is a draft", () => {
+    show([item({ state: "approved" }), item({ id: "d" })]);
+    expect(root.textContent).not.toContain("Run in Claude Code");
+    render(null, root);
+    show([item({ id: "d" })], vi.fn(), false, true);
+    expect(root.textContent).not.toContain("Run in Claude Code");
+  });
+
+  it("shows a running run and cancels it", async () => {
+    serve(item({ state: "approved", dispatch: run({ state: "cancelled" }) }));
+    const changed = show([item({ state: "approved", dispatch: run({}) })], vi.fn(), false, true);
+    expect(root.querySelector('[data-testid="dispatch"]')?.textContent).toContain("Running");
+    expect(root.textContent).not.toContain("Run in Claude Code");
+    button("■ Cancel Run").click();
+    await settle();
+    expect(calls).toEqual([
+      { url: "/v1/work-items/i1/dispatch/cancel", method: "POST", body: undefined },
+    ]);
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it("links the draft PR a run opened", () => {
+    const done = run({
+      state: "pr_opened",
+      pr_url: "https://github.com/lordmuffin/jarvis-voice/pull/140",
+      pr_number: 140,
+      summary: "Added retries.",
+    });
+    show([item({ state: "approved", dispatch: done })], vi.fn(), false, true);
+    const link = root.querySelector<HTMLAnchorElement>('[data-testid="dispatch"] a')!;
+    expect(link.textContent).toBe("Draft PR #140");
+    expect(link.getAttribute("href")).toBe("https://github.com/lordmuffin/jarvis-voice/pull/140");
+    expect(root.textContent).toContain("Added retries.");
+    expect(root.textContent).toContain("▶ Run Again");
+  });
+
+  it("says why a run failed", () => {
+    show(
+      [item({ state: "approved", dispatch: run({ state: "failed", error: "tests failed" }) })],
+      vi.fn(),
+      false,
+      true,
+    );
+    const d = root.querySelector('[data-testid="dispatch"]')!;
+    expect(d.textContent).toContain("Failed");
+    expect(d.textContent).toContain("tests failed");
+  });
+});
+
+describe("polling", () => {
+  it("refreshes a past session's items while a run is going, and stops after", async () => {
+    me.value = {
+      id: "u1",
+      email: null,
+      display_name: "Owner",
+      is_admin: true,
+      device_id: null,
+      can_publish: true,
+      auto_publish: false,
+      work_items: true,
+    };
+    POLL.ms = 20;
+    const pages = [
+      page([item({ state: "approved", dispatch: run({ state: "running" }) })], true),
+      page(
+        [item({ state: "approved", dispatch: run({ state: "pr_opened", pr_number: 3, pr_url: "https://x/pull/3" }) })],
+        true,
+      ),
+    ];
+    let n = 0;
+    globalThis.fetch = vi.fn(async () => {
+      const body = pages[Math.min(n++, pages.length - 1)];
+      return new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } });
+    }) as typeof fetch;
+    render(h(SessionWorkItems, { sessionId: "s1", ownerId: "u1", live: false }), root);
+    await settle();
+    expect(root.textContent).toContain("Running");
+    await new Promise((r) => setTimeout(r, 60));
+    await settle();
+    expect(root.textContent).toContain("Draft PR #3");
+    const after = n;
+    await new Promise((r) => setTimeout(r, 100));
+    expect(n).toBe(after); // finished: no more polling
+    POLL.ms = 5000;
   });
 });
 
