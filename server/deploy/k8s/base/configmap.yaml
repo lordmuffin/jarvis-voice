@@ -69,7 +69,7 @@ data:
   JARVIS_LIVE_PUBLISH_REPO: "lordmuffin/Notes"
   JARVIS_LIVE_GITHUB_TOKEN_FILE: "/secrets/github/password"
   JARVIS_LIVE_PUBLISH_BASE_BRANCH: "main"
-  JARVIS_LIVE_PUBLISH_SUBDIR: "00 Inbox/Live Sessions"
+  JARVIS_LIVE_PUBLISH_SUBDIR: "00 Inbox/AI Output"
   # Same prefix the retired vault-writer CronJob used: distinct from capture's
   # capture/..., and reserved for this app (it resets a leftover branch of its own).
   JARVIS_LIVE_PUBLISH_BRANCH_PREFIX: "jarvis-live/"

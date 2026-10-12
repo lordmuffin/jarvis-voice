@@ -100,7 +100,7 @@ Each finished session's note sits in the outbox. From the session page in the da
 | `JARVIS_LIVE_PUBLISH_REPO` | `owner/name` of the vault repo, e.g. `lordmuffin/Notes`. If unset, publishing is off. |
 | `JARVIS_LIVE_GITHUB_TOKEN_FILE` | A file holding a fine-grained PAT with **Contents** and **Pull requests** read+write on that repo. Contents alone lets the push through and then fails at the PR. The server re-reads the file on every call. |
 | `JARVIS_LIVE_PUBLISH_BASE_BRANCH` | Default `main`. |
-| `JARVIS_LIVE_PUBLISH_SUBDIR` | Default `00 Inbox/Live Sessions`. |
+| `JARVIS_LIVE_PUBLISH_SUBDIR` | Default `00 Inbox/AI Output`, the vault folder for AI-made notes. Notes follow the vault's AI Output template (`type: ai-output`, `YYYY-MM-DD - Title.md`). |
 | `JARVIS_LIVE_PUBLISH_BRANCH_PREFIX` | Default `jarvis-live/`. This prefix is reserved for this app, which resets a leftover branch of the same name. |
 | `JARVIS_LIVE_PUBLISH_MERGE_METHOD` | `squash` (default), `merge` or `rebase`. |
 | `JARVIS_LIVE_PUBLISH_RECONCILE_INTERVAL_S` | Default 300; `0` turns the background check off. |

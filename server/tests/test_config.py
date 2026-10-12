@@ -39,9 +39,13 @@ def test_publish_subdir_stays_in_the_repo(bad: str) -> None:
         Settings(publish_subdir=bad)
 
 
+def test_notes_publish_to_the_vault_ai_output_inbox() -> None:
+    assert Settings().publish_subdir == "00 Inbox/AI Output"
+
+
 def test_publish_subdir_and_repo_are_normalised() -> None:
-    s = Settings(publish_subdir="/00 Inbox/Live Sessions/", publish_repo=" o/r ")
-    assert s.publish_subdir == "00 Inbox/Live Sessions"
+    s = Settings(publish_subdir="/00 Inbox/AI Output/", publish_repo=" o/r ")
+    assert s.publish_subdir == "00 Inbox/AI Output"
     assert s.publish_repo == "o/r"
     with pytest.raises(ValueError, match="owner/name"):
         Settings(publish_repo="just-a-name")
