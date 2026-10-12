@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.17.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.16.0...server-v0.17.0) (2026-10-12)
+
+
+### Features
+
+* **web:** show the server's version next to the user name ([e93f949](https://github.com/lordmuffin/jarvis-voice/commit/e93f94930d2d9f60cc8d037a08959a98f9c4eff3))
+* **web:** show the server's version next to the user name ([ec485fd](https://github.com/lordmuffin/jarvis-voice/commit/ec485fdcf26567ed244d53a3f687e9eee4ddb13d))
+
 ## [0.16.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.15.0...server-v0.16.0) (2026-10-12)
 
 
