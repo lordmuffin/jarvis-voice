@@ -74,10 +74,15 @@ struct MenuBarContent: View {
 
         Divider()
 
+        Text("Version \(appVersion)")
         Button("Settings\u{2026}") { showSettings() }
             .keyboardShortcut(",")
         Button("Quit Jarvis Voice") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
     }
 
     /// `showSettingsWindow:` does nothing since macOS 14; `openSettings` is the supported way.

@@ -5,6 +5,10 @@ DERIVED  := build
 APP      := $(DERIVED)/Build/Products/Debug/Jarvis Voice.app
 RELEASE_APP := $(DERIVED)/Build/Products/Release/Jarvis Voice.app
 
+# release-please keeps ../version.txt current; the app reads it back as CFBundleShortVersionString
+# and shows it in the menu. project.yml's MARKETING_VERSION is only the fallback for Xcode builds.
+VERSION := $(shell tr -d '[:space:]' < ../version.txt)
+
 # With Local.xcconfig (DEVELOPMENT_TEAM) the build is signed with a stable identity.
 # Without it, compile unsigned: good for CI and a compile check, not for installing.
 ifeq ($(wildcard Local.xcconfig),)
@@ -20,11 +24,11 @@ generate:
 
 build: generate
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-	  -derivedDataPath $(DERIVED) $(SIGNING) build
+	  -derivedDataPath $(DERIVED) $(SIGNING) MARKETING_VERSION=$(VERSION) build
 
 test: generate
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-	  -derivedDataPath $(DERIVED) $(SIGNING) test
+	  -derivedDataPath $(DERIVED) $(SIGNING) MARKETING_VERSION=$(VERSION) test
 
 # What the macOS Release workflow ships: Release, ad-hoc signed ("Sign to Run Locally") with the
 # entitlements. A sealed signature lets macOS keep permission grants (until the next update); a
@@ -32,7 +36,7 @@ test: generate
 release: generate
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration Release \
 	  -destination 'platform=macOS' -derivedDataPath $(DERIVED) \
-	  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
+	  CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= MARKETING_VERSION=$(VERSION) build
 	codesign --verify --deep --strict "$(RELEASE_APP)"
 	codesign -d --entitlements - "$(RELEASE_APP)" 2>/dev/null | grep -q com.apple.security.device.audio-input
 
