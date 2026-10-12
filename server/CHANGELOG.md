@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.14.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.13.0...server-v0.14.0) (2026-10-12)
+
+
+### Features
+
+* copilot work items as reviewable Claude Code prompts (phase a) ([8cb7c71](https://github.com/lordmuffin/jarvis-voice/commit/8cb7c71555668b5fc502c5c12ee256b8b1a2be5a))
+* **server:** turn spoken ideas into reviewable Claude Code prompts ([3fe9c88](https://github.com/lordmuffin/jarvis-voice/commit/3fe9c88ab76872b9e2a5ffbaa37bb89c496e0137))
+* **web:** work item review queue with copy-to-clipboard ([a70b7c6](https://github.com/lordmuffin/jarvis-voice/commit/a70b7c6feb486b6d4f9463107f436e8fc44ce00c))
+
 ## [0.13.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.12.0...server-v0.13.0) (2026-10-11)
 
 
