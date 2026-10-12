@@ -258,21 +258,23 @@ def create_app(
     app.include_router(work_items.router)
     app.include_router(stream.router)
 
-    environment = (settings or get_settings()).environment
+    cfg = settings or get_settings()
+    environment = cfg.environment
     version = _version()
+    commit = cfg.git_sha.strip()[:7]
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
-        """Liveness: the process is up. Also says which release channel and version this
-        is, so lab and live can be told apart (and checked after a deploy)."""
-        return {"status": "ok", "environment": environment, "version": version}
+        """Liveness: the process is up. Also says which release channel, version and commit
+        this is, so lab and live can be told apart (and checked after a deploy)."""
+        return {"status": "ok", "environment": environment, "version": version, "commit": commit}
 
     @app.get("/readyz")
     async def readyz() -> dict[str, str]:
         """Readiness: always ok until dependencies (DB, STT) are wired in."""
         return {"status": "ok"}
 
-    dist = find_web_dist(settings or get_settings())
+    dist = find_web_dist(cfg)
     if dist is not None:
         _mount_web(app, dist)
 

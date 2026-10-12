@@ -23,7 +23,8 @@ vouches for it. Lab may be broken at any time.
    lab overlay to that image. Flux (`ai-jarvis-live-lab`) rolls lab a minute or two later,
    and lab's own database takes any new migration first. Gotify reports it as `[lab]`.
 3. **Use lab.** Point a client at `https://live.lab.apj.dev` and record real sessions.
-   Check `curl https://live.lab.apj.dev/healthz` for the version and channel. Meanwhile
+   Check `curl https://live.lab.apj.dev/healthz` for the version, commit and channel (the
+   dashboard shows the version next to your name, with the commit on hover). Meanwhile
    the release PR collects the changes.
 4. **The release PR** (release-please's `chore: release main`) is the promotion PR. Besides
    the version and changelog, it bumps the image tag in `k8s/base/deployment.yaml` (the

@@ -199,11 +199,13 @@ export interface PublishingQueue {
 }
 
 /** The signed-in user (`GET /v1/me`). `device_id` is null for a browser. */
-/** GET /healthz: which release channel ("live", or e.g. "lab") and version this server is. */
+/** GET /healthz: which release channel ("live", or e.g. "lab"), version and commit this
+ * server is. `commit` is the short sha the image was built from; "" outside an image. */
 export interface Health {
   status: string;
   environment?: string;
   version?: string;
+  commit?: string;
 }
 
 export interface Me {

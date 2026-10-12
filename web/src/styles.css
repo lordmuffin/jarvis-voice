@@ -126,6 +126,9 @@ code,
   color: var(--accent);
   box-shadow: inset 0 -2px 0 var(--accent);
 }
+.version {
+  white-space: nowrap;
+}
 .user {
   max-width: 200px;
   overflow: hidden;
