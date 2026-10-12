@@ -300,7 +300,7 @@ class WorkItemService:
         """Hand an approved item to the dispatcher, after the gate. Refusals are logged too."""
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
-            reason = refusal(item, actor, self.allowlist)
+            reason = refusal(item, actor, self.allowlist, self._cfg.dispatch_repo_allowlist)
             status = 409
             if reason is None and self._dispatcher is None:
                 reason, status = "dispatch is not configured on this server", 503
