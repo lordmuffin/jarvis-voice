@@ -24,6 +24,7 @@
 
 ## Rules
 
+- Follow `TDD.md` for every change. Run `make test` before declaring any task done (`make test-all` adds Postgres integration, coverage/eval ratchets, Playwright, Android and Swift; see `TESTING.md`).
 - Commits and PR titles use Conventional Commits (`feat:`, `fix:`, `chore:`, with scope e.g. `feat(server):`). release-please derives versions and changelogs from them.
 - `src/jarvis_voice/` is legacy — bugfix only. New work goes in `server/`.
 - `protocol/` changes need fixtures + both server and Swift tests updated, in the same PR.

@@ -1,0 +1,92 @@
+name: TDD
+
+# TDD.md §4: `make test` on every PR, `make test-all` on main and nightly. This complements the
+# per-component, path-filtered workflows (server-ci, web-ci, python-ci, macos-ci, deploy-ci).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: tdd-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Avoid Docker Hub's anonymous pull limit (and the Ryuk image pull) on shared runners.
+  JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
+  TESTCONTAINERS_RYUK_DISABLED: "true"
+
+jobs:
+  test:
+    name: make ${{ github.event_name == 'pull_request' && 'test' || 'test-all' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-java@v4
+        if: github.event_name != 'pull_request'
+        with:
+          distribution: temurin
+          java-version: "17"
+      - run: make deps
+
+      - name: make test
+        if: github.event_name == 'pull_request'
+        run: make test
+
+      - name: Pull Postgres test image
+        if: github.event_name != 'pull_request'
+        run: |
+          for i in 1 2 3 4 5; do
+            docker pull "$JARVIS_LIVE_TEST_POSTGRES_IMAGE" && exit 0
+            echo "pull attempt $i failed; retrying" >&2
+            sleep $((i * 15))
+          done
+          exit 1
+      - name: Install Playwright browser
+        if: github.event_name != 'pull_request'
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - name: make test-all
+        if: github.event_name != 'pull_request'
+        run: make test-all
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: tdd-reports
+          path: |
+            web/playwright-report
+            web/test-results
+            server/coverage.json
+            coverage.json
+            web/coverage
+
+  notify-failure:
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: test
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "TDD ${{ github.event_name == 'schedule' && 'nightly ' || '' }}suite failed on main"
+      message: "${{ github.event.head_commit.message }}"
+      priority: 7
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

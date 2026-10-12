@@ -14,5 +14,9 @@ export default defineConfig({
       "/healthz": target,
     },
   },
-  test: { include: ["tests/**/*.test.ts"], environment: "node" },
+  test: {
+    include: ["tests/**/*.test.ts"],
+    environment: "node",
+    coverage: { provider: "v8", include: ["src/**/*.{ts,tsx}"], reporter: ["text-summary", "json-summary"] },
+  },
 });

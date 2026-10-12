@@ -31,6 +31,11 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    # Anything that (transitively) needs the Postgres fixture is an integration test, so the
+    # fast suite (`pytest -m "not integration"`) runs without Docker.
+    for item in items:
+        if "postgres_url" in getattr(item, "fixturenames", ()):
+            item.add_marker(pytest.mark.integration)
     if config.getoption("--live"):
         return
     skip = pytest.mark.skip(reason="needs --live")
