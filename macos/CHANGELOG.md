@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.9.0...macos-v0.9.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **macos:** dictation pastes at the cursor instead of only copying ([dfb73b3](https://github.com/lordmuffin/jarvis-voice/commit/dfb73b3af1273dca386e9b94a3da4741f1e4d326))
+* **macos:** dictation pastes at the cursor instead of only copying ([6199f62](https://github.com/lordmuffin/jarvis-voice/commit/6199f62a74030730706481e8578e6ee50ca6a97d))
+
 ## [0.9.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.8.0...macos-v0.9.0) (2026-10-12)
 
 
