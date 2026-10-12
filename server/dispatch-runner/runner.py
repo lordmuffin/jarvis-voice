@@ -48,8 +48,10 @@ MAX_BODY = 60_000
 FORBIDDEN = (".github/workflows/",)
 AUTHOR = ("Claude (jarvis-dispatch)", "claude-dispatch@apj.dev")
 LIMIT = re.compile(r"(usage|rate)[ -]limit", re.IGNORECASE)
-# The marker Claude ends with when it needs the owner, alone on a line, in any markdown dress.
-ASK = re.compile(r"^[ \t#>*_]*NEEDS INPUT[ \t]*:?[ \t*_]*", re.IGNORECASE | re.MULTILINE)
+# The marker Claude ends with when it needs the owner, in any markdown dress: at the start of
+# a line, upper case, and with a colon or alone on its line (so prose never matches).
+ASK = re.compile(r"^[ \t#>*_]*NEEDS INPUT(?:[ \t*_]*:|[ \t*_]*$)[ \t*_]*", re.MULTILINE)
+NO_QUESTIONS = {"", "none", "n/a", "nothing", "no"}
 MAX_QUESTIONS = 1500
 UNATTENDED = """\
 You are running unattended, as a Jarvis dispatch run in a sandboxed container. Nobody can \
@@ -206,9 +208,12 @@ def split_questions(text: str) -> tuple[str, str]:
     """Claude's final message as (summary, questions): what follows its last NEEDS INPUT."""
     marks = list(ASK.finditer(text))
     if not marks:
-        return text, ""
+        return text.strip(), ""
     m = marks[-1]
-    return text[: m.start()].strip(), text[m.end() :].strip()
+    questions = text[m.end() :].strip()
+    if questions.strip(" .*_").lower() in NO_QUESTIONS:
+        return text.strip(), ""
+    return text[: m.start()].strip(), questions
 
 
 def claude() -> None:

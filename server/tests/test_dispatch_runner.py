@@ -350,6 +350,26 @@ def test_questions_claude_ends_with_are_split_from_its_summary(world: dict[str, 
     assert result["questions"] == "1. Should retries back off past 60 s?\n2. Keep the old flag?"
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Needs input validation was added to the form.",
+        "Done.\n\nNEEDS INPUT handling stays as it was.",
+        "Done.\n\nNEEDS INPUT: none",
+    ],
+)
+def test_only_the_marker_with_real_questions_asks(text: str) -> None:
+    assert load().split_questions(text) == (text.strip(), "")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Done.\n**NEEDS INPUT:**\n1. Q?", "Done.\n## NEEDS INPUT\n1. Q?", "Done.\nNEEDS INPUT: 1. Q?"],
+)
+def test_the_marker_in_any_markdown_dress_asks(text: str) -> None:
+    assert load().split_questions(text) == ("Done.", "1. Q?")
+
+
 def test_a_run_with_questions_pushes_its_work_and_asks(world: dict[str, Path]) -> None:
     runner = load()
     runner.prepare()
