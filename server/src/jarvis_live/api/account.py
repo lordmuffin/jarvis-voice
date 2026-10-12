@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from jarvis_live.auth import Principal, create_device, current_principal, require_admin
 from jarvis_live.db.models import Device, User
 from jarvis_live.db.models import Session as SessionRow
+from jarvis_live.publish.service import may_publish_for
 
 router = APIRouter(prefix="/v1")
 
@@ -35,6 +36,8 @@ class MeOut(BaseModel):
     device_id: uuid.UUID | None  # set when calling with a device token
     can_publish: bool  # may publish notes to the vault repo (owner and admins, if configured)
     auto_publish: bool  # new notes open their PR without asking
+    # The copilot finds work items in this user's sessions (owner and admins, if turned on).
+    work_items: bool
 
 
 def _me(principal: Principal, request: Request) -> MeOut:
@@ -47,6 +50,7 @@ def _me(principal: Principal, request: Request) -> MeOut:
         device_id=principal.device.id if principal.device else None,
         can_publish=request.app.state.publishing.can_publish(u),
         auto_publish=u.auto_publish,
+        work_items=request.app.state.work_items.enabled and may_publish_for(u),
     )
 
 

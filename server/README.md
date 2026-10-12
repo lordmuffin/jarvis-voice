@@ -105,3 +105,29 @@ Each finished session's note sits in the outbox. From the session page in the da
 | `JARVIS_LIVE_PUBLISH_MERGE_METHOD` | `squash` (default), `merge` or `rebase`. |
 | `JARVIS_LIVE_PUBLISH_RECONCILE_INTERVAL_S` | Default 300; `0` turns the background check off. |
 | `JARVIS_LIVE_PUBLISH_COMMITTER_NAME` / `_EMAIL` | Default `jarvis-live` / `jarvis-live@apj.dev`. |
+
+## Work items: ideas as Claude Code prompts
+
+When you think out loud in a session, the copilot picks out the ideas that are work: changes to one of your repositories. It groups related ideas from across the session into draft **work items**. Each one has a title, a target repo, the intent, acceptance criteria, a done-when line, and links back to where you said it. Each work item renders to a Claude Code prompt from [`prompts/templates/work-item.md`](../prompts/templates/work-item.md). The plan, including the dispatch phase still to come, is [`docs/plans/copilot-to-claude-code.md`](../docs/plans/copilot-to-claude-code.md).
+
+- **Whose sessions.** Only the owner's and admins' sessions are mined, and never a local-only one. Only the session's owner sees its work items.
+- **How they are found.** An *ideas pass* runs next to the live copilot, on its own cadence: after `IDEAS_MIN_NEW_SEGMENTS` new final segments, or `IDEAS_INTERVAL_S` after the first new one. It sends the LLM the transcript since the last pass, plus `IDEAS_OVERLAP_S` of overlap, along with the open work items. The LLM attaches new lines to existing items or proposes new ones, and the server decides what is kept (`workitems/state.py`):
+  - refs are server-issued;
+  - fields you edited are locked;
+  - discarded, approved and merged items stay closed;
+  - repos must be on the allowlist;
+  - every item cites the transcript.
+- **Session end.** One more pass runs before the note is written. The note gets a **Work items** section with links back to the dashboard. Approved items also carry their prompt in a collapsed callout.
+- **Reviewing.** Work items appear in the session page (live and past) and on the **Work Items** page. There you can edit, approve, merge drafts of one session, discard and restore.
+  - **Approving** needs the dashboard sign-in, not a device token. It freezes the prompt: what you copy is byte-for-byte what was approved, with its sha256 in the audit log.
+  - **Editing** an approved item puts it back to draft.
+- **Audit log.** Every change, LLM or human, is written to `work_item_events`.
+- **Dispatch** (`POST /v1/work-items/{id}/dispatch`) runs the gate already. The item must be approved, its prompt unchanged since, approved by you from the dashboard, and its repo still on the allowlist. No dispatcher is configured yet, so an approved item gets 503.
+
+| Variable | |
+|---|---|
+| `JARVIS_LIVE_WORK_ITEMS_ENABLED` | Default off. Needs an LLM. The template is checked at startup, so a broken one fails fast. |
+| `JARVIS_LIVE_WORK_REPOS` | The only repos a work item may target, one `owner/name  description` per line. The description helps the LLM pick. |
+| `JARVIS_LIVE_IDEAS_MODEL` | Empty means the copilot model. Compare models with `tests/evals/test_ideas_evals.py` (`--live`). |
+| `JARVIS_LIVE_IDEAS_MIN_NEW_SEGMENTS` / `_INTERVAL_S` / `_OVERLAP_S` | Defaults 4 / 120 / 60. |
+| `JARVIS_LIVE_WORK_TEMPLATE` | Overrides the template path. Default: `/app/prompts/templates/work-item.md` in the image (copied from `prompts/` at build time), else the repo's copy. |

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from jarvis_live.copilot.schema import FinalAction, FinalNote
-from jarvis_live.copilot.transcript import Line, hhmmss
+from jarvis_live.copilot.transcript import Line, hhmmss, mmss
 
 _PLAIN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._+/-]*$")
 _UNSAFE_FILENAME = re.compile(r'[\\/:*?"<>|#^\[\]\x00-\x1f]')
@@ -20,6 +20,21 @@ class NoteMeta:
     mode: str
     duration_minutes: int
     user: str | None = None
+
+
+@dataclass(frozen=True)
+class NoteWorkItem:
+    """A work item as the note shows it. Changes after the note was written live on the
+    dashboard (``review_url``); regenerating the note picks them up."""
+
+    title: str
+    repo: str | None
+    state: str  # draft | approved
+    intent: str
+    criteria: list[str]
+    sources: list[tuple[int, str]]  # (start_ms, link; "" if there is no public URL)
+    review_url: str
+    prompt: str | None = None  # the frozen prompt of an approved item
 
 
 def _yaml(value: str) -> str:
@@ -47,7 +62,31 @@ def _action(a: FinalAction) -> str:
     return f"- [ ] {_one_line(a.text)}" + (f" ({extra})" if extra else "")
 
 
-def render_note(note: FinalNote, meta: NoteMeta, transcript: list[Line]) -> str:
+def _work_item(w: NoteWorkItem) -> list[str]:
+    head = [f"`{w.repo}`" if w.repo else "no repository yet", w.state]
+    if w.review_url:
+        head.append(f"[review]({w.review_url})")
+    out = [f"### {_one_line(w.title)}", "", " · ".join(head), ""]
+    if w.intent.strip():
+        out += [w.intent.strip(), ""]
+    if w.criteria:
+        out += [*(f"- [ ] {_one_line(c)}" for c in w.criteria), ""]
+    if w.sources:
+        links = [f"[{mmss(t)}]({url})" if url else mmss(t) for t, url in w.sources]
+        out += ["Heard at " + ", ".join(links), ""]
+    if w.prompt:
+        out.append("> [!abstract]- Claude Code prompt")
+        out += [f"> {line}".rstrip() for line in w.prompt.rstrip().splitlines()]
+        out.append("")
+    return out
+
+
+def render_note(
+    note: FinalNote,
+    meta: NoteMeta,
+    transcript: list[Line],
+    work_items: list[NoteWorkItem] | None = None,
+) -> str:
     out = [
         "---",
         f"created: {meta.created.isoformat(timespec='seconds')}",
@@ -77,6 +116,10 @@ def render_note(note: FinalNote, meta: NoteMeta, transcript: list[Line]) -> str:
     section("Actions", [_action(a) for a in note.actions])
     section("Open questions", [f"- {_one_line(q)}" for q in note.open_questions])
     section("Follow-ups", [f"- {_one_line(f)}" for f in note.follow_ups])
+    if work_items:
+        out.extend(["## Work items", ""])
+        for w in work_items:
+            out.extend(_work_item(w))
     section("Related", [f"- [[{_one_line(r)}]]" for r in note.related])
     out.extend(["## Transcript", ""])
     out.extend(

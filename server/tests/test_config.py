@@ -62,3 +62,10 @@ def test_non_live_environment_prefixes_notification_titles(monkeypatch: pytest.M
 def test_environment_must_not_be_empty() -> None:
     with pytest.raises(ValueError):
         Settings(environment=" ")
+
+
+def test_work_repo_allowlist() -> None:
+    cfg = Settings(work_repos="# targets\nlordmuffin/jarvis-voice\tthe app\n\nlordmuffin/notes\n")
+    assert cfg.work_repo_allowlist == {"lordmuffin/jarvis-voice": "the app", "lordmuffin/notes": ""}
+    with pytest.raises(ValueError, match="owner/name"):
+        Settings(work_repos="jarvis-voice  no owner")

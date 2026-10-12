@@ -8,7 +8,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import account, auth, publishing, sessions, stream
+from jarvis_live.api import account, auth, publishing, sessions, stream, work_items
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
@@ -24,6 +24,8 @@ from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
+from jarvis_live.workitems.dispatch import Dispatcher
+from jarvis_live.workitems.service import WorkItemService
 
 
 def _version() -> str:
@@ -78,10 +80,12 @@ def create_app(
     llm: LLM | None = None,
     notifier: Notifier | None = None,
     github: GitHubClient | None = None,
+    dispatcher: Dispatcher | None = None,
 ) -> FastAPI:
-    """``stt``, ``llm``, ``notifier`` and ``github`` override what is built from settings
-    (tests). The copilot and finalizer run only if an LLM is configured or injected; notes are
-    published only if ``publish_repo`` and ``github_token_file`` are set."""
+    """``stt``, ``llm``, ``notifier``, ``github`` and ``dispatcher`` override what is built
+    from settings (tests). The copilot and finalizer run only if an LLM is configured or
+    injected; notes are published only if ``publish_repo`` and ``github_token_file`` are set.
+    Work items are found only with ``work_items_enabled`` and an LLM."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -113,6 +117,7 @@ def create_app(
                 client, api=cfg.github_api, repo=cfg.publish_repo, token_file=cfg.github_token_file
             )
         publisher = PublishService(cfg, sm, gh)
+        work = WorkItemService(cfg, sm, dispatcher)
         if publisher.enabled and cfg.publish_reconcile_interval_s > 0:
             tasks.append(
                 asyncio.create_task(publisher.run_reconcile_loop(cfg.publish_reconcile_interval_s))
@@ -181,6 +186,7 @@ def create_app(
         app.state.hub = hub
         app.state.orchestrator = orchestrator
         app.state.publishing = publisher
+        app.state.work_items = work
         tasks.append(
             asyncio.create_task(
                 run_retention_loop(
@@ -207,6 +213,7 @@ def create_app(
     app.include_router(account.router)
     app.include_router(sessions.router)
     app.include_router(publishing.router)
+    app.include_router(work_items.router)
     app.include_router(stream.router)
 
     environment = (settings or get_settings()).environment

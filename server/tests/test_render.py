@@ -5,7 +5,13 @@ from zoneinfo import ZoneInfo
 
 from jarvis_live.copilot.schema import FinalAction, FinalNote
 from jarvis_live.copilot.transcript import Line
-from jarvis_live.finalize.render import NoteMeta, render_filename, render_note, slugify
+from jarvis_live.finalize.render import (
+    NoteMeta,
+    NoteWorkItem,
+    render_filename,
+    render_note,
+    slugify,
+)
 
 GOLDEN = Path(__file__).parent / "golden" / "final_note.md"
 
@@ -69,3 +75,48 @@ def test_filename_template_and_slug() -> None:
     assert slugify("x" * 100) == "x" * 60
     assert slugify("///") == "untitled"
     assert render_filename("{session_id}/{slug}.md", META.created, "T", "sid") == "sid-T.md"
+
+
+WORK = [
+    NoteWorkItem(
+        title="Retry failed Gotify notifications",
+        repo="lordmuffin/jarvis-voice",
+        state="approved",
+        intent="Retry a failed push with backoff.",
+        criteria=["At most three attempts"],
+        sources=[(21_000, "https://live.example/s#t=21000"), (1_263_000, "")],
+        review_url="https://live.example/s",
+        prompt="You are working in lordmuffin/jarvis-voice.\n\n## Task\nRetry.",
+    ),
+    NoteWorkItem(
+        title="SRT export CLI",
+        repo=None,
+        state="draft",
+        intent="",
+        criteria=[],
+        sources=[],
+        review_url="",
+    ),
+]
+
+
+def test_work_items_section() -> None:
+    out = render_note(NOTE, META, LINES, WORK)
+    heads = [line for line in out.splitlines() if line.startswith("## ")]
+    assert heads.index("## Work items") == heads.index("## Follow-ups") + 1
+    section = out.split("## Work items\n", 1)[1].split("\n## ", 1)[0]
+    assert section == (
+        "\n### Retry failed Gotify notifications\n\n"
+        "`lordmuffin/jarvis-voice` · approved · [review](https://live.example/s)\n\n"
+        "Retry a failed push with backoff.\n\n"
+        "- [ ] At most three attempts\n\n"
+        "Heard at [00:21](https://live.example/s#t=21000), 21:03\n\n"
+        "> [!abstract]- Claude Code prompt\n"
+        "> You are working in lordmuffin/jarvis-voice.\n"
+        ">\n"
+        "> ## Task\n"
+        "> Retry.\n\n"
+        "### SRT export CLI\n\n"
+        "no repository yet · draft\n"
+    )
+    assert "## Work items" not in render_note(NOTE, META, LINES, [])
