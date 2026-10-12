@@ -65,9 +65,29 @@ what live owns. *Deploy CI* enforces each of these:
   `JARVIS_LIVE_ENVIRONMENT=lab`. The dashboard shows a LAB badge and Gotify titles start
   with `[lab]`.
 - **Admins only.** `OIDC_ALLOWED_GROUPS` is the admin group.
+- **Dispatch to the sandbox only.** Lab runs approved work items as Claude Code only against
+  `lordmuffin/jarvis-dispatch-sandbox`. It uses its own GitHub App (`jarvis-dispatch-lab-app`,
+  installed on that repo alone) and never live's App (`policy/lab.rego`). Until that
+  1Password item exists, lab runs with dispatch off.
 
 Lab shares the Whisper tiers and LiteLLM with live. A runaway lab session competes for
 the same GPUs.
+
+## Dispatch
+
+Approved work items run as Jobs in each channel's own namespace (`k8s/base/dispatch.yaml`).
+Every channel ships the same fence, and the policies require it:
+
+- **NetworkPolicy `jarvis-dispatch`:** run pods reach DNS and the internet, never the cluster
+  or the LAN, and accept no connections.
+- **Role `jarvis-dispatch`:** the app's `jarvis-live` ServiceAccount may manage its Jobs, its
+  per-run Secrets (no list or watch) and read pods, in its own namespace only.
+- **PVC `jarvis-dispatch-mirrors`:** RWX, `prune: disabled`, the shared repo mirrors.
+
+Dispatch is off in base. Lab turns it on for the sandbox; live stays off until lab has proven
+it. One-time setup (the sandbox repo, the GitHub App, the `claude-oauth` and
+`jarvis-dispatch-lab-app` items, making the runner package public) is in
+[`docs/plans/copilot-to-claude-code.md`](../../docs/plans/copilot-to-claude-code.md) §3.9.
 
 ## Resetting lab
 

@@ -37,12 +37,7 @@ jobs:
         working-directory: server
       - name: Pull Postgres test image
         run: |
-          for i in 1 2 3 4 5; do
-            docker pull "$JARVIS_LIVE_TEST_POSTGRES_IMAGE" && exit 0
-            echo "pull attempt $i failed; retrying" >&2
-            sleep $((i * 15))
-          done
-          exit 1
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
       - uses: actions/upload-artifact@v4

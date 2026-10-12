@@ -38,6 +38,7 @@ on:
 
 env:
   IMAGE: ghcr.io/lordmuffin/jarvis-live
+  RUNNER_IMAGE: ghcr.io/lordmuffin/jarvis-dispatch-runner
 
 jobs:
   build:
@@ -54,7 +55,9 @@ jobs:
         id: tags
         env:
           SHA: ${{ github.sha }}
-        run: echo "tag=${IMAGE}:sha-${SHA::7}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "tag=${IMAGE}:sha-${SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "runner=${RUNNER_IMAGE}:sha-${SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
@@ -80,6 +83,7 @@ jobs:
             WEB_DIST_SOURCE=web-build
             PROMPTS_SRC=promptsctx
             PROMPTS_SOURCE=prompts-copy
+            GIT_SHA=${{ github.sha }}
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
@@ -97,6 +101,32 @@ jobs:
             "$TAG" python -c "import jarvis_live.app"
           docker run --rm "$TAG" test -f /app/web/dist/index.html
           docker run --rm "$TAG" test -f /app/prompts/templates/work-item.md
+          test "$(docker run --rm "$TAG" printenv JARVIS_LIVE_GIT_SHA)" = "${{ github.sha }}"
+
+      # The dispatch runner, same commit and tag as the server, which runs it by that tag
+      # (JARVIS_LIVE_GIT_SHA). The GHCR package must be public, like jarvis-live: the
+      # cluster pulls without credentials.
+      - name: Build dispatch runner${{ github.event_name != 'pull_request' && ' and push' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: server/dispatch-runner
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.tags.outputs.runner }}
+          cache-from: type=gha,scope=dispatch-runner
+          cache-to: type=gha,mode=max,scope=dispatch-runner
+
+      - name: Smoke test the runner
+        if: github.event_name == 'pull_request'
+        env:
+          TAG: ${{ steps.tags.outputs.runner }}
+        run: |
+          docker run --rm --entrypoint claude "$TAG" --version
+          docker run --rm --entrypoint git "$TAG" --version
+          docker run --rm --entrypoint uv "$TAG" --version
+          code=0; docker run --rm "$TAG" >/dev/null || code=$?
+          test "$code" = 2  # no step given: prints usage
 
   deploy-lab:
     # Every main push whose image built, or "Run workflow" with lab_sha.

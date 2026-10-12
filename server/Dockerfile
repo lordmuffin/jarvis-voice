@@ -61,6 +61,10 @@ RUN mkdir /prompts
 FROM ${PROMPTS_SOURCE} AS prompts
 
 FROM ${PYTHON_IMAGE} AS runtime
+# The commit this image was built from: the server runs the dispatch runner of the same
+# commit (ghcr.io/lordmuffin/jarvis-dispatch-runner:sha-<7>).
+ARG GIT_SHA=""
+ENV JARVIS_LIVE_GIT_SHA=${GIT_SHA}
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

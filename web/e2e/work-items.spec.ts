@@ -51,6 +51,14 @@ test("review work items: edit, approve, copy, merge, discard", async ({ page }) 
   expect(clip).toContain("## Task: Retry failed Gotify notifications");
   expect(clip).toContain("## Done when");
 
+  // Run it as Claude Code: the e2e server's cluster opens a draft PR at once.
+  page.once("dialog", (d) => void d.accept());
+  await gotify.getByRole("button", { name: "▶ Run in Claude Code" }).click();
+  const runStatus = gotify.getByTestId("dispatch");
+  await expect(runStatus.getByRole("link", { name: "Draft PR #999" })).toBeVisible({ timeout: 15_000 });
+  await expect(runStatus).toContainText("E2E: the change is ready for review.");
+  await expect(gotify.getByRole("button", { name: "▶ Run Again" })).toBeVisible();
+
   // Merge the "give up" draft into the SRT draft (same session): one item, both sources.
   const giveUp = card(page, "Log when Gotify retries give up");
   await srt.getByRole("checkbox").check();

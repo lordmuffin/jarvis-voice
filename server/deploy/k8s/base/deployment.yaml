@@ -27,7 +27,10 @@ spec:
       labels:
         app: jarvis-live
     spec:
-      automountServiceAccountToken: false
+      # The jarvis-live ServiceAccount (dispatch.yaml) may start and read dispatch Jobs in
+      # this namespace and nothing else; its token is how the app reaches the API.
+      serviceAccountName: jarvis-live
+      automountServiceAccountToken: true
       # Single replica on an RWO volume: losing the node is losing the service, so
       # only the critical-stateful allowlist (the six lxc-k3s2-* nodes; never a
       # bare-metal GPU host) is eligible. np-home-homelab docs/node-scheduling.md §1.

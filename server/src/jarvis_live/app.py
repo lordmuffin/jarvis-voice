@@ -1,5 +1,6 @@
 import asyncio
 import importlib.metadata
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -13,6 +14,9 @@ from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
+from jarvis_live.dispatch.githubapp import AppTokens
+from jarvis_live.dispatch.kube import KubeClient
+from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
 from jarvis_live.ingest.hub import IngestHub
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
@@ -26,6 +30,8 @@ from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
 from jarvis_live.workitems.dispatch import Dispatcher
 from jarvis_live.workitems.service import WorkItemService
+
+log = logging.getLogger(__name__)
 
 
 def _version() -> str:
@@ -81,11 +87,15 @@ def create_app(
     notifier: Notifier | None = None,
     github: GitHubClient | None = None,
     dispatcher: Dispatcher | None = None,
+    kube: Kube | None = None,
+    app_tokens: Tokens | None = None,
 ) -> FastAPI:
     """``stt``, ``llm``, ``notifier``, ``github`` and ``dispatcher`` override what is built
     from settings (tests). The copilot and finalizer run only if an LLM is configured or
     injected; notes are published only if ``publish_repo`` and ``github_token_file`` are set.
-    Work items are found only with ``work_items_enabled`` and an LLM."""
+    Work items are found only with ``work_items_enabled`` and an LLM. With
+    ``dispatch_enabled``, approved items run as Kubernetes Jobs (``kube`` and ``app_tokens``
+    stand in for the cluster and the GitHub App in tests)."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -117,7 +127,38 @@ def create_app(
                 client, api=cfg.github_api, repo=cfg.publish_repo, token_file=cfg.github_token_file
             )
         publisher = PublishService(cfg, sm, gh)
-        work = WorkItemService(cfg, sm, dispatcher)
+        dispatch: DispatchService | None = None
+        runner: Dispatcher | None = dispatcher
+        if cfg.dispatch_enabled and runner is None:
+            if problems := dispatch_config_problems(cfg, own_tokens=app_tokens is None):
+                # Off, loudly, not a crash loop: e.g. lab enabled before its secrets exist.
+                log.error("dispatch is enabled but stays off: %s", "; ".join(problems))
+            else:
+                if client is None:
+                    client = httpx.AsyncClient()
+                dispatch = DispatchService(
+                    cfg,
+                    sm,
+                    kube or KubeClient.in_cluster(cfg.dispatch_namespace),
+                    app_tokens
+                    or AppTokens(
+                        client,
+                        api=cfg.github_api,
+                        app_id=cfg.github_app_id,
+                        installation_id=cfg.github_app_installation_id,
+                        key_file=cfg.github_app_key_file or Path(),
+                    ),
+                    notifier
+                    or GotifyNotifier(
+                        cfg.gotify_url,
+                        cfg.gotify_token_file,
+                        client,
+                        title_prefix=cfg.notify_title_prefix,
+                    ),
+                )
+                runner = dispatch
+                tasks.append(asyncio.create_task(dispatch.run_loop()))
+        work = WorkItemService(cfg, sm, runner)
         if publisher.enabled and cfg.publish_reconcile_interval_s > 0:
             tasks.append(
                 asyncio.create_task(publisher.run_reconcile_loop(cfg.publish_reconcile_interval_s))
@@ -187,6 +228,7 @@ def create_app(
         app.state.orchestrator = orchestrator
         app.state.publishing = publisher
         app.state.work_items = work
+        app.state.dispatch = dispatch
         tasks.append(
             asyncio.create_task(
                 run_retention_loop(

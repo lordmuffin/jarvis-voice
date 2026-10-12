@@ -12,7 +12,8 @@ alice's, so the browser test can stream a session as her.
 Publishing goes to a fake GitHub (``tests.fake_github``) on ``port + 2``. Each start seeds a
 finished session titled ``E2E publish me`` for root (an admin, so it may be published), with
 its note in the outbox, and one titled ``E2E work items`` with a short transcript and three
-work items to review. Test doubles only, never for real deployments.
+work items to review. Dispatch runs against an in-memory cluster whose runs open a PR at
+once. Test doubles only, never for real deployments.
 """
 
 import argparse
@@ -26,6 +27,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 from sqlalchemy import select
@@ -48,8 +50,26 @@ from jarvis_live.users import create_user
 from tests.audio import SR, TWO_UTTERANCES
 from tests.fake_github import TOKEN as GITHUB_TOKEN
 from tests.fake_github import FakeGitHub
+from tests.fake_kube import FakeKube, FakeTokens
 from tests.fake_oidc import CLIENT_ID, CLIENT_SECRET, DEFAULT_USERS, FakeIssuer
 from tests.fakes import FakeLLM, FakeNotifier
+
+
+class InstantKube(FakeKube):
+    """Every run finishes at once with a draft PR: the browser test sees the whole cycle."""
+
+    async def get_job(self, name: str) -> dict[str, Any] | None:
+        job = self.jobs.get(name)
+        if job is not None and "succeeded" not in job["status"]:
+            self.report(
+                name,
+                outcome="pr_opened",
+                pr_url="https://github.com/lordmuffin/jarvis-voice/pull/999",
+                pr_number=999,
+                summary="E2E: the change is ready for review.",
+            )
+        return self.jobs.get(name)
+
 
 E2E_TOKEN = "e2e-device-token"  # noqa: S105
 E2E_USER = "alice"
@@ -294,8 +314,18 @@ def serve(port: int, web_dist: Path) -> int:
             publish_reconcile_interval_s=0,
             work_items_enabled=True,
             work_repos=WORK_REPOS,
+            dispatch_enabled=True,
+            git_sha="e2e0000",
+            dispatch_poll_s=0.2,
         )
-        app = create_app(settings, stt=FakeSTT(), llm=llm, notifier=FakeNotifier())
+        app = create_app(
+            settings,
+            stt=FakeSTT(),
+            llm=llm,
+            notifier=FakeNotifier(),
+            kube=InstantKube(),
+            app_tokens=FakeTokens(),
+        )
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
     return 0
 

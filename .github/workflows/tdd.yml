@@ -55,12 +55,7 @@ jobs:
       - name: Pull Postgres test image
         if: github.event_name != 'pull_request'
         run: |
-          for i in 1 2 3 4 5; do
-            docker pull "$JARVIS_LIVE_TEST_POSTGRES_IMAGE" && exit 0
-            echo "pull attempt $i failed; retrying" >&2
-            sleep $((i * 15))
-          done
-          exit 1
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
       - name: Install Playwright browser
         if: github.event_name != 'pull_request'
         run: npx playwright install --with-deps chromium

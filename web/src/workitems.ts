@@ -1,4 +1,4 @@
-import type { WorkItem, WorkItemState } from "./types";
+import type { DispatchState, WorkItem, WorkItemState } from "./types";
 
 export const STATE_LABEL: Record<WorkItemState, string> = {
   draft: "Draft",
@@ -61,3 +61,18 @@ export async function copyText(text: string): Promise<boolean> {
     area.remove();
   }
 }
+
+export const DISPATCH_LABEL: Record<DispatchState, string> = {
+  queued: "Queued",
+  running: "Running",
+  pr_opened: "Draft PR opened",
+  no_changes: "No changes",
+  failed: "Failed",
+  rate_limited: "Hit the Claude usage limit",
+  timed_out: "Timed out",
+  cancelled: "Cancelled",
+};
+
+/** A run that is still going: poll, offer cancel, no second run. */
+export const runActive = (item: WorkItem) =>
+  item.dispatch?.state === "queued" || item.dispatch?.state === "running";

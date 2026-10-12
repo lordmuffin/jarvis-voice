@@ -1,8 +1,9 @@
-import { useEffect, useState } from "preact/hooks";
+import { useState } from "preact/hooks";
 import { ApiError, myWorkItems } from "../api";
 import { currentUser } from "../store";
 import type { WorkItemPage, WorkItemState } from "../types";
-import { WorkItemList } from "./WorkItems";
+import { runActive } from "../workitems";
+import { WorkItemList, usePolling } from "./WorkItems";
 
 const VIEWS: { id: string; label: string; states: WorkItemState[] }[] = [
   { id: "open", label: "Open", states: ["draft", "approved"] },
@@ -16,18 +17,23 @@ export function WorkItemsPage() {
   const [page, setPage] = useState<WorkItemPage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function load() {
+  const [reloads, setReloads] = useState(0);
+
+  async function load(): Promise<WorkItemPage | null> {
+    if (!allowed) return null;
     try {
-      setPage(await myWorkItems(view.states));
+      const next = await myWorkItems(view.states);
+      setPage(next);
       setError(null);
+      return next;
     } catch (e) {
       if (!(e instanceof ApiError && e.status === 401)) setError("Couldn't load work items.");
+      return null;
     }
   }
 
-  useEffect(() => {
-    if (allowed) void load();
-  }, [view.id]);
+  // Keep a running item's status fresh until its run ends.
+  usePolling(load, (p) => p.items.some(runActive), [view.id, reloads]);
 
   if (!allowed)
     return (
@@ -67,7 +73,7 @@ export function WorkItemsPage() {
       ) : page.items.length === 0 ? (
         <p class="muted">{view.id === "open" ? "Nothing to review." : "Nothing discarded."}</p>
       ) : (
-        <WorkItemList page={page} onChanged={() => void load()} showSession />
+        <WorkItemList page={page} onChanged={() => setReloads((n) => n + 1)} showSession />
       )}
     </section>
   );

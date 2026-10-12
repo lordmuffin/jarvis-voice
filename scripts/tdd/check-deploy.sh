@@ -20,4 +20,5 @@ for channel in live lab; do
   kustomize build "$dir" >"$OUT/$channel.yaml"
   kubeconform -strict -summary "${SCHEMAS[@]}" "$OUT/$channel.yaml"
   conftest test "$OUT/$channel.yaml" -p "$POLICY" --data "$POLICY/exceptions.yaml" -n main -n "$channel"
+  conftest test --combine "$OUT/$channel.yaml" -p "$POLICY" -n combined
 done

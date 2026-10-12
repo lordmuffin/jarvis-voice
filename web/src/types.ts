@@ -255,6 +255,32 @@ export interface WorkItemSource {
   text: string;
 }
 
+export type DispatchState =
+  | "queued"
+  | "running"
+  | "pr_opened"
+  | "no_changes"
+  | "failed"
+  | "rate_limited"
+  | "timed_out"
+  | "cancelled";
+
+/** An item's latest run as headless Claude Code. */
+export interface Dispatch {
+  id: string;
+  attempt: number;
+  state: DispatchState;
+  repo: string;
+  branch: string;
+  pr_url: string | null;
+  pr_number: number | null;
+  summary: string | null;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
 export interface WorkItem {
   id: string;
   session_id: string;
@@ -280,6 +306,7 @@ export interface WorkItem {
   /** Set on the cross-session list. */
   session_title?: string | null;
   session_started_at?: string | null;
+  dispatch?: Dispatch | null;
 }
 
 export interface WorkRepo {

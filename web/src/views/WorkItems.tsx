@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import {
   ApiError,
+  cancelDispatch,
+  dispatchWorkItem,
   editWorkItem,
   mergeWorkItems,
   sessionWorkItems,
@@ -12,10 +14,19 @@ import {
 import { clock } from "../format";
 import { currentUser } from "../store";
 import type { WorkItem, WorkItemEdit, WorkItemPage, WorkItemPrompt, WorkRepo } from "../types";
-import { STATE_LABEL, copyText, parseCriteria, sortItems, transcriptHref } from "../workitems";
+import {
+  DISPATCH_LABEL,
+  STATE_LABEL,
+  copyText,
+  parseCriteria,
+  runActive,
+  sortItems,
+  transcriptHref,
+} from "../workitems";
 import { Link } from "./Link";
 
-const LIVE_POLL_MS = 5000;
+/** How often work items are refetched while a session is live or a run is going. */
+export const POLL = { ms: 5000 };
 
 const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
@@ -24,6 +35,23 @@ const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.m
  * the WebSocket), and renders nothing for anyone but the session's owner or when the feature
  * is off.
  */
+/** Refetch with `load` every POLL.ms while `keepGoing` holds for the latest result. */
+export function usePolling<T>(load: () => Promise<T | null>, keepGoing: (r: T) => boolean, deps: unknown[]) {
+  useEffect(() => {
+    let stopped = false;
+    let timer: number | undefined;
+    const tick = async () => {
+      const r = await load();
+      if (!stopped && r !== null && keepGoing(r)) timer = window.setTimeout(() => void tick(), POLL.ms);
+    };
+    void tick();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, deps);
+}
+
 export function SessionWorkItems({
   sessionId,
   ownerId,
@@ -36,22 +64,21 @@ export function SessionWorkItems({
   const user = currentUser();
   const mine = !!user?.work_items && user.id === ownerId;
   const [page, setPage] = useState<WorkItemPage | null>(null);
-  const timer = useRef<number | undefined>(undefined);
+  const [reloads, setReloads] = useState(0);
 
-  async function load() {
+  async function load(): Promise<WorkItemPage | null> {
+    if (!mine) return null;
     try {
-      setPage(await sessionWorkItems(sessionId));
+      const next = await sessionWorkItems(sessionId);
+      setPage(next);
+      return next;
     } catch {
-      /* 404 or offline: show nothing, try again on the next poll */
+      return page; /* 404 or offline: keep what we had, try again on the next poll */
     }
   }
 
-  useEffect(() => {
-    if (!mine) return;
-    void load();
-    if (live) timer.current = window.setInterval(() => void load(), LIVE_POLL_MS);
-    return () => window.clearInterval(timer.current);
-  }, [sessionId, live, mine]);
+  // While the session is live, or one of its items has a run going.
+  usePolling(load, (p) => live || p.items.some(runActive), [sessionId, live, mine, reloads]);
 
   if (!mine || !page?.enabled) return null;
   if (!live && page.items.length === 0) return null;
@@ -63,7 +90,7 @@ export function SessionWorkItems({
           Ideas you talk through become draft Claude Code prompts here.
         </p>
       ) : (
-        <WorkItemList page={page} onChanged={() => void load()} />
+        <WorkItemList page={page} onChanged={() => setReloads((n) => n + 1)} />
       )}
     </section>
   );
@@ -134,6 +161,7 @@ export function WorkItemList({
           key={item.id}
           item={item}
           repos={page.repos}
+          dispatchEnabled={page.dispatch_enabled}
           showSession={showSession}
           picked={picked.includes(item.id)}
           onPick={item.state === "draft" ? (on) => toggle(item.id, on) : undefined}
@@ -144,11 +172,12 @@ export function WorkItemList({
   );
 }
 
-type Busy = WorkItemAction | "save" | "copy" | "prompt" | null;
+type Busy = WorkItemAction | "save" | "copy" | "prompt" | "run" | "cancel" | null;
 
 export function WorkItemCard({
   item,
   repos,
+  dispatchEnabled = false,
   showSession,
   picked,
   onPick,
@@ -156,6 +185,7 @@ export function WorkItemCard({
 }: {
   item: WorkItem;
   repos: WorkRepo[];
+  dispatchEnabled?: boolean;
   showSession: boolean;
   picked: boolean;
   onPick?: (on: boolean) => void;
@@ -187,6 +217,16 @@ export function WorkItemCard({
       setPrompt(null);
       onChanged();
     }
+  }
+
+  async function runIt() {
+    const repo = item.repo ?? "its repository";
+    if (!confirm(`Run “${item.title}” as Claude Code on ${repo}? It opens a draft PR.`)) return;
+    if (await run("run", () => dispatchWorkItem(item.id), "Couldn't start the run.")) onChanged();
+  }
+
+  async function cancelRun() {
+    if (await run("cancel", () => cancelDispatch(item.id), "Couldn't cancel the run.")) onChanged();
   }
 
   async function togglePrompt() {
@@ -292,8 +332,20 @@ export function WorkItemCard({
         </>
       )}
 
+      {item.dispatch && <DispatchStatus run={item.dispatch} />}
+
       {!editing && (
         <div class="wi-actions">
+          {dispatchEnabled && item.state === "approved" && !runActive(item) && (
+            <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => void runIt()}>
+              {busy === "run" ? "Starting…" : item.dispatch ? "▶ Run Again" : "▶ Run in Claude Code"}
+            </button>
+          )}
+          {runActive(item) && (
+            <button class="btn btn-sm" disabled={busy !== null} onClick={() => void cancelRun()}>
+              {busy === "cancel" ? "Cancelling…" : "■ Cancel Run"}
+            </button>
+          )}
           {item.state === "approved" && (
             <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => void copy()}>
               {copied ? "✓ Copied" : busy === "copy" ? "Copying…" : "⎘ Copy Prompt"}
@@ -353,6 +405,29 @@ export function WorkItemCard({
         </div>
       )}
     </article>
+  );
+}
+
+/** The latest run: where it stands, its PR, or why it ended. */
+function DispatchStatus({ run }: { run: NonNullable<WorkItem["dispatch"]> }) {
+  const bad = ["failed", "timed_out", "rate_limited"].includes(run.state);
+  return (
+    <div class={`wi-run wi-run-${run.state}`} data-testid="dispatch">
+      <span class="meta">
+        Claude Code{run.attempt > 1 ? ` · attempt ${run.attempt}` : ""} ·{" "}
+        <strong>{DISPATCH_LABEL[run.state]}</strong>
+        {run.pr_url && (
+          <>
+            {" · "}
+            <a href={run.pr_url} target="_blank" rel="noreferrer">
+              Draft PR #{run.pr_number}
+            </a>
+          </>
+        )}
+      </span>
+      {run.summary && <p class="small">{run.summary}</p>}
+      {bad && run.error && <p class="small error">{run.error}</p>}
+    </div>
   );
 }
 

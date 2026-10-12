@@ -23,11 +23,20 @@ path-filtered workflows (`server-ci`, `web-ci`, `python-ci`, `macos-ci`, `deploy
    the rest stay on `node`). First user: `web/tests/workitems-view.test.ts` (the work item review cards).
    Server tests that need Postgres are marked `integration` automatically (`server/tests/conftest.py`), so `-m "not integration"` is the Docker-free fast suite.
 3. **Integration / e2e:** server tests against Postgres (testcontainers), Playwright against the real app serving `web/dist`.
+   The dispatch runner (`server/dispatch-runner/runner.py`) is tested with real git (`server/tests/test_dispatch_runner.py`):
+   local repos over `file://` play GitHub, with a fake `claude` binary and a fake pull-request API. The tests cover the
+   mirror plus worktree, the patch, the draft PR, the refusal of `.github/workflows` changes, and that nothing planted in
+   Claude's worktree (hooks, `core.fsmonitor`) runs in the push step. Dispatch against Kubernetes uses an in-memory fake
+   (`server/tests/fake_kube.py`); the real cluster path is not exercised in CI.
 4. **Deploy manifests (GitOps):** both overlays (`jarvis-live`, `jarvis-live-lab`) are rendered with kustomize, validated with
    `kubeconform -strict` (CRD schemas from the datree catalog), and checked by conftest policies in `server/deploy/policy/`:
    no `:latest`/untagged images, requests and limits, no plaintext `Secret`, `prune: disabled` on PVCs and Namespaces, pinned
    `HelmRelease` charts, Traefik `websecure` + TLS + `traefik-traefik` Ingresses, and the channel rules (lab: no vault write
    credential, no publishing, own namespace/database/host). The policies have their own tests (`*_test.rego`, `conftest verify`).
+   `dispatch.rego` checks the dispatch fence (NetworkPolicy: no ingress, egress only DNS and non-private addresses) and Role
+   (no wildcards, no list/watch on secrets, no cluster-wide RBAC). `lab.rego` keeps lab's dispatch on the sandbox repo, away
+   from live's GitHub App. Whole-overlay rules run with `conftest test --combine -n combined` (`combined.rego`): the fence
+   ships with every channel, and a channel with dispatch on must wire the GitHub App into the Deployment.
    `deploy-ci.yml` still runs its original shell checks alongside.
 5. **Evals:** `server/tests/evals` (copilot evals). Offline cases run always; `--live` cases need a real endpoint.
 6. **Not here:** `flux-local` (the Flux Kustomizations live in np-home-homelab) and prompt/skill linting (this repo has no skills).

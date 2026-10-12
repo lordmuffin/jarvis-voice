@@ -48,3 +48,31 @@ test_lab_lab_host_allowed if {
 	i := {"kind": "Ingress", "metadata": {"name": "i", "namespace": "jarvis-live-lab"}, "spec": {"rules": [{"host": "live.lab.apj.dev"}]}}
 	count(deny) == 0 with input as i
 }
+
+test_lab_dispatches_only_to_the_sandbox if {
+	count(deny) == 0 with input as cm({
+		"JARVIS_LIVE_ENVIRONMENT": "lab",
+		"JARVIS_LIVE_DISPATCH_ENABLED": "true",
+		"JARVIS_LIVE_DISPATCH_REPOS": "lordmuffin/jarvis-dispatch-sandbox  lab only\n",
+	})
+}
+
+test_lab_must_not_dispatch_to_real_repos if {
+	some msg in deny with input as cm({
+		"JARVIS_LIVE_ENVIRONMENT": "lab",
+		"JARVIS_LIVE_DISPATCH_ENABLED": "true",
+		"JARVIS_LIVE_DISPATCH_REPOS": "lordmuffin/jarvis-voice\n",
+	})
+	contains(msg, "sandbox")
+}
+
+test_lab_dispatch_needs_an_explicit_allowlist if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_DISPATCH_ENABLED": "true"})
+	contains(msg, "sandbox")
+}
+
+test_lab_must_not_hold_lives_github_app if {
+	d := {"kind": "OnePasswordItem", "metadata": {"name": "jarvis-dispatch-app", "namespace": "jarvis-live-lab"}, "spec": {"itemPath": "vaults/HomeLab/items/jarvis-dispatch-app"}}
+	some msg in deny with input as d
+	contains(msg, "GitHub App")
+}

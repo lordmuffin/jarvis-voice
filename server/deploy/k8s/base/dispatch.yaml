@@ -1,0 +1,81 @@
+# Dispatch: approved work items run as headless Claude Code, one Job per item, in this
+# namespace (server/src/jarvis_live/dispatch; docs/plans/copilot-to-claude-code.md §3).
+# Shipped with every channel so a channel that turns dispatch on is never unfenced; whether
+# it runs is JARVIS_LIVE_DISPATCH_ENABLED (configmap.yaml). server/deploy/policy/dispatch.rego
+# checks these objects.
+---
+# The app's identity for starting and reading its Jobs. Nothing else is granted to it.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: jarvis-live
+  labels:
+    app: jarvis-live
+---
+# Only what dispatch needs, only in this namespace. Secrets: create/get/patch/delete of the
+# per-run Secret it makes; never list or watch (that would read every secret here).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jarvis-dispatch
+  labels:
+    app: jarvis-live
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "delete"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jarvis-dispatch
+  labels:
+    app: jarvis-live
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jarvis-dispatch
+subjects:
+  - kind: ServiceAccount
+    name: jarvis-live
+---
+# The fence. A run reaches DNS and the internet (GitHub, Claude, package registries) and
+# nothing on the cluster or the LAN: no pod or service CIDR, no Proxmox, TrueNAS, the DGX
+# Spark or this app. Nothing may connect to it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jarvis-dispatch
+  labels:
+    app: jarvis-live
+spec:
+  podSelector:
+    matchLabels:
+      app: jarvis-dispatch
+  policyTypes: ["Ingress", "Egress"]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16

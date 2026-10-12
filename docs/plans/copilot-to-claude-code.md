@@ -1,7 +1,8 @@
 # Plan: from spoken ideas to Claude Code PRs
 
-Status: **phase (a) built** (capture, prompts, review queue, the dispatch gate). Phase (b),
-dispatch, is next. §5 records the decisions made on this plan.
+Status: **phase (a) shipped** (lordmuffin/jarvis-voice#133). **Phase (b) built**: dispatch
+code, runner image and manifests. It runs on lab against the sandbox repo once the 1Password
+items exist (§3.9); live stays off until lab has proven it. §5 records the decisions.
 
 ## Goal
 
@@ -364,6 +365,41 @@ for (a) before the release PR promotes it.
 
 ## 3. Phase (b): worktree dispatch
 
+### 3.0 As built (read this first)
+
+What phase (b) actually shipped, where it differs from the sections below:
+
+- **Jobs run in the app's own namespace** (`jarvis-live`, `jarvis-live-lab`), not in a separate
+  `jarvis-dispatch` namespace. Every channel's objects must live in its namespace (Deploy CI,
+  `server/deploy/policy/{live,lab}.rego`), so a run belongs to its channel like everything
+  else. The fence is per pod instead of per namespace:
+  - the `jarvis-dispatch` NetworkPolicy selects `app=jarvis-dispatch` pods, admits no ingress,
+    and lets egress reach DNS and the internet but none of the private ranges;
+  - the pod gets no service account token;
+  - the app's `jarvis-dispatch` Role grants jobs, its per-run secrets and pods. It has no
+    `list` or `watch` on secrets, so the app cannot enumerate this namespace's secrets.
+  - `dispatch.rego` enforces all of this, and `combined.rego` requires the fence in every
+    rendered channel.
+- **A literal `git worktree` per item** (§3.1), as decided. The shared mirror lives on the
+  `jarvis-dispatch-mirrors` RWX PVC.
+- **Your Claude subscription:** the `claude-oauth` 1Password item holds the
+  `claude setup-token` output, mounted only into the claude step as `CLAUDE_CODE_OAUTH_TOKEN`.
+- **The runner image follows the server's commit.** `ghcr.io/lordmuffin/jarvis-dispatch-runner`
+  is built by the *Server Image* workflow with the server's `sha-<7>` tag. The server image
+  carries its commit as `JARVIS_LIVE_GIT_SHA`, so lab and live each run the runner built with
+  them, and no extra tag needs pinning. It pins Claude Code 2.1.283.
+- **The model is `claude-sonnet-5-5`.** Claude Code 2.1.283 has no `--max-turns`; the Job's
+  `activeDeadlineSeconds` (1 h) bounds a run.
+- **Lab dispatches only to `lordmuffin/jarvis-dispatch-sandbox`** with its own GitHub App
+  (`jarvis-dispatch-lab-app`). `lab.rego` refuses any other repo and live's App.
+- **Live is off** (`JARVIS_LIVE_DISPATCH_ENABLED: "false"` in base) until a follow-up turns it
+  on with live's App.
+- **A misconfigured dispatch stays off.** If lab enables dispatch before its items exist, the
+  server logs what is missing and runs without dispatch. It does not crash-loop.
+
+Code: `server/src/jarvis_live/dispatch/` and `server/dispatch-runner/`. Manifests:
+`server/deploy/k8s/base/dispatch.yaml`, `pvc-dispatch-mirrors.yaml`, and the lab overlay.
+
 ### 3.1 Where it runs: a Kubernetes Job per item (recommended)
 
 | Option | Verdict |
@@ -529,6 +565,28 @@ which is stored on the dispatch row. The dashboard gets a per-item history view.
 - **On lab:** dispatch a small item to the sandbox repo end to end.
 
 ---
+
+### 3.9 What you set up (once)
+
+1. **Sandbox repo:** create `lordmuffin/jarvis-dispatch-sandbox` (private is fine), with a
+   `main` branch and anything to work on.
+2. **Lab GitHub App** `jarvis-dispatch-lab`:
+   - repository permissions Contents read/write, Pull requests read/write, Metadata read;
+     nothing else, **no Workflows**;
+   - no webhook;
+   - install it on the sandbox repo only;
+   - generate a private key.
+3. **1Password (HomeLab vault):**
+   - `jarvis-dispatch-lab-app` with fields `private-key` (the PEM), `app-id` and
+     `installation-id`;
+   - `claude-oauth` with the `claude setup-token` output in the `password` field.
+4. **GHCR:** after the first `main` build, make the `jarvis-dispatch-runner` package public,
+   like `jarvis-live`. The cluster pulls without credentials.
+5. **Try it on lab:** talk an idea for the sandbox repo through a session at
+   `live.lab.apj.dev`, approve the item, then press **Run in Claude Code**.
+
+Live later: a `jarvis-dispatch-app` App on the real repos, a live overlay patch turning
+dispatch on, and the same `claude-oauth` item.
 
 ## 4. Safety requirements
 

@@ -885,3 +885,25 @@ code,
   box-shadow: inset 3px 0 0 var(--accent);
   background: var(--surface2);
 }
+/* A work item's run as Claude Code */
+.wi-run {
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--bg);
+  border-left: 3px solid var(--text2);
+}
+.wi-run p {
+  margin: 4px 0 0;
+}
+.wi-run-queued,
+.wi-run-running {
+  border-left-color: var(--warning);
+}
+.wi-run-pr_opened {
+  border-left-color: var(--success);
+}
+.wi-run-failed,
+.wi-run-timed_out,
+.wi-run-rate_limited {
+  border-left-color: var(--error);
+}
