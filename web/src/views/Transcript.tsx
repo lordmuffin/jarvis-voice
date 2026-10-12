@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { clock } from "../format";
+import { hashTime } from "../workitems";
 import type { Line } from "../reducer";
 import type { Marker } from "../types";
 
@@ -17,11 +18,34 @@ export function Transcript({
 }) {
   const box = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
+  // `#t=<ms>` (a work item's source link) highlights the line spoken then.
+  const [target, setTarget] = useState<number | null>(() => hashTime(location.hash));
 
   useEffect(() => {
     const el = box.current;
-    if (follow && el && atBottom.current) el.scrollTop = el.scrollHeight;
+    if (follow && el && atBottom.current && target === null) el.scrollTop = el.scrollHeight;
   }, [lines.length, follow]);
+
+  useEffect(() => {
+    const on = () => setTarget(hashTime(location.hash));
+    window.addEventListener("hashchange", on);
+    return () => window.removeEventListener("hashchange", on);
+  }, []);
+
+  // The line containing the target time, else the last one starting before it.
+  const hit =
+    target === null
+      ? undefined
+      : (lines.find((l) => l.start_ms <= target && target < l.end_ms) ??
+        [...lines].reverse().find((l) => l.start_ms <= target));
+
+  useEffect(() => {
+    if (!hit) return;
+    atBottom.current = false;
+    box.current
+      ?.querySelector(`[data-line="${CSS.escape(hit.id)}"]`)
+      ?.scrollIntoView({ block: "center" });
+  }, [hit?.id, target]);
 
   const items: Item[] = [
     ...lines.map((line) => ({ at: line.start_ms, line })),
@@ -49,7 +73,10 @@ export function Transcript({
         ) : (
           <div
             key={it.line.id}
-            class={`line line-${it.line.speaker}${it.line.kind === "draft" ? " line-draft" : ""}`}
+            class={`line line-${it.line.speaker}${it.line.kind === "draft" ? " line-draft" : ""}${
+              it.line.id === hit?.id ? " line-target" : ""
+            }`}
+            data-line={it.line.id}
             data-testid={it.line.kind === "draft" ? "draft" : "segment"}
           >
             <span class="time">{clock(it.line.start_ms)}</span>

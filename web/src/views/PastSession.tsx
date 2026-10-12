@@ -8,6 +8,7 @@ import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
 import { StatusChip } from "./StatusChip";
 import { Transcript } from "./Transcript";
+import { SessionWorkItems } from "./WorkItems";
 
 // Same names as the transcript: the mic is the local speaker, system audio everyone else.
 const CHANNEL_LABEL: Record<Channel, string> = { mic: "Me", system: "Them" };
@@ -72,6 +73,7 @@ export function PastSession({
         </span>
       </div>
       <Recordings detail={detail} />
+      <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <Panes
         panes={[
           { id: "note", label: "Note", content: noteContent },

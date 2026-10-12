@@ -9,6 +9,7 @@ import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
 import { StatusChip } from "./StatusChip";
 import { Transcript } from "./Transcript";
+import { SessionWorkItems } from "./WorkItems";
 
 const CONNECTION_LABEL = {
   idle: "Idle",
@@ -78,7 +79,12 @@ export function LiveSession({
           {
             id: "copilot",
             label: "Copilot",
-            content: <CopilotPanel copilot={s.copilot} streamMs={s.streamMs} finalNote={s.finalNote} />,
+            content: (
+              <>
+                <CopilotPanel copilot={s.copilot} streamMs={s.streamMs} finalNote={s.finalNote} />
+                <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live />
+              </>
+            ),
           },
         ]}
       />

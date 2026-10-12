@@ -8,6 +8,7 @@ import { Publishing } from "./views/Publishing";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
 import { Wordmark } from "./views/Wordmark";
+import { WorkItemsPage } from "./views/WorkItemsPage";
 
 function page(r: Route) {
   switch (r.name) {
@@ -17,6 +18,8 @@ function page(r: Route) {
       return <Devices />;
     case "publishing":
       return <Publishing />;
+    case "work-items":
+      return <WorkItemsPage />;
     case "admin":
       return <Admin />;
     case "sessions":
@@ -49,6 +52,11 @@ export function App() {
           <Link class="nav-link" href="/devices" aria-current={current("devices")}>
             Devices
           </Link>
+          {user.work_items && (
+            <Link class="nav-link" href="/work-items" aria-current={current("work-items")}>
+              Work Items
+            </Link>
+          )}
           {user.can_publish && (
             <Link class="nav-link" href="/publishing" aria-current={current("publishing")}>
               Publishing
