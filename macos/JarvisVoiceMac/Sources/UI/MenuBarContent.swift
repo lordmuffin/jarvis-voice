@@ -7,6 +7,13 @@ struct MenuBarContent: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
+        Text("Jarvis Voice v\(AppInfo.version)")
+        if let serverText {
+            Text(serverText)
+        }
+
+        Divider()
+
         Button(model.isRecording ? "Stop Session" : "Start Session") {
             Task { await model.toggle() }
         }
@@ -74,15 +81,17 @@ struct MenuBarContent: View {
 
         Divider()
 
-        Text("Version \(appVersion)")
         Button("Settings\u{2026}") { showSettings() }
             .keyboardShortcut(",")
         Button("Quit Jarvis Voice") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
 
-    private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+    /// Which server sessions go to: "Server: LAB · live.lab.apj.dev (0.12.0)"; nil without a valid URL.
+    private var serverText: String? {
+        guard let channel = model.serverChannel, let host = model.settings.serverBaseURL?.host() else { return nil }
+        let version = model.serverVersion.map { " (\($0))" } ?? ""
+        return "Server: \(channel.tag) \u{00B7} \(host)\(version)"
     }
 
     /// `showSettingsWindow:` does nothing since macOS 14; `openSettings` is the supported way.
