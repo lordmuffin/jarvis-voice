@@ -5,6 +5,7 @@ import { Devices } from "./views/Devices";
 import { Link } from "./views/Link";
 import { Login } from "./views/Login";
 import { Publishing } from "./views/Publishing";
+import { ServerVersion } from "./views/ServerVersion";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
 import { Wordmark } from "./views/Wordmark";
@@ -68,6 +69,7 @@ export function App() {
             </Link>
           )}
         </nav>
+        <ServerVersion />
         <span class="user meta" data-testid="user-name" title={user.email ?? undefined}>
           {user.display_name}
         </span>

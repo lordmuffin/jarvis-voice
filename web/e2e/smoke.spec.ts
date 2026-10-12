@@ -292,7 +292,9 @@ test("lab: LAB next to the wordmark, signed out and in; nothing on live", async 
 
   // The same app, told it is the lab server.
   await page.route("**/healthz", (route) =>
-    route.fulfill({ json: { status: "ok", environment: "lab", version: "0.0.0" } }),
+    route.fulfill({
+      json: { status: "ok", environment: "lab", version: "0.0.0", commit: "abc1234" },
+    }),
   );
   await page.goto("/");
   const heading = page.getByRole("heading", { name: "Jarvis Live" });
@@ -301,4 +303,19 @@ test("lab: LAB next to the wordmark, signed out and in; nothing on live", async 
   await signIn(page, "alice");
   const brand = page.getByRole("banner").getByRole("link", { name: /Jarvis Live/ });
   await expect(brand.getByTestId("release-channel")).toBeVisible();
+});
+
+test("the server's version sits next to the user name", async ({ page }) => {
+  await page.route("**/healthz", (route) =>
+    route.fulfill({
+      json: { status: "ok", environment: "live", version: "1.2.3", commit: "abc1234" },
+    }),
+  );
+  await signIn(page, "alice");
+  const banner = page.getByRole("banner");
+  const version = banner.getByTestId("server-version");
+  await expect(version).toHaveText("v1.2.3");
+  await expect(version).toHaveAttribute("title", "Server version 1.2.3 (commit abc1234)");
+  // Right before the name, in the top right.
+  await expect(banner.locator("[data-testid=server-version] + [data-testid=user-name]")).toBeVisible();
 });

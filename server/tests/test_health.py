@@ -15,7 +15,13 @@ def test_healthz() -> None:
         "status": "ok",
         "environment": "live",
         "version": importlib.metadata.version("jarvis-live"),
+        "commit": "",
     }
+
+
+def test_healthz_names_the_commit_the_image_was_built_from() -> None:
+    built = TestClient(create_app(Settings(git_sha="0123456789abcdef0123456789abcdef01234567\n")))
+    assert built.get("/healthz").json()["commit"] == "0123456"
 
 
 def test_healthz_names_a_non_live_channel() -> None:

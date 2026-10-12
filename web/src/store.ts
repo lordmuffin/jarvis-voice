@@ -32,10 +32,15 @@ export async function loadMe(): Promise<void> {
  * mistaken for the real one. null on live, or while unknown. */
 export const releaseChannel = signal<string | null>(null);
 
-export async function loadChannel(): Promise<void> {
+/** The version (and commit, when known) of the server this dashboard is running on, shown
+ * in the header. null while unknown. */
+export const serverBuild = signal<{ version: string; commit: string } | null>(null);
+
+export async function loadHealth(): Promise<void> {
   try {
-    const env = (await health()).environment;
+    const { environment: env, version, commit } = await health();
     releaseChannel.value = env && env !== "live" ? env : null;
+    serverBuild.value = version ? { version, commit: commit ?? "" } : null;
   } catch {
     /* an old server without the field, or offline: show nothing */
   }
