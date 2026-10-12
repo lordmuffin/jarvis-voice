@@ -56,6 +56,36 @@ def _node_selector(text: str) -> dict[str, str]:
     return {k.strip(): v.strip() for k, v in pairs}
 
 
+def dispatch_config_problems(cfg: Settings, *, own_tokens: bool = True) -> list[str]:
+    """What is missing before dispatch can run; checked at startup when it is enabled.
+    ``own_tokens=False``: a token source is supplied (tests), so no App is needed."""
+    problems = []
+    if not cfg.work_items_enabled:
+        problems.append("work items are off")
+    if not cfg.dispatch_runner_image:
+        problems.append("no runner image (JARVIS_LIVE_DISPATCH_IMAGE or GIT_SHA)")
+    app = cfg.github_app_id and cfg.github_app_installation_id and cfg.github_app_key_file
+    if own_tokens and not app:
+        problems.append("no GitHub App (JARVIS_LIVE_GITHUB_APP_ID, _INSTALLATION_ID, _KEY_FILE)")
+    return problems
+
+
+async def latest_runs(
+    db: AsyncSession, item_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, WorkItemDispatch]:
+    """Each item's most recent run."""
+    if not item_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(WorkItemDispatch)
+            .where(WorkItemDispatch.work_item_id.in_(item_ids))
+            .order_by(WorkItemDispatch.attempt)
+        )
+    ).scalars()
+    return {r.work_item_id: r for r in rows}  # later attempts overwrite earlier ones
+
+
 class DispatchService:
     def __init__(
         self,

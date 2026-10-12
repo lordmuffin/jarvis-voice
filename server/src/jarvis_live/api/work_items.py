@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 
 from jarvis_live.api.sessions import Db, PrincipalDep, _visible
 from jarvis_live.auth import Principal
-from jarvis_live.db.models import WorkItem, WorkItemEvent
+from jarvis_live.db.models import WorkItem, WorkItemDispatch, WorkItemEvent
+from jarvis_live.dispatch.service import DispatchService, latest_runs
 from jarvis_live.workitems.dispatch import Actor
 from jarvis_live.workitems.service import WorkItemError, WorkItemService, approval_problems
 from jarvis_live.workitems.template import branch_name
@@ -43,6 +44,49 @@ class SourceOut(BaseModel):
     text: str
 
 
+class DispatchOut(BaseModel):
+    """The item's latest run as headless Claude Code."""
+
+    id: uuid.UUID
+    attempt: int
+    state: Literal[
+        "queued",
+        "running",
+        "pr_opened",
+        "no_changes",
+        "failed",
+        "rate_limited",
+        "timed_out",
+        "cancelled",
+    ]
+    repo: str
+    branch: str
+    pr_url: str | None
+    pr_number: int | None
+    summary: str | None
+    error: str | None
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+
+    @classmethod
+    def of(cls, d: WorkItemDispatch) -> "DispatchOut":
+        return cls(
+            id=d.id,
+            attempt=d.attempt,
+            state=d.state,
+            repo=d.repo,
+            branch=d.branch,
+            pr_url=d.pr_url,
+            pr_number=d.pr_number,
+            summary=d.summary,
+            error=d.error,
+            created_at=d.created_at,
+            started_at=d.started_at,
+            finished_at=d.finished_at,
+        )
+
+
 class WorkItemOut(BaseModel):
     id: uuid.UUID
     session_id: uuid.UUID
@@ -66,6 +110,7 @@ class WorkItemOut(BaseModel):
     problems: list[str]
     session_title: str | None = None
     session_started_at: datetime | None = None
+    dispatch: DispatchOut | None = None
 
     @classmethod
     def of(cls, item: WorkItem, allowlist: dict[str, str], **extra: Any) -> "WorkItemOut":
@@ -144,6 +189,15 @@ class EventOut(BaseModel):
         )
 
 
+async def _with_runs(request: Request, items: list[WorkItemOut]) -> list[WorkItemOut]:
+    async with request.app.state.sessionmaker() as db:
+        runs = await latest_runs(db, [i.id for i in items])
+    return [
+        i.model_copy(update={"dispatch": DispatchOut.of(runs[i.id])}) if i.id in runs else i
+        for i in items
+    ]
+
+
 def _page(service: WorkItemService, items: list[WorkItemOut]) -> WorkItemPage:
     return WorkItemPage(
         enabled=service.enabled,
@@ -160,7 +214,8 @@ async def session_work_items(
     await _visible(db, principal, session_id)
     service = _service(request)
     rows = await service.for_session(session_id, principal.user.id)
-    return _page(service, [WorkItemOut.of(r, service.allowlist) for r in rows])
+    items = [WorkItemOut.of(r, service.allowlist) for r in rows]
+    return _page(service, await _with_runs(request, items))
 
 
 @router.get("/work-items")
@@ -173,18 +228,16 @@ async def my_work_items(
     approved items."""
     service = _service(request)
     listed = await service.for_user(principal.user.id, state or ["draft", "approved"])
-    return _page(
-        service,
-        [
-            WorkItemOut.of(
-                x.item,
-                service.allowlist,
-                session_title=x.session_title,
-                session_started_at=x.session_started_at,
-            )
-            for x in listed
-        ],
-    )
+    items = [
+        WorkItemOut.of(
+            x.item,
+            service.allowlist,
+            session_title=x.session_title,
+            session_started_at=x.session_started_at,
+        )
+        for x in listed
+    ]
+    return _page(service, await _with_runs(request, items))
 
 
 async def _act(request: Request, call: Any, *, write: bool = True) -> WorkItemOut:
@@ -195,7 +248,8 @@ async def _act(request: Request, call: Any, *, write: bool = True) -> WorkItemOu
         item = await call(service)
     except WorkItemError as e:
         raise _raise(e) from e
-    return WorkItemOut.of(item, service.allowlist)
+    (out,) = await _with_runs(request, [WorkItemOut.of(item, service.allowlist)])
+    return out
 
 
 @router.get("/work-items/{item_id}")
@@ -293,3 +347,18 @@ async def dispatch_work_item(
     approved, its prompt is unchanged since, it was approved from the dashboard by the caller,
     and its repo is still on the allowlist. 503 while no dispatcher is configured."""
     return await _act(request, lambda s: s.dispatch(item_id, _actor(principal)))
+
+
+@router.post("/work-items/{item_id}/dispatch/cancel")
+async def cancel_dispatch(
+    item_id: uuid.UUID, principal: PrincipalDep, request: Request
+) -> WorkItemOut:
+    """Stop the item's queued or running run (its Job is deleted)."""
+    dispatch: DispatchService | None = request.app.state.dispatch
+    if dispatch is None:
+        raise HTTPException(503, "dispatch is not configured on this server")
+    try:
+        await dispatch.cancel(item_id, _actor(principal))
+    except WorkItemError as e:
+        raise _raise(e) from e
+    return await _act(request, lambda s: s.get(item_id, principal.user.id), write=False)
