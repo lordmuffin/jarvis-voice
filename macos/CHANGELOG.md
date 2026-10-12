@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.11.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.10.0...macos-v0.11.0) (2026-10-12)
+
+
+### Features
+
+* **macos:** show the version and a LAB/LIVE tag in the menu, menu-bar icon and Settings ([6385b74](https://github.com/lordmuffin/jarvis-voice/commit/6385b74e1e4562b4c0a80166a6294cab785a2470))
+* **macos:** show the version and a LAB/LIVE tag in the menu, menu-bar icon and Settings ([be434d3](https://github.com/lordmuffin/jarvis-voice/commit/be434d3d2fc3ecd91727e34d59e609c6933a472f))
+
 ## [0.10.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.9.1...macos-v0.10.0) (2026-10-12)
 
 
