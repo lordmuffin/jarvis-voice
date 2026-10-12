@@ -122,7 +122,7 @@ When you think out loud in a session, the copilot picks out the ideas that are w
   - **Approving** needs the dashboard sign-in, not a device token. It freezes the prompt: what you copy is byte-for-byte what was approved, with its sha256 in the audit log.
   - **Editing** an approved item puts it back to draft.
 - **Audit log.** Every change, LLM or human, is written to `work_item_events`.
-- **Dispatch** (`POST /v1/work-items/{id}/dispatch`) runs the gate already. The item must be approved, its prompt unchanged since, approved by you from the dashboard, and its repo still on the allowlist. No dispatcher is configured yet, so an approved item gets 503.
+- **Dispatch** (`POST /v1/work-items/{id}/dispatch`): see below. The gate refuses (409, logged) unless the item is approved, its prompt is unchanged since, it was approved by you from the dashboard, and its repo is on both the work and the dispatch allowlists.
 
 | Variable | |
 |---|---|
@@ -131,3 +131,30 @@ When you think out loud in a session, the copilot picks out the ideas that are w
 | `JARVIS_LIVE_IDEAS_MODEL` | Empty means the copilot model. Compare models with `tests/evals/test_ideas_evals.py` (`--live`). |
 | `JARVIS_LIVE_IDEAS_MIN_NEW_SEGMENTS` / `_INTERVAL_S` / `_OVERLAP_S` | Defaults 4 / 120 / 60. |
 | `JARVIS_LIVE_WORK_TEMPLATE` | Overrides the template path. Default: `/app/prompts/templates/work-item.md` in the image (copied from `prompts/` at build time), else the repo's copy. |
+
+## Dispatch: approved work items as headless Claude Code
+
+**Run in Claude Code** on an approved work item queues a run. Each run is one Kubernetes Job in the app's namespace, with one git worktree, and opens a **draft PR** on the item's repo. The design and its safety reasoning are in [`docs/plans/copilot-to-claude-code.md`](../docs/plans/copilot-to-claude-code.md) §3.
+
+- **The Job:** three steps from the runner image (`dispatch-runner/`).
+  - `prepare` holds the GitHub token. It fetches a shared per-repo mirror and creates the item's worktree.
+  - `claude` holds your Claude subscription token. It runs `claude -p` with Sonnet in the worktree.
+  - `push` holds the GitHub token. It applies Claude's patch to a fresh clone, pushes the branch and opens the PR.
+
+  Claude never holds a GitHub token, and nothing it leaves in its worktree runs with one.
+- **Tokens:** each run mints a GitHub App token for its one repo: Contents and Pull requests write, never Workflows. It is refreshed every 30 minutes while the run lasts.
+- **One run at a time** (`DISPATCH_MAX_CONCURRENT`): the runs share your subscription's usage limits.
+- **Gating a queued run:** it starts only if its item still has the prompt you approved. One active run per item; a retry gets its own branch (`…-2`).
+- **Status:** the card shows queued, running, the PR, no changes, failed, timed out (1 h deadline) or the usage limit. You get a Gotify push when a run ends. **Cancel** deletes the Job.
+- **Audit:** every step is in `work_item_events`: requested (with the prompt), started (job, image, model), finished (outcome, PR, error) and cancelled.
+- **Misconfiguration:** dispatch stays off, with an error in the log listing what is missing. The server still starts.
+
+| Variable | |
+|---|---|
+| `JARVIS_LIVE_DISPATCH_ENABLED` | Default off. Needs work items, a runner image and a GitHub App. |
+| `JARVIS_LIVE_DISPATCH_REPOS` | Repos a run may target, same format as `WORK_REPOS`. Empty means the work repos. Lab: the sandbox only. |
+| `JARVIS_LIVE_GITHUB_APP_ID` / `_INSTALLATION_ID` / `_KEY_FILE` | The GitHub App that mints run tokens. |
+| `JARVIS_LIVE_DISPATCH_MODEL` | Default `claude-sonnet-5-5`. |
+| `JARVIS_LIVE_DISPATCH_IMAGE` | Overrides the runner image. Default: `ghcr.io/lordmuffin/jarvis-dispatch-runner:sha-<7>` of this server's commit (`JARVIS_LIVE_GIT_SHA`, baked in at build). |
+| `JARVIS_LIVE_DISPATCH_MAX_CONCURRENT` / `_DEADLINE_S` / `_POLL_S` | Defaults 1 / 3600 / 15. |
+| `JARVIS_LIVE_DISPATCH_OAUTH_SECRET` / `_MIRROR_PVC` / `_POSTGRES_IMAGE` / `_NODE_SELECTOR` | Defaults `claude-oauth` / `jarvis-dispatch-mirrors` / `postgres:16.4-alpine` / `kubernetes.io/arch=amd64`. |
