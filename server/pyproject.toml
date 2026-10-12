@@ -29,6 +29,7 @@ dev = [
     "mypy",
     "jsonschema",
     "testcontainers[postgres]",
+    "pytest-cov>=7.1.0",
 ]
 
 [build-system]
@@ -42,7 +43,10 @@ packages = ["src/jarvis_live"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-markers = ["live: hits a real Whisper endpoint; skipped unless --live"]
+markers = [
+    "live: hits a real Whisper endpoint; skipped unless --live",
+    "integration: needs Postgres (Docker or JARVIS_LIVE_TEST_DATABASE_URL); added automatically to tests using the postgres_url fixture",
+]
 
 [tool.ruff]
 line-length = 100
@@ -61,3 +65,7 @@ plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = ["webrtcvad"]
 ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/jarvis_live"]
+branch = true

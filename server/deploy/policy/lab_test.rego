@@ -1,0 +1,50 @@
+package lab
+
+cm(d) := {"kind": "ConfigMap", "metadata": {"name": "c", "namespace": "jarvis-live-lab"}, "data": d}
+
+test_lab_configmap_ok if {
+	count(deny) == 0 with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab"})
+}
+
+test_lab_must_say_lab if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "live"})
+	contains(msg, "lab")
+}
+
+test_lab_must_not_publish_repo if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_PUBLISH_REPO": "o/r"})
+	contains(msg, "publish")
+}
+
+test_lab_must_not_have_token_file if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_GITHUB_TOKEN_FILE": "/x"})
+	contains(msg, "publish")
+}
+
+test_lab_must_not_mount_vault_pat if {
+	d := {"kind": "Deployment", "metadata": {"name": "d", "namespace": "jarvis-live-lab"}, "spec": {"template": {"spec": {"volumes": [{"name": "v", "secret": {"secretName": "notes-vault-pat"}}]}}}}
+	some msg in deny with input as d
+	contains(msg, "vault")
+}
+
+test_lab_object_in_wrong_namespace if {
+	some msg in deny with input as {"kind": "Service", "metadata": {"name": "s", "namespace": "jarvis-live"}}
+	contains(msg, "namespace")
+}
+
+test_lab_must_not_use_live_database if {
+	d := {"kind": "Deployment", "metadata": {"name": "d", "namespace": "jarvis-live-lab"}, "spec": {"template": {"spec": {"containers": [{"name": "c", "env": [{"name": "X", "valueFrom": {"secretKeyRef": {"name": "jarvis-live-db-app", "key": "uri"}}}]}]}}}}
+	some msg in deny with input as d
+	contains(msg, "database")
+}
+
+test_lab_must_not_route_live_host if {
+	i := {"kind": "Ingress", "metadata": {"name": "i", "namespace": "jarvis-live-lab"}, "spec": {"rules": [{"host": "live.apj.dev"}]}}
+	some msg in deny with input as i
+	contains(msg, "live host")
+}
+
+test_lab_lab_host_allowed if {
+	i := {"kind": "Ingress", "metadata": {"name": "i", "namespace": "jarvis-live-lab"}, "spec": {"rules": [{"host": "live.lab.apj.dev"}]}}
+	count(deny) == 0 with input as i
+}
