@@ -82,6 +82,8 @@ const run = (over: Partial<NonNullable<WorkItem["dispatch"]>>): NonNullable<Work
   pr_number: null,
   summary: null,
   error: null,
+  questions: null,
+  guidance: null,
   created_at: "2026-10-12T10:00:00Z",
   started_at: "2026-10-12T10:00:05Z",
   finished_at: null,
@@ -318,6 +320,83 @@ describe("dispatch", () => {
     const d = root.querySelector('[data-testid="dispatch"]')!;
     expect(d.textContent).toContain("Failed");
     expect(d.textContent).toContain("tests failed");
+  });
+});
+
+describe("steering a run", () => {
+  const type = (el: HTMLTextAreaElement, text: string) => {
+    el.value = text;
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const steer = () => root.querySelector<HTMLTextAreaElement>('[data-testid="steer"] textarea');
+
+  it("shows a run's questions with the reply box open, and continues with the answer", async () => {
+    serve(item({ state: "approved", dispatch: run({ state: "queued", attempt: 2 }) }));
+    const asked = run({
+      state: "needs_input",
+      pr_url: "https://github.com/lordmuffin/jarvis-voice/pull/1",
+      pr_number: 1,
+      summary: "Created hello.md.",
+      questions: "1. Keep the trailing newline?",
+    });
+    const changed = show([item({ state: "approved", dispatch: asked })], vi.fn(), false, true);
+    const d = root.querySelector('[data-testid="dispatch"]')!;
+    expect(d.textContent).toContain("Needs your input");
+    expect(root.querySelector('[data-testid="dispatch-questions"]')?.textContent).toContain(
+      "1. Keep the trailing newline?",
+    );
+    expect(button("↪ Continue").disabled).toBe(true); // nothing typed yet
+    type(steer()!, "  Yes, keep it.  ");
+    await settle();
+    button("↪ Continue").click();
+    await settle();
+    expect(calls).toEqual([
+      {
+        url: "/v1/work-items/i1/dispatch/continue",
+        method: "POST",
+        body: { guidance: "Yes, keep it." },
+      },
+    ]);
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it("lets the owner steer any finished run", async () => {
+    show([item({ state: "approved", dispatch: run({ state: "failed", error: "tests failed" }) })], vi.fn(), false, true);
+    expect(steer()).toBeNull();
+    button("↪ Steer Next Run").click();
+    await settle();
+    expect(steer()).not.toBeNull();
+    button("Cancel").click();
+    await settle();
+    expect(steer()).toBeNull();
+  });
+
+  it("opens the reply box again when a later run asks", async () => {
+    const asks = (id: string) => run({ id, state: "needs_input", questions: "1. Which?" });
+    show([item({ state: "approved", dispatch: asks("r1") })], vi.fn(), false, true);
+    button("Cancel").click();
+    await settle();
+    expect(steer()).toBeNull();
+    show([item({ state: "approved", dispatch: asks("r2") })], vi.fn(), false, true);
+    await settle();
+    expect(steer()).not.toBeNull();
+  });
+
+  it("offers no steering while a run is going, or when dispatch is off", () => {
+    show([item({ state: "approved", dispatch: run({ state: "running" }) })], vi.fn(), false, true);
+    expect(root.textContent).not.toContain("Steer Next Run");
+    render(null, root);
+    show([item({ state: "approved", dispatch: run({ state: "needs_input", questions: "?" }) })]);
+    expect(steer()).toBeNull();
+    expect(root.textContent).not.toContain("Steer Next Run");
+  });
+
+  it("shows the guidance a follow-up run was given", () => {
+    const followUp = run({ state: "running", attempt: 2, guidance: "Cap it at 60 s." });
+    show([item({ state: "approved", dispatch: followUp })], vi.fn(), false, true);
+    const d = root.querySelector('[data-testid="dispatch"]')!;
+    expect(d.textContent).toContain("attempt 2");
+    expect(d.textContent).toContain("Cap it at 60 s.");
   });
 });
 
