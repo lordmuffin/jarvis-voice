@@ -8,6 +8,17 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var settings = model.settings
         Form {
+            Section("Version") {
+                LabeledContent("Jarvis Voice", value: "v\(AppInfo.version)")
+                LabeledContent("Server") {
+                    HStack(spacing: 6) {
+                        if let channel = model.serverChannel {
+                            ChannelTag(channel: channel)
+                        }
+                        Text(serverVersionText).foregroundStyle(.secondary)
+                    }
+                }
+            }
             Section("Server") {
                 TextField("Server URL", text: $settings.serverURL)
                     .textContentType(.URL)
@@ -73,5 +84,10 @@ struct SettingsView: View {
         .onChange(of: settings.deviceToken) { model.recheckNetwork() }
         .onChange(of: settings.awayMode.enabled) { model.recheckNetwork() }
         .onChange(of: settings.dictationMode) { model.dictation.startMonitoring() }
+    }
+
+    private var serverVersionText: String {
+        if model.settings.serverBaseURL == nil { return "No server URL" }
+        return model.serverVersion.map { "v\($0)" } ?? "Version not reported yet"
     }
 }

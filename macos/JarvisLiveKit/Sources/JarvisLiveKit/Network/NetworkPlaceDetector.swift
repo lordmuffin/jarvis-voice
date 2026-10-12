@@ -26,7 +26,7 @@ public enum NetworkPlaceDetector {
     }
 
     /// Caps the whole request, not just the gaps between packets, and never waits for a network.
-    private static let probeSession: URLSession = {
+    static let probeSession: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = probeTimeout
         config.timeoutIntervalForResource = probeTimeout

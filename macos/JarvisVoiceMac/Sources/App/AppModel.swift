@@ -64,6 +64,9 @@ final class AppModel {
     private(set) var uploadingSessionId: String?
     private(set) var sessionClock: SessionClock?
     private(set) var sessionIsLocalOnly = false
+    /// What the server at `serverInfoURL` said about itself in `/healthz`.
+    private var serverInfo: ServerInfo?
+    private var serverInfoURL: URL?
     var dismissedSuggestionIDs: Set<String> = []
 
     let settings: SettingsModel
@@ -73,6 +76,7 @@ final class AppModel {
     @ObservationIgnored private var run: Run?
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
     @ObservationIgnored private var networkCheck: Task<Void, Never>?
+    @ObservationIgnored private var serverInfoCheck: Task<Void, Never>?
 
     init() {
         let settings = SettingsModel()
@@ -117,15 +121,28 @@ final class AppModel {
         // A recording session wins over dictation.
         let dictating = !isRecording && dictation.isActive
         let name = isRecording ? "record.circle.fill" : dictating ? "mic.fill" : "waveform"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: "Jarvis Voice")
-        guard isRecording || dictating, let image else {
-            image?.isTemplate = true
-            return image ?? NSImage()
-        }
-        let color: NSColor = isRecording ? .systemRed : .systemOrange
-        let configured = image.withSymbolConfiguration(.init(paletteColors: [color]))
-        configured?.isTemplate = false
-        return configured ?? image
+        let image = NSImage(systemSymbolName: name, accessibilityDescription: "Jarvis Voice") ?? NSImage()
+        let color: NSColor? = isRecording ? .systemRed : dictating ? .systemOrange : nil
+        let symbol = color.flatMap { image.withSymbolConfiguration(.init(paletteColors: [$0])) } ?? image
+        symbol.isTemplate = color == nil
+        let channel = serverChannel
+        return MenuBarIcon.image(symbol: symbol, tag: channel?.tag, filled: channel != .live, color: color)
+    }
+
+    /// The server's own word once it has answered at the current address, else a guess from the
+    /// address; nil without a valid one.
+    var serverChannel: ServerChannel? {
+        guard let base = settings.serverBaseURL else { return nil }
+        return reportedServer(at: base)?.channel ?? ServerChannel(guessingFrom: base)
+    }
+
+    /// The server's release version, once it has said.
+    var serverVersion: String? {
+        settings.serverBaseURL.flatMap { reportedServer(at: $0)?.version }
+    }
+
+    private func reportedServer(at base: URL) -> ServerInfo? {
+        serverInfoURL == base ? serverInfo : nil
     }
 
     // MARK: Network
@@ -133,6 +150,7 @@ final class AppModel {
     /// Checks where the Mac is, once path updates settle; a newer change cancels a check still
     /// waiting on the server.
     func recheckNetwork() {
+        refreshServerInfo()
         networkCheck?.cancel()
         networkCheck = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(750))
@@ -141,6 +159,20 @@ final class AppModel {
             let place = await NetworkPlaceDetector.detect(baseURL: base)
             guard !Task.isCancelled else { return }
             settings.awayMode = settings.awayMode.withPlace(place)
+        }
+    }
+
+    /// Asks the server which channel and version it is. Keeps the last answer while the server
+    /// can't be reached, so the tag doesn't flicker back to a guess away from home.
+    private func refreshServerInfo() {
+        serverInfoCheck?.cancel()
+        serverInfoCheck = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(750))
+            guard !Task.isCancelled, let self, let base = settings.serverBaseURL else { return }
+            guard let info = await ServerInfo.fetch(baseURL: base),
+                  !Task.isCancelled, settings.serverBaseURL == base else { return }
+            serverInfoURL = base
+            serverInfo = info
         }
     }
 
