@@ -54,7 +54,8 @@ jobs:
 
       - name: Pull Postgres test image
         if: github.event_name != 'pull_request'
-        run: .github/scripts/pull-test-postgres.sh "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
+        run: |
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
       - name: Install Playwright browser
         if: github.event_name != 'pull_request'
         run: npx playwright install --with-deps chromium

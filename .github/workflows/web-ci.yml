@@ -36,7 +36,8 @@ jobs:
       - run: uv sync --frozen
         working-directory: server
       - name: Pull Postgres test image
-        run: .github/scripts/pull-test-postgres.sh "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
+        run: |
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test
       - uses: actions/upload-artifact@v4

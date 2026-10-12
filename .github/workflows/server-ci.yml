@@ -25,7 +25,8 @@ jobs:
       # Anonymous registry pulls on shared runners are rate limited (HTTP 429). testcontainers
       # swallows that and fails later with ImageNotFound, so pull here with retries instead.
       - name: Pull Postgres test image
-        run: .github/scripts/pull-test-postgres.sh "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
+        run: |
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
         env:
           JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
       - run: uv run pytest -q
