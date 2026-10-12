@@ -87,3 +87,11 @@ data:
   # Empty: the copilot model. The ideas pass is less latency-bound than the live
   # copilot; see server/tests/evals/test_ideas_evals.py before switching to heavy.
   JARVIS_LIVE_IDEAS_MODEL: ""
+
+  # Dispatch: approved work items run as headless Claude Code (Sonnet), one Job and one git
+  # worktree each, and open a draft PR (dispatch.yaml; docs/plans/copilot-to-claude-code.md).
+  # Off here: a channel turns it on with its own GitHub App and repo allowlist (lab: the
+  # sandbox only). The runner image follows the server's commit.
+  JARVIS_LIVE_DISPATCH_ENABLED: "false"
+  JARVIS_LIVE_DISPATCH_MODEL: "claude-sonnet-5-5"
+  JARVIS_LIVE_DISPATCH_MAX_CONCURRENT: "1"

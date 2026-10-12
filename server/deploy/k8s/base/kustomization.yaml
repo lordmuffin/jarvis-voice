@@ -21,3 +21,5 @@ resources:
   - deployment.yaml
   - service.yaml
   - cronjob-vault-clone.yaml
+  - dispatch.yaml
+  - pvc-dispatch-mirrors.yaml

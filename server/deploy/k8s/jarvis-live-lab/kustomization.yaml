@@ -11,7 +11,9 @@
 #     is off (no PUBLISH_REPO), so lab can never open PRs on lordmuffin/Notes. It
 #     still reads the vault through its own read-only clone, for search context;
 #   - only the admin group may sign in;
-#   - Gotify titles carry a [lab] prefix (JARVIS_LIVE_ENVIRONMENT).
+#   - Gotify titles carry a [lab] prefix (JARVIS_LIVE_ENVIRONMENT);
+#   - dispatch runs only against lordmuffin/jarvis-dispatch-sandbox, with lab's own
+#     GitHub App installed on that repo alone (onepassword-dispatch-app.yaml).
 # It shares the Whisper tiers and LiteLLM with live.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -20,6 +22,7 @@ resources:
   - namespace.yaml
   - ../base
   - ingress.yaml
+  - onepassword-dispatch-app.yaml
 images:
   - name: ghcr.io/lordmuffin/jarvis-live
     newTag: sha-0000000
@@ -39,6 +42,12 @@ patches:
         path: /data/JARVIS_LIVE_PUBLISH_REPO
       - op: remove
         path: /data/JARVIS_LIVE_GITHUB_TOKEN_FILE
+      - op: replace
+        path: /data/JARVIS_LIVE_DISPATCH_ENABLED
+        value: "true"
+      - op: add
+        path: /data/JARVIS_LIVE_DISPATCH_REPOS
+        value: "lordmuffin/jarvis-dispatch-sandbox  scratch repo for exercising dispatch on lab\n"
   - target: {kind: PersistentVolumeClaim, name: jarvis-live-data}
     patch: |
       - op: replace
@@ -69,6 +78,22 @@ patches:
                       secretKeyRef:
                         name: jarvis-live-lab-db-app
                         key: connection
+                  # Lab's dispatch App (onepassword-dispatch-app.yaml). Optional: until
+                  # the item exists the app starts with dispatch off and says why.
+                  - name: JARVIS_LIVE_GITHUB_APP_ID
+                    valueFrom:
+                      secretKeyRef:
+                        name: jarvis-dispatch-lab-app
+                        key: app-id
+                        optional: true
+                  - name: JARVIS_LIVE_GITHUB_APP_INSTALLATION_ID
+                    valueFrom:
+                      secretKeyRef:
+                        name: jarvis-dispatch-lab-app
+                        key: installation-id
+                        optional: true
+                  - name: JARVIS_LIVE_GITHUB_APP_KEY_FILE
+                    value: /secrets/github-app/private-key
                 resources:
                   requests:
                     cpu: 100m
@@ -76,6 +101,17 @@ patches:
                 volumeMounts:
                   - mountPath: /secrets/github
                     $patch: delete
+                  - name: github-app
+                    mountPath: /secrets/github-app
+                    readOnly: true
             volumes:
               - name: github-token
                 $patch: delete
+              - name: github-app
+                secret:
+                  secretName: jarvis-dispatch-lab-app
+                  optional: true
+                  defaultMode: 0400
+                  items:
+                    - key: private-key
+                      path: private-key
