@@ -8,6 +8,14 @@ val gitCommit: String = runCatching {
         .standardOutput.asText.get().trim()
 }.getOrDefault("unknown")
 
+// release-please bumps android/version.txt on every Android release; the APK's
+// versionName and versionCode follow it so the installed app reports its release.
+val appVersion: String = providers
+    .fileContents(rootProject.layout.projectDirectory.file("version.txt"))
+    .asText.get().trim()
+val appVersionCode: Int = appVersion.split(".").map(String::toInt)
+    .let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
+
 android {
     namespace = "com.lordmuffin.jarvisvoice"
     compileSdk = 34
@@ -16,8 +24,8 @@ android {
         applicationId = "com.lordmuffin.jarvisvoice"
         minSdk = 26
         targetSdk = 34
-        versionCode = 73
-        versionName = "1.5.1"
+        versionCode = appVersionCode
+        versionName = appVersion
         buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
     }
 
