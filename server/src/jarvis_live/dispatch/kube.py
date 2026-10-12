@@ -121,6 +121,9 @@ class KubeClient:
             missing_ok=True,
         )
 
+    async def delete_secret(self, name: str) -> None:
+        await self._call("DELETE", self._path("", "secrets", name), missing_ok=True)
+
     async def list_pods(self, selector: str) -> list[dict[str, Any]]:
         data = await self._call("GET", self._path("", "pods"), params={"labelSelector": selector})
         return list((data or {}).get("items", []))

@@ -322,9 +322,20 @@ class WorkItemService:
         if reason is not None:
             raise WorkItemError(status, reason)
         assert self._dispatcher is not None and repo and prompt and digest
-        await self._dispatcher.dispatch(
-            item.id, repo=repo, prompt=prompt, prompt_sha256=digest, actor_user_id=actor.user_id
-        )
+        try:
+            await self._dispatcher.dispatch(
+                item.id, repo=repo, prompt=prompt, prompt_sha256=digest, actor_user_id=actor.user_id
+            )
+        except WorkItemError as e:  # e.g. already running: refused, and said so in the log
+            async with self._sm() as db, db.begin():
+                log_event(
+                    db,
+                    item.id,
+                    "dispatch_refused",
+                    **self._who(actor),
+                    payload={"reason": e.message},
+                )
+            raise
         return item
 
     # --- helpers ----------------------------------------------------------------------------
