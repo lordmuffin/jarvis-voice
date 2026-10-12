@@ -191,7 +191,8 @@ You are working in the GitHub repository **{{repo}}**.
 ## First: read and plan
 1. Read the repo's CLAUDE.md, README and the code this task touches.
 2. Before editing, write a short plan: files to change, approach, tests. If the task is
-   ambiguous or conflicts with the repo's rules, stop and explain instead of guessing.
+   ambiguous, pick the reading that fits the repo's rules, note the assumption and keep
+   going (runs are unattended: see "Follow-up runs" below).
 
 ## Acceptance criteria
 {{acceptance_criteria}}
@@ -499,6 +500,15 @@ The network fence:
 - **Subscription limits.** `dispatch_max_concurrent` defaults to **1**: your plan's usage
   limits are shared with your interactive use. A run that hits the limit ends `rate_limited`.
   Running it again is another explicit click, and no retry happens on its own.
+- **Follow-up runs.** Added after the first lab runs. A run stalled because Claude could not
+  commit (no git author in the `claude` step) and because the template said to stop when
+  unsure. Now the runner gives Claude a git author and an appended system prompt: nobody
+  answers mid-run, so never stop to ask, and only when truly blocked end with
+  `NEEDS INPUT:` and questions. Such a run ends `needs_input` (its work is still pushed). The
+  owner's reply (`POST …/dispatch/continue`) is a new run through the same gate. It reuses
+  the last run's branch: `prepare` starts from the branch if it exists, and `push`
+  fast-forwards it and reuses its open PR. Its prompt is the approved prompt plus the last
+  run's report and the reply. The reply is logged with the request, like the prompt.
 - A `NetworkPolicy` (default deny) on `jarvis-dispatch` allows ingress from nothing.
 - Egress is allowed to cluster DNS and to `0.0.0.0/0` **except** the RFC 1918, CGNAT and
   link-local ranges. That excludes the pod and service CIDRs, the LAN (`192.168.0.0/16`:
