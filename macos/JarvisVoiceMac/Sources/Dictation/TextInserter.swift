@@ -32,6 +32,25 @@ enum TextInserter {
         pasteboard.setString(text, forType: .string)
     }
 
+    /// One synthetic key event of the paste chord.
+    struct KeyStroke: Equatable {
+        let key: CGKeyCode
+        let down: Bool
+        let flags: CGEventFlags
+    }
+
+    /// ⌘ with the left-hand key's device bit (`NX_DEVICELCMDKEYMASK`), as a real left ⌘ reports it.
+    private static let leftCommand = CGEventFlags(rawValue: CGEventFlags.maskCommand.rawValue | 0x08)
+
+    /// ⌘V as a real chord: ⌘ down, V down and up, ⌘ up. A lone V that only carries the ⌘ flag is
+    /// ignored by apps that read the live modifier state, so the text was copied but never pasted.
+    static let pasteChord: [KeyStroke] = [
+        KeyStroke(key: CGKeyCode(kVK_Command), down: true, flags: leftCommand),
+        KeyStroke(key: CGKeyCode(kVK_ANSI_V), down: true, flags: leftCommand),
+        KeyStroke(key: CGKeyCode(kVK_ANSI_V), down: false, flags: leftCommand),
+        KeyStroke(key: CGKeyCode(kVK_Command), down: false, flags: []),
+    ]
+
     /// Sends ⌘V once the user's own modifiers are up, so they don't turn it into another shortcut.
     /// Returns `false` if the app may not post events.
     @discardableResult
@@ -42,15 +61,23 @@ enum TextInserter {
             try? await Task.sleep(for: .milliseconds(25))
             waits += 1
         }
-        guard let source = CGEventSource(stateID: .privateState) else { return false }
+        // The HID system state, so our ⌘ down is part of the modifier state the target app sees.
+        guard let source = CGEventSource(stateID: .hidSystemState) else { return false }
         source.userData = eventTag
-        let key = CGKeyCode(kVK_ANSI_V)
-        guard let down = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
-              let up = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) else { return false }
-        down.flags = .maskCommand
-        up.flags = .maskCommand
-        down.post(tap: .cghidEventTap)
-        up.post(tap: .cghidEventTap)
+        // Built up front, so a failure can't leave ⌘ held down.
+        var events: [CGEvent] = []
+        for stroke in pasteChord {
+            guard let event = CGEvent(keyboardEventSource: source, virtualKey: stroke.key, keyDown: stroke.down)
+            else { return false }
+            event.flags = stroke.flags
+            event.setIntegerValueField(.eventSourceUserData, value: eventTag)
+            events.append(event)
+        }
+        // A short gap between strokes; some apps drop a chord that arrives all at once.
+        for event in events {
+            event.post(tap: .cghidEventTap)
+            try? await Task.sleep(for: .milliseconds(10))
+        }
         return true
     }
 }
