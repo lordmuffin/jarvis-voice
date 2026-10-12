@@ -62,6 +62,22 @@ deny contains msg if {
 	msg := sprintf("ConfigMap/%s: lab may dispatch only to %s (JARVIS_LIVE_DISPATCH_REPOS)", [input.metadata.name, sandbox])
 }
 
+work_repos contains name if {
+	some line in split(object.get(input.data, "JARVIS_LIVE_WORK_REPOS", ""), "\n")
+	trimmed := trim_space(line)
+	trimmed != ""
+	not startswith(trimmed, "#")
+	name := regex.split(`\s+`, trimmed)[0]
+}
+
+# A run targets its work item's repo, and items only target work repos.
+deny contains msg if {
+	input.kind == "ConfigMap"
+	input.data.JARVIS_LIVE_DISPATCH_ENABLED == "true"
+	not sandbox in work_repos
+	msg := sprintf("ConfigMap/%s: %s must also be in JARVIS_LIVE_WORK_REPOS, or no item can target it", [input.metadata.name, sandbox])
+}
+
 deny contains msg if {
 	contains(json.marshal(input), "jarvis-dispatch-app\"")
 	msg := sprintf("%s/%s: lab must not hold live's GitHub App (jarvis-dispatch-app)", [input.kind, input.metadata.name])

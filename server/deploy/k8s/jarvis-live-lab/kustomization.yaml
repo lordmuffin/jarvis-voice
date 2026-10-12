@@ -48,6 +48,14 @@ patches:
       - op: add
         path: /data/JARVIS_LIVE_DISPATCH_REPOS
         value: "lordmuffin/jarvis-dispatch-sandbox  scratch repo for exercising dispatch on lab\n"
+      # A run targets its item's repo, so the sandbox must be a work repo too. Base's
+      # repos are repeated (a patch can't append to a string): keep the two in step.
+      - op: replace
+        path: /data/JARVIS_LIVE_WORK_REPOS
+        value: |
+          lordmuffin/jarvis-voice     Jarvis Live: transcription server, copilot, web dashboard, Android and macOS apps, CI
+          lordmuffin/np-home-homelab  homelab GitOps: k3s2 cluster, Flux apps, TrueNAS, Proxmox, LXC services, alerting
+          lordmuffin/jarvis-dispatch-sandbox  scratch repo for exercising dispatch on lab: pick it for anything said to be a dispatch test
   - target: {kind: PersistentVolumeClaim, name: jarvis-live-data}
     patch: |
       - op: replace
