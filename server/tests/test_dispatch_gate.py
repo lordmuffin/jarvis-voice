@@ -140,3 +140,20 @@ async def test_without_a_dispatcher_even_approved_items_get_503(
         r = await web.post(f"/v1/work-items/{item}/dispatch")
         assert r.status_code == 503
     assert await refused(sm, item) == ["dispatch is not configured on this server"]
+
+
+async def test_a_repo_off_the_dispatch_allowlist_is_refused(
+    make_server: Callable[..., ServerHandle], sm: SM, spy: SpyDispatcher
+) -> None:
+    """Lab drafts work items for the real repos but may only dispatch to its sandbox."""
+    server = make_server(
+        dispatcher=spy, dispatch_repos="lordmuffin/jarvis-dispatch-sandbox", **SETTINGS
+    )
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)  # lordmuffin/jarvis-voice
+    async with await web_client(server, sm, OWNER_USER_ID) as web:
+        assert (await web.post(f"/v1/work-items/{item}/approve")).status_code == 200
+        r = await web.post(f"/v1/work-items/{item}/dispatch")
+        assert r.status_code == 409
+        assert "dispatch allowlist" in r.json()["detail"]
+    assert spy.calls == []

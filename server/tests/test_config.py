@@ -69,3 +69,24 @@ def test_work_repo_allowlist() -> None:
     assert cfg.work_repo_allowlist == {"lordmuffin/jarvis-voice": "the app", "lordmuffin/notes": ""}
     with pytest.raises(ValueError, match="owner/name"):
         Settings(work_repos="jarvis-voice  no owner")
+
+
+def test_dispatch_repos_default_to_the_work_repos_and_may_narrow_them() -> None:
+    work = "lordmuffin/jarvis-voice  app\nlordmuffin/np-home-homelab  homelab"
+    assert set(Settings(work_repos=work).dispatch_repo_allowlist) == {
+        "lordmuffin/jarvis-voice",
+        "lordmuffin/np-home-homelab",
+    }
+    lab = Settings(work_repos=work, dispatch_repos="lordmuffin/jarvis-dispatch-sandbox  lab only")
+    assert lab.dispatch_repo_allowlist == {"lordmuffin/jarvis-dispatch-sandbox": "lab only"}
+    with pytest.raises(ValueError, match="owner/name"):
+        Settings(dispatch_repos="no-owner")
+
+
+def test_dispatch_image_follows_the_server_commit_unless_set() -> None:
+    assert Settings(git_sha="").dispatch_runner_image == ""
+    assert Settings(git_sha="0123456789abcdef").dispatch_runner_image == (
+        "ghcr.io/lordmuffin/jarvis-dispatch-runner:sha-0123456"
+    )
+    pinned = Settings(git_sha="0123456789", dispatch_image="ghcr.io/x/runner:1.2.3")
+    assert pinned.dispatch_runner_image == "ghcr.io/x/runner:1.2.3"

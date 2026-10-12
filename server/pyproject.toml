@@ -69,3 +69,6 @@ ignore_missing_imports = true
 [tool.coverage.run]
 source = ["src/jarvis_live"]
 branch = true
+# The API tests drive the app in a uvicorn thread, where SQLAlchemy's async layer switches
+# greenlets; without "greenlet" coverage loses track of that code and under-reports it.
+concurrency = ["thread", "greenlet"]

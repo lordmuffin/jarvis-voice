@@ -37,8 +37,11 @@ def sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def refusal(item: WorkItem, actor: Actor, allowlist: dict[str, str]) -> str | None:
-    """Why ``actor`` may not dispatch ``item``, or None if they may."""
+def refusal(
+    item: WorkItem, actor: Actor, allowlist: dict[str, str], dispatchable: dict[str, str]
+) -> str | None:
+    """Why ``actor`` may not dispatch ``item``, or None if they may. ``allowlist`` is the
+    work repos; ``dispatchable`` the repos a run may target (lab: only its sandbox)."""
     if actor.kind != "web":
         return "dispatching needs the dashboard sign-in, not a device token"
     if item.user_id != actor.user_id:
@@ -51,4 +54,6 @@ def refusal(item: WorkItem, actor: Actor, allowlist: dict[str, str]) -> str | No
         return "approved by someone else"
     if not item.repo or item.repo not in allowlist:
         return f"{item.repo or 'no repository'} is not on the allowlist"
+    if item.repo not in dispatchable:
+        return f"{item.repo} is not on the dispatch allowlist of this server"
     return None

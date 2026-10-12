@@ -151,17 +151,53 @@ class Settings(BaseSettings):
     ideas_overlap_s: float = 60.0  # transcript before the last pass shown again, for context
     ideas_max_lines: int = 400  # newest lines kept if the LLM was down for a long stretch
 
-    @property
-    def work_repo_allowlist(self) -> dict[str, str]:
-        """``owner/name`` -> description, in the order given."""
+    # Dispatch: approved work items run as headless Claude Code, one Kubernetes Job and one
+    # git worktree each, in this pod's namespace (dispatch/). Off unless enabled.
+    dispatch_enabled: bool = False
+    # Repos a dispatch may target; empty means the work repos. Lab narrows it to a sandbox.
+    dispatch_repos: str = ""
+    # The runner image. Unset: the runner built from this server's commit (GIT_SHA).
+    dispatch_image: str = ""
+    git_sha: str = ""  # baked into the image at build time
+    dispatch_model: str = "claude-sonnet-5-5"
+    dispatch_max_concurrent: int = 1  # runs share the Claude subscription's usage limits
+    dispatch_deadline_s: int = 3600
+    dispatch_poll_s: float = 15.0
+    dispatch_namespace: str = ""  # empty: the pod's own (the service account's namespace)
+    dispatch_oauth_secret: str = "claude-oauth"  # Secret (key `password`) with the setup-token
+    dispatch_mirror_pvc: str = "jarvis-dispatch-mirrors"
+    dispatch_postgres_image: str = "postgres:16.4-alpine"  # test database for each run
+    dispatch_node_selector: str = "kubernetes.io/arch=amd64"  # "key=value,key=value"
+    github_app_id: str = ""
+    github_app_installation_id: str = ""
+    github_app_key_file: Path | None = None
+
+    @staticmethod
+    def _repo_list(text: str) -> dict[str, str]:
         repos: dict[str, str] = {}
-        for raw in self.work_repos.splitlines():
+        for raw in text.splitlines():
             line = raw.strip()
             if not line or line.startswith("#"):
                 continue
             name, *rest = line.split(None, 1)
             repos[name] = rest[0].strip() if rest else ""
         return repos
+
+    @property
+    def work_repo_allowlist(self) -> dict[str, str]:
+        """``owner/name`` -> description, in the order given."""
+        return self._repo_list(self.work_repos)
+
+    @property
+    def dispatch_repo_allowlist(self) -> dict[str, str]:
+        return self._repo_list(self.dispatch_repos) or self.work_repo_allowlist
+
+    @property
+    def dispatch_runner_image(self) -> str:
+        if self.dispatch_image:
+            return self.dispatch_image
+        sha = self.git_sha.strip()
+        return f"ghcr.io/lordmuffin/jarvis-dispatch-runner:sha-{sha[:7]}" if sha else ""
 
     @property
     def notify_title_prefix(self) -> str:
@@ -195,14 +231,14 @@ class Settings(BaseSettings):
             raise ValueError('publish_repo is "owner/name"')
         return v
 
-    @field_validator("work_repos")
+    @field_validator("work_repos", "dispatch_repos")
     @classmethod
     def _repo_lines(cls, v: str) -> str:
         for raw in v.splitlines():
             name = (raw.split(None, 1) or [""])[0]
             bad = name.count("/") != 1 or not all(name.split("/"))
             if name and not name.startswith("#") and bad:
-                raise ValueError(f'work_repos: "{name}" is not "owner/name"')
+                raise ValueError(f'"{name}" is not "owner/name"')
         return v
 
     @field_validator("database_url")
