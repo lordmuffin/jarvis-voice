@@ -42,3 +42,27 @@ deny contains msg if {
 	r.host in {"live.apj.dev"}
 	msg := sprintf("Ingress/%s: lab must not route live host live.apj.dev", [input.metadata.name])
 }
+
+# Lab runs unreleased code: it may dispatch only to the sandbox repo, named explicitly, and
+# never holds live's GitHub App (which is installed on the real repos).
+sandbox := "lordmuffin/jarvis-dispatch-sandbox"
+
+dispatch_repos contains name if {
+	some line in split(object.get(input.data, "JARVIS_LIVE_DISPATCH_REPOS", ""), "\n")
+	trimmed := trim_space(line)
+	trimmed != ""
+	not startswith(trimmed, "#")
+	name := regex.split(`\s+`, trimmed)[0]
+}
+
+deny contains msg if {
+	input.kind == "ConfigMap"
+	input.data.JARVIS_LIVE_DISPATCH_ENABLED == "true"
+	dispatch_repos != {sandbox}
+	msg := sprintf("ConfigMap/%s: lab may dispatch only to %s (JARVIS_LIVE_DISPATCH_REPOS)", [input.metadata.name, sandbox])
+}
+
+deny contains msg if {
+	contains(json.marshal(input), "jarvis-dispatch-app\"")
+	msg := sprintf("%s/%s: lab must not hold live's GitHub App (jarvis-dispatch-app)", [input.kind, input.metadata.name])
+}

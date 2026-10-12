@@ -64,9 +64,11 @@ def dispatch_config_problems(cfg: Settings, *, own_tokens: bool = True) -> list[
         problems.append("work items are off")
     if not cfg.dispatch_runner_image:
         problems.append("no runner image (JARVIS_LIVE_DISPATCH_IMAGE or GIT_SHA)")
-    app = cfg.github_app_id and cfg.github_app_installation_id and cfg.github_app_key_file
-    if own_tokens and not app:
+    key = cfg.github_app_key_file
+    if own_tokens and not (cfg.github_app_id and cfg.github_app_installation_id and key):
         problems.append("no GitHub App (JARVIS_LIVE_GITHUB_APP_ID, _INSTALLATION_ID, _KEY_FILE)")
+    elif own_tokens and key and not key.is_file():
+        problems.append(f"the GitHub App key {key} is missing")
     return problems
 
 

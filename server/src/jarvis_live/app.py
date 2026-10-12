@@ -1,5 +1,6 @@
 import asyncio
 import importlib.metadata
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -29,6 +30,8 @@ from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
 from jarvis_live.workitems.dispatch import Dispatcher
 from jarvis_live.workitems.service import WorkItemService
+
+log = logging.getLogger(__name__)
 
 
 def _version() -> str:
@@ -128,31 +131,33 @@ def create_app(
         runner: Dispatcher | None = dispatcher
         if cfg.dispatch_enabled and runner is None:
             if problems := dispatch_config_problems(cfg, own_tokens=app_tokens is None):
-                raise RuntimeError("dispatch is enabled but: " + "; ".join(problems))
-            if client is None:
-                client = httpx.AsyncClient()
-            dispatch = DispatchService(
-                cfg,
-                sm,
-                kube or KubeClient.in_cluster(cfg.dispatch_namespace),
-                app_tokens
-                or AppTokens(
-                    client,
-                    api=cfg.github_api,
-                    app_id=cfg.github_app_id,
-                    installation_id=cfg.github_app_installation_id,
-                    key_file=cfg.github_app_key_file or Path(),
-                ),
-                notifier
-                or GotifyNotifier(
-                    cfg.gotify_url,
-                    cfg.gotify_token_file,
-                    client,
-                    title_prefix=cfg.notify_title_prefix,
-                ),
-            )
-            runner = dispatch
-            tasks.append(asyncio.create_task(dispatch.run_loop()))
+                # Off, loudly, not a crash loop: e.g. lab enabled before its secrets exist.
+                log.error("dispatch is enabled but stays off: %s", "; ".join(problems))
+            else:
+                if client is None:
+                    client = httpx.AsyncClient()
+                dispatch = DispatchService(
+                    cfg,
+                    sm,
+                    kube or KubeClient.in_cluster(cfg.dispatch_namespace),
+                    app_tokens
+                    or AppTokens(
+                        client,
+                        api=cfg.github_api,
+                        app_id=cfg.github_app_id,
+                        installation_id=cfg.github_app_installation_id,
+                        key_file=cfg.github_app_key_file or Path(),
+                    ),
+                    notifier
+                    or GotifyNotifier(
+                        cfg.gotify_url,
+                        cfg.gotify_token_file,
+                        client,
+                        title_prefix=cfg.notify_title_prefix,
+                    ),
+                )
+                runner = dispatch
+                tasks.append(asyncio.create_task(dispatch.run_loop()))
         work = WorkItemService(cfg, sm, runner)
         if publisher.enabled and cfg.publish_reconcile_interval_s > 0:
             tasks.append(

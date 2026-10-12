@@ -106,3 +106,33 @@ def test_dispatch_needs_its_configuration(tmp_path: Path) -> None:
         github_app_key_file=key,
     )
     assert dispatch_config_problems(ok) == []
+
+
+async def test_misconfigured_dispatch_stays_off_and_the_server_still_starts(
+    make_server: Callable[..., ServerHandle], sm: SM, tmp_path: Path
+) -> None:
+    """Lab enables dispatch before its 1Password items exist: no crash loop, dispatch off."""
+    server = make_server(
+        **DISPATCH,
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=tmp_path / "not-mounted-yet.pem",
+    )
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    async with await web_client(server, sm, OWNER_USER_ID) as web:
+        page = (await web.get(f"/v1/sessions/{sid}/work-items")).json()
+        assert page["enabled"] is True and page["dispatch_enabled"] is False
+
+
+def test_a_missing_app_key_file_is_a_problem(tmp_path: Path) -> None:
+    cfg = Settings(
+        dispatch_enabled=True,
+        work_items_enabled=True,
+        git_sha="abc",
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=tmp_path / "absent.pem",
+    )
+    assert dispatch_config_problems(cfg) == [
+        f"the GitHub App key {tmp_path / 'absent.pem'} is missing"
+    ]
