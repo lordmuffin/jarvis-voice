@@ -106,6 +106,7 @@ code,
 }
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-right: auto;
 }
@@ -114,6 +115,7 @@ code,
   align-items: center;
   min-height: 36px;
   padding: 0 10px;
+  white-space: nowrap;
   color: var(--text2);
   text-decoration: none;
 }
@@ -752,4 +754,134 @@ code,
   .row-actions {
     justify-content: flex-start;
   }
+}
+
+/* Work items: the copilot's draft Claude Code prompts */
+.work-items {
+  margin: 18px 0 12px;
+}
+.copilot + .work-items {
+  margin-top: 18px;
+}
+.wi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* One step above what they sit on: the page, or the copilot pane. */
+.wi {
+  padding: 12px;
+  background: var(--surface);
+}
+.pane-body .wi {
+  background: var(--surface2);
+}
+.wi-approved {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.wi-discarded,
+.wi-merged {
+  opacity: 0.7;
+}
+.wi-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.wi-pick {
+  width: 16px;
+  height: 16px;
+  margin: 3px 0 0;
+  accent-color: var(--accent);
+}
+.wi-title {
+  flex: 1;
+  min-width: 0;
+}
+.wi-title .meta {
+  margin-top: 4px;
+}
+.wi-title code {
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.chip-wi-approved {
+  color: var(--accent);
+}
+.chip-wi-discarded {
+  color: var(--text2);
+}
+.wi-intent {
+  margin: 8px 0;
+  white-space: pre-line;
+}
+.wi-criteria {
+  margin: 0 0 8px;
+  padding-left: 18px;
+}
+.wi-criteria li + li {
+  margin-top: 4px;
+}
+.wi-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+}
+.wi-source {
+  padding: 2px 8px;
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+}
+.wi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.wi-mergebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+}
+.wi-form {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+.wi-form .label {
+  margin: 10px 0 4px;
+}
+.wi-form select.field {
+  appearance: auto;
+}
+.wi-textarea {
+  min-height: 88px;
+  padding: 8px 12px;
+  resize: vertical;
+}
+.wi-prompt {
+  margin-top: 10px;
+}
+.wi-prompt pre {
+  margin: 4px 0 0;
+  padding: 12px;
+  max-height: 420px;
+  overflow: auto;
+  background: var(--bg);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.line-target {
+  box-shadow: inset 3px 0 0 var(--accent);
+  background: var(--surface2);
 }

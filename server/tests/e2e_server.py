@@ -11,7 +11,8 @@ alice's, so the browser test can stream a session as her.
 
 Publishing goes to a fake GitHub (``tests.fake_github``) on ``port + 2``. Each start seeds a
 finished session titled ``E2E publish me`` for root (an admin, so it may be published), with
-its note in the outbox. Test doubles only, never for real deployments.
+its note in the outbox, and one titled ``E2E work items`` with a short transcript and three
+work items to review. Test doubles only, never for real deployments.
 """
 
 import argparse
@@ -40,7 +41,7 @@ from jarvis_live.copilot.schema import (
     NoteUpsert,
     SuggestionIn,
 )
-from jarvis_live.db.models import CopilotItem, Device, User
+from jarvis_live.db.models import CopilotItem, Device, SegmentRow, User, WorkItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
 from jarvis_live.users import create_user
@@ -53,6 +54,13 @@ from tests.fakes import FakeLLM, FakeNotifier
 E2E_TOKEN = "e2e-device-token"  # noqa: S105
 E2E_USER = "alice"
 PUBLISH_TITLE = "E2E publish me"
+WORK_TITLE = "E2E work items"
+WORK_REPOS = "lordmuffin/jarvis-voice  Jarvis Live\nlordmuffin/np-home-homelab  homelab GitOps"
+TRANSCRIPT = [
+    (21_000, 30_000, "Gotify pushes vanish when Gotify restarts; retry them with backoff."),
+    (65_000, 72_000, "A command line tool to export a transcript as SRT subtitles."),
+    (1_263_000, 1_270_000, "And log it when the Gotify retries finally give up."),
+]
 REPO = Path(__file__).resolve().parents[2]
 
 
@@ -105,7 +113,7 @@ async def ensure_device(url: str) -> None:
 
 
 async def seed_publishable(url: str, outbox: Path) -> None:
-    """A finished session of root's with a note, ready to publish."""
+    """A finished session of root's with a note, ready to publish, and one with work items."""
     engine = make_engine(url)
     sm = make_sessionmaker(engine)
     try:
@@ -151,6 +159,62 @@ async def seed_publishable(url: str, outbox: Path) -> None:
                     payload={"path": rel, "title": PUBLISH_TITLE},
                 )
             )
+            # A second finished session of root's, holding the work items to review.
+            work = SessionRow(
+                device_id=device.id,
+                user_id=root.id,
+                title=WORK_TITLE,
+                mode="solo",
+                status="done",
+                channels=["mic"],
+                started_at=now,
+                ended_at=now,
+            )
+            db.add(work)
+            await db.flush()
+            segs = []
+            for start, end, text in TRANSCRIPT:
+                seg = SegmentRow(
+                    session_id=work.id,
+                    channel="mic",
+                    speaker="me",
+                    start_ms=start,
+                    end_ms=end,
+                    text=text,
+                    source="final",
+                    stt_tier="fake",
+                )
+                db.add(seg)
+                segs.append(seg)
+            await db.flush()
+            src = [
+                {
+                    "segment_id": str(g.id),
+                    "start_ms": g.start_ms,
+                    "end_ms": g.end_ms,
+                    "text": g.text,
+                }
+                for g in segs
+            ]
+            for ref, title, repo, criteria, sources in (
+                ("w1", "Retry failed Gotify notifications", "lordmuffin/jarvis-voice",
+                 ["A failed push is retried with backoff"], [src[0]]),
+                ("w2", "Export transcripts as SRT", None, [], [src[1]]),
+                ("w3", "Log when Gotify retries give up", "lordmuffin/jarvis-voice",
+                 ["Giving up is logged"], [src[2]]),
+            ):  # fmt: skip
+                db.add(
+                    WorkItem(
+                        session_id=work.id,
+                        user_id=root.id,
+                        ref=ref,
+                        title=title,
+                        repo=repo,
+                        intent=f"{title}, as said in the session.",
+                        acceptance_criteria=criteria,
+                        sources=sources,
+                    )
+                )
             await db.commit()
     finally:
         await engine.dispose()
@@ -228,6 +292,8 @@ def serve(port: int, web_dist: Path) -> int:
             github_api=f"http://127.0.0.1:{github_port}",
             github_token_file=github_token,
             publish_reconcile_interval_s=0,
+            work_items_enabled=True,
+            work_repos=WORK_REPOS,
         )
         app = create_app(settings, stt=FakeSTT(), llm=llm, notifier=FakeNotifier())
         uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")

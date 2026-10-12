@@ -216,6 +216,8 @@ export interface Me {
   can_publish: boolean;
   /** New notes open their pull request without asking. */
   auto_publish: boolean;
+  /** The copilot finds work items in this user's sessions. */
+  work_items: boolean;
 }
 
 export interface Device {
@@ -240,4 +242,69 @@ export interface AdminUser {
   created_at: string;
   last_login_at: string | null;
   sessions: number;
+}
+
+// --- Work items: the copilot's draft Claude Code prompts ---
+
+export type WorkItemState = "draft" | "approved" | "discarded" | "merged";
+
+export interface WorkItemSource {
+  segment_id: string;
+  start_ms: number;
+  end_ms: number;
+  text: string;
+}
+
+export interface WorkItem {
+  id: string;
+  session_id: string;
+  ref: string;
+  state: WorkItemState;
+  title: string;
+  repo: string | null;
+  intent: string;
+  acceptance_criteria: string[];
+  done_when: string | null;
+  sources: WorkItemSource[];
+  /** Fields the owner edited; the copilot no longer changes them. */
+  locked_fields: string[];
+  merged_into: string | null;
+  branch: string;
+  prompt_sha256: string | null;
+  approved_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  /** What stands between a draft and approval; empty when it can be approved. */
+  problems: string[];
+  /** Set on the cross-session list. */
+  session_title?: string | null;
+  session_started_at?: string | null;
+}
+
+export interface WorkRepo {
+  name: string;
+  description: string;
+}
+
+export interface WorkItemPage {
+  enabled: boolean;
+  dispatch_enabled: boolean;
+  repos: WorkRepo[];
+  items: WorkItem[];
+}
+
+export interface WorkItemPrompt {
+  markdown: string;
+  /** Approved: exactly what is copied (and later dispatched). */
+  frozen: boolean;
+  sha256: string | null;
+}
+
+export interface WorkItemEdit {
+  title?: string;
+  repo?: string | null;
+  intent?: string;
+  acceptance_criteria?: string[];
+  done_when?: string | null;
 }

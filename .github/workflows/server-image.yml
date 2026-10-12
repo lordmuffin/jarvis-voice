@@ -20,10 +20,10 @@ name: Server Image
 
 on:
   pull_request:
-    paths: ["server/**", "web/**", ".github/workflows/server-image.yml"]
+    paths: ["server/**", "web/**", "prompts/**", ".github/workflows/server-image.yml"]
   push:
     branches: [main]
-    paths: ["server/**", "web/**", ".github/workflows/server-image.yml"]
+    paths: ["server/**", "web/**", "prompts/**", ".github/workflows/server-image.yml"]
     tags: ["server-v*"]
   workflow_dispatch:
     inputs:
@@ -70,11 +70,16 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: server
-          # The dashboard sources live outside the context; see server/Dockerfile.
-          build-contexts: webctx=web
+          # The dashboard sources and prompt templates live outside the context; see
+          # server/Dockerfile.
+          build-contexts: |
+            webctx=web
+            promptsctx=prompts
           build-args: |
             WEB_SRC=webctx
             WEB_DIST_SOURCE=web-build
+            PROMPTS_SRC=promptsctx
+            PROMPTS_SOURCE=prompts-copy
           platforms: linux/amd64
           push: ${{ github.event_name != 'pull_request' }}
           load: ${{ github.event_name == 'pull_request' }}
@@ -91,6 +96,7 @@ jobs:
             -e JARVIS_LIVE_DATA_DIR=/tmp/data -e JARVIS_LIVE_INDEX_DIR=/tmp/idx \
             "$TAG" python -c "import jarvis_live.app"
           docker run --rm "$TAG" test -f /app/web/dist/index.html
+          docker run --rm "$TAG" test -f /app/prompts/templates/work-item.md
 
   deploy-lab:
     # Every main push whose image built, or "Run workflow" with lab_sha.

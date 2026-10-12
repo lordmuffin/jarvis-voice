@@ -10,6 +10,11 @@ import type {
   SessionDetail,
   SessionPage,
   SessionSummary,
+  WorkItem,
+  WorkItemEdit,
+  WorkItemPage,
+  WorkItemPrompt,
+  WorkItemState,
 } from "./types";
 
 // The browser is authenticated by the server's HttpOnly session cookie (set by /auth/login),
@@ -170,3 +175,43 @@ export const publishAll = (f?: typeof fetch) =>
 
 export const setAutoPublish = (on: boolean, f?: typeof fetch) =>
   request<Me>("/v1/me", { method: "PATCH", body: JSON.stringify({ auto_publish: on }) }, f);
+
+// --- Work items ---
+
+const wi = (id: string) => `/v1/work-items/${encodeURIComponent(id)}`;
+
+/** A session's work items, plus the repos they may target. */
+export const sessionWorkItems = (id: string, f?: typeof fetch) =>
+  request<WorkItemPage>(`${sid(id)}/work-items`, {}, f);
+
+/** The caller's work items across sessions (default: drafts and approved). */
+export function myWorkItems(states: WorkItemState[] = [], f?: typeof fetch) {
+  const q = new URLSearchParams();
+  for (const s of states) q.append("state", s);
+  const qs = q.toString();
+  return request<WorkItemPage>(`/v1/work-items${qs ? `?${qs}` : ""}`, {}, f);
+}
+
+/** Edit fields; they are then locked against the copilot. An approved item goes back to draft. */
+export const editWorkItem = (id: string, fields: WorkItemEdit, f?: typeof fetch) =>
+  request<WorkItem>(wi(id), { method: "PATCH", body: JSON.stringify(fields) }, f);
+
+export type WorkItemAction = "approve" | "unapprove" | "discard" | "restore";
+
+export const workItemAction = (id: string, action: WorkItemAction, f?: typeof fetch) =>
+  request<WorkItem>(`${wi(id)}/${action}`, { method: "POST" }, f);
+
+/** Fold `sources` (drafts of the same session) into `into`. */
+export const mergeWorkItems = (into: string, sources: string[], f?: typeof fetch) =>
+  request<WorkItem>(
+    "/v1/work-items/merge",
+    { method: "POST", body: JSON.stringify({ into, sources }) },
+    f,
+  );
+
+export const workItemPrompt = (id: string, f?: typeof fetch) =>
+  request<WorkItemPrompt>(`${wi(id)}/prompt`, {}, f);
+
+/** Record the copy in the audit log. */
+export const workItemCopied = (id: string, f?: typeof fetch) =>
+  send(`${wi(id)}/copied`, { method: "POST" }, f);

@@ -12,6 +12,12 @@ ARG NODE_IMAGE=node:22-slim
 ARG WEB_SRC=web-src-empty
 # A stage/image that provides /dist. Default is an empty stage, so nothing is copied.
 ARG WEB_DIST_SOURCE=web-dist-empty
+# Prompt templates (prompts/ at the repo root, e.g. the work item template), the same way:
+#   --build-context promptsctx=prompts --build-arg PROMPTS_SRC=promptsctx \
+#   --build-arg PROMPTS_SOURCE=prompts-copy
+# Without them the image has no templates, and work items cannot be turned on.
+ARG PROMPTS_SRC=prompts-src-empty
+ARG PROMPTS_SOURCE=prompts-empty
 
 FROM ${PYTHON_IMAGE} AS builder
 RUN pip install --no-cache-dir "uv>=0.8,<0.9"
@@ -42,6 +48,18 @@ RUN mkdir /dist
 
 FROM ${WEB_DIST_SOURCE} AS web-dist
 
+FROM scratch AS prompts-src-empty
+
+FROM ${PROMPTS_SRC} AS prompts-src
+
+FROM ${PYTHON_IMAGE} AS prompts-copy
+COPY --from=prompts-src . /prompts
+
+FROM ${PYTHON_IMAGE} AS prompts-empty
+RUN mkdir /prompts
+
+FROM ${PROMPTS_SOURCE} AS prompts
+
 FROM ${PYTHON_IMAGE} AS runtime
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
@@ -56,6 +74,7 @@ RUN groupadd --gid 10001 jarvis \
     && chmod 1777 /tmp
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=web-dist /dist /app/web/dist
+COPY --from=prompts /prompts /app/prompts
 WORKDIR /app
 USER 10001:10001
 EXPOSE 8080

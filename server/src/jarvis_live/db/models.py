@@ -231,3 +231,76 @@ class NotePublication(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+WORK_ITEM_STATES = ("draft", "approved", "discarded", "merged")
+
+
+class WorkItem(Base):
+    """A candidate piece of work the copilot heard in a session: a draft Claude Code prompt.
+
+    The LLM proposes and refines drafts; the session's owner edits, approves, merges or
+    discards them (``workitems/``). ``locked_fields`` are fields the owner edited, which the
+    LLM no longer changes. Approval freezes the rendered prompt: ``prompt_md`` is exactly what
+    is copied or dispatched, and ``prompt_sha256`` proves it has not changed since."""
+
+    __tablename__ = "work_items"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in WORK_ITEM_STATES) + ")",
+            name="ck_work_items_state",
+        ),
+        UniqueConstraint("session_id", "ref", name="uq_work_items_session_ref"),
+        Index("ix_work_items_user_state", "user_id", "state"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    ref: Mapped[str] = mapped_column(String(16))  # "w1", "w2"…: the id the LLM sees
+    state: Mapped[str] = mapped_column(String(16), default="draft", server_default="draft")
+    title: Mapped[str] = mapped_column(Text)
+    repo: Mapped[str | None] = mapped_column(Text)  # "owner/name" from the allowlist
+    intent: Mapped[str] = mapped_column(Text, default="", server_default="")
+    acceptance_criteria: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    done_when: Mapped[str | None] = mapped_column(Text)
+    # [{segment_id, start_ms, end_ms, text}], in transcript order.
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    locked_fields: Mapped[list[str]] = mapped_column(
+        ARRAY(String(32)), default=list, server_default=text("'{}'")
+    )
+    merged_into: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("work_items.id"))
+    prompt_md: Mapped[str | None] = mapped_column(Text)
+    prompt_sha256: Mapped[str | None] = mapped_column(String(64))
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class WorkItemEvent(Base):
+    """Append-only audit log of everything that happens to a work item: who (``actor_user_id``
+    NULL is the system/LLM), how (``web`` sign-in, ``device`` token, ``system``), what, and the
+    details (an approval carries the prompt and its sha256; a refused dispatch, the reason)."""
+
+    __tablename__ = "work_item_events"
+    __table_args__ = (Index("ix_work_item_events_item_at", "work_item_id", "at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    work_item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("work_items.id", ondelete="CASCADE"))
+    at: Mapped[datetime] = _now()
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    actor_kind: Mapped[str] = mapped_column(String(16))
+    event: Mapped[str] = mapped_column(String(32))
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )

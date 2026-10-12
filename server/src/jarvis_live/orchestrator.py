@@ -1,5 +1,6 @@
-"""Wires the A3 services to session lifecycle events: copilot loop per live session, finalizer
-on end, idle-session ending, and the STT-outage alert."""
+"""Wires the A3 services to session lifecycle events: copilot loop (and ideas loop) per live
+session, a last ideas pass then the finalizer on end, idle-session ending, and the STT-outage
+alert."""
 
 import asyncio
 import logging
@@ -13,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import Clock, CopilotLoop, RealClock
-from jarvis_live.db.models import OWNER_USER_ID
+from jarvis_live.db.models import OWNER_USER_ID, User
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.finalizer import Finalizer
 from jarvis_live.ingest.hub import IngestHub, SessionIngest
@@ -21,6 +22,7 @@ from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.stt.backend import STTBackend
 from jarvis_live.vault.index import NullVault, VaultContext
+from jarvis_live.workitems.ideas import IdeasLoop, IdeasPass
 
 log = logging.getLogger(__name__)
 
@@ -48,6 +50,10 @@ class Orchestrator:
         self._finalizer = Finalizer(settings, sessionmaker, bus, llm, vault, notifier)
         self._hub: IngestHub | None = None
         self._copilots: dict[uuid.UUID, asyncio.Task[None]] = {}
+        self._ideas: dict[uuid.UUID, asyncio.Task[None]] = {}
+        self._ideas_pass = (
+            IdeasPass(settings, sessionmaker, llm) if settings.work_items_enabled else None
+        )
         self._finals: set[asyncio.Task[object]] = set()
         self._finalizing: set[uuid.UUID] = set()  # a finalizer run is in flight
         self._on_final = on_final  # after a note is written (auto-publish)
@@ -92,6 +98,15 @@ class Orchestrator:
             row = await db.get(SessionRow, state.session_id)
         if row is None or row.local_only:
             return  # local-only sessions are never sent to an LLM
+        if self._ideas_pass is not None and await self._ideas_eligible(row):
+            ideas = IdeasLoop(
+                state.session_id,
+                settings=self._cfg,
+                sessionmaker=self._sm,
+                runner=self._ideas_pass,
+                clock=self._clock,
+            )
+            self._ideas[state.session_id] = asyncio.create_task(ideas.run())
         pipeline = state.pipeline
 
         def set_llm_ok(ok: bool) -> None:
@@ -113,11 +128,38 @@ class Orchestrator:
         )
         await loop.run()
 
+    async def _ideas_eligible(self, row: SessionRow) -> bool:
+        """Work items target the owner's repositories: only the owner's and admins' sessions
+        are mined for them, and never a local-only one."""
+        if row.local_only:
+            return False
+        if row.user_id == OWNER_USER_ID:
+            return True
+        async with self._sm() as db:
+            user = await db.get(User, row.user_id)
+        return user is not None and user.is_admin
+
     async def _end(self, session_id: uuid.UUID) -> None:
-        if (task := self._copilots.pop(session_id, None)) is not None:
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+        for tasks in (self._copilots, self._ideas):
+            if (task := tasks.pop(session_id, None)) is not None:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+        await self._flush_ideas(session_id)
         await self._finalize(session_id)
+
+    async def _flush_ideas(self, session_id: uuid.UUID) -> None:
+        """One last ideas pass, so what was said in the final minutes (or in a session the loop
+        never ran for) is in the note. Its failure never blocks the note."""
+        if self._ideas_pass is None:
+            return
+        async with self._sm() as db:
+            row = await db.get(SessionRow, session_id)
+        if row is None or row.status != "finalizing" or not await self._ideas_eligible(row):
+            return
+        try:
+            await self._ideas_pass.run(session_id)
+        except Exception:
+            log.exception("final ideas pass failed for %s", session_id)
 
     async def _finalize(
         self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
@@ -206,9 +248,10 @@ class Orchestrator:
     # --- shutdown ---------------------------------------------------------------------------
 
     async def shutdown(self) -> None:
-        tasks = [*self._copilots.values(), *self._finals]
+        tasks = [*self._copilots.values(), *self._ideas.values(), *self._finals]
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
         self._copilots.clear()
+        self._ideas.clear()
         self._finals.clear()

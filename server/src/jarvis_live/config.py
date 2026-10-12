@@ -135,6 +135,34 @@ class Settings(BaseSettings):
     # Pick up PRs merged or closed on GitHub. 0 disables the loop (the dashboard still syncs).
     publish_reconcile_interval_s: float = 300.0
 
+    # Work items: ideas spoken in the owner's and admins' sessions become draft Claude Code
+    # prompts to review (see workitems/). Only repos listed here can be targeted: one
+    # "owner/name  description" per line; the description helps the LLM pick.
+    work_items_enabled: bool = False
+    work_repos: str = ""
+    # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
+    # repo's prompts/templates/work-item.md.
+    work_template: Path | None = None
+    ideas_model: str = ""  # empty: the copilot model
+    ideas_timeout_s: float = 120.0
+    # A pass runs after this many new final segments, or this long after the first new one.
+    ideas_min_new_segments: int = 4
+    ideas_interval_s: float = 120.0
+    ideas_overlap_s: float = 60.0  # transcript before the last pass shown again, for context
+    ideas_max_lines: int = 400  # newest lines kept if the LLM was down for a long stretch
+
+    @property
+    def work_repo_allowlist(self) -> dict[str, str]:
+        """``owner/name`` -> description, in the order given."""
+        repos: dict[str, str] = {}
+        for raw in self.work_repos.splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            name, *rest = line.split(None, 1)
+            repos[name] = rest[0].strip() if rest else ""
+        return repos
+
     @property
     def notify_title_prefix(self) -> str:
         return "" if self.environment == "live" else f"[{self.environment}] "
@@ -165,6 +193,16 @@ class Settings(BaseSettings):
         v = v.strip()
         if v and (v.count("/") != 1 or not all(v.split("/"))):
             raise ValueError('publish_repo is "owner/name"')
+        return v
+
+    @field_validator("work_repos")
+    @classmethod
+    def _repo_lines(cls, v: str) -> str:
+        for raw in v.splitlines():
+            name = (raw.split(None, 1) or [""])[0]
+            bad = name.count("/") != 1 or not all(name.split("/"))
+            if name and not name.startswith("#") and bad:
+                raise ValueError(f'work_repos: "{name}" is not "owner/name"')
         return v
 
     @field_validator("database_url")

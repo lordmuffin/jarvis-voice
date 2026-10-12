@@ -74,3 +74,16 @@ data:
   # capture/..., and reserved for this app (it resets a leftover branch of its own).
   JARVIS_LIVE_PUBLISH_BRANCH_PREFIX: "jarvis-live/"
   JARVIS_LIVE_PUBLISH_MERGE_METHOD: "squash"
+
+  # Work items: the copilot turns ideas spoken in the owner's and admins' sessions
+  # into draft Claude Code prompts, reviewed in the dashboard (copy to clipboard for
+  # now; dispatch comes later, see docs/plans/copilot-to-claude-code.md). Nothing
+  # leaves the server: no credentials are involved, so lab runs it too.
+  JARVIS_LIVE_WORK_ITEMS_ENABLED: "true"
+  # The only repositories a work item may target: "owner/name  description".
+  JARVIS_LIVE_WORK_REPOS: |
+    lordmuffin/jarvis-voice     Jarvis Live: transcription server, copilot, web dashboard, Android and macOS apps, CI
+    lordmuffin/np-home-homelab  homelab GitOps: k3s2 cluster, Flux apps, TrueNAS, Proxmox, LXC services, alerting
+  # Empty: the copilot model. The ideas pass is less latency-bound than the live
+  # copilot; see server/tests/evals/test_ideas_evals.py before switching to heavy.
+  JARVIS_LIVE_IDEAS_MODEL: ""

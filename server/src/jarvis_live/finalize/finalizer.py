@@ -25,7 +25,7 @@ from jarvis_live.copilot.prompts import (
 )
 from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.copilot.transcript import Line, load_lines, render_lines
-from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User, WorkItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.outbox import (
     FINAL_NOTE_KIND,
@@ -34,12 +34,13 @@ from jarvis_live.finalize.outbox import (
     overwrite_atomic,
     owned_by,
 )
-from jarvis_live.finalize.render import NoteMeta, render_filename, render_note
+from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
 from jarvis_live.vault.index import NullVault, VaultContext
+from jarvis_live.workitems.template import session_url
 
 log = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ class Finalizer:
             user = await db.get(User, row.user_id)
             lines = await load_lines(db, session_id)
             related_names = await self._shown_related(db, session_id)
+            work_items = await self._work_items(db, session_id)
         if row.local_only:
             await self._set_status(session_id, "done")  # never leaves the device's control
             return None
@@ -150,7 +152,7 @@ class Finalizer:
             mode=row.mode,
             duration_minutes=max(1, round(duration_s / 60)),
         )
-        markdown = render_note(note, meta, lines)
+        markdown = render_note(note, meta, lines, work_items)
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
@@ -253,6 +255,33 @@ class Finalizer:
             if stem := await vault.resolve_name(name):
                 out[stem] = None
         return list(out)[:MAX_RELATED]
+
+    async def _work_items(self, db: AsyncSession, session_id: uuid.UUID) -> list[NoteWorkItem]:
+        """Drafts and approved work items, as the dashboard has them now."""
+        rows = (
+            await db.execute(
+                select(WorkItem)
+                .where(WorkItem.session_id == session_id, WorkItem.state.in_(("draft", "approved")))
+                .order_by(WorkItem.created_at, WorkItem.ref)
+            )
+        ).scalars()
+        sid = str(session_id)
+        return [
+            NoteWorkItem(
+                title=r.title,
+                repo=r.repo,
+                state=r.state,
+                intent=r.intent,
+                criteria=list(r.acceptance_criteria),
+                sources=[
+                    (int(s["start_ms"]), session_url(self._cfg, sid, int(s["start_ms"])))
+                    for s in r.sources
+                ],
+                review_url=session_url(self._cfg, sid),
+                prompt=r.prompt_md if r.state == "approved" else None,
+            )
+            for r in rows
+        ]
 
     # --- persistence ------------------------------------------------------------------------
 

@@ -12,6 +12,7 @@ export function Link({
   class?: string;
   "aria-current"?: "page";
   "data-testid"?: string;
+  title?: string;
 }) {
   return (
     <a

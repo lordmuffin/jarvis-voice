@@ -20,6 +20,7 @@ from jarvis_live.db.session import make_engine, make_sessionmaker, run_migration
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.stt.backend import STTBackend, Transcription
+from jarvis_live.workitems.dispatch import Dispatcher
 from tests.fake_github import TOKEN as GITHUB_TOKEN
 from tests.fake_github import FakeGitHub
 from tests.fake_oidc import CLIENT_ID, CLIENT_SECRET, FakeIssuer
@@ -141,11 +142,13 @@ def make_server(postgres_url: str, tmp_path: Path) -> Iterator[Callable[..., Ser
         stt: STTBackend | None = None,
         llm: LLM | None = None,
         notifier: Notifier | None = None,
+        dispatcher: Dispatcher | None = None,
         **overrides: object,
     ) -> ServerHandle:
         settings = Settings(database_url=postgres_url, data_dir=tmp_path / "data", **overrides)  # type: ignore[arg-type]
         stt = stt or FakeSTT()
-        port = _serve(create_app(settings, stt=stt, llm=llm, notifier=notifier), running)
+        app = create_app(settings, stt=stt, llm=llm, notifier=notifier, dispatcher=dispatcher)
+        port = _serve(app, running)
         return ServerHandle(f"http://127.0.0.1:{port}", settings, stt)
 
     yield start
