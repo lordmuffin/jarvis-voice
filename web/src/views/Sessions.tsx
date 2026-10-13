@@ -5,6 +5,7 @@ import { currentUser, navigate } from "../store";
 import type { SessionSummary } from "../types";
 import { OwnerLabel } from "./OwnerLabel";
 import { StatusChip } from "./StatusChip";
+import { UploadRecording } from "./UploadRecording";
 
 const PAGE = 100;
 const POLL_MS = 5000;
@@ -109,6 +110,7 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
           value={query}
           onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
         />
+        {!userId && <UploadRecording />}
       </div>
       {error && (
         <p class="error" role="alert">
@@ -122,7 +124,7 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
             ? "No sessions for this user."
             : all
               ? "No sessions yet."
-              : "No sessions yet. Start one from the Mac app."}
+              : "No sessions yet. Start one from the Mac app, or upload a recording."}
         </p>
       )}
       {head !== null && rows.length > 0 && shown.length === 0 && (

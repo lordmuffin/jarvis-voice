@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 from datetime import datetime
+from pathlib import PurePath
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
@@ -13,6 +14,7 @@ from jarvis_live.auth import Principal, current_principal
 from jarvis_live.db.models import CopilotItem, MarkerRow, NotePublication, SegmentRow, User
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.outbox import latest_final_note, outbox_dir, read_note
+from jarvis_live.ingest.upload import UndecodableAudio, decode_to_pcm
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import (
     Copilot,
@@ -199,6 +201,65 @@ async def create_session(
     db.add(row)
     await db.commit()
     session_logger(__name__, row.id).info("session created", extra={"device": device.name})
+    return SessionCreateResponse(id=row.id)
+
+
+def _upload_title(title: str | None, filename: str | None) -> str | None:
+    """The given title, else the file name without its extension; blank is None."""
+    return (title or "").strip() or PurePath(filename or "").stem.strip() or None
+
+
+@router.post("/upload", status_code=202)
+async def upload_recording(
+    principal: PrincipalDep,
+    db: Db,
+    request: Request,
+    title: Annotated[str | None, Query(max_length=200)] = None,
+    filename: Annotated[str | None, Query(max_length=255)] = None,
+    mode: Literal["meeting", "solo"] = "solo",
+) -> SessionCreateResponse:
+    """A recorded file as the raw request body (any format ffmpeg reads). It becomes a mic-only
+    session, transcribed in the background like a live one; the title defaults to the file
+    name. 415 if it holds no audio, 413 over ``upload_max_mb``."""
+    cfg = request.app.state.settings
+    limit = cfg.upload_max_mb * 1024 * 1024
+    if int(request.headers.get("content-length") or 0) > limit:
+        raise HTTPException(413, f"recordings are limited to {cfg.upload_max_mb} MB")
+    uploads = cfg.data_dir / "uploads"
+    await asyncio.to_thread(uploads.mkdir, parents=True, exist_ok=True)
+    key = uuid.uuid4().hex
+    src, pcm = uploads / f"{key}.upload", uploads / f"{key}.pcm"
+    try:
+        size = 0
+        with src.open("wb") as f:
+            async for chunk in request.stream():
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(413, f"recordings are limited to {cfg.upload_max_mb} MB")
+                f.write(chunk)
+        if size == 0:
+            raise HTTPException(422, "the upload is empty")
+        try:
+            await decode_to_pcm(src, pcm, ffmpeg=cfg.ffmpeg_path)
+        except UndecodableAudio as e:
+            raise HTTPException(415, "no audio could be read from the file") from e
+    except BaseException:
+        pcm.unlink(missing_ok=True)
+        raise
+    finally:
+        src.unlink(missing_ok=True)
+    row = SessionRow(
+        device_id=principal.device.id if principal.device else None,
+        user_id=principal.user.id,
+        title=_upload_title(title, filename),
+        mode=mode,
+        status="live",
+        channels=["mic"],
+    )
+    db.add(row)
+    await db.commit()
+    session_logger(__name__, row.id).info("recording uploaded", extra={"bytes": size})
+    request.app.state.uploads.start(row.id, pcm)
     return SessionCreateResponse(id=row.id)
 
 

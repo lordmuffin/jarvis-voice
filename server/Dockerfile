@@ -71,6 +71,10 @@ ENV PATH="/app/.venv/bin:$PATH" \
     JARVIS_LIVE_DATA_DIR=/data \
     JARVIS_LIVE_INDEX_DIR=/index
 # Only /data, /index and /tmp are writable; the rest of the root fs can be read-only.
+# ffmpeg decodes uploaded recordings (POST /v1/sessions/upload) to the stream codec.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 jarvis \
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin jarvis \
     && mkdir -p /data /index \

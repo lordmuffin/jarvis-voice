@@ -18,6 +18,7 @@ from jarvis_live.dispatch.githubapp import AppTokens
 from jarvis_live.dispatch.kube import KubeClient
 from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
 from jarvis_live.ingest.hub import IngestHub
+from jarvis_live.ingest.upload import Uploads
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
 from jarvis_live.oidc import OIDCClient
@@ -225,6 +226,7 @@ def create_app(
         app.state.bus = bus
         app.state.tickets = TicketStore(ttl_s=60)
         app.state.hub = hub
+        uploads = app.state.uploads = Uploads(hub)
         app.state.orchestrator = orchestrator
         app.state.publishing = publisher
         app.state.work_items = work
@@ -243,6 +245,7 @@ def create_app(
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
             await publisher.shutdown()
+            await uploads.shutdown()
             if orchestrator is not None:
                 await orchestrator.shutdown()
             await hub.shutdown()

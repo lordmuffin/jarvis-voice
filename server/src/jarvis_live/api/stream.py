@@ -8,7 +8,7 @@ from starlette.websockets import WebSocketDisconnect, WebSocketState
 
 from jarvis_live.bus import Subscription
 from jarvis_live.db.models import Session as SessionRow
-from jarvis_live.ingest.hub import IngestHub, SessionIngest
+from jarvis_live.ingest.hub import IngestHub, SessionIngest, close_producer
 from jarvis_live.ingest.store import CHANNEL_NAMES, SeqGap, StoreClosed, save_draft, save_marker
 from jarvis_live.logging_setup import SessionLogger, session_logger
 from jarvis_live.protocol import (
@@ -126,8 +126,7 @@ async def _producer(
     ing = await hub.get(row.id, list(row.channels))
     if ing.producer is not None and ing.producer is not ws:
         log.info("superseding previous producer connection")
-        with contextlib.suppress(RuntimeError):
-            await ing.producer.close(code=4409)
+        await close_producer(ing.producer, 4409)
     ing.producer = ws
     cursor = ing.store.cursor()
     sub.put(HelloAck(session=str(row.id), acked={"mic": cursor["mic"], "system": cursor["system"]}))  # type: ignore[arg-type]

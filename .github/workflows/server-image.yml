@@ -101,6 +101,7 @@ jobs:
             "$TAG" python -c "import jarvis_live.app"
           docker run --rm "$TAG" test -f /app/web/dist/index.html
           docker run --rm "$TAG" test -f /app/prompts/templates/work-item.md
+          docker run --rm "$TAG" ffmpeg -hide_banner -version  # decodes uploaded recordings
           test "$(docker run --rm "$TAG" printenv JARVIS_LIVE_GIT_SHA)" = "${{ github.sha }}"
 
       # The dispatch runner, same commit and tag as the server, which runs it by that tag
