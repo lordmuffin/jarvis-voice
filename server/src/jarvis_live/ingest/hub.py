@@ -1,6 +1,7 @@
 """Registry of live-session ingest state (single replica; Postgres is the source of truth)."""
 
 import asyncio
+import contextlib
 import time
 import uuid
 from collections.abc import Callable
@@ -10,6 +11,7 @@ from datetime import UTC, datetime
 from fastapi import WebSocket
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from starlette.websockets import WebSocketDisconnect
 
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
@@ -18,6 +20,13 @@ from jarvis_live.ingest.pipeline import SessionPipeline
 from jarvis_live.ingest.store import AudioStore
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.stt.backend import STTBackend
+
+
+async def close_producer(ws: WebSocket, code: int) -> None:
+    """Close a producer connection that may already be dead: after a network drop the server
+    can still hold the old socket when the client reconnects or the session ends."""
+    with contextlib.suppress(RuntimeError, WebSocketDisconnect):
+        await ws.close(code=code)
 
 
 @dataclass
@@ -116,7 +125,7 @@ class IngestHub:
             await state.pipeline.finish()
             await state.pipeline.close()
             if state.producer is not None and state.producer is not caller:
-                await state.producer.close(code=4410)
+                await close_producer(state.producer, 4410)
         if transitioned:
             log.info("session ended")
             if self._on_end is not None:
