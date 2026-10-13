@@ -116,7 +116,8 @@ class Session(Base):
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id"))
+    # NULL for a recording uploaded from the web dashboard, which has no device.
+    device_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("devices.id"))
     # Copied from the device at creation, so a session stays its owner's if the device goes.
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str | None] = mapped_column(Text)

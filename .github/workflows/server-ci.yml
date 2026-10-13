@@ -19,6 +19,9 @@ jobs:
           enable-cache: true
           cache-dependency-glob: server/uv.lock
       - run: uv sync --frozen
+      # Uploaded recordings are decoded with ffmpeg (tests/test_upload.py).
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run mypy src

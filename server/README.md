@@ -79,6 +79,21 @@ jarvis-live claim-owner <email>
 
 `GET /v1/sessions/{id}/audio/{mic|system}.wav` serves a session's recording as WAV and supports `Range` requests. Retention removes recordings after `JARVIS_LIVE_AUDIO_RETENTION_DAYS` (default 90); once a recording is removed, this endpoint returns 404.
 
+### Uploading a recording
+
+A recording made somewhere else (a phone voice memo, a meeting recorded in another app) can be uploaded and processed like a live session: transcribed, run past the copilot, and written up as a note. On the dashboard, use **Upload recording** on the Sessions page. It asks for a title (default: the file name) and the mode, then opens the new session so you can watch the transcript arrive.
+
+- **API.** `POST /v1/sessions/upload?filename=…&title=…&mode=solo|meeting` with the file as the raw request body. It works with a device token or the dashboard cookie. It answers `202 {"id": …}` once the file is decoded, and the work goes on in the background.
+- **Formats.** Anything ffmpeg can decode: WAV, MP3, M4A/MP4/MOV, OGG/Opus, WebM/MKV, FLAC, AAC, AMR, CAF, AIFF, WMA. Video files contribute their audio. The image ships ffmpeg; to run the tests locally you need it on your `PATH`. ffmpeg may only read the uploaded file itself: playlist and concat formats are refused, so an upload can't make the server open URLs or other files.
+- **Processing.** The file is decoded to the stream codec (16 kHz mono) and fed through the same ingest path as a live producer, on the mic channel. The session stays `live` while it is transcribed, then ends, and the finalizer writes its note.
+- **Errors.** You get 415 if the file holds no readable audio, 413 if it is over the size limit, and 422 if the body is empty. None of these create a session.
+- **Restarts.** An upload is not resumed after a server restart. The idle watchdog ends the session, and its note covers what was transcribed before the restart. Upload the file again to get all of it.
+
+| Variable | |
+|---|---|
+| `JARVIS_LIVE_UPLOAD_MAX_MB` | Largest upload accepted. Default 500. |
+| `JARVIS_LIVE_FFMPEG_PATH` | Default `ffmpeg`. |
+
 ## Notes: edit, regenerate, publish to the vault
 
 Each finished session's note sits in the outbox. From the session page in the dashboard you can:

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     ack_interval_ms: int = 250  # protocol requires an ack at least every 500 ms
     fsync_interval_s: float = 1.0
     status_interval_s: float = 5.0
+    # Uploaded recordings (POST /v1/sessions/upload), decoded with ffmpeg.
+    upload_max_mb: int = 500
+    ffmpeg_path: str = "ffmpeg"
 
     # Web dashboard: built assets served at `/`. Unset: ./web/dist (the image), then the
     # repo's web/dist. No index.html there means the dashboard is simply not served.

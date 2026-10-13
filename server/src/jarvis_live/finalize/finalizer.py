@@ -119,7 +119,7 @@ class Finalizer:
             row = await db.get(SessionRow, session_id)
             if row is None or row.status != "finalizing":
                 return None
-            device = await db.get(Device, row.device_id)
+            device = await db.get(Device, row.device_id) if row.device_id else None
             user = await db.get(User, row.user_id)
             lines = await load_lines(db, session_id)
             related_names = await self._shown_related(db, session_id)

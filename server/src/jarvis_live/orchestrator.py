@@ -207,7 +207,7 @@ class Orchestrator:
         live = self._hub.live_sessions()
         await self._check_stt_outage(now, bool(live))
         for st in live:
-            if now - st.pipeline.last_audio_at > self._cfg.idle_end_s:
+            if not st.uploading and now - st.pipeline.last_audio_at > self._cfg.idle_end_s:
                 log.info("ending idle session %s", st.session_id)
                 await self._hub.end(st.session_id)
         await self._end_orphans(now, {st.session_id for st in live})

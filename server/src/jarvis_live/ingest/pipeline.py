@@ -103,6 +103,10 @@ class SessionPipeline:
         async with self._lock:
             await self._release_held()
 
+    def pending_segments(self) -> int:
+        """Speech segments cut but not yet through STT, across channels."""
+        return sum(len(s) for s in self._inflight.values())
+
     def _enqueue(self, channel: str, seg: SpeechSegment) -> None:
         self._inflight[channel].add(seg.start_ms)
         self._queues[channel].put_nowait(seg)

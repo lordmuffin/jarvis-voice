@@ -27,6 +27,8 @@ class SessionIngest:
     store: AudioStore
     pipeline: SessionPipeline
     producer: WebSocket | None = None
+    # Fed from an uploaded file rather than a producer (see ingest/upload.py).
+    uploading: bool = False
     ended: asyncio.Event = field(default_factory=asyncio.Event)
 
 
@@ -82,11 +84,13 @@ class IngestHub:
 
     def is_streaming(self, session_id: uuid.UUID) -> bool:
         """True while a producer is connected and sending audio. A ``live`` session without
-        this is waiting for its producer to reconnect, or for the idle watchdog to end it."""
+        this is waiting for its producer to reconnect, or for the idle watchdog to end it. An upload
+        counts as streaming until its audio is transcribed."""
         state = self._states.get(session_id)
-        return (
-            state is not None
-            and state.producer is not None
+        if state is None:
+            return False
+        return state.uploading or (
+            state.producer is not None
             and time.monotonic() - state.pipeline.last_audio_at < self._cfg.streaming_stale_s
         )
 

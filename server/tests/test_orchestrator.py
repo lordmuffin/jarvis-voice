@@ -33,9 +33,11 @@ class StubHub:
         return True
 
 
-def _state(clock: FakeClock, idle_for: float = 0.0) -> Any:
+def _state(clock: FakeClock, idle_for: float = 0.0, uploading: bool = False) -> Any:
     return SimpleNamespace(
-        session_id=uuid.uuid4(), pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for)
+        session_id=uuid.uuid4(),
+        pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for),
+        uploading=uploading,
     )
 
 
@@ -69,6 +71,14 @@ async def test_idle_session_is_ended_after_ten_minutes(rig: Any) -> None:
     rig.hub.states = [quiet, busy]
     await rig.orch.check_once()
     assert rig.hub.ended == [quiet.session_id]
+
+
+async def test_uploaded_session_is_not_ended_as_idle_while_it_is_transcribed(rig: Any) -> None:
+    # An upload feeds all its audio at once; transcribing it can take longer than idle_end_s.
+    upload = _state(rig.clock, idle_for=3600, uploading=True)
+    rig.hub.states = [upload]
+    await rig.orch.check_once()
+    assert rig.hub.ended == []
 
 
 async def test_live_session_without_producer_is_ended_after_idle_period(rig: Any, sm: SM) -> None:
