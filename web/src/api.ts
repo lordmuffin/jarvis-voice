@@ -45,6 +45,7 @@ async function call(path: string, init: RequestInit, fetchImpl: typeof fetch): P
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(init.headers as Record<string, string> | undefined),
     },
   });
   if (!res.ok) {
@@ -111,6 +112,28 @@ export const viewerTicket = async (id: string, f?: typeof fetch) =>
       f,
     )
   ).ticket;
+
+export interface UploadOptions {
+  mode: "meeting" | "solo";
+  /** Blank: the server names the session after the file. */
+  title?: string;
+}
+
+/** Upload a recorded file (any audio format); the server transcribes it as a new session. */
+export async function uploadRecording(
+  file: File,
+  { mode, title }: UploadOptions,
+  f?: typeof fetch,
+): Promise<string> {
+  const q = new URLSearchParams({ filename: file.name, mode });
+  if (title?.trim()) q.set("title", title.trim());
+  const init: RequestInit = {
+    method: "POST",
+    body: file,
+    headers: { "Content-Type": file.type || "application/octet-stream" },
+  };
+  return (await request<{ id: string }>(`/v1/sessions/upload?${q}`, init, f)).id;
+}
 
 /** Set a session's title; a blank title clears it. */
 export const renameSession = (id: string, title: string, f?: typeof fetch) =>

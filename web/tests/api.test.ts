@@ -18,6 +18,7 @@ import {
   revokeDevice,
   sessionsPath,
   setAutoPublish,
+  uploadRecording,
 } from "../src/api";
 
 type Call = { url: string; init: RequestInit };
@@ -52,6 +53,31 @@ describe("api", () => {
       "/v1/sessions?limit=5&offset=10&all=true",
     );
     expect(sessionsPath({ userId: "u 1" })).toBe("/v1/sessions?limit=100&offset=0&user_id=u+1");
+  });
+
+  it("uploads a recording as the raw body, its name and mode in the query", async () => {
+    const { f, calls } = fakeFetch(202, { id: "s9" });
+    const file = new File([new Uint8Array([1, 2, 3])], "memo #1.m4a", { type: "audio/mp4" });
+    expect(await uploadRecording(file, { mode: "meeting", title: " " }, f)).toBe("s9");
+    expect(calls[0]!.url).toBe("/v1/sessions/upload?filename=memo+%231.m4a&mode=meeting");
+    expect(calls[0]!.init.method).toBe("POST");
+    expect(calls[0]!.init.body).toBe(file);
+    expect(calls[0]!.init.credentials).toBe("same-origin");
+    expect(calls[0]!.init.headers).toMatchObject({ "Content-Type": "audio/mp4" });
+  });
+
+  it("sends a title when one is given, and the server's reason when it refuses", async () => {
+    const ok = fakeFetch(202, { id: "s1" });
+    const file = new File(["x"], "a.wav");
+    await uploadRecording(file, { mode: "solo", title: "Kitchen chat" }, ok.f);
+    expect(ok.calls[0]!.url).toBe("/v1/sessions/upload?filename=a.wav&mode=solo&title=Kitchen+chat");
+    expect(ok.calls[0]!.init.headers).toMatchObject({ "Content-Type": "application/octet-stream" });
+
+    const refused = fakeFetch(415, { detail: "no audio could be read from the file" });
+    await expect(uploadRecording(file, { mode: "solo" }, refused.f)).rejects.toMatchObject({
+      status: 415,
+      message: "no audio could be read from the file",
+    });
   });
 
   it("lists sessions with the filter", async () => {

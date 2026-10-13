@@ -39,6 +39,9 @@ jobs:
         run: |
           "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
       - run: npx playwright install --with-deps chromium
+      # The upload e2e: the server decodes uploaded recordings with ffmpeg.
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
       - run: npx playwright test
       - uses: actions/upload-artifact@v4
         if: failure()

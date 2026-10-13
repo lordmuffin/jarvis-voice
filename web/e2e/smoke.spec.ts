@@ -319,3 +319,28 @@ test("the server's version sits next to the user name", async ({ page }) => {
   // Right before the name, in the top right.
   await expect(banner.locator("[data-testid=server-version] + [data-testid=user-name]")).toBeVisible();
 });
+
+test("upload a recording: it is transcribed and gets a note", async ({ page }) => {
+  const dir = mkdtempSync(join(tmpdir(), "jarvis-web-e2e-"));
+  const wav = join(dir, "voice memo.wav");
+  execFileSync("uv", ["run", "python", "-m", "tests.e2e_server", "wav", wav], { cwd: SERVER_DIR });
+
+  await signIn(page, "alice");
+  await page.locator("input[type=file]").setInputFiles(wav);
+  const form = page.getByTestId("upload-form");
+  await expect(form).toContainText("voice memo.wav");
+  await expect(form.getByLabel("Title")).toHaveAttribute("placeholder", "voice memo");
+  await form.getByLabel("Mode").selectOption("meeting");
+  await form.getByRole("button", { name: "Upload" }).click();
+
+  // The new session opens; its transcript arrives, then the note.
+  await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]{36}$/);
+  await expect(page.locator(".session-head h1")).toHaveText(/voice memo|Standup kickoff/);
+  await expect(page.getByTestId("segment").first()).toContainText("seg-");
+  await expect(page.getByTestId("note")).toContainText("The team kicked off", { timeout: 30_000 });
+  await expect(page.getByTestId("status-chip").first()).toHaveText(/Done/);
+  await expect(page.getByTestId("recording").locator("audio")).toHaveAttribute(
+    "src",
+    /\/audio\/mic\.wav$/,
+  );
+});

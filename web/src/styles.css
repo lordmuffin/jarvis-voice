@@ -272,6 +272,25 @@ code,
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
+.upload-pick {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+.upload-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+}
+.upload-form .field {
+  width: auto;
+  flex: 1 1 160px;
+}
+.upload-file {
+  overflow-wrap: anywhere;
+}
 .search {
   max-width: 320px;
   margin-left: auto;
