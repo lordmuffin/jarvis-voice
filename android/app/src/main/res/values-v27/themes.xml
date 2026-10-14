@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Jarvis" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/inst_accent</item>
+        <item name="colorPrimaryDark">@color/inst_bg</item>
+        <item name="colorAccent">@color/inst_accent</item>
+        <item name="colorControlActivated">@color/inst_accent</item>
+        <item name="colorControlNormal">@color/inst_control</item>
+        <item name="colorControlHighlight">@color/inst_accent_tint</item>
+        <item name="android:windowBackground">@color/inst_bg</item>
+        <item name="android:statusBarColor">@color/inst_bg</item>
+        <item name="android:navigationBarColor">@color/inst_bg</item>
+        <item name="android:windowLightStatusBar">@bool/inst_light_bars</item>
+        <item name="android:windowLightNavigationBar">@bool/inst_light_bars</item>
+        <item name="android:textColorPrimary">@color/inst_text</item>
+        <item name="android:textColorSecondary">@color/inst_text_2</item>
+        <item name="android:textColorHint">@color/inst_text_2</item>
+        <item name="android:colorBackground">@color/inst_bg</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.Inst.Dialog</item>
+        <item name="popupMenuStyle">@style/Widget.Inst.PopupMenu</item>
+        <item name="android:popupMenuStyle">@style/Widget.Inst.PopupMenu</item>
+        <item name="android:dropDownListViewStyle">@style/Widget.Inst.DropDown</item>
+        <item name="spinnerStyle">@style/Widget.Inst.Spinner</item>
+        <item name="switchStyle">@style/Widget.Inst.Switch</item>
+        <item name="editTextStyle">@style/Widget.Inst.EditText</item>
+        <item name="radioButtonStyle">@style/Widget.Inst.RadioButton</item>
+    </style>
+</resources>

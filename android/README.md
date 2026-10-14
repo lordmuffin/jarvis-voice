@@ -2,6 +2,8 @@
 
 Floating dictation pill for Android. Tap a text field anywhere on your device, tap the pill, speak — transcript injects directly into the focused field via Accessibility or clipboard fallback. No cloud, no round-trip latency on supported Pixel hardware.
 
+The app also hosts **Jarvis Live** (session recording and history), **Kai Chat**, **Agent** tasks, on-device **Models**, and **Settings**. The launcher icon opens **Record**, the home screen. The UI follows the system light/dark setting (Settings → Device → Appearance overrides it) and uses the [Instrument](../docs/design/instrument/README.md) design system. Record and Session Detail switch to two panes at 840dp wide (unfolded).
+
 ---
 
 ## Prerequisites
@@ -10,9 +12,9 @@ Floating dictation pill for Android. Tap a text field anywhere on your device, t
 |------|---------|
 | Android Studio | Ladybug (2024.2.1) or later |
 | JDK | 17 (bundled with Android Studio) |
-| Android SDK | API 33+ (minSdk), API 35 (targetSdk) |
+| Android SDK | compileSdk 34; minSdk 26, targetSdk 34 (`app/build.gradle.kts`) |
 | `adb` | In PATH (ships with Android Studio platform-tools) |
-| Device | Android 13+ physical device (overlay + accessibility require real hardware for full testing) |
+| Device | Android 8.0+ (API 26) physical device; Android 13+ for the system on-device recognizer fallback (overlay + accessibility require real hardware for full testing) |
 
 ---
 
@@ -52,7 +54,7 @@ Or drag the APK onto a device with Developer Options → Install unknown apps en
 
 ## First Launch — Permission Setup
 
-The app walks you through three one-time grants:
+Onboarding walks you through these one-time grants:
 
 1. **Overlay permission** — "Draw over other apps"
    - Dialog opens `Settings → Apps → Special app access → Display over other apps`
@@ -65,29 +67,41 @@ The app walks you through three one-time grants:
    - Dialog opens `Settings → Accessibility → Downloaded apps → Jarvis Voice Overlay`
    - Toggle on. Android will warn about data access — this is expected (the service reads focused-node info to inject text).
 
-Once all three are granted, `MainActivity` finishes itself and `VoiceOverlayService` starts as a sticky foreground service. You won't see the launcher activity again unless you kill the service and re-open the app.
+4. **All files access** (optional, Android 11+) — keeps your dictation history across a reinstall.
+
+Once overlay, microphone and accessibility are granted, `VoiceOverlayService` starts as a foreground service and the launcher icon opens **Record**. From then on the icon always lands on Record (`MainActivity` re-checks the grants first and asks for any that were revoked).
 
 ---
 
 ## How to Use
 
 1. Tap any text input field in any app.
-2. The dark pill floats near the bottom of the screen.
+2. The pill appears near the bottom of the screen while a keyboard is open, and hides when it closes.
 3. **Tap** the pill to begin dictation.
-4. Speak. The pill shows a waveform while it listens; it does not show partial text (the pill is compact).
-5. **Tap again** to stop. With the default on-device Whisper engine, recording runs until you tap. The Android-recognizer fallback (see below) also stops after 2.5 s of silence.
+4. Speak. The pill shows "Listening", a waveform and a timer; it does not show partial text (the pill is compact).
+5. **Tap again** to stop. In tap mode both engines also stop on their own after a pause: the default on-device Whisper engine commits and finishes after about 3 s of silence following speech (and gives up after about 60 s of pure silence), and the Android-recognizer fallback (see below) stops after 2.5 s. Hold mode (long-press) never auto-stops.
 6. The transcript is always copied to the clipboard, then injected into the focused field (`ACTION_SET_TEXT`, falling back to paste). A toast reports the result, for example "42 words · 138 wpm", or "Copied · 42 words · 138 wpm" when no field had focus.
-7. **Drag** the pill anywhere on screen to reposition it.
+7. **Drag** the pill anywhere on screen to reposition it; it remembers where you left it.
 8. **Long-press** the pill to trigger hold-to-record mode (releases on lift).
 
-The pill has four states (`OverlayState` in `VoiceOverlayService.kt`):
+The pill's state lives in one place, `DictationPill` (`pill/PillModel.kt`); `PillView` draws it and the Android Auto screen reads it. It follows the system light/dark setting.
 
 | State | Pill | Tap |
 |---|---|---|
-| `IDLE` | Breathing dot | Start recording |
-| `RECORDING` | Wider, teal waveform, accent outline | Stop and transcribe |
-| `PROCESSING` | Spinner while Whisper (and the optional on-device LLM pass) runs | Ignored |
-| `DONE` | Breathing dot, thicker accent outline; lasts 400 ms after injection, then `IDLE` | Back to `IDLE` |
+| Idle | Breathing dot | Start recording |
+| Listening | Accent outline, "Listening", waveform, timer | Stop and transcribe |
+| Processing | Spinner and "Processing" while Whisper (and the optional on-device LLM pass) runs | Ignored |
+| Done | A tick, accent outline; lasts 1.5 s after injection, then Idle | Back to Idle |
+| Error | Red (or dashed) outline and a short reason; clears itself after 6 s | See below |
+
+Errors that used to fail silently now show on the pill:
+
+| Message | Meaning | Tap |
+|---|---|---|
+| ✕ Didn't catch that | Nothing usable was heard | Try again |
+| ✕ Microphone is off | Microphone permission is off or the recorder could not start | Opens the app's system settings |
+| ⚑ Mic in use | A Jarvis Live session has the microphone | — |
+| ✕ Speech model unavailable | No speech model is downloaded or the engine failed to start | Opens Settings → STT Model |
 
 ---
 
@@ -106,13 +120,13 @@ On non-Pixel devices or when on-device is unavailable, the engine falls back to 
 
 ## Boot Persistence
 
-`BootReceiver` fires on `ACTION_BOOT_COMPLETED` and re-starts `VoiceOverlayService`. The service is declared `START_STICKY` — Android will restart it if killed by the system. If you want to stop it permanently, Force Stop the app from Settings.
+`BootReceiver` fires on `ACTION_BOOT_COMPLETED`. Below Android 14 it re-starts `VoiceOverlayService`; on Android 14+ the system will not allow a microphone foreground service to start from boot, so it posts a "Tap to restart the dictation overlay" notification instead. The service returns `START_NOT_STICKY`: if the system kills it, open the app (or tap that notification) to bring it back. To stop it permanently, Force Stop the app from Settings.
 
 ---
 
 ## Phase 2 Roadmap
 
-- **LiveKit WebRTC transport** — swap `AndroidSpeechEngine` for a `LiveKitSpeechEngine` implementation of `SpeechEngine` that streams raw PCM to the Jarvis LiveKit server and receives a final transcript over the data channel. The interface is already abstracted; the swap is a one-line change in `VoiceOverlayService.onCreate()`.
+- **LiveKit WebRTC transport** — swap `AndroidSpeechEngine` for a `LiveKitSpeechEngine` implementation of `SpeechEngine` that streams raw PCM to the Jarvis LiveKit server and receives a final transcript over the data channel. The interface is already abstracted; engines are chosen in `SpeechEngineFactory`.
 - **Wake-word activation** — integrate Picovoice Porcupine or ONNX-based wake word so the pill auto-activates on "Hey Jarvis" without a tap.
 - **Command routing** — detect command prefix ("Jarvis, open…", "Jarvis, send…") and route to the Jarvis API instead of injecting text.
 

@@ -3,15 +3,15 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/jv_bg">
+    android:background="@color/inst_bg">
 
     <!-- Stats header: Last session | Lifetime -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="@color/jv_surface">
+        android:padding="@dimen/inst_space_16"
+        android:background="@drawable/inst_row_surface">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -21,20 +21,16 @@
             android:gravity="center">
             <TextView
                 android:id="@+id/tv_last_words"
+                style="@style/Inst.Text.Stat"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="—"
-                android:textColor="@color/jv_text"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:text="@string/chat_history_dash" />
             <TextView
+                style="@style/Inst.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="last words"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp" />
+                android:text="@string/chat_history_last_words" />
         </LinearLayout>
-
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -43,20 +39,17 @@
             android:gravity="center">
             <TextView
                 android:id="@+id/tv_last_wpm"
+                style="@style/Inst.Text.Stat"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="—"
-                android:textColor="@color/jv_accent"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:text="@string/chat_history_dash"
+                android:textColor="@color/inst_accent" />
             <TextView
+                style="@style/Inst.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="last wpm"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp" />
+                android:text="@string/chat_history_last_wpm" />
         </LinearLayout>
-
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -65,20 +58,16 @@
             android:gravity="center">
             <TextView
                 android:id="@+id/tv_total_words"
+                style="@style/Inst.Text.Stat"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/jv_text"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:text="@string/chat_history_zero" />
             <TextView
+                style="@style/Inst.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="total words"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp" />
+                android:text="@string/chat_history_total_words" />
         </LinearLayout>
-
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -87,28 +76,31 @@
             android:gravity="center">
             <TextView
                 android:id="@+id/tv_avg_wpm"
+                style="@style/Inst.Text.Stat"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="@color/jv_accent"
-                android:textSize="28sp"
-                android:textStyle="bold" />
+                android:text="@string/chat_history_zero"
+                android:textColor="@color/inst_accent" />
             <TextView
+                style="@style/Inst.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="avg wpm"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp" />
+                android:text="@string/chat_history_avg_wpm" />
         </LinearLayout>
 
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/inst_border_hairline"
+        android:background="@color/inst_line" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_sessions"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:padding="8dp"
+        android:padding="@dimen/inst_space_8"
         android:clipToPadding="false" />
 
     <include layout="@layout/bottom_nav" />

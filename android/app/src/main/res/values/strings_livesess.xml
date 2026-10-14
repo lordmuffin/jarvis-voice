@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Record screen (LiveActivity) -->
+    <string name="livesess_timer_zero" translatable="false">00:00</string>
+    <string name="livesess_empty_glyph" translatable="false">🎙</string>
+    <string name="livesess_server">Server: %1$s</string>
+    <string name="livesess_starting">Starting…</string>
+    <string name="livesess_finishing">Finishing — sending the rest of the audio…</string>
+    <string name="livesess_saved_to">Saved to %1$s</string>
+    <string name="livesess_drafts_on">on-device drafts on</string>
+    <string name="livesess_model_loading">loading on-device model…</string>
+    <string name="livesess_model_missing">no on-device model (Settings → STT Model)</string>
+    <string name="livesess_marker_one">1 marker</string>
+    <string name="livesess_markers">%1$d markers</string>
+    <string name="livesess_rec_local">● Recording locally</string>
+    <string name="livesess_conn_live">● Live</string>
+    <string name="livesess_conn_connecting">Connecting…</string>
+    <string name="livesess_conn_retrying">Offline — retrying (%1$d)</string>
+    <string name="livesess_conn_ended">Ended</string>
+    <string name="livesess_conn_failed">Failed: %1$s</string>
+    <string name="livesess_stt_tier">STT %1$s</string>
+    <string name="livesess_lag">lag %1$d ms</string>
+    <string name="livesess_queued">%1$.1f s queued</string>
+    <string name="livesess_section_suggestions">Suggestions</string>
+    <string name="livesess_section_related">Related</string>
+    <string name="livesess_copilot_expanded" translatable="false">▼</string>
+    <string name="livesess_copilot_collapsed" translatable="false">▶</string>
+    <string name="livesess_pending_failed">Failed: %1$s</string>
+    <string name="livesess_pending_rejected">server rejected it</string>
+    <string name="livesess_pending_local">Recorded locally · %1$s</string>
+    <string name="livesess_pending_interrupted">Interrupted · resuming upload</string>
+    <string name="livesess_pending_uploading">Uploading in the background</string>
+
+    <!-- Shared by sessions list, detail and sign-in callback -->
+    <string name="livesess_http">HTTP %1$d</string>
+</resources>

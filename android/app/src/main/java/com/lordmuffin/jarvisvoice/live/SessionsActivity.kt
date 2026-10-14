@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
+import com.lordmuffin.jarvisvoice.ui.bindOffline
 import com.lordmuffin.jarvisvoice.SettingsActivity
 import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import java.text.DateFormat
@@ -152,7 +153,7 @@ class SessionsActivity : AppCompatActivity() {
 
     private fun errorText(e: Exception): String = when {
         e is LiveHttpException && e.status == 401 -> getString(R.string.history_unauthorized)
-        e is LiveHttpException -> getString(R.string.history_error, "HTTP ${e.status}")
+        e is LiveHttpException -> getString(R.string.history_error, getString(R.string.livesess_http, e.status))
         else -> getString(R.string.history_error, e.message ?: e.javaClass.simpleName)
     }
 
@@ -236,7 +237,7 @@ class SessionsActivity : AppCompatActivity() {
                 is Row -> {
                     val s = sessions[position]
                     holder.title.text = s.title ?: ctx.getString(R.string.history_untitled)
-                    SessionLabels.bindStatus(holder.status, s.status)
+                    SessionLabels.bindStatus(holder.status, s.status, s.streaming)
                     holder.meta.text = SessionLabels.meta(ctx, s)
                     holder.itemView.setOnClickListener { onOpen(s) }
                 }
@@ -279,14 +280,20 @@ internal object SessionLabels {
 
     /** State colors carry state only, and always come with the word. */
     fun statusColor(status: String): Int = when (status) {
-        RemoteSession.STATUS_LIVE -> R.color.jv_accent
-        RemoteSession.STATUS_FINALIZING -> R.color.jv_warning
-        RemoteSession.STATUS_DONE -> R.color.jv_success
-        RemoteSession.STATUS_FAILED -> R.color.jv_error
-        else -> R.color.jv_text2
+        RemoteSession.STATUS_LIVE -> R.color.inst_accent
+        RemoteSession.STATUS_FINALIZING -> R.color.inst_warning
+        RemoteSession.STATUS_DONE -> R.color.inst_success
+        RemoteSession.STATUS_FAILED -> R.color.inst_error
+        else -> R.color.inst_text_2
     }
 
-    fun bindStatus(view: TextView, status: String) {
+    /** A live session that is not receiving audio reads "Offline" (as on web), not "Live". */
+    fun bindStatus(view: TextView, status: String, streaming: Boolean = true) {
+        if (ConnectionChip.isOffline(status, streaming)) {
+            view.bindOffline()
+            return
+        }
+        view.contentDescription = null
         view.text = statusLabel(view.context, status)
         view.setTextColor(view.context.getColor(statusColor(status)))
     }

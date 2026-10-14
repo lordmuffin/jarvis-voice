@@ -41,8 +41,8 @@
     <string name="detail_speaker_them">Them</string>
     <string name="detail_owner">owner: %1$s</string>
     <string name="detail_due">due %1$s</string>
-    <string name="detail_audio_mic">Mic</string>
-    <string name="detail_audio_system">System audio</string>
+    <string name="detail_audio_mic">Me</string>
+    <string name="detail_audio_system">Them</string>
     <string name="detail_audio_downloading">Downloading… %1$d%%</string>
     <string name="detail_audio_downloading_plain">Downloading…</string>
     <string name="detail_audio_missing">No recording on the server.</string>

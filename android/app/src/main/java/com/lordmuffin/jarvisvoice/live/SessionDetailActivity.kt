@@ -2,7 +2,6 @@ package com.lordmuffin.jarvisvoice.live
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -21,7 +20,6 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -30,7 +28,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
-import com.lordmuffin.jarvisvoice.live.protocol.CopilotItem
+import com.lordmuffin.jarvisvoice.live.protocol.Speaker
+import com.lordmuffin.jarvisvoice.ui.InstToast
+import com.lordmuffin.jarvisvoice.ui.bindSpeaker
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -156,14 +156,14 @@ class SessionDetailActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 val reason = when {
                     e is LiveHttpException && e.status == 401 -> getString(R.string.history_unauthorized)
-                    e is LiveHttpException -> getString(R.string.detail_error, "HTTP ${e.status}")
+                    e is LiveHttpException -> getString(R.string.detail_error, getString(R.string.livesess_http, e.status))
                     else -> getString(R.string.detail_error, e.message ?: e.javaClass.simpleName)
                 }
                 if (detail == null) {
                     tvError.text = reason
                     groupError.visibility = View.VISIBLE
                 } else {
-                    Toast.makeText(this@SessionDetailActivity, reason, Toast.LENGTH_LONG).show()
+                    InstToast.show(this@SessionDetailActivity, reason)
                 }
             } finally {
                 pbDetail.visibility = View.GONE
@@ -179,7 +179,7 @@ class SessionDetailActivity : AppCompatActivity() {
         val d = detail ?: return
         val s = d.session
         tvTitle.text = s.title ?: getString(R.string.history_untitled)
-        SessionLabels.bindStatus(tvStatus, s.status)
+        SessionLabels.bindStatus(tvStatus, s.status, s.streaming)
         tvStatus.visibility = View.VISIBLE
         tvMeta.text = SessionLabels.meta(this, s)
 
@@ -189,16 +189,41 @@ class SessionDetailActivity : AppCompatActivity() {
         )
 
         renderAudio(d)
-        groupTabs.visibility = View.VISIBLE
-        selectTab(tab)
+        if (wide) {
+            groupTabs.visibility = View.GONE
+            renderPanes(d)
+        } else {
+            groupTabs.visibility = View.VISIBLE
+            selectTab(tab)
+        }
     }
+
+    /** Unfolded: summary and actions on the left, the transcript beside the recordings on the right. */
+    private fun renderPanes(d: RemoteSessionDetail) {
+        val left = SpannableStringBuilder()
+        for (part in listOf(summaryText(d), actionsText(d.copilot))) {
+            if (part is Placeholder) continue
+            if (left.isNotEmpty()) left.append("\n\n")
+            left.append(part as CharSequence)
+        }
+        val summary = summaryText(d)
+        if (left.isEmpty() && summary is Placeholder) left.append(summary.text)
+        tvText.text = left
+        tvText.setTextColor(getColor(R.color.inst_text))
+        svText.visibility = View.VISIBLE
+        val empty = d.segments.isEmpty()
+        findViewById<View?>(R.id.tv_detail_transcript_empty)?.visibility = if (empty) View.VISIBLE else View.GONE
+        rvTranscript.visibility = if (empty) View.GONE else View.VISIBLE
+        segmentAdapter.submitList(d.segments)
+    }
+
+    private val wide by lazy { resources.getBoolean(R.bool.is_wide) }
 
     private fun selectTab(t: Tab) {
         tab = t
         tabButtons.forEach { (key, button) ->
             val selected = key == t
-            button.backgroundTintList = ColorStateList.valueOf(getColor(if (selected) R.color.jv_surface2 else R.color.jv_surface))
-            button.setTextColor(getColor(if (selected) R.color.jv_accent else R.color.jv_text2))
+            button.isSelected = selected
         }
         val d = detail ?: return
         when (t) {
@@ -224,10 +249,10 @@ class SessionDetailActivity : AppCompatActivity() {
         svText.visibility = View.VISIBLE
         if (content is Placeholder) {
             tvText.text = content.text
-            tvText.setTextColor(getColor(R.color.jv_text2))
+            tvText.setTextColor(getColor(R.color.inst_text_2))
         } else {
             tvText.text = content as CharSequence
-            tvText.setTextColor(getColor(R.color.jv_text))
+            tvText.setTextColor(getColor(R.color.inst_text))
         }
         svText.scrollTo(0, 0)
     }
@@ -238,8 +263,8 @@ class SessionDetailActivity : AppCompatActivity() {
         return when {
             body != null -> MarkdownSpans.render(
                 body,
-                accentColor = getColor(R.color.jv_accent),
-                mutedColor = getColor(R.color.jv_text2),
+                accentColor = getColor(R.color.inst_accent),
+                mutedColor = getColor(R.color.inst_text_2),
                 indentPx = dp(16),
             )
             note != null && note.markdown == null -> Placeholder(getString(R.string.detail_summary_gone, note.path))
@@ -251,18 +276,24 @@ class SessionDetailActivity : AppCompatActivity() {
     private fun actionsText(copilot: RemoteCopilot): Any {
         if (copilot.isEmpty) return Placeholder(getString(R.string.detail_actions_empty))
         val sb = SpannableStringBuilder()
-        val accent = getColor(R.color.jv_accent)
-        val muted = getColor(R.color.jv_text2)
+        val accent = getColor(R.color.inst_accent)
+        val muted = getColor(R.color.inst_text_2)
 
-        fun section(title: String, items: List<CopilotItem>, glyph: String) {
-            if (items.isEmpty()) return
+        // Same order as every other copilot surface (CopilotSections); past sessions only have these three.
+        for ((section, entries) in CopilotSections.build(copilot)) {
+            val (title, glyph) = when (section) {
+                CopilotSection.ACTIONS -> getString(R.string.copilot_section_actions) to "☐"
+                CopilotSection.DECISIONS -> getString(R.string.copilot_section_decisions) to "✓"
+                CopilotSection.NOTES -> getString(R.string.copilot_section_notes) to "•"
+                else -> continue
+            }
             if (sb.isNotEmpty()) sb.append("\n\n")
             val start = sb.length
             sb.append(title.uppercase())
             sb.setSpan(ForegroundColorSpan(muted), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             sb.setSpan(RelativeSizeSpan(0.8f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             sb.setSpan(StyleSpan(Typeface.BOLD), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            for (item in items) {
+            for (item in entries) {
                 sb.append('\n')
                 val g = sb.length
                 sb.append(glyph).append("  ")
@@ -281,10 +312,6 @@ class SessionDetailActivity : AppCompatActivity() {
                 }
             }
         }
-
-        section(getString(R.string.detail_section_actions), copilot.actions, "☐")
-        section(getString(R.string.detail_section_decisions), copilot.decisions, "✓")
-        section(getString(R.string.detail_section_notes), copilot.notes, "•")
         return sb
     }
 
@@ -314,7 +341,7 @@ class SessionDetailActivity : AppCompatActivity() {
                     time = view.findViewById(R.id.tv_audio_time),
                     seek = view.findViewById(R.id.sb_audio),
                 ).also { row ->
-                    row.label.text = getString(if (channel == "mic") R.string.detail_audio_mic else R.string.detail_audio_system)
+                    row.label.text = getString(if (speakerFor(channel) == Speaker.ME) R.string.detail_audio_mic else R.string.detail_audio_system)
                     row.button.setOnClickListener { onPlayTapped(row) }
                     row.seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -381,7 +408,7 @@ class SessionDetailActivity : AppCompatActivity() {
                 throw e
             } catch (e: LiveHttpException) {
                 row.time.text = if (e.status == 404) getString(R.string.detail_audio_missing)
-                else getString(R.string.detail_audio_failed, "HTTP ${e.status}")
+                else getString(R.string.detail_audio_failed, getString(R.string.livesess_http, e.status))
             } catch (e: Exception) {
                 row.time.text = getString(R.string.detail_audio_failed, e.message ?: e.javaClass.simpleName)
             } finally {
@@ -469,11 +496,10 @@ class SessionDetailActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val seg = getItem(position)
-            val ctx = holder.itemView.context
-            val me = seg.speaker == "me"
+            val speaker = speakerFor(seg.speaker)
             holder.time.text = LocalMarkdown.clock(seg.startMs)
-            holder.speaker.text = ctx.getString(if (me) R.string.detail_speaker_me else R.string.detail_speaker_them)
-            holder.speaker.setTextColor(ctx.getColor(if (me) R.color.jv_accent else R.color.jv_text2))
+            holder.speaker.bindSpeaker(speaker)
+            holder.itemView.setBackgroundResource(if (speaker == Speaker.ME) R.drawable.livesess_utt_me else R.drawable.livesess_utt_them)
             holder.text.text = seg.text
         }
 

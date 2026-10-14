@@ -7,7 +7,7 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
+import com.lordmuffin.jarvisvoice.ui.InstToast
 import androidx.appcompat.app.AppCompatActivity
 
 class DebugLogActivity : AppCompatActivity() {
@@ -15,7 +15,7 @@ class DebugLogActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_debug_log)
-        supportActionBar?.title = "Debug Log"
+        supportActionBar?.title = getString(R.string.chat_debug_title)
 
         val tvLog   = findViewById<TextView>(R.id.tv_log)
         val scroll  = findViewById<ScrollView>(R.id.scroll_log)
@@ -23,7 +23,7 @@ class DebugLogActivity : AppCompatActivity() {
         val btnClear = findViewById<Button>(R.id.btn_clear_log)
 
         fun refresh() {
-            val text = DebugLog.readAll().ifBlank { "(log is empty)" }
+            val text = DebugLog.readAll().ifBlank { getString(R.string.chat_debug_empty) }
             tvLog.text = text
             scroll.post { scroll.fullScroll(ScrollView.FOCUS_DOWN) }
         }
@@ -33,12 +33,12 @@ class DebugLogActivity : AppCompatActivity() {
         btnCopy.setOnClickListener {
             val cb = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cb.setPrimaryClip(ClipData.newPlainText("jarvis_log", tvLog.text))
-            Toast.makeText(this, "Log copied", Toast.LENGTH_SHORT).show()
+            InstToast.show(this, R.string.chat_debug_copied)
         }
 
         btnClear.setOnClickListener {
             DebugLog.clear()
-            tvLog.text = "(cleared)"
+            tvLog.text = getString(R.string.chat_debug_cleared)
         }
     }
 }

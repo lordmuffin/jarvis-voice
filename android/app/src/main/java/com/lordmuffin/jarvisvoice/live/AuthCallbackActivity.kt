@@ -4,11 +4,11 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.SettingsActivity
+import com.lordmuffin.jarvisvoice.ui.InstToast
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
@@ -84,7 +84,7 @@ class AuthCallbackActivity : AppCompatActivity() {
                 throw e
             } catch (e: LiveHttpException) {
                 if (e.status == 400) getString(R.string.live_signin_code_rejected)
-                else getString(R.string.live_signin_failed, "HTTP ${e.status}")
+                else getString(R.string.live_signin_failed, getString(R.string.livesess_http, e.status))
             } catch (e: Exception) {
                 getString(R.string.live_signin_failed, e.message ?: e.javaClass.simpleName)
             } finally {
@@ -97,7 +97,7 @@ class AuthCallbackActivity : AppCompatActivity() {
 
     /** Toasts [message] and returns to Settings, closing the browser tab that sat above it. */
     private fun finishWith(message: String?) {
-        if (message != null) Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        if (message != null) InstToast.show(this, message)
         startActivity(
             Intent(this, SettingsActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)

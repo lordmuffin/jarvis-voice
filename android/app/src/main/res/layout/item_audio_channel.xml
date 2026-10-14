@@ -2,29 +2,24 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="4dp"
-    android:background="@color/jv_surface"
+    android:layout_marginBottom="@dimen/inst_space_4"
+    android:background="@drawable/inst_row_surface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:padding="12dp">
+    android:padding="@dimen/inst_space_12">
 
     <Button
         android:id="@+id/btn_audio_play"
+        style="@style/Widget.Inst.Button.Secondary"
         android:layout_width="wrap_content"
-        android:layout_height="36dp"
-        android:minWidth="0dp"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:backgroundTint="@color/jv_surface2"
-        android:text="@string/detail_play"
-        android:textAllCaps="false"
-        android:textColor="@color/jv_accent"
-        android:textSize="13sp" />
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/inst_touch_target_android"
+        android:text="@string/detail_play" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="@dimen/inst_space_12"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -35,31 +30,30 @@
 
             <TextView
                 android:id="@+id/tv_audio_label"
+                style="@style/Inst.Text.Caption"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/jv_text"
-                android:textSize="13sp" />
+                android:textColor="@color/inst_text" />
 
             <TextView
                 android:id="@+id/tv_audio_time"
+                style="@style/Inst.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="monospace"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp" />
+                android:fontFamily="monospace" />
         </LinearLayout>
 
         <SeekBar
             android:id="@+id/sb_audio"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="@dimen/inst_space_4"
             android:enabled="false"
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
-            android:progressBackgroundTint="@color/jv_surface2"
-            android:progressTint="@color/jv_accent"
-            android:thumbTint="@color/jv_accent" />
+            android:progressBackgroundTint="@color/inst_surface_2"
+            android:progressTint="@color/inst_accent"
+            android:thumbTint="@color/inst_accent" />
     </LinearLayout>
 </LinearLayout>

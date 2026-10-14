@@ -26,15 +26,15 @@ sealed class ServerChannel {
         }
 
     /**
-     * The tag's fill, with `jv_bg` text (`design/README.md`, Color): red for live, amber for lab,
+     * The tag's fill, with `inst_bg` text (`design/README.md`, Color): red for live, amber for lab,
      * grey for anything else, so live is never mistaken for lab.
      */
     @get:ColorRes
     val color: Int
         get() = when (this) {
-            Live -> R.color.jv_error
-            Lab -> R.color.jv_warning
-            is Other -> R.color.jv_text2
+            Live -> R.color.inst_channel_live
+            Lab -> R.color.inst_channel_lab
+            is Other -> R.color.inst_channel_other
         }
 
     companion object {

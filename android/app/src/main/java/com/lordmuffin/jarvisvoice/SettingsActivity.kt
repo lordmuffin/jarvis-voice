@@ -1,8 +1,8 @@
 package com.lordmuffin.jarvisvoice
 
-import android.app.AlertDialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -15,7 +15,8 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
+import android.widget.RadioGroup
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import androidx.browser.customtabs.CustomTabColorSchemeParams
@@ -24,6 +25,8 @@ import androidx.lifecycle.lifecycleScope
 import com.lordmuffin.jarvisvoice.live.LiveApiClient
 import com.lordmuffin.jarvisvoice.live.LiveHttpException
 import com.lordmuffin.jarvisvoice.live.LiveSettings
+import com.lordmuffin.jarvisvoice.ui.InstToast
+import com.lordmuffin.jarvisvoice.ui.ThemeMode
 import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -77,7 +80,7 @@ class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
-        supportActionBar?.title = "Jarvis Voice Settings"
+        supportActionBar?.title = getString(R.string.settings_title)
 
         tvOverlayStatus   = findViewById(R.id.tv_overlay_status)
         btnRestartOverlay = findViewById(R.id.btn_restart_overlay)
@@ -179,6 +182,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         wireLiveSettings()
+        wireAppearance()
 
         // TTS URL + voice
         val etTtsUrl   = findViewById<android.widget.EditText>(R.id.et_tts_url)
@@ -237,7 +241,7 @@ class SettingsActivity : AppCompatActivity() {
         runCatching { refreshStats() }
 
         findViewById<TextView>(R.id.tv_version)?.text =
-            "Jarvis Voice  v${BuildConfig.VERSION_NAME}  (${BuildConfig.GIT_COMMIT})"
+            getString(R.string.settings_version_format, BuildConfig.VERSION_NAME, BuildConfig.GIT_COMMIT)
 
         BottomNav.wire(this, BottomNav.Tab.SETTINGS)
     }
@@ -256,17 +260,17 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun refreshOverlayStatus() {
         val running = VoiceOverlayService.instance != null
-        tvOverlayStatus.text = if (running) "● Running" else "○ Not running"
+        tvOverlayStatus.text = getString(if (running) R.string.settings_overlay_running else R.string.settings_overlay_not_running)
         tvOverlayStatus.setTextColor(
-            getColor(if (running) R.color.jv_success else R.color.jv_error)
+            getColor(if (running) R.color.inst_success else R.color.inst_error)
         )
-        btnRestartOverlay.text = if (running) "Restart" else "Start"
+        btnRestartOverlay.setText(if (running) R.string.settings_overlay_restart else R.string.settings_overlay_start)
     }
 
     private fun restartOverlay() {
         stopService(Intent(this, VoiceOverlayService::class.java))
         startForegroundService(Intent(this, VoiceOverlayService::class.java))
-        Toast.makeText(this, "Overlay restarting…", Toast.LENGTH_SHORT).show()
+        InstToast.show(this, R.string.settings_overlay_restarting)
         Handler(Looper.getMainLooper()).postDelayed({ runCatching { refreshOverlayStatus() } }, 600)
     }
 
@@ -284,20 +288,20 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun refreshVaultFolderLabel() {
         if (VaultNoteWriter.isConfigured(this)) {
-            tvVaultFolder.text = "Folder: ${VaultNoteWriter.displayPath(this)}"
-            tvVaultFolder.setTextColor(getColor(R.color.jv_success))
+            tvVaultFolder.text = getString(R.string.settings_vault_folder, VaultNoteWriter.displayPath(this))
+            tvVaultFolder.setTextColor(getColor(R.color.inst_success))
         } else {
-            tvVaultFolder.text = "No folder selected"
-            tvVaultFolder.setTextColor(getColor(R.color.jv_text2))
+            tvVaultFolder.setText(R.string.settings_vault_none)
+            tvVaultFolder.setTextColor(getColor(R.color.inst_text_2))
         }
     }
 
     private fun refreshSttLabel() {
         val config = SttModelManager(this).getActiveConfig()
         tvActiveSttModel.text = if (config != null) {
-            "Active: ${config.displayName}"
+            getString(R.string.settings_stt_active, config.displayName)
         } else {
-            "No model downloaded"
+            getString(R.string.settings_stt_none)
         }
     }
 
@@ -307,10 +311,10 @@ class SettingsActivity : AppCompatActivity() {
         val config   = ModelRegistry.MODELS.find { it.id == activeId }
         tvActiveLlmModel.text = if (config != null) {
             val backend = LlmEnhancer.activeBackend.takeIf { it != "none" }
-            if (backend != null) "Enhancement: ${config.displayName} [$backend]"
-            else "Enhancement: ${config.displayName}"
+            if (backend != null) getString(R.string.settings_llm_active_backend, config.displayName, backend)
+            else getString(R.string.settings_llm_active, config.displayName)
         } else {
-            "Enhancement: Off"
+            getString(R.string.settings_llm_off)
         }
     }
 
@@ -326,13 +330,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun showInputDevicePicker(deviceRouter: AudioDeviceRouter) {
         val devices = deviceRouter.getInputDevices()
-        val labels  = listOf("System Default") + devices.map { deviceRouter.deviceLabel(it) }
+        val labels  = listOf(getString(R.string.settings_mic_default)) + devices.map { deviceRouter.deviceLabel(it) }
         val savedId = deviceRouter.getSavedDeviceId()
         val currentIndex = if (savedId == AudioDeviceRouter.DEVICE_DEFAULT) 0
                            else devices.indexOfFirst { it.id == savedId }.let { if (it < 0) 0 else it + 1 }
 
         AlertDialog.Builder(this)
-            .setTitle("Microphone")
+            .setTitle(R.string.settings_mic_title)
             .setSingleChoiceItems(labels.toTypedArray(), currentIndex) { dialog, which ->
                 if (which == 0) {
                     deviceRouter.saveDeviceId(AudioDeviceRouter.DEVICE_DEFAULT)
@@ -342,7 +346,7 @@ class SettingsActivity : AppCompatActivity() {
                 tvInputDevice.text = deviceRouter.currentLabel()
                 dialog.dismiss()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.settings_cancel, null)
             .show()
     }
 
@@ -352,8 +356,8 @@ class SettingsActivity : AppCompatActivity() {
         val lifetime = db.getLifetimeStats()
         db.close()
 
-        tvLastWords.text  = last?.wordCount?.toString() ?: "—"
-        tvLastWpm.text    = last?.let { "%.0f".format(it.wpm) } ?: "—"
+        tvLastWords.text  = last?.wordCount?.toString() ?: getString(R.string.settings_stat_none)
+        tvLastWpm.text    = last?.let { "%.0f".format(it.wpm) } ?: getString(R.string.settings_stat_none)
         tvTotalWords.text = lifetime.totalWords.toString()
         tvAvgWpm.text     = "%.0f".format(lifetime.avgWpm)
     }
@@ -399,7 +403,7 @@ class SettingsActivity : AppCompatActivity() {
         fun save(): Boolean {
             val url = etUrl.text.toString().trim().ifBlank { LiveSettings.DEFAULT_SERVER_URL }
             if (!validUrl(url)) {
-                tvStatus.text = "Server URL must start with https://"
+                setLiveStatus(tvStatus, getString(R.string.settings_live_url_scheme))
                 return false
             }
             if (url != live.serverUrl) live.accountName = null
@@ -418,14 +422,14 @@ class SettingsActivity : AppCompatActivity() {
         btnSignIn.setOnClickListener {
             val url = etUrl.text.toString().trim()
             if (url.isBlank()) {
-                tvStatus.text = getString(R.string.live_signin_need_url)
+                setLiveStatus(tvStatus, getString(R.string.live_signin_need_url))
                 return@setOnClickListener
             }
             if (!save()) return@setOnClickListener
             val loginUrl = try {
                 live.beginSignIn(live.serverUrl)
             } catch (e: IllegalArgumentException) {
-                tvStatus.text = "✗ Invalid server URL"
+                setLiveStatus(tvStatus, getString(R.string.settings_live_invalid_url))
                 return@setOnClickListener
             }
             openSignInPage(Uri.parse(loginUrl), tvStatus)
@@ -433,7 +437,7 @@ class SettingsActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btn_live_save).setOnClickListener {
             if (save()) {
-                tvStatus.text = if (live.isConfigured) "Saved." else "Saved. Sign in or add a device token to stream."
+                setLiveStatus(tvStatus, getString(if (live.isConfigured) R.string.settings_live_saved else R.string.settings_live_saved_need_token))
                 refreshLiveAccount()
             }
         }
@@ -441,21 +445,50 @@ class SettingsActivity : AppCompatActivity() {
             if (!save()) return@setOnClickListener
             val token = live.deviceToken
             if (token.isNullOrBlank()) {
-                tvStatus.text = "Sign in or enter a device token first."
+                setLiveStatus(tvStatus, getString(R.string.settings_live_need_token))
                 return@setOnClickListener
             }
-            tvStatus.text = "Testing…"
+            setLiveStatus(tvStatus, getString(R.string.settings_live_testing))
             lifecycleScope.launch {
-                tvStatus.text = try {
+                try {
                     LiveApiClient(live.serverUrl, token).ping()
-                    "✓ Connected to ${live.serverUrl}"
+                    setLiveStatus(tvStatus, getString(R.string.settings_live_connected, live.serverUrl), R.color.inst_success)
                 } catch (e: LiveHttpException) {
-                    if (e.status == 401) "✗ Token rejected (401)" else "✗ HTTP ${e.status}"
+                    val msg = if (e.status == 401) getString(R.string.settings_live_token_rejected)
+                              else getString(R.string.settings_live_http_error, e.status)
+                    setLiveStatus(tvStatus, msg, R.color.inst_error)
                 } catch (e: Exception) {
-                    "✗ ${e.message ?: e.javaClass.simpleName}"
+                    setLiveStatus(tvStatus, getString(R.string.settings_live_error, e.message ?: e.javaClass.simpleName), R.color.inst_error)
                 }
                 refreshLiveAccount()
             }
+        }
+    }
+
+    /** Status line under the Live form: neutral text, or an ok/error colour (word and glyph stay in the text). */
+    private fun setLiveStatus(tv: TextView, text: CharSequence, @androidx.annotation.ColorRes color: Int = R.color.inst_text_2) {
+        tv.text = text
+        tv.setTextColor(getColor(color))
+    }
+
+    /** Appearance: System / Light / Dark. Saving applies the night mode, which recreates this activity. */
+    private fun wireAppearance() {
+        val group = findViewById<RadioGroup>(R.id.rg_theme_mode) ?: return
+        group.check(
+            when (ThemeMode.load(this)) {
+                ThemeMode.SYSTEM -> R.id.rb_theme_system
+                ThemeMode.LIGHT -> R.id.rb_theme_light
+                ThemeMode.DARK -> R.id.rb_theme_dark
+            }
+        )
+        // Listener is set after the preselect, so restoring the saved choice does not re-save and recreate.
+        group.setOnCheckedChangeListener { _, checkedId ->
+            val mode = when (checkedId) {
+                R.id.rb_theme_light -> ThemeMode.LIGHT
+                R.id.rb_theme_dark -> ThemeMode.DARK
+                else -> ThemeMode.SYSTEM
+            }
+            if (mode != ThemeMode.load(this)) ThemeMode.save(this, mode)
         }
     }
 
@@ -479,11 +512,13 @@ class SettingsActivity : AppCompatActivity() {
 
     /** Opens the Pocket-ID login page in a Custom Tab, falling back to any browser. */
     private fun openSignInPage(uri: Uri, tvStatus: TextView) {
+        val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         val colors = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(getColor(R.color.jv_surface))
-            .setNavigationBarColor(getColor(R.color.jv_bg))
+            .setToolbarColor(getColor(R.color.inst_surface))
+            .setNavigationBarColor(getColor(R.color.inst_bg))
             .build()
         val tab = CustomTabsIntent.Builder()
+            .setColorScheme(if (night) CustomTabsIntent.COLOR_SCHEME_DARK else CustomTabsIntent.COLOR_SCHEME_LIGHT)
             .setDefaultColorSchemeParams(colors)
             .setShowTitle(true)
             .build()
@@ -493,7 +528,7 @@ class SettingsActivity : AppCompatActivity() {
             try {
                 startActivity(Intent(Intent.ACTION_VIEW, uri))
             } catch (e2: ActivityNotFoundException) {
-                tvStatus.text = getString(R.string.live_signin_no_browser)
+                setLiveStatus(tvStatus, getString(R.string.live_signin_no_browser))
             }
         }
     }
@@ -506,26 +541,26 @@ class SettingsActivity : AppCompatActivity() {
         val token = live.deviceToken
         if (token.isNullOrBlank()) {
             tv.text = getString(R.string.live_signin_desc)
-            tv.setTextColor(getColor(R.color.jv_text2))
+            tv.setTextColor(getColor(R.color.inst_text_2))
             return
         }
         val cached = live.accountName
         tv.text = cached?.let { getString(R.string.live_signin_as, it) } ?: getString(R.string.live_signin_checking)
-        tv.setTextColor(getColor(if (cached != null) R.color.jv_success else R.color.jv_text2))
+        tv.setTextColor(getColor(if (cached != null) R.color.inst_success else R.color.inst_text_2))
         val serverUrl = live.serverUrl
         liveAccountJob = lifecycleScope.launch {
             try {
                 val me = LiveApiClient(serverUrl, token).me()
                 live.accountName = me.displayName.ifBlank { me.email }
                 tv.text = getString(R.string.live_signin_as, live.accountName ?: me.id)
-                tv.setTextColor(getColor(R.color.jv_success))
+                tv.setTextColor(getColor(R.color.inst_success))
             } catch (e: LiveHttpException) {
                 if (e.status == 401 || e.status == 403) {
                     live.accountName = null
                     tv.text = getString(R.string.live_signin_rejected)
-                    tv.setTextColor(getColor(R.color.jv_error))
+                    tv.setTextColor(getColor(R.color.inst_error))
                 } else if (cached == null) {
-                    tv.text = getString(R.string.live_signin_offline, "HTTP ${e.status}")
+                    tv.text = getString(R.string.live_signin_offline, getString(R.string.settings_http_status, e.status))
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e

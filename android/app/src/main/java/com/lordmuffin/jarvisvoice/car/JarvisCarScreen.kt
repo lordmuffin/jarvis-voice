@@ -11,6 +11,8 @@ import androidx.car.app.model.Template
 import androidx.core.graphics.drawable.IconCompat
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import com.lordmuffin.jarvisvoice.pill.DictationPill
+import com.lordmuffin.jarvisvoice.pill.PillState
 import com.lordmuffin.jarvisvoice.OverlayState
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.VoiceOverlayService
@@ -30,7 +32,7 @@ class JarvisCarScreen(carContext: CarContext) : Screen(carContext) {
 
             override fun onStart(owner: LifecycleOwner) {
                 job = scope.launch {
-                    launch { VoiceOverlayService.carStateFlow.collect    { invalidate() } }
+                    launch { DictationPill.model.state.collect          { invalidate() } }
                     launch { VoiceOverlayService.carLastTextFlow.collect { invalidate() } }
                     launch { VoiceOverlayService.carMutedFlow.collect    { invalidate() } }
                 }
@@ -48,14 +50,15 @@ class JarvisCarScreen(carContext: CarContext) : Screen(carContext) {
     }
 
     override fun onGetTemplate(): Template {
-        val state    = VoiceOverlayService.carStateFlow.value
+        val state    = DictationPill.model.state.value
         val lastText = VoiceOverlayService.carLastTextFlow.value
         val muted    = VoiceOverlayService.carMutedFlow.value
 
         return when (state) {
-            OverlayState.PROCESSING -> buildProcessingTemplate()
-            OverlayState.RECORDING  -> buildRecordingTemplate(muted)
-            else                    -> buildIdleTemplate(lastText, muted, state == OverlayState.DONE)
+            PillState.Processing   -> buildProcessingTemplate()
+            is PillState.Listening -> buildRecordingTemplate(muted)
+            // Idle, Done and Error all show the idle template (a failure leaves nothing new to read).
+            else                   -> buildIdleTemplate(lastText, muted, state is PillState.Done)
         }
     }
 

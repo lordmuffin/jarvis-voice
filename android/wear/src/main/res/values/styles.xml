@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Wear.Label" parent="">
+        <item name="android:textColor">@color/inst_text_2</item>
+        <item name="android:textSize">@dimen/inst_type_micro</item>
+    </style>
+    <style name="Wear.Input" parent="Widget.AppCompat.EditText">
+        <item name="android:background">@drawable/wear_input_bg</item>
+        <item name="android:textColor">@color/inst_text</item>
+        <item name="android:textColorHint">@color/inst_text_2</item>
+        <item name="android:textSize">@dimen/inst_type_meta</item>
+        <item name="android:padding">@dimen/inst_space_8</item>
+    </style>
+    <style name="Wear.Button.Primary" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:background">@drawable/wear_btn_primary</item>
+        <item name="android:textColor">@color/inst_on_accent</item>
+        <item name="android:textSize">@dimen/inst_type_caption</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minHeight">@dimen/inst_control_md</item>
+    </style>
+</resources>

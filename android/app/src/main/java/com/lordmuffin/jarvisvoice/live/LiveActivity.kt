@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Typeface
+import android.text.format.DateUtils
 import android.os.Bundle
 import android.os.SystemClock
 import android.view.LayoutInflater
@@ -16,7 +17,6 @@ import android.widget.ProgressBar
 import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
@@ -30,8 +30,15 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkManager
 import com.lordmuffin.jarvisvoice.BottomNav
+import com.lordmuffin.jarvisvoice.DictationHistoryManager
 import com.lordmuffin.jarvisvoice.R
+import com.lordmuffin.jarvisvoice.SettingsActivity
+import com.lordmuffin.jarvisvoice.VoiceOverlayService
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
+import com.lordmuffin.jarvisvoice.live.protocol.Speaker
+import com.lordmuffin.jarvisvoice.ui.InstToast
+import com.lordmuffin.jarvisvoice.ui.bindConnection
+import com.lordmuffin.jarvisvoice.ui.bindSpeaker
 import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import java.text.DateFormat
 import java.util.Date
@@ -49,6 +56,10 @@ class LiveActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var tvMessage: TextView
+    private lateinit var chipConnection: TextView
+    private lateinit var chipCopilot: TextView
+    private lateinit var tvDictationStatus: TextView
+    private lateinit var tvDictationLast: TextView
     private lateinit var setupGroup: View
     private lateinit var recordingGroup: View
     private lateinit var rgMode: RadioGroup
@@ -65,11 +76,12 @@ class LiveActivity : AppCompatActivity() {
     private lateinit var tvCopilotHeader: TextView
     private lateinit var svCopilot: ScrollView
     private lateinit var tvCopilot: TextView
-    private lateinit var tvTranscriptEmpty: TextView
+    private lateinit var groupTranscriptEmpty: View
     private lateinit var rvTranscript: RecyclerView
     private val adapter = LineAdapter()
 
     private var copilotExpanded = true
+    private val wide by lazy { resources.getBoolean(R.bool.is_wide) }
     private var lastPending: List<SessionMeta> = emptyList()
     /** Set while [renderAwayMode] moves the switch, so it doesn't count as the user's choice. */
     private var settingSwitch = false
@@ -89,6 +101,13 @@ class LiveActivity : AppCompatActivity() {
 
         tvStatus = findViewById(R.id.tv_live_status)
         tvMessage = findViewById(R.id.tv_live_message)
+        chipConnection = findViewById(R.id.chip_live_connection)
+        chipCopilot = findViewById(R.id.chip_live_copilot)
+        tvDictationStatus = findViewById(R.id.tv_dictation_status)
+        tvDictationLast = findViewById(R.id.tv_dictation_last)
+        findViewById<View>(R.id.row_dictation).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         setupGroup = findViewById(R.id.group_live_setup)
         recordingGroup = findViewById(R.id.group_live_recording)
         rgMode = findViewById(R.id.rg_live_mode)
@@ -105,7 +124,7 @@ class LiveActivity : AppCompatActivity() {
         tvCopilotHeader = findViewById(R.id.tv_live_copilot_header)
         svCopilot = findViewById(R.id.sv_live_copilot)
         tvCopilot = findViewById(R.id.tv_live_copilot)
-        tvTranscriptEmpty = findViewById(R.id.tv_live_transcript_empty)
+        groupTranscriptEmpty = findViewById(R.id.group_live_transcript_empty)
         rvTranscript = findViewById(R.id.rv_live_transcript)
 
         rvTranscript.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
@@ -121,9 +140,9 @@ class LiveActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_live_stop).setOnClickListener { LiveSessionService.stop(this) }
         findViewById<Button>(R.id.btn_live_marker).setOnClickListener {
             LiveSessionService.marker(this)
-            Toast.makeText(this, R.string.live_marker_added, Toast.LENGTH_SHORT).show()
+            InstToast.show(this, R.string.live_marker_added)
         }
-        tvCopilotHeader.setOnClickListener {
+        if (!wide) tvCopilotHeader.setOnClickListener {
             copilotExpanded = !copilotExpanded
             render(LiveSessionService.ui.value)
         }
@@ -161,6 +180,27 @@ class LiveActivity : AppCompatActivity() {
         LiveUploadWorker.enqueueInterrupted(this, LiveSessionService.ui.value.sessionId)
         renderAwayMode()
         refreshServerChannel()
+        refreshDictation()
+    }
+
+    /** The dictation row: whether the overlay is running and the last dictation's numbers. */
+    private fun refreshDictation() {
+        val running = VoiceOverlayService.instance != null
+        tvDictationStatus.setText(if (running) R.string.home_dictation_running else R.string.home_dictation_stopped)
+        tvDictationStatus.setTextColor(getColor(if (running) R.color.inst_accent else R.color.inst_text_2))
+        val last = runCatching {
+            val history = DictationHistoryManager(this)
+            try { history.getLastSession() } finally { history.close() }
+        }.getOrNull()
+        tvDictationLast.text = if (last == null) {
+            getString(R.string.home_dictation_none)
+        } else {
+            getString(
+                R.string.home_dictation_last, last.wordCount, "%.0f".format(last.wpm),
+                if (last.transcript != last.rawTranscript) getString(R.string.home_dictation_enhanced) else "",
+                DateUtils.getRelativeTimeSpanString(last.timestamp, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
+            )
+        }
     }
 
     /** Asks the server which release channel it is, for the tag beside its address. */
@@ -195,7 +235,7 @@ class LiveActivity : AppCompatActivity() {
             return
         }
         if (!swLocalOnly.isChecked && !settings.isConfigured) {
-            Toast.makeText(this, R.string.live_not_configured, Toast.LENGTH_LONG).show()
+            InstToast.show(this, R.string.live_not_configured)
             return
         }
         val mode = if (rgMode.checkedRadioButtonId == R.id.rb_live_meeting) SessionMode.MEETING else SessionMode.SOLO
@@ -206,7 +246,7 @@ class LiveActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != REQ_MIC) return
         if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) onStartTapped()
-        else Toast.makeText(this, R.string.live_mic_permission, Toast.LENGTH_LONG).show()
+        else InstToast.show(this, R.string.live_mic_permission)
     }
 
     // region Rendering
@@ -249,83 +289,108 @@ class LiveActivity : AppCompatActivity() {
         when (state.phase) {
             LiveUiState.Phase.IDLE -> if (settings.isConfigured) {
                 val url = settings.serverUrl
-                tvStatus.setTextWithChannel("Server: $url", serverChannel?.takeIf { it.first == url }?.second)
+                tvStatus.setTextWithChannel(getString(R.string.livesess_server, url), serverChannel?.takeIf { it.first == url }?.second)
             } else {
                 tvStatus.text = getString(R.string.live_not_configured)
             }
-            LiveUiState.Phase.STARTING -> tvStatus.text = "Starting…"
-            LiveUiState.Phase.RECORDING -> tvStatus.text = connectionLabel(state)
-            LiveUiState.Phase.STOPPING -> tvStatus.text = "Finishing — sending the rest of the audio…"
+            LiveUiState.Phase.STARTING -> tvStatus.text = getString(R.string.livesess_starting)
+            LiveUiState.Phase.RECORDING -> tvStatus.text = connectionDetail(state)
+            LiveUiState.Phase.STOPPING -> tvStatus.text = getString(R.string.livesess_finishing)
         }
+        val chip = if (idle) ConnectionChip(ConnectionKind.IDLE)
+        else ConnectionChip.of(state.connection, state.localOnly, state.session.lagMs, state.session.llmOk)
+        chipConnection.bindConnection(chip)
+        chipCopilot.visibility = if (chip.copilotOffline) View.VISIBLE else View.GONE
         tvMessage.text = state.message
         tvMessage.visibility = if (state.message.isNullOrBlank()) View.GONE else View.VISIBLE
 
         pbLevel.progress = (state.level * 100).toInt()
         tvDetails.text = buildList<String?> {
-            add(if (state.mode == SessionMode.MEETING) "Meeting" else "Solo")
+            add(getString(if (state.mode == SessionMode.MEETING) R.string.live_mode_meeting else R.string.live_mode_solo))
             add(
                 when (state.localStt) {
-                    LiveUiState.LocalStt.READY -> "on-device drafts on"
-                    LiveUiState.LocalStt.LOADING -> "loading on-device model…"
-                    LiveUiState.LocalStt.UNAVAILABLE -> "no on-device model (Settings → STT Model)"
+                    LiveUiState.LocalStt.READY -> getString(R.string.livesess_drafts_on)
+                    LiveUiState.LocalStt.LOADING -> getString(R.string.livesess_model_loading)
+                    LiveUiState.LocalStt.UNAVAILABLE -> getString(R.string.livesess_model_missing)
                     LiveUiState.LocalStt.OFF -> null
                 }
             )
-            if (state.markers > 0) add("${state.markers} marker${if (state.markers == 1) "" else "s"}")
+            if (state.markers > 0) add(if (state.markers == 1) getString(R.string.livesess_marker_one) else getString(R.string.livesess_markers, state.markers))
         }.filterNotNull().joinToString(" · ")
 
-        renderCopilot(state.session)
+        val streamMs = if (idle) null else SystemClock.elapsedRealtime() - state.startedElapsed
+        renderCopilot(state.session, streamMs)
         val lines = state.session.lines
         adapter.submitList(lines) {
             if (lines.isNotEmpty()) rvTranscript.scrollToPosition(lines.lastIndex)
         }
-        tvTranscriptEmpty.visibility = if (lines.isEmpty() && !idle) View.VISIBLE else View.GONE
+        groupTranscriptEmpty.visibility = if (lines.isEmpty() && !idle) View.VISIBLE else View.GONE
 
         state.session.finalNote?.let { note ->
-            if (idle && state.message == null) tvStatus.text = "Saved to ${note.path}"
+            if (idle && state.message == null) tvStatus.text = getString(R.string.livesess_saved_to, note.path)
         }
     }
 
-    private fun connectionLabel(state: LiveUiState): String {
-        if (state.localOnly) return "● Recording locally"
-        val conn = when (val c = state.connection) {
-            ConnState.Connected -> "● Live"
-            ConnState.Connecting, ConnState.Idle -> "Connecting…"
-            is ConnState.Reconnecting -> "Offline — retrying (${c.attempt})"
-            ConnState.Ended -> "Ended"
-            is ConnState.Failed -> "Failed: ${c.reason}"
+    /** What sits beside the connection chip while recording: tier, lag, queued audio, reconnect attempt. */
+    private fun connectionDetail(state: LiveUiState): String {
+        if (state.localOnly) return getString(R.string.livesess_rec_local)
+        val parts = mutableListOf<String>()
+        when (val c = state.connection) {
+            is ConnState.Reconnecting -> parts += getString(R.string.conn_attempt, c.attempt)
+            is ConnState.Failed -> parts += getString(R.string.conn_failed_reason, c.reason)
+            else -> {}
         }
-        val parts = mutableListOf(conn)
-        state.session.sttTier?.let { parts += "STT $it" }
-        if (state.session.lagMs > 0) parts += "lag ${state.session.lagMs} ms"
-        if (state.unackedMs > 1_000) parts += "%.1f s queued".format(state.unackedMs / 1000.0)
+        state.session.sttTier?.let { parts += getString(R.string.livesess_stt_tier, it) }
+        if (state.session.lagMs > 0) parts += getString(R.string.livesess_lag, state.session.lagMs)
+        if (state.unackedMs > 1_000) parts += getString(R.string.livesess_queued, state.unackedMs / 1000.0)
         return parts.joinToString(" · ")
     }
 
-    private fun renderCopilot(snapshot: SessionSnapshot) {
-        val copilot = snapshot.copilot
-        val text = copilot?.let {
-            buildString {
-                fun section(title: String, items: List<String>) {
-                    if (items.isEmpty()) return
-                    if (isNotEmpty()) append('\n')
-                    append(title).append('\n')
-                    items.forEach { append("• ").append(it).append('\n') }
+    private fun renderCopilot(snapshot: SessionSnapshot, streamMs: Long?) {
+        val sections = CopilotSections.build(snapshot.copilot, snapshot.finalNote, streamMs)
+        val text = if (sections.isEmpty()) null else buildString {
+            for ((section, entries) in sections) {
+                if (isNotEmpty()) append('\n')
+                append(sectionTitle(section)).append('\n')
+                for (e in entries) {
+                    append("• ")
+                    e.kind?.let { append(kindLabel(it)).append(": ") }
+                    append(listOfNotNull(e.text, e.owner?.let { o -> "($o)" }, e.due?.let { d -> getString(R.string.detail_due, d) }).joinToString(" "))
+                    append('\n')
                 }
-                section("Notes", it.notes.map { n -> n.text })
-                section("Actions", it.actions.map { a ->
-                    listOfNotNull(a.text, a.owner?.let { o -> "($o)" }, a.due?.let { d -> "due $d" }).joinToString(" ")
-                })
-                section("Decisions", it.decisions.map { d -> d.text })
-                section("Suggestions", it.suggestions.map { s -> s.text })
-                section("Related", it.related.map { r -> r.title })
-            }.trimEnd()
-        }
+            }
+        }?.trimEnd()
         val has = !text.isNullOrEmpty()
+        if (wide) {
+            // Unfolded: the copilot has its own pane, always open, so there is nothing to collapse.
+            tvCopilotHeader.visibility = View.VISIBLE
+            svCopilot.visibility = View.VISIBLE
+            tvCopilot.text = text
+            return
+        }
         tvCopilotHeader.visibility = if (has) View.VISIBLE else View.GONE
-        tvCopilotHeader.text = "${getString(R.string.live_copilot)} ${if (copilotExpanded) "▼" else "▶"}"
+        tvCopilotHeader.text = "${getString(R.string.live_copilot)} ${getString(if (copilotExpanded) R.string.livesess_copilot_expanded else R.string.livesess_copilot_collapsed)}"
         svCopilot.visibility = if (has && copilotExpanded) View.VISIBLE else View.GONE
         tvCopilot.text = text
+    }
+
+    private fun sectionTitle(section: CopilotSection) = getString(
+        when (section) {
+            CopilotSection.SUGGESTIONS -> R.string.copilot_section_suggestions
+            CopilotSection.ACTIONS -> R.string.copilot_section_actions
+            CopilotSection.DECISIONS -> R.string.copilot_section_decisions
+            CopilotSection.NOTES -> R.string.copilot_section_notes
+            CopilotSection.RELATED -> R.string.copilot_section_related
+            CopilotSection.FINAL_NOTE -> R.string.copilot_section_final_note
+        }
+    )
+
+    private fun kindLabel(kind: String) = when (kind) {
+        "question" -> getString(R.string.copilot_kind_question)
+        "gap" -> getString(R.string.copilot_kind_gap)
+        "counterpoint" -> getString(R.string.copilot_kind_counterpoint)
+        "fact_check" -> getString(R.string.copilot_kind_fact_check)
+        else -> kind
     }
 
     private fun refreshPending(state: LiveUiState) {
@@ -341,21 +406,21 @@ class LiveActivity : AppCompatActivity() {
             val started = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(meta.startedAt))
             row.findViewById<TextView>(R.id.tv_pending_title).text = meta.title ?: started
             row.findViewById<TextView>(R.id.tv_pending_state).text = when {
-                meta.state == SessionMeta.State.FAILED -> "Failed: ${meta.error ?: "server rejected it"}"
-                meta.serverId == null -> "Recorded locally · $started"
-                meta.state == SessionMeta.State.RECORDING -> "Interrupted · resuming upload"
-                else -> "Uploading in the background"
+                meta.state == SessionMeta.State.FAILED -> getString(R.string.livesess_pending_failed, meta.error ?: getString(R.string.livesess_pending_rejected))
+                meta.serverId == null -> getString(R.string.livesess_pending_local, started)
+                meta.state == SessionMeta.State.RECORDING -> getString(R.string.livesess_pending_interrupted)
+                else -> getString(R.string.livesess_pending_uploading)
             }
             val upload = row.findViewById<Button>(R.id.btn_pending_upload)
             upload.visibility = if (meta.state == SessionMeta.State.FAILED && meta.serverId != null) View.GONE else View.VISIBLE
             upload.setOnClickListener {
                 if (!settings.isConfigured) {
-                    Toast.makeText(this, R.string.live_not_configured, Toast.LENGTH_LONG).show()
+                    InstToast.show(this, R.string.live_not_configured)
                     return@setOnClickListener
                 }
                 if (meta.state == SessionMeta.State.FAILED) repo.write(meta.copy(state = SessionMeta.State.PENDING, error = null))
                 LiveUploadWorker.enqueue(this, meta.id)
-                Toast.makeText(this, R.string.live_upload_queued, Toast.LENGTH_SHORT).show()
+                InstToast.show(this, R.string.live_upload_queued)
             }
             row.findViewById<Button>(R.id.btn_pending_delete).setOnClickListener { confirmDelete(meta) }
             pendingList.addView(row)
@@ -380,6 +445,7 @@ class LiveActivity : AppCompatActivity() {
     private class LineAdapter : ListAdapter<TranscriptLine, LineAdapter.Holder>(DIFF) {
         class Holder(view: View) : RecyclerView.ViewHolder(view) {
             val time: TextView = view.findViewById(R.id.tv_line_time)
+            val speaker: TextView = view.findViewById(R.id.tv_line_speaker)
             val text: TextView = view.findViewById(R.id.tv_line_text)
         }
 
@@ -390,9 +456,11 @@ class LiveActivity : AppCompatActivity() {
             val line = getItem(position)
             val ctx = holder.itemView.context
             holder.time.text = LocalMarkdown.clock(line.startMs)
+            holder.speaker.bindSpeaker(line.speaker)
             holder.text.text = line.text
             holder.text.setTypeface(null, if (line.isDraft) Typeface.ITALIC else Typeface.NORMAL)
-            holder.text.setTextColor(ctx.getColor(if (line.isDraft) R.color.jv_text2 else R.color.jv_text))
+            holder.itemView.setBackgroundResource(if (line.speaker == Speaker.ME) R.drawable.livesess_utt_me else R.drawable.livesess_utt_them)
+            holder.text.setTextColor(ctx.getColor(if (line.isDraft) R.color.inst_text_2 else R.color.inst_text))
         }
 
         companion object {

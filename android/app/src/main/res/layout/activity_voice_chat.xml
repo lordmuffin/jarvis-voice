@@ -2,17 +2,17 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/jv_bg">
+    android:background="@color/inst_bg">
 
     <!-- Conversation list — leaves room for the control panel + bottom nav -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_messages"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="192dp"
+        android:layout_marginBottom="@dimen/app_chat_panel_reserve"
         android:clipToPadding="false"
-        android:paddingTop="12dp"
-        android:paddingBottom="8dp" />
+        android:paddingTop="@dimen/inst_space_12"
+        android:paddingBottom="@dimen/inst_space_8" />
 
     <include
         layout="@layout/bottom_nav"
@@ -28,23 +28,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="@dimen/app_chat_nav_inset"
         android:orientation="vertical"
-        android:background="@color/jv_bg"
-        android:paddingTop="6dp">
+        android:background="@color/inst_bg"
+        android:paddingTop="@dimen/inst_space_8">
 
         <!-- Streaming preview — visible while LLM is responding -->
         <TextView
             android:id="@+id/tv_streaming"
+            style="@style/Inst.Text.Chat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:maxLines="3"
             android:ellipsize="end"
-            android:textSize="13sp"
-            android:textColor="@color/jv_accent"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="6dp"
+            android:textColor="@color/inst_accent"
+            android:paddingStart="@dimen/inst_space_16"
+            android:paddingEnd="@dimen/inst_space_16"
+            android:paddingBottom="@dimen/inst_space_8"
             android:visibility="gone" />
 
         <!-- Context usage: full-width progress bar -->
@@ -52,14 +52,14 @@
             android:id="@+id/pb_context"
             style="?android:attr/progressBarStyleHorizontal"
             android:layout_width="match_parent"
-            android:layout_height="3dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="4dp"
+            android:layout_height="@dimen/app_chat_context_bar"
+            android:layout_marginStart="@dimen/inst_space_12"
+            android:layout_marginEnd="@dimen/inst_space_12"
+            android:layout_marginTop="@dimen/inst_space_4"
             android:max="32768"
             android:progress="0"
-            android:progressTint="@color/jv_accent"
-            android:progressBackgroundTint="@color/jv_surface" />
+            android:progressTint="@color/inst_accent"
+            android:progressBackgroundTint="@color/inst_surface_2" />
 
         <!-- Token count + action buttons (separate row below bar) -->
         <LinearLayout
@@ -67,147 +67,113 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp">
+            android:paddingStart="@dimen/inst_space_12"
+            android:paddingEnd="@dimen/inst_space_12"
+            android:paddingTop="@dimen/inst_space_4"
+            android:paddingBottom="@dimen/inst_space_4">
 
             <TextView
                 android:id="@+id/tv_context_tokens"
+                style="@style/Inst.Text.Micro"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="0 tkns"
-                android:textSize="10sp"
-                android:textColor="@color/jv_text2" />
+                android:text="@string/chat_tokens_zero" />
 
             <Button
                 android:id="@+id/btn_sessions"
+                style="@style/Widget.Inst.Button.Secondary.Sm"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="Chats"
-                android:textSize="11sp"
-                android:textAllCaps="false"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:stateListAnimator="@null"
-                android:layout_marginEnd="6dp" />
+                android:layout_height="wrap_content"
+                android:text="@string/chat_btn_chats"
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_new_convo"
+                style="@style/Widget.Inst.Button.Secondary.Sm"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="New"
-                android:textSize="11sp"
-                android:textAllCaps="false"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:stateListAnimator="@null"
-                android:layout_marginEnd="6dp" />
+                android:layout_height="wrap_content"
+                android:text="@string/chat_btn_new"
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_compact"
+                style="@style/Widget.Inst.Button.Secondary.Sm"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="Compact"
-                android:textSize="11sp"
-                android:textAllCaps="false"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:stateListAnimator="@null" />
+                android:layout_height="wrap_content"
+                android:text="@string/chat_btn_compact" />
 
         </LinearLayout>
 
         <!-- Mode toggle + status + model selector row -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="40dp"
+            android:layout_height="@dimen/inst_row"
             android:orientation="horizontal"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="@dimen/inst_space_12"
+            android:paddingEnd="@dimen/inst_space_12"
             android:gravity="center_vertical">
 
-            <!-- Voice mode button -->
+            <!-- Voice mode button (role switched in code by applyModeUi) -->
             <Button
                 android:id="@+id/btn_mode_voice"
+                style="@style/Widget.Inst.Button.Primary.Sm"
                 android:layout_width="0dp"
-                android:layout_height="32dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="🎙 Voice"
-                android:textSize="12sp"
-                android:background="@drawable/pill_background_accent"
-                android:textColor="@color/jv_text"
-                android:stateListAnimator="@null"
-                android:layout_marginEnd="4dp" />
+                android:text="@string/chat_mode_voice"
+                android:layout_marginEnd="@dimen/inst_space_4" />
 
             <!-- Type mode button -->
             <Button
                 android:id="@+id/btn_mode_type"
+                style="@style/Widget.Inst.Button.Secondary.Sm"
                 android:layout_width="0dp"
-                android:layout_height="32dp"
+                android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="⌨️ Type"
-                android:textSize="12sp"
-                android:background="@drawable/pill_background_dim"
-                android:textColor="@color/jv_text2"
-                android:stateListAnimator="@null"
-                android:layout_marginEnd="8dp" />
+                android:text="@string/chat_mode_type"
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <!-- Status label (fills remaining space) -->
             <TextView
                 android:id="@+id/tv_chat_status"
+                style="@style/Inst.Text.Meta"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:gravity="center"
-                android:textSize="11sp"
-                android:textColor="@color/jv_text2" />
+                android:gravity="center" />
 
             <!-- Model selector button -->
             <Button
                 android:id="@+id/btn_model"
+                style="@style/Widget.Inst.Button.Secondary.Sm"
                 android:layout_width="wrap_content"
-                android:layout_height="32dp"
-                android:text="Model ▾"
-                android:textSize="11sp"
-                android:background="@drawable/pill_background_dim"
-                android:textColor="@color/jv_text2"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:stateListAnimator="@null"
+                android:layout_height="wrap_content"
+                android:text="@string/chat_model_default"
                 android:maxLines="1"
                 android:ellipsize="end" />
 
         </LinearLayout>
 
-        <!-- Voice input panel (visible in voice mode) -->
+        <!-- Voice input panel (visible in voice mode); Danger while a conversation runs -->
         <Button
             android:id="@+id/btn_talk"
+            style="@style/Widget.Inst.Button.Primary.Lg"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
-            android:background="@drawable/pill_background_accent"
-            android:text="🎙  Start Talking"
-            android:textColor="@color/jv_text"
-            android:textSize="15sp"
-            android:stateListAnimator="@null" />
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/inst_space_12"
+            android:layout_marginEnd="@dimen/inst_space_12"
+            android:layout_marginTop="@dimen/inst_space_8"
+            android:text="@string/chat_talk_start" />
 
         <!-- Type input panel (hidden in voice mode) -->
         <LinearLayout
             android:id="@+id/ll_type_input"
             android:layout_width="match_parent"
-            android:layout_height="52dp"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
-            android:layout_marginTop="6dp"
+            android:layout_height="@dimen/inst_control_lg"
+            android:layout_marginStart="@dimen/inst_space_12"
+            android:layout_marginEnd="@dimen/inst_space_12"
+            android:layout_marginTop="@dimen/inst_space_8"
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:visibility="gone">
@@ -217,39 +183,33 @@
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
                 android:layout_weight="1"
-                android:background="@drawable/pill_background_dim"
-                android:hint="Type a message…"
-                android:textColorHint="@color/jv_text2"
-                android:textColor="@color/jv_text"
-                android:textSize="14sp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
+                android:hint="@string/chat_type_hint"
                 android:imeOptions="actionSend"
                 android:inputType="textMultiLine|textCapSentences"
                 android:maxLines="3"
                 android:singleLine="false"
-                android:layout_marginEnd="6dp" />
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_send_text"
-                android:layout_width="52dp"
+                style="@style/Widget.Inst.Button.Primary"
+                android:layout_width="@dimen/app_chat_send_width"
                 android:layout_height="match_parent"
-                android:text="▶"
-                android:textSize="18sp"
-                android:background="@drawable/pill_background_accent"
-                android:textColor="@color/jv_text"
-                android:stateListAnimator="@null"
-                android:layout_marginEnd="6dp" />
+                android:text="@string/chat_send_glyph"
+                android:textSize="@dimen/inst_type_body_lg"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp"
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_delegate"
-                android:layout_width="52dp"
+                style="@style/Widget.Inst.Button.Secondary"
+                android:layout_width="@dimen/app_chat_send_width"
                 android:layout_height="match_parent"
-                android:text="🤖"
-                android:textSize="18sp"
-                android:background="@drawable/pill_background_dim"
-                android:textColor="@color/jv_text"
-                android:stateListAnimator="@null" />
+                android:text="@string/chat_delegate_glyph"
+                android:textSize="@dimen/inst_type_body_lg"
+                android:paddingStart="0dp"
+                android:paddingEnd="0dp" />
 
         </LinearLayout>
 
