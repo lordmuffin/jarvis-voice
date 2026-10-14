@@ -28,8 +28,8 @@ export async function loadMe(): Promise<void> {
   }
 }
 
-/** The release channel when it is not "live" (e.g. "lab"), so an unstable server is never
- * mistaken for the real one. null on live, or while unknown. */
+/** The release channel this server says it is ("live", or e.g. "lab"), shown next to the
+ * wordmark so live and lab are never mistaken for each other. null while unknown. */
 export const releaseChannel = signal<string | null>(null);
 
 /** The version (and commit, when known) of the server this dashboard is running on, shown
@@ -39,7 +39,7 @@ export const serverBuild = signal<{ version: string; commit: string } | null>(nu
 export async function loadHealth(): Promise<void> {
   try {
     const { environment: env, version, commit } = await health();
-    releaseChannel.value = env && env !== "live" ? env : null;
+    releaseChannel.value = env || null;
     serverBuild.value = version ? { version, commit: commit ?? "" } : null;
   } catch {
     /* an old server without the field, or offline: show nothing */
