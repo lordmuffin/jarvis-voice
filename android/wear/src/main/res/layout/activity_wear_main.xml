@@ -13,21 +13,10 @@
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="@dimen/inst_space_12">
         android:padding="@dimen/inst_space_8">
 
         <!-- Recording timer, or the state glyph (■ saved, ✓ captured, ⚑ failed) -->
         <TextView
-            android:id="@+id/tv_response"
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:gravity="center"
-            android:textColor="@color/inst_text_2"
-            android:textSize="@dimen/inst_type_caption"
-            android:ellipsize="end"
-            android:maxLines="4"
-            android:text="@string/wear_tap_to_capture" />
             android:id="@+id/tv_timer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -42,10 +31,6 @@
             android:id="@+id/tv_state_glyph"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/inst_space_8"
-            android:textColor="@color/inst_text_2"
-            android:textSize="@dimen/inst_type_micro"
-            android:text="" />
             android:textColor="@color/inst_text"
             android:textSize="28sp"
             android:visibility="gone" />
@@ -55,7 +40,6 @@
             android:id="@+id/btn_record"
             android:layout_width="72dp"
             android:layout_height="72dp"
-            android:text="@string/wear_mic_glyph"
             android:layout_marginTop="@dimen/inst_space_8"
             android:layout_marginBottom="@dimen/inst_space_8"
             android:text="🎙"
@@ -82,11 +66,6 @@
             android:id="@+id/tv_sync_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/inst_space_4"
-            android:textColor="@color/inst_error"
-            android:textSize="@dimen/inst_type_meta"
-            android:visibility="invisible"
-            android:text="@string/wear_clock_zero" />
             android:textColor="@color/inst_text_2"
             android:textSize="@dimen/inst_type_meta"
             android:text="" />
@@ -95,11 +74,6 @@
             android:id="@+id/tv_settings"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/inst_space_8"
-            android:text="@string/wear_gear"
-            android:textColor="@color/inst_text_2"
-            android:textSize="@dimen/inst_type_body"
-            android:padding="@dimen/inst_space_8" />
             android:minWidth="@dimen/inst_control_md"
             android:minHeight="@dimen/inst_control_md"
             android:gravity="center"

@@ -1,14 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Instrument colours (@color/inst_*, light + dark); follows the watch's day/night setting. -->
-    <style name="Theme.JarvisWear" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/inst_accent</item>
-        <item name="colorPrimaryDark">@color/inst_bg</item>
-        <item name="colorAccent">@color/inst_accent</item>
-        <item name="android:windowBackground">@color/inst_bg</item>
-        <item name="android:textColorPrimary">@color/inst_text</item>
-        <item name="android:textColorSecondary">@color/inst_text_2</item>
-        <item name="android:textColorHint">@color/inst_text_2</item>
     <style name="Theme.JarvisWear" parent="Theme.AppCompat.NoActionBar">
         <item name="colorPrimary">@color/inst_accent</item>
         <item name="colorPrimaryDark">@color/inst_surface_2</item>

@@ -95,8 +95,6 @@ class WearMainActivity : WearBaseActivity() {
         tvTimer.visibility = View.VISIBLE
         tvGlyph.visibility = View.GONE
         handler.post(timerRunnable)
-        btnRecord.setText(R.string.wear_stop_glyph)
-        tvResponse.setText(R.string.wear_recording)
         root.setBackgroundResource(R.drawable.rec_ring)
         btnRecord.setBackgroundResource(R.drawable.btn_stop_bg)
         btnRecord.setTextColor(ContextCompat.getColor(this, R.color.inst_text))
@@ -112,8 +110,6 @@ class WearMainActivity : WearBaseActivity() {
     private fun stopCapture(rec: AudioRecorder) {
         val file = rec.stopRecording()
         handler.removeCallbacks(timerRunnable)
-        tvTimer.visibility = View.INVISIBLE
-        btnRecord.setText(R.string.wear_mic_glyph)
         tvTimer.visibility = View.GONE
         root.setBackgroundColor(ContextCompat.getColor(this, R.color.inst_bg))
         btnRecord.setBackgroundResource(R.drawable.btn_record_bg)
@@ -129,8 +125,6 @@ class WearMainActivity : WearBaseActivity() {
             RecordingStore.get(applicationContext).insert(file.absolutePath, System.currentTimeMillis())
             enqueueUpload()
         }
-        tvResponse.setText(R.string.wear_saved_will_sync)
-        tvSyncStatus.setText(R.string.wear_pending)
         // The latestFlow collector renders the Saved state; remember the length for its meta line.
         lastDuration = duration
     }
@@ -149,24 +143,6 @@ class WearMainActivity : WearBaseActivity() {
     private fun observeLatestRecording() {
         lifecycleScope.launch {
             RecordingStore.get(this@WearMainActivity).latestFlow.collect { rec ->
-                if (rec == null) {
-                    tvResponse.setText(R.string.wear_tap_to_capture)
-                    tvSyncStatus.text = ""
-                    return@collect
-                }
-                when (rec.status) {
-                    SyncStatus.PENDING -> {
-                        tvResponse.setText(R.string.wear_saved_will_sync)
-                        tvSyncStatus.setText(R.string.wear_pending)
-                    }
-                    SyncStatus.SYNCED -> {
-                        tvResponse.text = rec.response?.takeIf { it.isNotBlank() } ?: getString(R.string.wear_captured)
-                        tvSyncStatus.setText(R.string.wear_synced)
-                    }
-                    SyncStatus.FAILED -> {
-                        tvResponse.setText(R.string.wear_sync_failed)
-                        tvSyncStatus.setText(R.string.wear_failed)
-                    }
                 if (recorder?.isActive == true) return@collect // Recording owns the screen.
                 val waiting = withContext(Dispatchers.IO) {
                     RecordingStore.get(applicationContext).getPending().size
@@ -209,7 +185,6 @@ class WearMainActivity : WearBaseActivity() {
         if (requestCode == RC_AUDIO && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
             startCapture(recorder ?: return)
         } else {
-            Toast.makeText(this, R.string.wear_mic_permission, Toast.LENGTH_SHORT).show()
             Toast.makeText(this, getString(R.string.wear_mic_required), Toast.LENGTH_SHORT).show()
         }
     }

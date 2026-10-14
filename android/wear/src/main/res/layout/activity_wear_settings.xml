@@ -21,11 +21,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/wear_settings_title"
-                android:textColor="@color/inst_text"
-                android:textSize="@dimen/inst_type_body"
-                android:gravity="center"
-                android:layout_marginBottom="@dimen/inst_space_12" />
                 android:text="@string/wear_settings"
                 android:textColor="@color/inst_text"
                 android:textStyle="bold"
@@ -36,8 +31,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                style="@style/Wear.Label"
-                android:text="@string/wear_api_key" />
                 android:paddingStart="@dimen/inst_space_12"
                 android:text="API key"
                 android:textColor="@color/inst_text_2"
@@ -46,11 +39,6 @@
             <EditText
                 android:id="@+id/et_api_key"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                style="@style/Wear.Input"
-                android:inputType="textPassword"
-                android:hint="@string/wear_hint_api_key"
-                android:layout_marginBottom="@dimen/inst_space_12" />
                 android:layout_height="48dp"
                 android:inputType="textPassword"
                 android:fontFamily="monospace"
@@ -66,8 +54,6 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                style="@style/Wear.Label"
-                android:text="@string/wear_server_url" />
                 android:paddingStart="@dimen/inst_space_12"
                 android:text="Server URL"
                 android:textColor="@color/inst_text_2"
@@ -76,11 +62,6 @@
             <EditText
                 android:id="@+id/et_server_url"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                style="@style/Wear.Input"
-                android:inputType="textUri"
-                android:hint="@string/wear_hint_server_url"
-                android:layout_marginBottom="@dimen/inst_space_16" />
                 android:layout_height="48dp"
                 android:inputType="textUri"
                 android:fontFamily="monospace"
@@ -96,9 +77,6 @@
             <Button
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                style="@style/Wear.Button.Primary"
-                android:text="@string/wear_save" />
                 android:layout_height="48dp"
                 android:text="Save"
                 android:textColor="@color/inst_on_accent"

@@ -22,7 +22,6 @@ android {
         }
     }
 
-    // Instrument design-system resources, vendored (managed, never edit) by the Instrument sync PR.
     sourceSets["main"].res.srcDir("src/instrument/android/res")
 
     compileOptions {

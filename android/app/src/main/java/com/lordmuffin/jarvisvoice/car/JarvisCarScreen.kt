@@ -13,7 +13,6 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.lordmuffin.jarvisvoice.pill.DictationPill
 import com.lordmuffin.jarvisvoice.pill.PillState
-import com.lordmuffin.jarvisvoice.OverlayState
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.VoiceOverlayService
 import kotlinx.coroutines.CoroutineScope
