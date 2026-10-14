@@ -284,11 +284,12 @@ test("publishing: edit a note, open its pull request, merge it", async ({ page }
   await expect(recent.getByTestId("publication-chip")).toHaveText(/Merged/);
 });
 
-test("lab: LAB next to the wordmark, signed out and in; nothing on live", async ({ page }) => {
-  // This server is live: no tag.
+test("release channel tag: LAB on lab, LIVE on live, signed out and in", async ({ page }) => {
+  // This server is live: a red LIVE tag.
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Jarvis Live" })).toBeVisible();
-  await expect(page.getByTestId("release-channel")).toHaveCount(0);
+  const liveHeading = page.getByRole("heading", { name: /Jarvis Live/ });
+  await expect(liveHeading.getByTestId("release-channel")).toHaveText("live");
+  await expect(liveHeading.getByTestId("release-channel")).toHaveClass(/release-channel--live/);
 
   // The same app, told it is the lab server.
   await page.route("**/healthz", (route) =>
@@ -297,8 +298,9 @@ test("lab: LAB next to the wordmark, signed out and in; nothing on live", async 
     }),
   );
   await page.goto("/");
-  const heading = page.getByRole("heading", { name: "Jarvis Live" });
+  const heading = page.getByRole("heading", { name: /Jarvis Live/ });
   await expect(heading.getByTestId("release-channel")).toHaveText("lab");
+  await expect(heading.getByTestId("release-channel")).not.toHaveClass(/release-channel--live/);
   await expect(heading.getByTestId("release-channel")).toHaveCSS("text-transform", "uppercase");
   await signIn(page, "alice");
   const brand = page.getByRole("banner").getByRole("link", { name: /Jarvis Live/ });

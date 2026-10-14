@@ -93,7 +93,8 @@ code,
   align-items: center;
   gap: 8px;
 }
-/* A state, so a state color and the word itself. Filled, so it reads at a glance. */
+/* A state, so a state color and the word itself. Filled, so it reads at a glance: amber for
+   lab (or any other channel), red for live. */
 .release-channel {
   padding: 2px 6px;
   background: var(--warning);
@@ -103,6 +104,9 @@ code,
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+.release-channel--live {
+  background: var(--error);
 }
 .nav {
   display: flex;

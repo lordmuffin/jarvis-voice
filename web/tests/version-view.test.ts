@@ -3,6 +3,7 @@ import { h, render } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadHealth, releaseChannel, serverBuild } from "../src/store";
 import { ServerVersion } from "../src/views/ServerVersion";
+import { Wordmark } from "../src/views/Wordmark";
 
 const healthz = (body: unknown) =>
   vi.stubGlobal(
@@ -14,6 +15,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   serverBuild.value = null;
   releaseChannel.value = null;
+  render(null, document.body);
   document.body.innerHTML = "";
 });
 
@@ -23,6 +25,12 @@ describe("server version", () => {
     await loadHealth();
     expect(serverBuild.value).toEqual({ version: "0.16.0", commit: "abc1234" });
     expect(releaseChannel.value).toBe("lab");
+  });
+
+  it("knows the live channel too, so live can say so", async () => {
+    healthz({ status: "ok", environment: "live", version: "0.16.0", commit: "abc1234" });
+    await loadHealth();
+    expect(releaseChannel.value).toBe("live");
   });
 
   it("knows nothing from an old server without the field", async () => {
@@ -45,5 +53,28 @@ describe("server version", () => {
     serverBuild.value = { version: "unknown", commit: "" };
     render(h(ServerVersion, {}), document.body);
     expect(document.querySelector("[data-testid=server-version]")).toBeNull();
+  });
+});
+
+describe("release channel tag", () => {
+  const tag = () => document.querySelector("[data-testid=release-channel]");
+
+  it("tags live as live, in the live (red) style", () => {
+    releaseChannel.value = "live";
+    render(h(Wordmark, {}), document.body);
+    expect(tag()?.textContent).toBe("live");
+    expect(tag()?.classList.contains("release-channel--live")).toBe(true);
+  });
+
+  it("tags lab as lab, not in the live style", () => {
+    releaseChannel.value = "lab";
+    render(h(Wordmark, {}), document.body);
+    expect(tag()?.textContent).toBe("lab");
+    expect(tag()?.classList.contains("release-channel--live")).toBe(false);
+  });
+
+  it("shows no tag while the channel is unknown", () => {
+    render(h(Wordmark, {}), document.body);
+    expect(tag()).toBeNull();
   });
 });
