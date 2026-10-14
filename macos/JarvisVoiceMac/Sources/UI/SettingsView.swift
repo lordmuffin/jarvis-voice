@@ -87,12 +87,12 @@ struct SettingsView: View {
 
     private func awaySection(settings: Bindable<SettingsModel>) -> some View {
         section("Away from home") {
-            Toggle("Local only away from home", isOn: Binding(
+            Toggle("Local-only away from home", isOn: Binding(
                 get: { settings.wrappedValue.awayMode.enabled },
                 set: { settings.wrappedValue.awayMode = settings.wrappedValue.awayMode.withEnabled($0) }
             ))
             .toggleStyle(InstSwitchStyle())
-            InstHelp("Records on this Mac when the server can\u{2019}t be reached and NetBird is off. Flip Local only in the menu to override until you next leave or get home.")
+            InstHelp("Records on this Mac when the server can\u{2019}t be reached and NetBird is off. Flip Local-only in the menu to override until you next leave or get home.")
         }
     }
 
@@ -105,7 +105,7 @@ struct SettingsView: View {
                 }
                 .labelsHidden()
                 .pickerStyle(.menu)
-                Button("Refresh devices") { devices = AudioDevices.inputDevices() }
+                Button("Refresh Devices") { devices = AudioDevices.inputDevices() }
                     .buttonStyle(InstButtonStyle())
             }
         }
@@ -133,11 +133,14 @@ struct SettingsView: View {
                 InstSegmented(options: TriggerMode.allCases, selection: settings.dictationMode, title: { $0.title })
                     .disabled(off)
                     .opacity(off ? 0.5 : 1)
+                    .help(off ? "Choose a dictation key first." : "")
             }
             Toggle("Paste at the cursor (always copied to the clipboard)", isOn: settings.dictationPaste)
                 .toggleStyle(InstSwitchStyle())
                 .disabled(off)
                 .opacity(off ? 0.5 : 1)
+                .help(off ? "Choose a dictation key first." : "")
+            if off { InstHelp("Choose a dictation key first.") }
             if !off {
                 if model.dictation.accessibilityTrusted {
                     InstHelp("Accessibility: allowed")
@@ -168,8 +171,8 @@ struct SettingsView: View {
     }
 
     private var serverVersionText: String {
-        if model.settings.serverBaseURL == nil { return "No server URL" }
-        return model.serverVersion.map { "v\($0)" } ?? "Version not reported yet"
+        if model.settings.serverBaseURL == nil { return "\u{2014}" }
+        return model.serverVersion.map { "v\($0)" } ?? "\u{2014}"
     }
 }
 

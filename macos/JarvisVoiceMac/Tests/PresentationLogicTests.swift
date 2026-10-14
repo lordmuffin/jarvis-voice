@@ -130,13 +130,30 @@ final class PresentationLogicTests: XCTestCase {
     // MARK: Menu
 
     func testMenuStatusAndServerLines() {
-        XCTAssertEqual(MenuText.status(link: .connected, isRecording: true), "\u{25CF} Connected")
+        XCTAssertEqual(MenuText.status(link: .connected, isRecording: true), "\u{25CF} Live")
         XCTAssertEqual(MenuText.status(link: .idle, isRecording: false), "\u{25CB} Idle")
-        XCTAssertEqual(MenuText.status(link: .failed("boom"), isRecording: true), "\u{2715} Failed: boom")
+        XCTAssertEqual(MenuText.status(link: .offlineLocal, isRecording: true), "\u{25CB} Local-only")
+        XCTAssertEqual(MenuText.status(link: .failed("boom"), isRecording: true), "\u{2715} Degraded: boom")
         XCTAssertEqual(
             MenuText.server(channel: .lab, host: "live.lab.apj.dev", version: "0.12.0"),
             "Server: LAB \u{00B7} live.lab.apj.dev (0.12.0)"
         )
         XCTAssertNil(MenuText.server(channel: nil, host: "x", version: nil))
+    }
+
+    func testCopilotKindsFollowTheCanonicalOrder() {
+        // Actions, Decisions, Notes, Related: the order every Jarvis app shows.
+        XCTAssertEqual(CopilotKind.allCases.map(\.rawValue), ["Actions", "Decisions", "Notes", "Related"])
+        XCTAssertEqual(CopilotFilter.allCases.map(\.rawValue), ["All", "Actions", "Decisions", "Notes", "Related"])
+    }
+
+    func testMenuHeaderNamesTheChannel() {
+        XCTAssertEqual(MenuText.header(version: "0.12.0", channel: .lab), "Jarvis Voice 0.12.0 \u{00B7} LAB")
+        XCTAssertEqual(MenuText.header(version: "0.12.0", channel: .live), "Jarvis Voice 0.12.0 \u{00B7} LIVE")
+        XCTAssertEqual(MenuText.header(version: "0.12.0", channel: nil), "Jarvis Voice 0.12.0")
+        XCTAssertEqual(
+            MenuText.server(channel: .live, host: "live.apj.dev", version: nil),
+            "Server: LIVE \u{00B7} live.apj.dev"
+        )
     }
 }

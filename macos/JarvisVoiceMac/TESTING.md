@@ -39,7 +39,7 @@ Record the result and a line of evidence for each.
 | B5 | Call on laptop speakers (echo) | Same call, speakers at normal volume. | No duplicated "Them" text in the **final** transcript; voice processing active (no echo warning in menu). | NOT RUN |
 | B6 | Wi-Fi off for 60 s mid-session | Turn Wi-Fi off, keep talking 60 s, turn it on. | Status dot goes amber ("Reconnecting"), then green. Final transcript has no gap or duplicate over that minute. | NOT RUN |
 | B7 | Local-only session | Toggle **Local only**, record 2 min, stop. Tail the server logs during the session. | No request from this Mac reaches the server. A Markdown file appears in `~/Documents/Jarvis Live/`. Status shows "Offline (local only)". | NOT RUN |
-| B8 | Upload for full processing | From B7, menu > "Upload for full processing". | Server creates a session and processes the audio; the Markdown front matter changes to `uploaded: <session id>`; entry leaves the menu. | NOT RUN |
+| B8 | Upload for Full Processing | From B7, menu > "Upload for Full Processing". | Server creates a session and processes the audio; the Markdown front matter changes to `uploaded: <session id>`; entry leaves the menu. | NOT RUN |
 | B9 | 60-minute memory | Meeting mode, 60 min. Note the app's memory in Activity Monitor at start and at the end. | Memory roughly flat (record both numbers: start ___ MB, end ___ MB). Local-only sessions grow disk, not RAM. | NOT RUN |
 | B10 | Anker speakerphone as input | Select it in Settings, Solo 2 min. | Clean transcription; if voice processing is refused the menu says so and capture still works. | NOT RUN |
 | B11 | DJI Mic Mini as input | Same. | Same. | NOT RUN |

@@ -13,6 +13,11 @@ struct LocalSession: Identifiable, Equatable {
     var isUploaded: Bool { header.uploadedAs != nil }
 }
 
+/// A message ending in exactly one full stop, whatever the underlying error text ends with.
+private func sentence(_ text: String) -> String {
+    text.hasSuffix(".") ? text : text + "."
+}
+
 enum AppError: LocalizedError {
     case micDenied
     case noCredentials
@@ -24,7 +29,7 @@ enum AppError: LocalizedError {
         case .micDenied:
             "Microphone access is off. Enable it in System Settings \u{203A} Privacy & Security \u{203A} Microphone."
         case .noCredentials:
-            "Set the server URL and device token in Settings, or turn on Local only."
+            "Set the server URL and device token in Settings, or turn on Local-only."
         case .speechUnavailable(let why):
             "On-device transcription is unavailable: \(why)"
         case .audioMissing:
@@ -301,7 +306,7 @@ final class AppModel {
             assetProgress = nil
             sttAvailable = false
             if run.localOnly { throw AppError.speechUnavailable(error.localizedDescription) }
-            notice = "On-device drafts are off: \(error.localizedDescription) The server still transcribes."
+            notice = "On-device drafts are off: \(sentence(error.localizedDescription)) The server still transcribes."
         }
 
         let onError: @Sendable (String) -> Void = { [weak self] message in
@@ -332,7 +337,7 @@ final class AppModel {
                         _ = try await outbox.append(channel: frame.channel, payload: frame.payload, tMs: frame.tMs)
                     }
                 } catch {
-                    onError("Could not store audio: \(error.localizedDescription)")
+                    onError("Could not store audio: \(sentence(error.localizedDescription))")
                 }
             }
         }
@@ -411,7 +416,7 @@ final class AppModel {
             try text.write(to: url, atomically: true, encoding: .utf8)
             notice = "Saved \(url.lastPathComponent) to Documents/Jarvis Live."
         } catch {
-            notice = "Could not save the local transcript: \(error.localizedDescription)"
+            notice = "Could not save the local transcript: \(sentence(error.localizedDescription))"
         }
     }
 
@@ -467,7 +472,7 @@ final class AppModel {
                 .write(to: session.url, atomically: true, encoding: .utf8)
             notice = "Uploaded \(session.url.lastPathComponent) for full processing."
         } catch {
-            notice = "Upload failed: \(error.localizedDescription)"
+            notice = "Upload failed: \(sentence(error.localizedDescription))"
         }
         refreshLocalSessions()
     }

@@ -143,11 +143,11 @@ enum FeedBuilder {
     }
 }
 
-/// The by-kind sections, in the order the web dashboard shows them.
+/// The by-kind sections, in the order every Jarvis app shows them.
 enum CopilotKind: String, CaseIterable, Identifiable {
-    case notes = "Notes"
     case actions = "Actions"
     case decisions = "Decisions"
+    case notes = "Notes"
     case related = "Related"
 
     var id: String { rawValue }
@@ -155,9 +155,9 @@ enum CopilotKind: String, CaseIterable, Identifiable {
     func count(in copilot: CopilotSnapshot?) -> Int {
         guard let copilot else { return 0 }
         switch self {
-        case .notes: return copilot.notes.count
         case .actions: return copilot.actions.count
         case .decisions: return copilot.decisions.count
+        case .notes: return copilot.notes.count
         case .related: return copilot.related.count
         }
     }
@@ -218,12 +218,18 @@ struct HUDContent: Equatable {
 enum MenuText {
     static func status(link: AppModel.Link, isRecording: Bool) -> String {
         switch link {
-        case .connected: "\u{25CF} Connected"
+        case .connected: "\u{25CF} Live"
         case .reconnecting: "\u{25D0} Reconnecting\u{2026}"
-        case .offlineLocal: "\u{25CB} Offline (local only)"
-        case .failed(let why): "\u{2715} Failed: \(why)"
+        case .offlineLocal: "\u{25CB} Local-only"
+        case .failed(let why): "\u{2715} Degraded: \(why)"
         case .idle: isRecording ? "\u{25CF} Recording" : "\u{25CB} Idle"
         }
+    }
+
+    /// The menu title with the server's channel tag, the text form of the badge shown in the panel and Settings.
+    static func header(version: String, channel: ServerChannel?) -> String {
+        guard let channel else { return "Jarvis Voice \(version)" }
+        return "Jarvis Voice \(version) \u{00B7} \(channel.tag)"
     }
 
     static func server(channel: ServerChannel?, host: String?, version: String?) -> String? {

@@ -5,9 +5,9 @@ import SwiftUI
 /// What the filter row shows: the feed, or one kind of copilot output.
 enum CopilotFilter: String, CaseIterable, Identifiable {
     case all = "All"
-    case notes = "Notes"
     case actions = "Actions"
     case decisions = "Decisions"
+    case notes = "Notes"
     case related = "Related"
 
     var id: String { rawValue }
@@ -128,16 +128,18 @@ struct CopilotPanelView: View {
                 liveState
                 Spacer(minLength: 4)
                 Button { model.addMarker() } label: {
-                    Text(layout == .strip ? "\u{2691}" : "\u{2691} Marker")
+                    Text(layout == .strip ? "\u{2691}" : "\u{2691} Add Marker")
                 }
                 .buttonStyle(InstButtonStyle())
                 .disabled(!model.isRecording)
+                .help(model.isRecording ? "" : "Start a session first.")
                 .accessibilityLabel("Add marker")
                 Button { Task { await model.stop() } } label: {
-                    Text(layout == .strip ? "\u{25A0}" : "\u{25A0} Stop")
+                    Text(layout == .strip ? "\u{25A0}" : "\u{25A0} Stop Session")
                 }
                 .buttonStyle(InstButtonStyle())
                 .disabled(!model.isRecording)
+                .help(model.isRecording ? "" : "Start a session first.")
                 .accessibilityLabel("Stop session")
             }
             HStack(spacing: 8) {
@@ -148,6 +150,9 @@ struct CopilotPanelView: View {
             }
             if let note = connectionNote {
                 InstHelp(note)
+            }
+            if !model.isRecording {
+                InstHelp("Start a session first.")
             }
         }
         .padding(layout == .strip ? 8 : 12)
@@ -178,10 +183,10 @@ struct CopilotPanelView: View {
 
     @ViewBuilder private var connectionChip: some View {
         switch model.link {
-        case .connected: InstChip(text: "\u{25CF} Connected", tone: .live)
+        case .connected: InstChip(text: "\u{25CF} Live", tone: .live)
         case .reconnecting: InstChip(text: "Reconnecting", tone: .progress, spinner: true)
-        case .offlineLocal: InstChip(text: "Local only")
-        case .failed: InstChip(text: "\u{2715} Failed", tone: .error)
+        case .offlineLocal: InstChip(text: "Local-only")
+        case .failed: InstChip(text: "\u{2715} Degraded", tone: .error)
         case .idle: EmptyView()
         }
     }
@@ -246,7 +251,7 @@ struct CopilotPanelView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 4) {
                     if rows.isEmpty {
-                        Text("Nothing yet.").instStyle(InstType.body).foregroundStyle(Color.inst.text2).padding(8)
+                        Text("\u{2014}").instStyle(InstType.body).foregroundStyle(Color.inst.text2).padding(8)
                     }
                     ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         if index == separator {
@@ -351,7 +356,7 @@ struct CopilotPanelView: View {
                     if kind.count(in: copilot) > 0 { kindSection(kind) }
                 }
                 if CopilotKind.allCases.allSatisfy({ $0.count(in: copilot) == 0 }) {
-                    Text("Nothing yet.").instStyle(InstType.caption).foregroundStyle(Color.inst.text2)
+                    Text("\u{2014}").instStyle(InstType.caption).foregroundStyle(Color.inst.text2)
                 }
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
@@ -473,7 +478,7 @@ struct CopilotPanelView: View {
 
     private var quietMessage: String {
         if model.sessionIsLocalOnly && model.phase != .idle {
-            return "Copilot is off in Local only. The server writes it after you upload."
+            return "Copilot is off in local-only mode. The server writes it after you upload."
         }
         if model.phase == .stopping { return "Writing the final note. It lands at the bottom of the feed." }
         if model.isRecording { return "Nothing to suggest yet." }
