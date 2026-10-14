@@ -267,7 +267,7 @@ class LiveActivity : AppCompatActivity() {
                 when (state.localStt) {
                     LiveUiState.LocalStt.READY -> "on-device drafts on"
                     LiveUiState.LocalStt.LOADING -> "loading on-device model…"
-                    LiveUiState.LocalStt.UNAVAILABLE -> "no on-device model (Models tab)"
+                    LiveUiState.LocalStt.UNAVAILABLE -> "no on-device model (Settings → STT Model)"
                     LiveUiState.LocalStt.OFF -> null
                 }
             )

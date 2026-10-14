@@ -12,7 +12,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 - **Talk to the person as “you”; call the product “Jarvis”.** “Jarvis needs these to show up when you need it.” The background agent is named Kai in prompts (“What should Kai work on?”).
 - **Say why, in their terms.** Permission reasons and setting descriptions name the benefit: “Required to capture your voice”, “Show in tray when dictation is copied to clipboard”.
 - **Casing.** Buttons and screen titles are Title Case (“Get Started”, “Start Talking”, “Pick Vault Folder”). Primary and row buttons render ALL CAPS (AppCompat); compact buttons stay as written (“Chats”, “New”). Section labels are uppercase via style, written normally (“Notifications”). Helper text is sentence case with a full stop.
-- **Status lines are terse and specific.** “Saved to today's note.” “Nothing to save.” “Recording failed. Try again.” Errors say what failed: “Failed: <reason>”.
+- **Status lines are terse and specific.** “Copied · 42 words · 138 wpm” “Marker added” “● Recording locally” Errors say what failed: “Failed: <reason>”.
 - **Glyphs over words where the meaning is universal.** ▼ / ▾ for expand and menus, ✓ for done, ✕ for delete, ↩ Reply, ⎘ Copy, ▶ Run. Emoji appear only as icons: the bottom nav and the mode pills (🎙 Voice, ⌨️ Type). Never decorate prose with emoji.
 - **Numbers.** Empty stats show “—”. Token counts are abbreviated “842 tkns”, “12.4k tkns”. Rates are “wpm”, lowercase.
 
@@ -76,7 +76,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 ## Platforms
 
 - **Android** is the source of every value here (`android/app/src/main/res`).
-- **macOS** (Jarvis Live) has no UI yet. Start it from these tokens and components.
+- **macOS** (Jarvis Live, `macos/JarvisVoiceMac`) is a menu-bar app: live-session recorder, Copilot panel, dictation HUD and settings window. `macos/JarvisVoiceMac/Sources/UI/Theme.swift` mirrors the color tokens (`JV.bg`, `JV.accent`, …); keep it in step with `tokens.json`.
 - The legacy web capture page (`src/jarvis_voice/static/capture.html`) uses its own red/green palette. It is bugfix-only; do not copy its colors.
 
 ## Gaps

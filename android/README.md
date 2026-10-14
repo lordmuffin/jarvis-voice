@@ -73,16 +73,27 @@ Once all three are granted, `MainActivity` finishes itself and `VoiceOverlayServ
 
 1. Tap any text input field in any app.
 2. The dark pill floats near the bottom of the screen.
-3. **Tap** the pill mic icon to begin dictation.
-4. Speak. Partial results scroll across the pill in real time.
-5. **Tap again** to stop early, or let the 10-second silence timeout fire.
-6. Transcript injects into the focused field. If injection fails (some hardened apps block `ACTION_SET_TEXT`), the pill shows "Tap to copy" — tap it to put the text on the clipboard.
+3. **Tap** the pill to begin dictation.
+4. Speak. The pill shows a waveform while it listens; it does not show partial text (the pill is compact).
+5. **Tap again** to stop. With the default on-device Whisper engine, recording runs until you tap. The Android-recognizer fallback (see below) also stops after 2.5 s of silence.
+6. The transcript is always copied to the clipboard, then injected into the focused field (`ACTION_SET_TEXT`, falling back to paste). A toast reports the result, for example "42 words · 138 wpm", or "Copied · 42 words · 138 wpm" when no field had focus.
 7. **Drag** the pill anywhere on screen to reposition it.
 8. **Long-press** the pill to trigger hold-to-record mode (releases on lift).
+
+The pill has four states (`OverlayState` in `VoiceOverlayService.kt`):
+
+| State | Pill | Tap |
+|---|---|---|
+| `IDLE` | Breathing dot | Start recording |
+| `RECORDING` | Wider, teal waveform, accent outline | Stop and transcribe |
+| `PROCESSING` | Spinner while Whisper (and the optional on-device LLM pass) runs | Ignored |
+| `DONE` | Breathing dot, thicker accent outline; lasts 400 ms after injection, then `IDLE` | Back to `IDLE` |
 
 ---
 
 ## On-Device ASR Note
+
+`SpeechEngineFactory` picks the engine. By default it is `SherpaOnnxSpeechEngine` (on-device Whisper), using the model chosen under Settings → STT Model. When "On-device STT (Offline)" is turned off, or no Whisper model is downloaded, it falls back to `AndroidSpeechEngine`.
 
 `AndroidSpeechEngine` prefers on-device recognition (`SpeechRecognizer.createOnDeviceSpeechRecognizer`) when available, falling back to the standard Google recognizer (network). On-device ASR is available on:
 
