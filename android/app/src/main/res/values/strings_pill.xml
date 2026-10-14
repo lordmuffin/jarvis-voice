@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dictation pill (Jarvis-And-Pill). Words are uppercased by the Tag text style. -->
+    <string name="pill_listening">Listening</string>
+    <string name="pill_processing">Processing</string>
+    <string name="pill_done_glyph" translatable="false">✓</string>
+    <string name="pill_err_no_speech">✕ Didn\'t catch that</string>
+    <string name="pill_err_mic_off">✕ Microphone is off</string>
+    <string name="pill_err_mic_busy">⚑ Mic in use</string>
+    <string name="pill_err_engine">✕ Speech model unavailable</string>
+    <string name="pill_action_open_settings">Open Settings ▶</string>
+    <string name="pill_action_open_models">Open Models ▶</string>
+
+    <string name="pill_cd_idle">Start dictating</string>
+    <string name="pill_cd_listening">Stop dictating, %1$s</string>
+    <string name="pill_cd_processing">Processing</string>
+    <string name="pill_cd_done">Done</string>
+    <string name="pill_cd_no_speech">Didn\'t catch that. Tap to try again.</string>
+    <string name="pill_cd_mic_off">Microphone is off. Open Settings.</string>
+    <string name="pill_cd_mic_busy">A Jarvis Live session is using the microphone.</string>
+    <string name="pill_cd_engine">Speech model unavailable. Open the speech model settings.</string>
+</resources>

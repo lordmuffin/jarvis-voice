@@ -29,8 +29,8 @@ class AudioWaveformView @JvmOverloads constructor(
     private val animators = Array(barCount) { ValueAnimator() }
     private val amplitudes = FloatArray(barCount) { 0.3f }
 
-    private val barWidthDp = 4f
-    private val barGapDp = 6f
+    var barWidthDp = 4f
+    var barGapDp = 6f
     private val barCornerDp = 2f
 
     fun startAnimation() {

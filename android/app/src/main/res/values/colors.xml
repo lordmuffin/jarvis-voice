@@ -1,13 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   App colours come from Instrument (@color/inst_*, vendored under src/instrument, day + night).
-  What stays here is the dictation pill and the launcher icon, which are fixed dark on purpose:
-  the pill floats over other apps and the launcher mark is drawn on a dark tile, so neither
-  follows the app's day/night theme.
+  Only the launcher icon keeps a fixed colour: the mark is drawn on a dark tile in both themes.
 -->
 <resources>
-    <color name="jv_glass_bg">#C7161B22</color>
-    <color name="jv_glass_border">#24FFFFFF</color>
-    <color name="jv_overlay_accent">#00F5D4</color>
     <color name="jv_launcher_bg">#0D1117</color>
 </resources>

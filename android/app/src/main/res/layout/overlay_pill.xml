@@ -1,45 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout
+<!-- The dictation pill. One view, five states: PillView.render() shows the right children. -->
+<com.lordmuffin.jarvisvoice.pill.PillView
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="120dp"
-    android:layout_height="40dp"
-    android:background="@drawable/pill_background"
-    android:elevation="12dp">
+    android:id="@+id/pill"
+    android:layout_width="wrap_content"
+    android:layout_height="@dimen/app_pill_height"
+    android:minWidth="@dimen/app_pill_min_width"
+    android:elevation="@dimen/app_pill_elevation"
+    android:clickable="true"
+    android:focusable="false">
 
-    <!-- Idle: breathing teal dot -->
-    <View
-        android:id="@+id/dot_idle"
-        android:layout_width="8dp"
-        android:layout_height="8dp"
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
         android:layout_gravity="center"
-        android:background="@drawable/dot_teal"
-        android:visibility="visible" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="@dimen/inst_space_12"
+        android:paddingEnd="@dimen/inst_space_12">
 
-    <!-- Recording: animated waveform bars -->
-    <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
-        android:id="@+id/waveform"
-        android:layout_width="64dp"
-        android:layout_height="24dp"
-        android:layout_gravity="center"
-        android:visibility="gone" />
+        <View
+            android:id="@+id/pill_dot"
+            android:layout_width="@dimen/inst_dot_live"
+            android:layout_height="@dimen/inst_dot_live"
+            android:background="@drawable/pill_dot" />
 
-    <!-- Processing: spinner -->
-    <ProgressBar
-        android:id="@+id/progress_spinner"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
-        android:layout_gravity="center"
-        android:indeterminate="true"
-        android:visibility="gone"
-        android:indeterminateTint="@color/jv_overlay_accent" />
+        <TextView
+            android:id="@+id/pill_glyph"
+            style="@style/Inst.Text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/pill_done_glyph"
+            android:textColor="@color/inst_accent"
+            android:textSize="@dimen/inst_type_body_lg"
+            android:textStyle="bold"
+            android:visibility="gone" />
 
-    <!-- Keep mic_icon for code compatibility (hidden in new design - dot_idle replaces it) -->
-    <ImageView
-        android:id="@+id/mic_icon"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:src="@drawable/ic_mic"
-        android:visibility="gone"
-        android:contentDescription="@string/mic_desc" />
+        <ProgressBar
+            android:id="@+id/pill_spinner"
+            style="?android:attr/progressBarStyleSmall"
+            android:layout_width="@dimen/app_pill_spinner"
+            android:layout_height="@dimen/app_pill_spinner"
+            android:indeterminate="true"
+            android:indeterminateTint="@color/inst_text_2"
+            android:visibility="gone" />
 
-</FrameLayout>
+        <TextView
+            android:id="@+id/pill_label"
+            style="@style/Inst.Text.Tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/inst_space_8"
+            android:visibility="gone" />
+
+        <com.lordmuffin.jarvisvoice.ui.AudioWaveformView
+            android:id="@+id/waveform"
+            android:layout_width="@dimen/app_pill_meter_width"
+            android:layout_height="@dimen/app_pill_meter_height"
+            android:layout_marginStart="@dimen/inst_space_8"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/pill_time"
+            style="@style/Inst.Text.Mono"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/inst_space_8"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <View
+            android:id="@+id/pill_divider"
+            android:layout_width="@dimen/inst_border_hairline"
+            android:layout_height="@dimen/inst_space_24"
+            android:layout_marginStart="@dimen/inst_space_12"
+            android:background="@color/inst_control"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/pill_action"
+            style="@style/Inst.Text.Caption"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/inst_space_12"
+            android:textColor="@color/inst_accent"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </LinearLayout>
+</com.lordmuffin.jarvisvoice.pill.PillView>
