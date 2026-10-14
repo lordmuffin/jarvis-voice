@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.12.0...macos-v0.13.0) (2026-10-14)
+
+
+### Features
+
+* **macos:** adopt the Instrument design system ([cbc3d49](https://github.com/lordmuffin/jarvis-voice/commit/cbc3d4973d6af746f5a74420c9adcb253195a83a))
+* **macos:** adopt the Instrument design system ([ca420a0](https://github.com/lordmuffin/jarvis-voice/commit/ca420a04b23059dc82659063ef6a84c16230fe13))
+
 ## [0.12.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.11.0...macos-v0.12.0) (2026-10-14)
 
 
