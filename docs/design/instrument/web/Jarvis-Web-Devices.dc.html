@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Devices</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.dr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 12px}
+.dr .ti{flex:1 1 240px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sh{color:var(--inst-text);font-weight:700}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="min-height: 900px; display: flex; flex-direction: column;">
+
+<header class="i-header">
+  <div class="i-header-in">
+    <div class="i-brand">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <a href="#" class="i-wordmark">Jarvis Live</a>
+      <span class="i-badge i-badge--live">Live</span>
+    </div>
+    <nav class="i-nav" aria-label="Main">
+      <a href="#">Sessions</a>
+      <a href="#" aria-current="page">Devices</a>
+      <a href="#">Work Items</a>
+      <a href="#">Publishing</a>
+      <a href="#">Admin</a>
+    </nav>
+    <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+  </div>
+</header>
+
+<main class="i-page" style="width: 100%; flex: 1;">
+  <div class="i-stack" style="gap: 6px; padding-top: 8px;">
+    <h1 class="t-title">Devices</h1>
+    <p class="t-body t-2" style="max-width: 640px;">A device token lets a recorder, such as the Jarvis Live Mac app, stream sessions to your account. Revoke a token to sign that device out.</p>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 16px;">
+      <form class="j-upload" aria-label="Add a device">
+        <div class="i-field" style="flex: 1 1 260px;">
+          <label class="i-label" for="dn">New device</label>
+          <input id="dn" class="i-input" placeholder="Work MacBook">
+        </div>
+        <button type="submit" class="i-btn i-btn--secondary">Add Device</button>
+      </form>
+
+      <section class="i-block" aria-labelledby="tok-h" style="padding: 16px; display: flex; flex-direction: column; gap: 10px; box-shadow: inset 0 1.5px 0 var(--inst-accent);">
+        <div class="i-stack" style="gap: 2px;">
+          <span class="t-label">Device token</span>
+          <h2 id="tok-h" style="font-size: 16px; font-weight: 700;">Work MacBook is ready.</h2>
+          <p class="t-caption t-2">Paste this token into the Jarvis Live Mac app.</p>
+        </div>
+        <div class="i-banner i-banner--warning"><b>⚑ It is shown only once.</b><span>Copy it now. If you lose it, revoke the device and add it again.</span></div>
+        <div class="i-field">
+          <label class="i-label" for="tok">Token</label>
+          <div style="display: flex; gap: 8px; min-width: 0;">
+            <input id="tok" class="i-input i-input--mono" readonly value="Xq3vN8_k2LwT…[shown in full once]" style="min-width: 0;">
+            <button type="button" class="i-btn i-btn--secondary">⎘ Copy</button>
+          </div>
+        </div>
+        <div class="i-row"><button type="button" class="i-btn i-btn--primary">Done</button><span class="t-caption t-2">The token is never logged.</span></div>
+      </section>
+
+      <section aria-labelledby="dv-h" class="i-stack">
+        <div class="j-sec"><h2 id="dv-h" class="t-label sh">Your devices <span class="t-mono t-2">(3)</span></h2></div>
+        <div class="i-block dr">
+          <div class="ti"><span class="t-strong">Work MacBook</span><span class="t-meta t-2">Added Oct 14, 2026 · <span class="i-new">New</span></span></div>
+          <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">Revoke</button>
+        </div>
+        <div class="i-block dr">
+          <div class="ti"><span class="t-strong">Studio Mac mini</span><span class="t-meta t-2">Added Sep 2, 2026</span></div>
+          <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm" aria-haspopup="dialog">Revoke</button>
+        </div>
+        <div class="i-block dr" style="color: var(--inst-text-2);">
+          <div class="ti"><span class="t-strong">Old MacBook Air</span><span class="t-meta">Added Jun 18, 2026 · Revoked Oct 1, 2026</span></div>
+          <span class="i-chip" style="color: var(--inst-text-disabled);">✕ Revoked</span>
+        </div>
+      </section>
+    </div>
+
+    <aside style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 24px;" aria-label="Other states">
+      <section class="i-stack" style="gap: 8px;" aria-label="Revoke confirm">
+        <span class="t-micro t-2">Revoke · confirm</span>
+        <div style="background: var(--inst-scrim); padding: 24px 16px; display: flex; justify-content: center;">
+          <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="rv-h" aria-describedby="rv-d">
+            <div class="i-dialog-hd"><h2 id="rv-h">Revoke “Studio Mac mini”?</h2></div>
+            <div class="i-dialog-bd"><p id="rv-d" class="t-2">It stops working right away.</p></div>
+            <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary is-focus">Cancel</button><button type="button" class="i-btn i-btn--danger">Revoke Studio Mac mini</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="i-stack" style="gap: 8px;" aria-label="No devices">
+        <span class="t-micro t-2">Empty</span>
+        <div class="j-sec" style="padding-top: 0;"><span class="t-label sh">Your devices <span class="t-mono t-2">(0)</span></span></div>
+        <div class="i-block" role="region" aria-label="No devices yet" style="padding: 24px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-height: 160px; justify-content: center;">
+          <span aria-hidden="true" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-text-2);">—</span>
+          <span style="font-size: 14px; font-weight: 700;">No devices yet.</span>
+          <span class="t-caption t-2" style="max-width: 260px;">Name one above, then paste its token into the Mac app.</span>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<footer class="i-footer">
+  <span>Jarvis keeps only a hash of each token, so it can’t show one again.</span>
+  <span class="t-mono">server-v0.18.0 · 39e69a0</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic { renderVals() { return { theme: this.props.theme ?? 'dark' }; } }
+</script>
+</body>
+</html>

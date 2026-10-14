@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work item states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.wh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.wh h3{margin:0;flex:1 1 200px;min-width:0;font-size:16px;font-weight:700;line-height:1.35}
+.j-run .hd .i-chip{font-family:var(--inst-sans)}
+.log{list-style:none;margin:0;padding:4px 0 4px 12px;border-left:1px solid var(--inst-line);display:flex;flex-direction:column;gap:4px;font-family:var(--inst-mono);font-size:11px}
+.log li{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px}
+.log .t{color:var(--inst-text-2)}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 1440px; min-height: 2140px; padding: 40px 32px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · Web · Work items</span>
+    <h1 class="t-title">Work items: states</h1>
+  </div>
+
+  <section aria-labelledby="s-run" class="i-stack" style="gap: 8px;">
+    <h2 id="s-run" class="t-label" style="color: var(--inst-text); font-weight: 700;">Claude Code run · every state · LAB</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 12px; align-items: start;">
+      <sc-for list="{{runs}}" as="r" hint-placeholder-count="9">
+        <div class="i-stack" style="gap: 6px;">
+          <span class="t-micro t-2">{{r.n}}</span>
+          <div class="j-run" role="region" aria-label="Claude Code run, {{r.n}}">
+            <div class="hd">
+              <span>Claude Code · attempt {{r.att}} ·</span>
+              <span class="{{r.chip}}"><sc-if value="{{r.spin}}" hint-placeholder-val="{{false}}"><span class="i-spin i-chip-spin"></span></sc-if>{{r.chipTxt}}</span>
+              <sc-if value="{{r.hasPr}}" hint-placeholder-val="{{false}}"><span>·</span><a href="#" title="lordmuffin/np-home-homelab#318">Draft PR #318</a></sc-if>
+              <span style="margin-left: auto;">{{r.time}}</span>
+            </div>
+            <sc-if value="{{r.hasGuide}}" hint-placeholder-val="{{false}}">
+              <div class="i-stack" style="gap: 2px;"><span class="t-label">Your guidance</span><blockquote>{{r.guide}}</blockquote></div>
+            </sc-if>
+            <sc-if value="{{r.hasSum}}" hint-placeholder-val="{{true}}"><p>{{r.sum}}</p></sc-if>
+            <sc-if value="{{r.hasAsk}}" hint-placeholder-val="{{false}}">
+              <blockquote style="box-shadow: inset 2px 0 0 var(--inst-warning);"><b>Claude asks:</b> {{r.ask}}</blockquote>
+            </sc-if>
+            <sc-if value="{{r.hasErr}}" hint-placeholder-val="{{false}}"><span class="i-msg-error" role="alert">{{r.err}}</span></sc-if>
+            <div class="j-acts">
+              <sc-for list="{{r.acts}}" as="a" hint-placeholder-count="2">
+                <sc-if value="{{a.link}}" hint-placeholder-val="{{false}}"><a href="#" class="{{a.cls}}">{{a.label}}</a></sc-if>
+                <sc-if value="{{a.btn}}" hint-placeholder-val="{{true}}"><button type="button" class="{{a.cls}}" disabled="{{a.dis}}" aria-describedby="{{a.desc}}">{{a.label}}</button></sc-if>
+              </sc-for>
+            </div>
+            <sc-if value="{{r.hasReason}}" hint-placeholder-val="{{false}}"><span id="{{r.rid}}" class="i-reason">{{r.reason}}</span></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; align-items: start;">
+
+    <div class="i-stack" style="gap: 28px;">
+      <section aria-labelledby="s-steer" class="i-stack" style="gap: 8px;">
+        <h2 id="s-steer" class="t-label" style="color: var(--inst-text); font-weight: 700;">Steer the next run · open while running</h2>
+        <div class="j-run" role="region" aria-label="Claude Code, attempt 2, running">
+          <div class="hd"><span>Claude Code · attempt 2 ·</span><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Running</span><span>·</span><a href="#">Draft PR #318</a><span style="margin-left: auto;">Oct 14 15:50</span></div>
+          <p>Reworking the export to write CSV.</p>
+          <form class="i-stack" style="gap: 8px;" aria-label="Steer the next run">
+            <div class="i-field">
+              <label class="i-label" for="sn">Steer the next run</label>
+              <textarea id="sn" class="i-input" maxlength="4000" aria-describedby="sn-c">Sort rows by host name, and put the PVE version in its own column.</textarea>
+              <span id="sn-c" class="i-help" style="display: flex; justify-content: space-between; gap: 8px;"><span>Used when this run ends and you choose ▶ Run Again.</span><span class="t-mono">68 / 4000</span></span>
+            </div>
+            <div class="j-acts"><button type="submit" class="i-btn i-btn--secondary i-btn--sm">↪ Continue</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Cancel</button></div>
+          </form>
+        </div>
+      </section>
+
+      <section aria-labelledby="s-copy" class="i-stack" style="gap: 8px;">
+        <h2 id="s-copy" class="t-label" style="color: var(--inst-text); font-weight: 700;">Copy Prompt</h2>
+        <div class="i-block" style="display: flex; flex-direction: column; gap: 12px;">
+          <div class="i-stack" style="gap: 6px;"><span class="t-micro t-2">Default</span>
+            <div class="j-acts"><button type="button" class="i-btn i-btn--primary i-btn--sm">⎘ Copy Prompt</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-expanded="false">Show Prompt</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Unapprove</button><button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button></div>
+          </div>
+          <div class="i-stack" style="gap: 6px;"><span class="t-micro t-2">After a click · 2 s, then back</span>
+            <div class="j-acts"><button type="button" class="i-btn i-btn--secondary i-btn--sm" aria-live="polite" style="color: var(--inst-success);">✓ Copied</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-expanded="false">Show Prompt</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Unapprove</button><button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button></div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="s-prompt" class="i-stack" style="gap: 8px;">
+        <h2 id="s-prompt" class="t-label" style="color: var(--inst-text); font-weight: 700;">Prompt view · preview and approved</h2>
+        <div class="i-stack" style="gap: 4px;">
+          <span class="t-meta" style="color: var(--inst-warning); font-weight: 600;">Preview. Approving freezes the prompt exactly as shown.</span>
+<pre class="j-prompt" style="border-style: dashed;">Repository: lordmuffin/np-home-homelab
+Work item: Add ARM runner scale set to k3s2
+
+Intent
+Give the k3s2 cluster an ARC runner scale set for ARM builds,
+scoped to the org.</pre>
+        </div>
+        <div class="i-stack" style="gap: 4px; padding-top: 8px;">
+          <span class="t-meta t-2">Approved prompt · <span class="t-mono" style="color: var(--inst-text);">sha256 9f2c1a7e04bd</span></span>
+<pre class="j-prompt">Repository: lordmuffin/np-home-homelab
+Work item: Add ARM runner scale set to k3s2
+
+Intent
+Give the k3s2 cluster an ARC runner scale set for ARM builds,
+scoped to the org.</pre>
+        </div>
+      </section>
+    </div>
+
+    <div class="i-stack" style="gap: 28px;">
+      <section aria-labelledby="s-ret" class="i-stack" style="gap: 8px;">
+        <h2 id="s-ret" class="t-label" style="color: var(--inst-text); font-weight: 700;">Discarded and merged</h2>
+        <article class="j-wi j-wi--retired" aria-labelledby="wx">
+          <div class="wh"><span class="i-chip">Discarded</span><h3 id="wx">Ask the vendor for an ARM roadmap date</h3></div>
+          <dl>
+            <dt>Repository</dt><dd><i>no repository yet</i></dd>
+            <dt>Intent</dt><dd>Get a committed date for the ARM runner images.</dd>
+            <dt>Source</dt><dd><a href="#" class="i-src" title="“ARM is in preview. I can't commit to a date on this call.”">▶ 14:51</a> <span class="t-meta">· You discarded Oct 14 15:30</span></dd>
+          </dl>
+          <div class="j-acts"><button type="button" class="i-btn i-btn--secondary i-btn--sm">↩ Restore</button></div>
+        </article>
+        <article class="j-wi j-wi--retired" aria-labelledby="wm">
+          <div class="wh"><span class="i-chip">✓ Merged</span><h3 id="wm">Scope ARC scale sets to the org</h3></div>
+          <dl>
+            <dt>Merged into</dt><dd><a href="#">Add ARM runner scale set to k3s2</a></dd>
+            <dt>Source</dt><dd><a href="#" class="i-src" title="“Org level works for us. Four repos need runners.”">▶ 14:20</a> <span class="t-meta">· You merged Oct 14 15:33</span></dd>
+          </dl>
+        </article>
+      </section>
+
+      <section aria-labelledby="s-livedis" class="i-stack" style="gap: 8px;">
+        <h2 id="s-livedis" class="t-label" style="color: var(--inst-text); font-weight: 700;">Approved on LIVE · dispatch off</h2>
+        <article class="j-wi j-wi--approved" aria-labelledby="wl">
+          <div class="wh"><span class="i-chip i-chip--live">✓ Approved</span><h3 id="wl">Document GPU runner pricing in the vault</h3><span class="i-badge i-badge--live">Live</span></div>
+          <dl>
+            <dt>Repository</dt><dd class="t-mono">lordmuffin/obsidian-vault</dd>
+            <dt>Source</dt><dd><a href="#" class="i-src" title="“Send me the GPU runner pricing and we'll size it against the DGX node.”">▶ 16:12</a></dd>
+          </dl>
+          <div class="j-acts"><button type="button" class="i-btn i-btn--primary i-btn--sm">⎘ Copy Prompt</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-expanded="false">Show Prompt</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Unapprove</button><button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button></div>
+          <div class="j-acts" style="border-top: 1px solid var(--inst-line); padding-top: 8px;"><button type="button" class="i-btn i-btn--secondary i-btn--sm" disabled aria-describedby="wl-r">▶ Run in Claude Code</button><span id="wl-r" class="i-reason">⚑ Claude Code runs only in LAB.</span></div>
+        </article>
+      </section>
+
+      <section aria-labelledby="s-log" class="i-stack" style="gap: 8px;">
+        <h2 id="s-log" class="t-label" style="color: var(--inst-text); font-weight: 700;">History · open under a card</h2>
+        <article class="j-wi j-wi--approved" aria-labelledby="wh">
+          <div class="wh"><span class="i-chip i-chip--live">✓ Approved</span><h3 id="wh">Add ARM runner scale set to k3s2</h3><span class="i-badge i-badge--lab">Lab</span></div>
+          <div class="j-acts"><button type="button" class="i-btn i-btn--secondary i-btn--sm">▶ Run Again</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">↪ Steer Next Run</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-expanded="true" aria-controls="wh-log" style="margin-left: auto;">Hide History</button></div>
+          <ol id="wh-log" class="log" aria-label="History">
+            <sc-for list="{{log}}" as="l" hint-placeholder-count="10"><li><span class="t">{{l.t}}</span><span>{{l.x}}</span></li></sc-for>
+          </ol>
+        </article>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":2140}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const B = (label, cls, o) => Object.assign({ label, cls: 'i-btn i-btn--sm ' + cls, dis: false, desc: '', link: false, btn: true }, o || {});
+    const again = B('▶ Run Again', 'i-btn--secondary');
+    const steer = B('↪ Steer Next Run', 'i-btn--quiet');
+    const cancel = B('■ Cancel Run', 'i-btn--danger-quiet');
+    const R = (n, att, chip, chipTxt, time, o) => Object.assign({
+      n, att, chip: 'i-chip ' + chip, chipTxt, time, spin: false, hasPr: false,
+      guide: '', hasGuide: false, sum: '', hasSum: false, ask: '', hasAsk: false,
+      err: '', hasErr: false, acts: [], reason: '', hasReason: false, rid: ''
+    }, o);
+    const runs = [
+      R('Queued', 1, '', 'Queued', '15:41', { sum: 'Waiting for a runner. One run is ahead of this one.', hasSum: true, acts: [cancel] }),
+      R('Running', 1, 'i-chip--progress', 'Running', '15:42', { spin: true, sum: 'Reading docs/pve-node-inventory.md and the inventory script.', hasSum: true, acts: [steer, cancel] }),
+      R('Needs your input', 2, 'i-chip--progress', '⚑ Needs your input', '15:52', { hasPr: true, guide: 'Write CSV, not JSON.', hasGuide: true, ask: 'Should the export include guest CTs per host, or only the hosts?', hasAsk: true, acts: [B('↪ Answer Claude', 'i-btn--secondary'), cancel] }),
+      R('Draft PR opened', 2, 'i-chip--done', '✓ Draft PR opened', '16:03', { hasPr: true, guide: 'Write CSV, not JSON.', hasGuide: true, sum: 'Added export.py and a header test. make test passes.', hasSum: true, acts: [B('Review Draft PR #318', 'i-btn--quiet', { link: true, btn: false }), again, steer] }),
+      R('No changes', 1, '', 'No changes', '15:46', { sum: 'The script already writes one row per host. Nothing was pushed.', hasSum: true, acts: [again, steer] }),
+      R('Cancelled', 1, '', '■ Cancelled', '15:44', { sum: 'You cancelled this run. Nothing was pushed.', hasSum: true, acts: [again] }),
+      R('Failed', 1, 'i-chip--failed', '✕ Failed', '15:43', { err: '✕ The runner could not clone lordmuffin/np-home-homelab.', hasErr: true, acts: [again] }),
+      R('Timed out', 1, 'i-chip--failed', '✕ Timed out', '16:12', { err: '✕ Stopped after 30 minutes. The branch keeps what was pushed.', hasErr: true, acts: [again, steer] }),
+      R('Hit the Claude usage limit', 1, 'i-chip--failed', '✕ Hit the Claude usage limit', '15:58', { err: '✕ Claude stopped partway through.', hasErr: true, acts: [B('▶ Run Again', 'i-btn--secondary', { dis: true, desc: 'rr-limit' })], reason: '⚑ You can run again after 6:00 PM.', hasReason: true, rid: 'rr-limit' })
+    ];
+    return {
+      theme: this.props.theme ?? 'dark',
+      runs,
+      log: [
+        { t: 'Oct 14 15:24', x: 'Kai drafted from ▶ 14:32' },
+        { t: 'Oct 14 15:31', x: 'You edited the acceptance criteria' },
+        { t: 'Oct 14 15:33', x: 'You merged “Scope ARC scale sets to the org” into this item' },
+        { t: 'Oct 14 15:40', x: 'You approved · sha256 9f2c1a7e04bd' },
+        { t: 'Oct 14 15:41', x: 'Run 1 queued' },
+        { t: 'Oct 14 15:42', x: 'Run 1 running' },
+        { t: 'Oct 14 15:49', x: 'Run 1 needs your input' },
+        { t: 'Oct 14 15:51', x: 'You answered Claude' },
+        { t: 'Oct 14 16:03', x: 'Run 1 opened Draft PR #321' },
+        { t: 'Oct 14 16:20', x: 'You copied the prompt' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

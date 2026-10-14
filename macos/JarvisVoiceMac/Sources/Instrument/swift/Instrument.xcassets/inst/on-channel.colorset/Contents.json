@@ -1,0 +1,20 @@
+{
+  "colors": [
+    {
+      "idiom": "universal",
+      "color": {
+        "color-space": "srgb",
+        "components": {
+          "alpha": "1.000",
+          "red": "0x0D",
+          "green": "0x11",
+          "blue": "0x17"
+        }
+      }
+    }
+  ],
+  "info": {
+    "author": "instrument",
+    "version": 1
+  }
+}

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Adding a new app</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.ck{display:grid;grid-template-columns:20px minmax(0,1fr);gap:8px;align-items:baseline;padding:8px 12px;background:var(--inst-surface);font-size:13px}
+.ck>span:first-child{color:var(--inst-accent);font-weight:700}
+</style>
+</helmet>
+<div class="inst" data-theme="light" style="width: 1440px; min-height: 1700px; padding: 48px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px;">
+    <div class="i-stack" style="gap: 6px;">
+      <span class="t-label">Instrument · 4 · Recipe</span>
+      <h1 class="t-display">Adding a new app</h1>
+      <p class="t-body-lg t-2" style="max-width: 760px;">A new app differs from the others only in its name and its content. It has no colours, type, spacing, components or patterns of its own. If it needs one, the system gets it first.</p>
+    </div>
+    <div class="i-block" style="display: flex; align-items: center; gap: 8px; padding: 12px 16px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#57606A" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg>
+      <span class="i-wordmark">Your App</span><span class="i-badge i-badge--lab">Lab</span>
+      <span class="t-caption t-2" style="margin-left: 12px;">← all the design work a new app needs</span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; align-items: start;">
+
+    <section aria-labelledby="r1" class="i-stack">
+      <h2 id="r1" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">1 · Set up · 30 minutes</h2>
+      <sc-for list="{{setup}}" as="x" hint-placeholder-count="6"><div class="ck"><span class="t-mono">{{x.n}}</span><span><b>{{x.t}}</b> {{x.d}}</span></div></sc-for>
+
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding: 20px 0 4px;">2 · Required shell, every screen</h2>
+      <sc-for list="{{shell}}" as="x" hint-placeholder-count="9"><div class="ck"><span>✓</span><span>{{x}}</span></div></sc-for>
+    </section>
+
+    <section aria-labelledby="r3" class="i-stack">
+      <h2 id="r3" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">3 · Reach for</h2>
+      <div class="i-table-wrap">
+        <table class="i-table" style="font-size: 12px;">
+          <thead><tr><th scope="col">You need</th><th scope="col">Use</th></tr></thead>
+          <tbody>
+            <sc-for list="{{reach}}" as="x" hint-placeholder-count="14"><tr><td style="white-space: normal;">{{x.need}}</td><td class="t-mono" style="white-space: normal; font-size: 11px;">{{x.use}}</td></tr></sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="r4" class="i-stack">
+      <h2 id="r4" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">4 · Naming and copy</h2>
+      <sc-for list="{{copy}}" as="x" hint-placeholder-count="8"><div class="ck"><span>▸</span><span>{{x}}</span></div></sc-for>
+
+      <h2 class="t-label" style="color: var(--inst-error); font-weight: 700; padding: 20px 0 4px;">5 · Comes back to the system, never built locally</h2>
+      <sc-for list="{{back}}" as="x" hint-placeholder-count="7"><div class="ck"><span style="color: var(--inst-error);">✕</span><span>{{x}}</span></div></sc-for>
+      <div class="i-banner" style="margin-top: 4px;"><b>ⓘ How</b><span>Open a PR on the Instrument package that adds the token or component, its sheet entry and both themes. Then use it from the app. One-off overrides fail the hex lint.</span></div>
+    </section>
+  </div>
+
+  <section aria-labelledby="r6" class="i-stack">
+    <h2 id="r6" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">6 · Done means</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;">
+      <sc-for list="{{done}}" as="x" hint-placeholder-count="8"><div class="ck"><span>✓</span><span>{{x}}</span></div></sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      setup: [
+        { n: '01', t: 'Name it.', d: 'Use a proper name of 1–2 words, at most 18 characters, in Title Case. That name is the wordmark.' },
+        { n: '02', t: 'Load Instrument.', d: 'Web: link instrument.css and set class="inst" on <body>. SwiftUI and Android: generate from instrument.tokens.json.' },
+        { n: '03', t: 'Join the family.', d: 'Add one entry (name, LIVE URL, LAB URL, glance endpoint) to the shared apps list. The switcher and Home read it.' },
+        { n: '04', t: 'Sign in through Pocket ID.', d: 'Register an OIDC client. Use the six sign-in pages as they are.' },
+        { n: '05', t: 'Channels.', d: 'LIVE from release tags, LAB from main. Lab never gets write credentials.' },
+        { n: '06', t: 'Glance.', d: 'Expose one number and one state for the Home tile, plus any “Needs you” items.' }
+      ],
+      shell: [
+        '▦ switcher, then the wordmark, then the channel badge, top left',
+        'Up to 5 tabs. The current one is marked. A bottom bar below 600 px',
+        'Your name and a quiet Sign out, top right',
+        'Version (tag or branch + short hash) in the footer, in mono',
+        'Theme follows the system. Web adds System / Light / Dark',
+        'Banners under the header: Viewing, channel, freshness, then the page message',
+        'Every disabled control says why (“LAB: writes disabled.”)',
+        'Partial updates load in place. No full-page spinners',
+        'Six sign-in pages, empty, error and loading states from the shared set'
+      ],
+      reach: [
+        { need: 'The one main action', use: '.i-btn--primary (one per screen)' },
+        { need: 'Other actions', use: '.i-btn--secondary · --quiet' },
+        { need: 'Delete, remove', use: '.i-btn--danger + type-the-name dialog' },
+        { need: 'A list of things', use: '.i-stack of .i-block, 4 px gaps' },
+        { need: 'Rows with numbers', use: '.i-table, .num, .i-group, .i-hide-sm' },
+        { need: 'Act on one row', use: 'row actions + hx-swap="outerHTML" on <tr>' },
+        { need: 'Filter or switch view', use: '.i-seg (never a 6th tab)' },
+        { need: 'State of a thing', use: '.i-chip --live/--progress/--done/--failed' },
+        { need: 'Page-wide message', use: '.i-banner --success/--warning/--error' },
+        { need: '“It worked”', use: '.i-toast (success only)' },
+        { need: 'Is the data recent?', use: 'freshness banner, app sets thresholds' },
+        { need: 'A token or URL once', use: 'show-once secret card' },
+        { need: 'Recording or live', use: '.i-live (sizes 14 / 18 / 36 / 52)' },
+        { need: 'A chart', use: 'chart-1…4, mean line, role="img" + table' },
+        { need: 'Two speakers', use: 'accent = you, them / them-text' }
+      ],
+      copy: [
+        'Write plain and short, one idea per sentence, no exclamation marks.',
+        'Call the reader “you”. Call the app by its name.',
+        'Buttons are Title Case verbs: “Save Correction”, “Add Person”.',
+        'Help text is sentence case and ends with a full stop.',
+        'Errors say what failed and what to do next: “✕ Enter a time from 00:00 to 23:59.”',
+        'An empty value is “—”, never 0, N/A or blank.',
+        'Use glyphs where the meaning is universal: ▼ ▾ ✓ ✕ ↩ ⎘ ▶ ■ ⚑ ⓘ.',
+        'Emoji only as phone, Wear and Auto nav or mode icons.'
+      ],
+      back: [
+        'A colour, tint or opacity not in the tokens',
+        'A font size, weight or tracking not in the scale',
+        'A spacing, radius, height or shadow value',
+        'A new component, or a variant of one',
+        'A new chart type or series colour',
+        'A new glyph, icon or motion',
+        'A new state, banner kind or copy pattern'
+      ],
+      done: [
+        'Both themes pass WCAG AA',
+        'Focus ring visible on every control',
+        'Reduced motion holds still',
+        'Every chart has a table',
+        'No hex values in app code (lint)',
+        'Works at 360 px, no page scroll sideways',
+        'Badge visible on every screen and channel',
+        'Listed in Home and the switcher'
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

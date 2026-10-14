@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mac settings window</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.win{width:836px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-2);display:flex;flex-direction:column}
+.win-tb{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.lights{display:flex;gap:8px;margin-right:8px}
+.lights span{width:12px;height:12px;border-radius:50%;background:var(--inst-control)}
+.win-bd{padding:16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.win-ft{display:flex;align-items:center;gap:12px;padding:10px 16px;border-top:1px solid var(--inst-line);font-size:12px;color:var(--inst-text-2)}
+.sec{display:flex;flex-direction:column;gap:4px}
+.sec + .sec{margin-top:12px}
+.grp{background:var(--inst-surface);padding:12px;display:flex;flex-direction:column;gap:14px}
+.perm{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 8px;align-items:center;padding:8px 0;border-top:1px solid var(--inst-line)}
+.perm:first-child{border-top:0;padding-top:0}
+.perm .i-help{grid-column:1 / -1}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 900px; height: 1000px; padding: 32px; display: flex; flex-direction: column; gap: 8px;">
+
+  <span class="t-micro t-2">Settings · LIVE · Test Connection passed</span>
+  <section class="win" role="dialog" aria-labelledby="st-title">
+    <div class="win-tb">
+      <span class="lights" aria-hidden="true"><span></span><span></span><span></span></span>
+      <span id="st-title" style="font-size: 13px; font-weight: 700;">Settings</span>
+      <span class="i-badge i-badge--live">Live</span>
+      <span class="t-mono t-meta t-2" style="margin-left: auto;">Jarvis Voice 0.12.0</span>
+    </div>
+
+    <div class="win-bd">
+      <div>
+        <section class="sec" aria-labelledby="s-server">
+          <h2 id="s-server" class="t-label">Server</h2>
+          <div class="grp">
+            <div class="i-field">
+              <label class="i-label" for="srv-url">Server URL</label>
+              <input id="srv-url" class="i-input i-input--mono" value="https://live.apj.dev" aria-describedby="srv-url-h">
+              <span id="srv-url-h" class="i-help" style="display: flex; align-items: center; gap: 6px;">Channel <span class="i-badge i-badge--live">Live</span><span class="t-mono">server-v0.18.0</span></span>
+            </div>
+            <div class="i-field">
+              <label class="i-label" for="srv-tok">Device token</label>
+              <input id="srv-tok" class="i-input i-input--mono" type="password" value="jl_dev_0000000000007Hq2" aria-describedby="srv-tok-h">
+              <span id="srv-tok-h" class="i-help">Make one on the web under Devices. It is shown once. This Mac never signs in another way.</span>
+            </div>
+            <div class="i-field">
+              <button type="button" role="switch" aria-checked="false" class="i-switch" aria-describedby="srv-away-h"><span class="track"><span class="knob"></span></span><span class="state">OFF</span><span>Away from home</span></button>
+              <span id="srv-away-h" class="i-help">Use the public address when you are off the home network.</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px;">
+              <button type="button" class="i-btn i-btn--secondary i-btn--sm">Test Connection</button>
+              <span class="i-msg-ok" role="status">✓ Connected to live.apj.dev</span>
+              <span class="t-mono t-meta t-2">41 ms</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="sec" aria-labelledby="s-rec">
+          <h2 id="s-rec" class="t-label">Recording</h2>
+          <div class="grp">
+            <div class="i-field">
+              <label class="i-label" for="rec-mic">Microphone</label>
+              <span class="i-select"><select id="rec-mic" class="i-input" aria-describedby="rec-mic-h"><option>MacBook Pro Microphone</option><option>Shure MV7</option><option>System default</option></select></span>
+              <span id="rec-mic-h" class="i-help">Your voice is Me. In Meeting, system audio is Them.</span>
+            </div>
+            <div class="i-field">
+              <button type="button" role="switch" aria-checked="true" class="i-switch" aria-describedby="rec-top-h"><span class="track"><span class="knob"></span></span><span class="state">ON</span><span>Keep copilot panel on top</span></button>
+              <span id="rec-top-h" class="i-help">The panel floats over other windows and never takes focus.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <div>
+        <section class="sec" aria-labelledby="s-dict">
+          <h2 id="s-dict" class="t-label">Dictation</h2>
+          <div class="grp">
+            <div class="i-field">
+              <label class="i-label" for="d-key">Dictation key</label>
+              <span class="i-select"><select id="d-key" class="i-input"><option>Right ⌥ Option</option><option>Right ⌘ Command</option><option>Right ⌃ Control</option><option>Right ⇧ Shift</option></select></span>
+            </div>
+            <div class="i-field">
+              <span class="i-label" id="d-mode">Mode</span>
+              <div class="i-seg" role="radiogroup" aria-labelledby="d-mode" style="align-self: flex-start;">
+                <button type="button" role="radio" aria-checked="true">Hold to talk</button>
+                <button type="button" role="radio" aria-checked="false">Tap-tap</button>
+                <button type="button" role="radio" aria-checked="false">Double-tap</button>
+              </div>
+              <span class="i-help">Hold Right ⌥ while you talk. Let go to finish. Esc cancels.</span>
+            </div>
+            <div class="i-field">
+              <button type="button" role="switch" aria-checked="true" class="i-switch" aria-describedby="d-paste-r"><span class="track"><span class="knob"></span></span><span class="state">ON</span><span>Paste at the cursor</span></button>
+              <span id="d-paste-r" class="i-reason">⚑ Needs Accessibility. Until then, the text is copied.</span>
+              <span class="i-help">Off: the text is copied and you paste it.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="sec" aria-labelledby="s-perm">
+          <h2 id="s-perm" class="t-label">Permissions</h2>
+          <div class="grp" style="gap: 0;">
+            <div class="perm">
+              <span class="t-body">Microphone</span>
+              <span class="i-chip i-chip--done">✓ Allowed</span>
+            </div>
+            <div class="perm">
+              <span class="t-body">System audio recording</span>
+              <span class="i-chip i-chip--done">✓ Allowed</span>
+              <span class="i-help">Needed for Meeting mode.</span>
+            </div>
+            <div class="perm">
+              <span class="t-body">Accessibility</span>
+              <span class="i-chip i-chip--progress">⚑ Not allowed</span>
+              <span class="i-help" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 6px;"><span style="flex: 1 1 180px;">Dictation needs Accessibility to read the key and paste at the cursor.</span><button type="button" class="i-btn i-btn--secondary i-btn--sm">Open System Settings…</button></span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div class="win-ft">
+      <span>Sessions, chat, Kai and models are on the web.</span>
+      <a href="#" style="margin-left: auto;">Open <span class="t-mono">live.apj.dev</span> ▶</a>
+    </div>
+  </section>
+
+  <span class="t-micro t-2" style="padding-top: 24px;">Test Connection · token rejected</span>
+  <div class="grp" style="width: 410px; border: 1px solid var(--inst-line);">
+    <div class="i-field">
+      <label class="i-label" for="srv-tok2">Device token</label>
+      <input id="srv-tok2" class="i-input i-input--mono" type="password" value="jl_dev_00000000000000Zr1" aria-invalid="true" aria-describedby="srv-tok2-e">
+      <span id="srv-tok2-e" class="i-help">Make a new one on the web under Devices, then paste it here.</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <button type="button" class="i-btn i-btn--secondary i-btn--sm">Test Connection</button>
+      <span class="i-msg-error" role="alert">✕ Token rejected.</span>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>
