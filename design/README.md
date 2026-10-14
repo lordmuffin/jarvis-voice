@@ -24,6 +24,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 - `jv_accent` (teal) is the only brand hue. Use it for the one primary action, the user's chat bubble, selection outlines, progress, live values (wpm), links, and the idle dot. Text on teal is `jv_on_accent` or `jv_bg`, never white.
 - `jv_waveform` is reserved for the recording bars, so listening reads differently from idle.
 - State colors mean state only: `jv_success` (overlay running, permission granted, note saved), `jv_warning` (task running, context getting full), `jv_error` (failed, stopped, full). Always pair them with a word or glyph.
+- The release-channel tag (the server's `environment` from `GET /healthz`, shown beside the wordmark or server name) is a filled pill with `jv_bg` text: `jv_error` for **LIVE**, `jv_warning` for **LAB**, `jv_text2` for any other channel. Every UI that talks to a Jarvis Live server uses these, so production never looks like lab. A monochrome surface (the macOS menu-bar icon) tells them apart by shape instead: LAB filled, LIVE outlined.
 - Glass: the floating pill and chat pills use `jv_glass_bg` with a `jv_glass_border` hairline so they sit over other apps.
 - `jv_violet` is defined but unused. Do not introduce it without a reason.
 
