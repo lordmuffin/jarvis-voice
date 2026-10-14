@@ -42,6 +42,8 @@ npx playwright test
 | `src/api.ts`, `src/ws.ts` | REST client (cookie auth), viewer WebSocket with reconnect |
 | `src/views/` | Sessions list, live and past session, devices, admin, shared panes |
 | `src/jarvis/` | The Jarvis components over Instrument's rules: TranscriptLine, MarkerRow, NowDock/SuggestionCard, CopilotItem, RelatedNoteCard, ConnectionChip, SessionRow, SessionHeader, WorkItemCard/RunBlock, UploadForm, Timeline (the feed), FeedFilter, JumpPill. `dock.ts` is the Now dock's rules |
+| `src/sessionFilters.ts` | The Sessions list's filters (status, mode, date, sort, search in titles or transcripts): parsed from and written to the URL query, mapped to the server's parameters |
+| `src/planned.ts` | Flags for slots the design marks "planned" (the pinned live card; the Paused chip has no flag). Built and tested, hidden until the feature exists |
 | `src/feed.ts`, `src/follow.ts`, `src/look.ts`, `src/dismissals.ts` | Feed order and "new" marks, auto-follow, "since you looked", per-session suggestion dismissals (localStorage) |
 | `src/ds/components/` | Thin Preact wrappers over Instrument's classes (Shell, Button, Banner, Table, Dialog, …). Views use these and `src/jarvis/`, never raw `i-*` / `j-*` class strings |
 | `src/ds/ds.css` | Layout glue and two specificity fixes, from `--inst-*` tokens only |

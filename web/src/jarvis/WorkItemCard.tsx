@@ -64,6 +64,8 @@ export function WorkItemCard({
   picked,
   onPick,
   onChanged,
+  mergedInto,
+  sessionLine = true,
 }: {
   item: WorkItem;
   repos: WorkRepo[];
@@ -72,6 +74,10 @@ export function WorkItemCard({
   picked: boolean;
   onPick?: (on: boolean) => void;
   onChanged: () => void;
+  /** For a merged item: the title of the item it went into (null if that one is not listed). */
+  mergedInto?: string | null;
+  /** Name the session under the title (off when a heading above already does). */
+  sessionLine?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [prompt, setPrompt] = useState<WorkItemPrompt | null>(null);
@@ -159,7 +165,12 @@ export function WorkItemCard({
           />
         )}
       </div>
-      {showSession && (
+      {mergedInto !== undefined && (
+        <Text size="meta" tone="muted">
+          {mergedInto ? `Merged into “${mergedInto}”` : "Merged into another work item"}
+        </Text>
+      )}
+      {showSession && sessionLine && (
         <Text size="meta" tone="muted">
           <Link href={`/sessions/${encodeURIComponent(item.session_id)}`}>
             {item.session_title ?? "Untitled session"}

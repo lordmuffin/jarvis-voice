@@ -134,6 +134,8 @@ export interface SessionSummary {
   /** Audio is arriving now. A `live` session that is not streaming lost its recorder. */
   streaming: boolean;
   owner: Owner;
+  /** Only on a transcript search: where it hit, with the match marked (see `snippetParts`). */
+  match?: { start_ms: number; snippet: string } | null;
 }
 
 export interface SessionPage {
@@ -141,6 +143,8 @@ export interface SessionPage {
   total: number;
   limit: number;
   offset: number;
+  /** Sessions per status under every filter except status. */
+  counts: Record<SessionStatus, number>;
 }
 
 export interface FinalNoteDoc extends FinalNoteRef {
@@ -206,6 +210,8 @@ export interface Health {
   environment?: string;
   version?: string;
   commit?: string;
+  /** How long audio is kept; the footer says so. */
+  audio_retention_days?: number;
 }
 
 export interface Me {

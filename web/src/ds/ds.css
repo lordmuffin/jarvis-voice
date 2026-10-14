@@ -93,8 +93,8 @@ body {
   min-width: 0;
 }
 .d-search {
-  max-width: 320px;
-  margin-left: auto;
+  flex: 1 1 240px;
+  max-width: 360px;
 }
 .d-list {
   list-style: none;

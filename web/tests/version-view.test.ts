@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
 import { h, render } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadHealth, releaseChannel, serverBuild } from "../src/store";
+import { audioRetentionDays, loadHealth, releaseChannel, serverBuild } from "../src/store";
+import { RetentionNote } from "../src/views/RetentionNote";
 import { ServerVersion } from "../src/views/ServerVersion";
 import { Brand } from "../src/ds/components";
 
@@ -15,6 +16,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   serverBuild.value = null;
   releaseChannel.value = null;
+  audioRetentionDays.value = null;
   render(null, document.body);
   document.body.innerHTML = "";
 });
@@ -53,6 +55,37 @@ describe("server version", () => {
     serverBuild.value = { version: "unknown", commit: "" };
     render(h(ServerVersion, {}), document.body);
     expect(document.querySelector("[data-testid=server-version]")).toBeNull();
+  });
+});
+
+describe("audio retention", () => {
+  it("loads how long audio is kept from /healthz", async () => {
+    healthz({ status: "ok", environment: "live", version: "0.16.0", commit: "x", audio_retention_days: 30 });
+    await loadHealth();
+    expect(audioRetentionDays.value).toBe(30);
+  });
+
+  it("knows nothing from an old server without the field", async () => {
+    healthz({ status: "ok", version: "0.16.0" });
+    await loadHealth();
+    expect(audioRetentionDays.value).toBeNull();
+  });
+
+  it("says how long audio, transcript and note are kept", () => {
+    audioRetentionDays.value = 90;
+    render(h(RetentionNote, {}), document.body);
+    expect(document.body.textContent).toBe("Audio is kept for 90 days. The transcript and note are kept.");
+    audioRetentionDays.value = 1;
+    render(h(RetentionNote, {}), document.body);
+    expect(document.body.textContent).toContain("kept for 1 day.");
+  });
+
+  it("says nothing while unknown or when audio is not deleted (0 days)", () => {
+    render(h(RetentionNote, {}), document.body);
+    expect(document.body.textContent).toBe("");
+    audioRetentionDays.value = 0;
+    render(h(RetentionNote, {}), document.body);
+    expect(document.body.textContent).toBe("");
   });
 });
 

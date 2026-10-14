@@ -32,13 +32,17 @@ export async function loadMe(): Promise<void> {
  * wordmark so live and lab are never mistaken for each other. null while unknown. */
 export const releaseChannel = signal<string | null>(null);
 
+/** How many days the server keeps audio, from `/healthz`; null while unknown. */
+export const audioRetentionDays = signal<number | null>(null);
+
 /** The version (and commit, when known) of the server this dashboard is running on, shown
  * in the header. null while unknown. */
 export const serverBuild = signal<{ version: string; commit: string } | null>(null);
 
 export async function loadHealth(): Promise<void> {
   try {
-    const { environment: env, version, commit } = await health();
+    const { environment: env, version, commit, audio_retention_days: days } = await health();
+    audioRetentionDays.value = typeof days === "number" ? days : null;
     releaseChannel.value = env || null;
     serverBuild.value = version ? { version, commit: commit ?? "" } : null;
   } catch {

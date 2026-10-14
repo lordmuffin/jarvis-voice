@@ -95,16 +95,19 @@ export function ItemMain({ children }: { children?: ComponentChildren }) {
 export function RowLink({
   href,
   onClick,
+  pinned,
   children,
   ...rest
 }: {
   href: string;
   onClick: (e: MouseEvent) => void;
+  /** The planned pinned live card. */
+  pinned?: boolean;
   children: ComponentChildren;
   "data-testid"?: string;
 }) {
   return (
-    <a {...rest} class="j-srow" href={href} onClick={onClick}>
+    <a {...rest} class={cx("j-srow", pinned && "j-srow--pinned")} href={href} onClick={onClick}>
       {children}
     </a>
   );
@@ -228,13 +231,25 @@ export function Column({ children, wide, ...rest }: Kids & { wide?: boolean }) {
 }
 
 /** A heading line for a list: label, then a count. */
-export function ListHead({ title, count, id }: { title: string; count?: number; id?: string }) {
+export function ListHead({
+  title,
+  count,
+  meta,
+  id,
+}: {
+  title: string;
+  count?: number;
+  /** A mono detail after the title (a date). */
+  meta?: string;
+  id?: string;
+}) {
   return (
     <div class="j-sec">
       <h2 class="t-label" id={id}>
         {title}
       </h2>
       {count !== undefined && <span class="t-mono t-meta t-2">{count}</span>}
+      {meta && <span class="t-mono t-meta t-2">{meta}</span>}
     </div>
   );
 }

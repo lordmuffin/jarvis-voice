@@ -9,6 +9,8 @@ import { FeedFilter } from "../src/jarvis/FeedFilter";
 import { JumpPill } from "../src/jarvis/JumpPill";
 import { MarkerRow } from "../src/jarvis/MarkerRow";
 import { NowDock } from "../src/jarvis/NowDock";
+import { PinnedLiveRow } from "../src/jarvis/PinnedLiveRow";
+import { PLANNED } from "../src/planned";
 import { RelatedNoteCard } from "../src/jarvis/RelatedNoteCard";
 import { SessionRow } from "../src/jarvis/SessionRow";
 import { Timeline } from "../src/jarvis/Timeline";
@@ -340,7 +342,29 @@ describe("SessionRow", () => {
     expect(row.textContent).toContain("Done");
     expect(q("[data-testid=owner]")).toBeNull();
     (row as HTMLElement).click();
-    expect(onOpen).toHaveBeenCalledWith("s1");
+    expect(onOpen).toHaveBeenCalledWith("/sessions/s1");
+  });
+
+  it("shows where a transcript search hit, with the match in bold, and opens at that line", () => {
+    me.value = { id: "u1" } as never;
+    const onOpen = vi.fn();
+    const hit = { start_ms: 972_000, snippet: "Send me the GPU runner \ue000pricing\ue001 and we'll size it" };
+    render(<SessionRow session={{ ...session, match: hit }} onOpen={onOpen} />, document.body);
+    const m = q("[data-testid=session-match]")!;
+    expect(m.querySelector("b")!.textContent).toBe("pricing");
+    expect(m.textContent).toContain("Send me the GPU runner pricing and we'll size it");
+    expect(m.textContent).toContain("▶ 16:12");
+    expect(q("[data-testid=session-row]")!.getAttribute("href")).toBe("/sessions/s1#t=972000");
+    (q("[data-testid=session-row]") as HTMLElement).click();
+    expect(onOpen).toHaveBeenCalledWith("/sessions/s1#t=972000");
+  });
+
+  it("does not turn a snippet into markup", () => {
+    me.value = { id: "u1" } as never;
+    const hit = { start_ms: 1000, snippet: "<img src=x onerror=alert(1)> \ue000<b>x</b>\ue001" };
+    render(<SessionRow session={{ ...session, match: hit }} onOpen={vi.fn()} />, document.body);
+    expect(q("[data-testid=session-match] img")).toBeNull();
+    expect(q("[data-testid=session-match]")!.textContent).toContain("<img src=x onerror=alert(1)>");
   });
 
   it("names the owner when it isn't yours, and styles an untitled session quietly", () => {
@@ -449,5 +473,40 @@ describe("Timeline", () => {
     await act(() => undefined);
     expect(q("[data-testid=follow-state]")!.textContent).toBe("↓ Following live");
     expect(q(".d-jump")).toBeNull();
+  });
+});
+
+describe("PinnedLiveRow (planned: hidden behind PLANNED.pinnedLive)", () => {
+  const live: SessionSummary = {
+    id: "s9",
+    title: "ARC runner migration vendor call",
+    mode: "meeting",
+    status: "live",
+    channels: ["mic"],
+    started_at: "2026-10-14T15:05:00Z",
+    ended_at: null,
+    local_only: false,
+    streaming: true,
+    owner: { id: "u1", display_name: "Andrew" },
+  };
+
+  it("is a pinned row: a LIVE pill with the elapsed time, the title, tier and lag, and Open", () => {
+    const onOpen = vi.fn();
+    render(
+      <PinnedLiveRow session={live} elapsedMs={1_122_000} status={{ stt_tier: "pve", llm_ok: true, lag_ms: 840 }} onOpen={onOpen} />,
+      document.body,
+    );
+    const row = q(".j-srow--pinned")!;
+    expect(row.querySelector(".i-live")!.textContent).toContain("LIVE");
+    expect(row.querySelector(".i-live .time")!.textContent).toBe("18:42");
+    expect(row.textContent).toContain("ARC runner migration vendor call");
+    expect(row.textContent).toContain("pve · lag 840 ms");
+    expect(row.textContent).toContain("Open");
+    (row as HTMLElement).click();
+    expect(onOpen).toHaveBeenCalledWith("/sessions/s9");
+  });
+
+  it("is not shown by default: the plan flag is off", () => {
+    expect(PLANNED.pinnedLive).toBe(false);
   });
 });

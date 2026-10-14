@@ -9,12 +9,15 @@ export function Shell({
   nav,
   tools,
   banner,
+  footer,
   children,
 }: {
   brand: ComponentChildren;
   nav: ComponentChildren;
   tools: ComponentChildren;
   banner?: ComponentChildren;
+  /** A quiet line at the bottom of the page. */
+  footer?: ComponentChildren;
   children: ComponentChildren;
 }) {
   return (
@@ -30,6 +33,7 @@ export function Shell({
       </header>
       {banner}
       <main class="i-page">{children}</main>
+      {footer && <footer class="i-footer">{footer}</footer>}
     </div>
   );
 }

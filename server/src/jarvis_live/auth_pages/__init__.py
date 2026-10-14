@@ -43,6 +43,13 @@ html, body { margin: 0; background: var(--inst-bg); }
 .auth-tag--error { color: var(--inst-error); }
 .auth-foot { margin-top: auto; }
 .auth form { margin: 0; }
+/* Instrument v0.1.0 colours every link `.inst a` (accent), which outranks `.i-btn--*`, so a link
+   that is a button would be accent on accent. The same fix web/src/ds/ds.css carries; drop both
+   when Instrument fixes the specificity. */
+.inst .i-btn--primary { color: var(--inst-on-accent); }
+.inst .i-btn--secondary { color: var(--inst-text); }
+.inst .i-btn--quiet { color: var(--inst-text-2); }
+.inst .i-btn--quiet:hover { color: var(--inst-text); }
 """
 
 # kind -> (tag, tag class, title, line, action)

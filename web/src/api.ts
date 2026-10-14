@@ -9,6 +9,7 @@ import type {
   PublishingQueue,
   SessionDetail,
   SessionPage,
+  SessionStatus,
   SessionSummary,
   WorkItem,
   WorkItemEdit,
@@ -79,13 +80,40 @@ export interface ListOptions {
   all?: boolean;
   /** Admins only: one user's sessions. */
   userId?: string;
+  status?: SessionStatus;
+  mode?: "meeting" | "solo";
+  /** Started at or after this time (ISO). */
+  since?: string;
+  sort?: "newest" | "oldest" | "longest";
+  /** Search text; `searchIn` says whether it looks in titles (default) or transcripts. */
+  q?: string;
+  searchIn?: "titles" | "transcripts";
 }
 
-export function sessionsPath({ limit = 100, offset = 0, all, userId }: ListOptions = {}): string {
-  const q = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  if (userId) q.set("user_id", userId);
-  else if (all) q.set("all", "true");
-  return `/v1/sessions?${q}`;
+export function sessionsPath({
+  limit = 100,
+  offset = 0,
+  all,
+  userId,
+  status,
+  mode,
+  since,
+  sort,
+  q,
+  searchIn,
+}: ListOptions = {}): string {
+  const p = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (userId) p.set("user_id", userId);
+  else if (all) p.set("all", "true");
+  if (status) p.set("status", status);
+  if (mode) p.set("mode", mode);
+  if (since) p.set("since", since);
+  if (sort && sort !== "newest") p.set("sort", sort);
+  if (q?.trim()) {
+    p.set("q", q.trim());
+    if (searchIn === "transcripts") p.set("q_in", "transcripts");
+  }
+  return `/v1/sessions?${p}`;
 }
 
 export const me = (f?: typeof fetch) => request<Me>("/v1/me", {}, f);

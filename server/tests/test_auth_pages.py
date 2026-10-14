@@ -91,6 +91,14 @@ def test_the_page_is_self_contained_and_follows_the_system_theme() -> None:
     assert "prefers-color-scheme: dark" in html  # from Instrument's own CSS
 
 
+def test_a_link_that_is_a_button_keeps_its_own_text_colour() -> None:
+    # Instrument colours every `.inst a` accent; without these a primary link button reads
+    # accent on accent.
+    html = page("expired")
+    assert ".inst .i-btn--primary { color: var(--inst-on-accent); }" in html
+    assert ".inst .i-btn--quiet { color: var(--inst-text-2); }" in html
+
+
 def test_the_embedded_css_is_the_vendored_instrument_css() -> None:
     assert "--inst-accent" in CSS_PATH.read_text()
     if not WEB_CSS.exists():  # the server image is built from server/ alone

@@ -22,8 +22,18 @@ test.use({ permissions: ["clipboard-read", "clipboard-write"] });
 
 test("review work items: edit, approve, copy, merge, discard", async ({ page }) => {
   await signIn(page, "root", "/work-items");
-  await expect(page.getByRole("heading", { name: "Work Items" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Work Items", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Work Items", exact: true })).toBeVisible();
+
+  // The Merged tab: counted, and each item says what it was merged into. It is read-only.
+  await expect(page.getByRole("tab", { name: "Merged 1" })).toBeVisible();
+  await page.getByRole("tab", { name: "Merged 1" }).click();
+  const merged = card(page, "Back off between Gotify retries");
+  await expect(merged).toHaveAttribute("data-state", "merged");
+  await expect(merged).toContainText("Merged into “Retry failed Gotify notifications”");
+  await expect(merged.getByRole("button")).toHaveCount(0);
+  await page.getByRole("tab", { name: /^Open/ }).click();
+
 
   // A draft with no repo or criteria says what it needs and cannot be approved yet.
   const srt = card(page, "Export transcripts as SRT");

@@ -6,6 +6,8 @@ import type { WorkItemPage, WorkItemState } from "../types";
 import { runActive } from "../workitems";
 import { WorkItemList, usePolling } from "./WorkItems";
 
+const ALL_STATES: WorkItemState[] = ["draft", "approved", "discarded", "merged"];
+
 const VIEWS: { id: string; label: string; states: WorkItemState[] }[] = [
   { id: "open", label: "Open", states: ["draft", "approved"] },
   { id: "discarded", label: "Discarded", states: ["discarded"] },
@@ -21,10 +23,11 @@ export function WorkItemsPage() {
 
   const [reloads, setReloads] = useState(0);
 
+  // One request for every state: the tabs' counts and "merged into" come from the same list.
   async function load(): Promise<WorkItemPage | null> {
     if (!allowed) return null;
     try {
-      const next = await myWorkItems(view.states);
+      const next = await myWorkItems(ALL_STATES);
       setPage(next);
       setError(null);
       return next;
@@ -35,7 +38,13 @@ export function WorkItemsPage() {
   }
 
   // Keep a running item's status fresh until its run ends.
-  usePolling(load, (p) => p.items.some(runActive), [view.id, reloads]);
+  usePolling(load, (p) => p.items.some(runActive), [reloads]);
+
+  const countOf = (states: WorkItemState[]) => page?.items.filter((i) => states.includes(i.state)).length;
+  const shown: WorkItemPage | null = page && {
+    ...page,
+    items: page.items.filter((i) => view.states.includes(i.state)),
+  };
 
   if (!allowed)
     return (
@@ -57,19 +66,19 @@ export function WorkItemsPage() {
           role="tablist"
           label="Work item views"
           value={view.id}
-          options={VIEWS}
+          options={VIEWS.map((v) => ({ id: v.id, label: v.label, count: countOf(v.states) }))}
           onChange={(id) => setView(VIEWS.find((v) => v.id === id)!)}
         />
       </div>
       {error && <Banner variant="error">{error}</Banner>}
-      {page === null ? (
+      {shown === null ? (
         <Loading />
-      ) : page.items.length === 0 ? (
+      ) : shown.items.length === 0 ? (
         <EmptyState>
           {view.id === "open" ? "Nothing to review." : view.id === "merged" ? "Nothing merged yet." : "Nothing discarded."}
         </EmptyState>
       ) : (
-        <WorkItemList page={page} onChanged={() => setReloads((n) => n + 1)} showSession />
+        <WorkItemList page={shown} onChanged={() => setReloads((n) => n + 1)} showSession groupBySession allItems={page?.items} />
       )}
     </Section>
   );

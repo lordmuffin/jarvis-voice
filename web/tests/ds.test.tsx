@@ -65,6 +65,21 @@ describe("StatusChip", () => {
   });
 });
 
+describe("StatusChip paused (planned: nothing sets it yet)", () => {
+  it("shows Paused in words, neutral, not breathing, in place of the live chip", () => {
+    render(<StatusChip status="live" streaming paused />, document.body);
+    const el = q("[data-testid=status-chip]")!;
+    expect(el.textContent).toBe("Paused");
+    expect(el.classList.contains("i-chip--live")).toBe(false);
+    expect(el.querySelector(".i-breathe")).toBeNull();
+  });
+
+  it("changes nothing when it isn't set", () => {
+    render(<StatusChip status="live" streaming />, document.body);
+    expect(q("[data-testid=status-chip]")!.textContent).toBe("Live");
+  });
+});
+
 describe("ChannelBadge", () => {
   it("is Live, Lab or the raw name, and absent while unknown", () => {
     render(<ChannelBadge channel={null} />, document.body);

@@ -12,7 +12,17 @@ const LABEL: Record<SessionStatus, string> = {
  * A session's state. `streaming` matters only for `live`: a live session whose recorder stopped
  * sending audio shows as Offline until the recorder reconnects or the server ends it.
  */
-export function StatusChip({ status, streaming }: { status: SessionStatus; streaming: boolean }) {
+export function StatusChip({
+  status,
+  streaming,
+  paused,
+}: {
+  status: SessionStatus;
+  streaming: boolean;
+  /** Planned: the design keeps a slot for a paused session. Nothing sets it yet. */
+  paused?: boolean;
+}) {
+  if (paused) return <Pill data-testid="status-chip">Paused</Pill>;
   if (status === "live" && !streaming)
     return (
       <Pill

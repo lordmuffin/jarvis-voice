@@ -75,9 +75,17 @@ jarvis-live create-device --name "Kitchen Mac" [--user <email|id>]   # default: 
 jarvis-live claim-owner <email>
 ```
 
+### Sign-in error pages
+
+A browser sign-in that fails answers with a page in the dashboard's design system, not plain text: `400` when the link expired or the provider or exchange failed, `403` when the account is not allowed (it names the account). The markup is `src/jarvis_live/auth_pages/` (`render_auth_page(kind, app_name=…, channel=…)`, so another app can reuse it) with a copy of the vendored `instrument.css`; a test fails if that copy drifts from `web/src/instrument`. Android sign-in is unchanged: it still redirects to the app with an `error` code.
+
+### Listing sessions
+
+`GET /v1/sessions` lists the caller's sessions (admins: `all=true`, or `user_id`). Optional: `status` (`live|finalizing|done|failed`), `mode` (`meeting|solo`), `since` (started at or after), `sort` (`newest` default, `oldest`, `longest`; a running session counts up to now), and `q` with `q_in=titles` (default, case-insensitive substring) or `q_in=transcripts` (Postgres full text over final lines: words, `"phrases"`, `-exclusions`; each hit carries `match: {start_ms, snippet}` with the match between U+E000 and U+E001). The scope applies first, so a search never reaches another user's sessions. `counts` is per status under every filter except `status`. Migration `0008` adds the GIN index transcript search uses.
+
 ### Recordings
 
-`GET /v1/sessions/{id}/audio/{mic|system}.wav` serves a session's recording as WAV and supports `Range` requests. Retention removes recordings after `JARVIS_LIVE_AUDIO_RETENTION_DAYS` (default 90); once a recording is removed, this endpoint returns 404.
+`GET /v1/sessions/{id}/audio/{mic|system}.wav` serves a session's recording as WAV and supports `Range` requests. Retention removes recordings after `JARVIS_LIVE_AUDIO_RETENTION_DAYS` (default 90, also reported by `/healthz` as `audio_retention_days`); once a recording is removed, this endpoint returns 404.
 
 ### Uploading a recording
 

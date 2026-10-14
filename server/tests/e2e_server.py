@@ -6,14 +6,16 @@
 The database is ``JARVIS_LIVE_TEST_DATABASE_URL`` if set, else a Postgres testcontainer.
 
 Sign-in goes through a fake Pocket-ID (``tests.fake_oidc``) on ``port + 1``: its page lists
-the test users (alice, bob, root, mallory) as links. ``E2E_TOKEN`` is a fixed device token of
-alice's, so the browser test can stream a session as her.
+the test users (alice, bob, root, mallory) as links; mallory is in no group, so she is not allowed
+in. ``E2E_TOKEN`` is a fixed device token of alice's, so the browser test can stream a session as
+her.
 
 Publishing goes to a fake GitHub (``tests.fake_github``) on ``port + 2``. Each start seeds a
 finished session titled ``E2E publish me`` for root (an admin, so it may be published), with
 its note in the outbox, and one titled ``E2E work items`` with a short transcript and three
-work items to review. Dispatch runs against an in-memory cluster whose runs open a PR at
-once. Test doubles only, never for real deployments.
+work items to review (plus one already merged), and six older sessions of root's in every status
+and mode for the Sessions list's filters. Dispatch runs against an in-memory cluster whose runs
+open a PR at once. Test doubles only, never for real deployments.
 """
 
 import argparse
@@ -235,9 +237,75 @@ async def seed_publishable(url: str, outbox: Path) -> None:
                         sources=sources,
                     )
                 )
+            await db.flush()
+            first = (
+                await db.execute(
+                    select(WorkItem).where(WorkItem.session_id == work.id, WorkItem.ref == "w1")
+                )
+            ).scalar_one()
+            # One draft was merged into the first: it shows under the Merged tab.
+            db.add(
+                WorkItem(
+                    session_id=work.id,
+                    user_id=root.id,
+                    ref="w4",
+                    title="Back off between Gotify retries",
+                    repo="lordmuffin/jarvis-voice",
+                    intent="Back off between Gotify retries, as said in the session.",
+                    acceptance_criteria=["Each retry waits longer"],
+                    sources=[src[0]],
+                    state="merged",
+                    merged_into=first.id,
+                )
+            )
+            await seed_library(db, device.id, root.id, now)
             await db.commit()
     finally:
         await engine.dispose()
+
+
+# (title, status, mode, days ago, minutes long (None: running), what was said)
+LIBRARY: list[tuple[str, str, str, float, float | None, list[str]]] = [
+    ("Platform sync", "done", "meeting", 3, 42, ["The quarterly pricing review is next week."]),
+    ("Homelab power budget", "done", "solo", 9, 28, ["The pricing on the second UPS is close."]),
+    ("Offsite backup review", "finalizing", "meeting", 12, 19, ["Backups ran clean."]),
+    ("Garage sensor walkthrough", "live", "solo", 0.1, None, ["The sensor reads a bit high."]),
+    ("Sleep pipeline backfill plan", "failed", "solo", 5, 0.5, []),
+    ("Old retro", "done", "meeting", 40, 19, ["We shipped the migration."]),
+]
+
+
+async def seed_library(db: Any, device_id: Any, user_id: Any, now: datetime) -> None:
+    """Older sessions of root's in every status and mode, for the Sessions list's filters."""
+    from datetime import timedelta
+
+    for title, status, mode, days, minutes, said in LIBRARY:
+        started = now - timedelta(days=days)
+        row = SessionRow(
+            device_id=device_id,
+            user_id=user_id,
+            title=title,
+            mode=mode,
+            status=status,
+            channels=["mic"],
+            started_at=started,
+            ended_at=None if minutes is None else started + timedelta(minutes=minutes),
+        )
+        db.add(row)
+        await db.flush()
+        for i, words in enumerate(said):
+            db.add(
+                SegmentRow(
+                    session_id=row.id,
+                    channel="mic",
+                    speaker="me",
+                    start_ms=60_000 * (i + 1),
+                    end_ms=60_000 * (i + 1) + 4000,
+                    text=words,
+                    source="final",
+                    stt_tier="fake",
+                )
+            )
 
 
 def start_github(port: int) -> None:
@@ -308,6 +376,8 @@ def serve(port: int, web_dist: Path) -> int:
             oidc_client_id=CLIENT_ID,
             oidc_client_secret_file=secret,
             oidc_admin_group="jarvis-admins",
+            # mallory has no groups: the sign-in screen for an account that is not allowed.
+            oidc_allowed_groups="jarvis,jarvis-admins",
             publish_repo="lordmuffin/Notes",
             github_api=f"http://127.0.0.1:{github_port}",
             github_token_file=github_token,

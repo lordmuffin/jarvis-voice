@@ -42,6 +42,35 @@ for (const theme of THEMES) {
       await shoot(page, "sessions", theme);
     });
 
+    test("sessions: filters and sort", async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await signIn(page, "root");
+      await page.getByRole("radiogroup", { name: "Status" }).getByRole("radio", { name: "Done" }).click();
+      await page.getByLabel("Mode").selectOption("meeting");
+      await page.getByLabel("Date").selectOption("30d");
+      await page.getByLabel("Sort").selectOption("oldest");
+      await expect(page.getByTestId("session-row")).toHaveCount(2);
+      await shoot(page, "sessions-filters", theme);
+    });
+
+    test("sessions: transcript search", async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 900 });
+      await signIn(page, "root");
+      await page.getByRole("radiogroup", { name: "Search in" }).getByRole("radio", { name: "Transcripts" }).click();
+      await page.getByLabel("Search sessions by transcript").fill("pricing");
+      await expect(page.getByTestId("session-match")).toHaveCount(2);
+      await shoot(page, "sessions-search", theme);
+    });
+
+    test("sessions: nothing matches", async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 700 });
+      await signIn(page, "root");
+      await page.getByRole("radiogroup", { name: "Status" }).getByRole("radio", { name: "Live 1" }).click();
+      await page.getByLabel("Mode").selectOption("meeting");
+      await expect(page.getByText("No sessions match these filters.")).toBeVisible();
+      await shoot(page, "sessions-empty", theme);
+    });
+
     test("devices", async ({ page }) => {
       await signIn(page, "alice", "/devices");
       await page.getByLabel("New device").fill(`Work MacBook ${theme}`);
@@ -99,6 +128,30 @@ for (const theme of THEMES) {
       await signIn(page, "root", "/work-items");
       await expect(page.getByTestId("work-item").first()).toBeVisible();
       await shoot(page, "work-items", theme);
+    });
+
+    test("work items: merged", async ({ page }) => {
+      await signIn(page, "root", "/work-items");
+      await page.getByRole("tab", { name: /^Merged/ }).click();
+      await expect(page.getByTestId("work-item").first()).toContainText("Merged into");
+      await shoot(page, "work-items-merged", theme);
+    });
+
+    test("sign-in error pages (rendered by the server)", async ({ page }) => {
+      await page.setViewportSize({ width: 800, height: 520 });
+      await page.goto("/auth/callback?state=nope&code=x");
+      await expect(page.getByRole("heading", { name: "This sign-in link has expired." })).toBeVisible();
+      await shoot(page, "auth-expired", theme);
+
+      await page.goto("/auth/login");
+      await page.goto(`${page.url()}&user=deny`);
+      await expect(page.getByRole("heading", { name: "Sign-in failed." })).toBeVisible();
+      await shoot(page, "auth-failed", theme);
+
+      await page.goto("/auth/login");
+      await page.getByRole("link", { name: "mallory", exact: true }).click();
+      await expect(page.getByText("is not allowed to use Jarvis Live.")).toBeVisible();
+      await shoot(page, "auth-denied", theme);
     });
 
     test("admin", async ({ page }) => {

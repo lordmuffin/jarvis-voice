@@ -203,3 +203,37 @@ describe("endSession", () => {
     await expect(endSession("s1", f)).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe("sessionsPath", () => {
+  it("has just paging by default (as before)", () => {
+    expect(sessionsPath()).toBe("/v1/sessions?limit=100&offset=0");
+    expect(sessionsPath({ all: true })).toBe("/v1/sessions?limit=100&offset=0&all=true");
+  });
+
+  it("carries the filters, sort and search the server understands", () => {
+    const path = sessionsPath({
+      status: "failed",
+      mode: "solo",
+      since: "2026-10-07T00:00:00.000Z",
+      sort: "longest",
+      q: "GPU pricing",
+      searchIn: "transcripts",
+    });
+    const q = new URL(path, "http://x").searchParams;
+    expect(Object.fromEntries(q)).toEqual({
+      limit: "100",
+      offset: "0",
+      status: "failed",
+      mode: "solo",
+      since: "2026-10-07T00:00:00.000Z",
+      sort: "longest",
+      q: "GPU pricing",
+      q_in: "transcripts",
+    });
+  });
+
+  it("leaves out an empty search and the default sort", () => {
+    const q = new URL(sessionsPath({ q: "", sort: "newest" }), "http://x").searchParams;
+    expect([...q.keys()]).toEqual(["limit", "offset"]);
+  });
+});

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, mergeWorkItems, sessionWorkItems } from "../api";
-import { Banner, Bar, Block, Button, Section, SectionLabel, Stack, Text } from "../ds/components";
+import { Banner, Bar, Block, Button, ListHead, Section, SectionLabel, Stack, Text } from "../ds/components";
+import { when } from "../format";
 import { WorkItemCard } from "../jarvis/WorkItemCard";
 import { currentUser } from "../store";
-import type { WorkItemPage } from "../types";
+import type { WorkItem, WorkItemPage } from "../types";
 import { runActive, sortItems } from "../workitems";
 
 export { WorkItemCard };
@@ -88,10 +89,16 @@ export function WorkItemList({
   page,
   onChanged,
   showSession = false,
+  groupBySession = false,
+  allItems,
 }: {
   page: WorkItemPage;
   onChanged: () => void;
   showSession?: boolean;
+  /** One heading per session (title and date), newest session first, as the server sends them. */
+  groupBySession?: boolean;
+  /** Every item, when `page` shows only some of them (to name what a merged item went into). */
+  allItems?: WorkItem[];
 }) {
   const [picked, setPicked] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +123,33 @@ export function WorkItemList({
       setError(errorText(e, "Couldn't merge those work items."));
     }
   }
+
+  const titleOf = new Map((allItems ?? page.items).map((i) => [i.id, i.title]));
+  const card = (item: WorkItem) => (
+    <WorkItemCard
+      key={item.id}
+      item={item}
+      repos={page.repos}
+      dispatchEnabled={page.dispatch_enabled}
+      showSession={showSession}
+      sessionLine={!groupBySession}
+      picked={picked.includes(item.id)}
+      onPick={item.state === "draft" ? (on) => toggle(item.id, on) : undefined}
+      onChanged={onChanged}
+      mergedInto={
+        item.state === "merged"
+          ? ((item.merged_into && titleOf.get(item.merged_into)) || null)
+          : undefined
+      }
+    />
+  );
+  const sessions: { id: string; title: string | null | undefined; started: string | null | undefined; items: WorkItem[] }[] = [];
+  if (groupBySession)
+    for (const i of page.items) {
+      let g = sessions.find((x) => x.id === i.session_id);
+      if (!g) sessions.push((g = { id: i.session_id, title: i.session_title, started: i.session_started_at, items: [] }));
+      g.items.push(i);
+    }
 
   return (
     <Stack>
@@ -143,18 +177,14 @@ export function WorkItemList({
         </Block>
       )}
       {error && <Banner variant="error">{error}</Banner>}
-      {items.map((item) => (
-        <WorkItemCard
-          key={item.id}
-          item={item}
-          repos={page.repos}
-          dispatchEnabled={page.dispatch_enabled}
-          showSession={showSession}
-          picked={picked.includes(item.id)}
-          onPick={item.state === "draft" ? (on) => toggle(item.id, on) : undefined}
-          onChanged={onChanged}
-        />
-      ))}
+      {groupBySession
+        ? sessions.map((g) => (
+            <Stack key={g.id}>
+              <ListHead title={g.title ?? "Untitled session"} meta={g.started ? when(g.started) : undefined} />
+              {sortItems(g.items).map(card)}
+            </Stack>
+          ))
+        : items.map(card)}
     </Stack>
   );
 }

@@ -1,11 +1,12 @@
 import { Brand, Button, CenterCard, Loading, Shell } from "./ds/components";
-import { me, navigate, releaseChannel, route, signOut } from "./store";
+import { audioRetentionDays, me, navigate, releaseChannel, route, signOut } from "./store";
 import type { Route } from "./route";
 import { Admin } from "./views/Admin";
 import { Devices } from "./views/Devices";
 import { Link } from "./views/Link";
 import { Login } from "./views/Login";
 import { Publishing } from "./views/Publishing";
+import { RetentionNote } from "./views/RetentionNote";
 import { ServerVersion } from "./views/ServerVersion";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
@@ -92,6 +93,9 @@ export function App() {
         </>
       }
       banner={<ViewingBanner />}
+      footer={
+        (r.name === "sessions" || r.name === "session") && audioRetentionDays.value ? <RetentionNote /> : undefined
+      }
     >
       {page(r)}
     </Shell>
