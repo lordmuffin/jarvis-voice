@@ -71,6 +71,15 @@ describe("release channel tag", () => {
     render(h(Wordmark, {}), document.body);
     expect(tag()?.textContent).toBe("lab");
     expect(tag()?.classList.contains("release-channel--live")).toBe(false);
+    expect(tag()?.classList.contains("release-channel--lab")).toBe(true);
+  });
+
+  // design/README.md, Color: amber is lab's; any other channel (a dev server) is grey.
+  it("tags any other channel in neither the live nor the lab style", () => {
+    releaseChannel.value = "dev";
+    render(h(Wordmark, {}), document.body);
+    expect(tag()?.textContent).toBe("dev");
+    expect(tag()?.className).toBe("release-channel");
   });
 
   it("shows no tag while the channel is unknown", () => {
