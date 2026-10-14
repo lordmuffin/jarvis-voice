@@ -24,6 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import com.lordmuffin.jarvisvoice.live.LiveApiClient
 import com.lordmuffin.jarvisvoice.live.LiveHttpException
 import com.lordmuffin.jarvisvoice.live.LiveSettings
+import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
@@ -57,6 +58,9 @@ class SettingsActivity : AppCompatActivity() {
     // Jarvis Live account line ("Signed in as …")
     private var tvLiveAccount: TextView? = null
     private var liveAccountJob: Job? = null
+    private var etLiveUrl: EditText? = null
+    private var tvLiveChannel: TextView? = null
+    private var liveChannelJob: Job? = null
 
     // Overlay status
     private lateinit var tvOverlayStatus: TextView
@@ -247,6 +251,7 @@ class SettingsActivity : AppCompatActivity() {
         runCatching { refreshStorageLabel() }
         runCatching { refreshVaultFolderLabel() }
         runCatching { refreshLiveAccount() }
+        runCatching { refreshLiveChannel() }
     }
 
     private fun refreshOverlayStatus() {
@@ -365,6 +370,8 @@ class SettingsActivity : AppCompatActivity() {
         val tvStatus = findViewById<TextView>(R.id.tv_live_settings_status)
         val btnSignIn = findViewById<Button>(R.id.btn_live_sign_in)
         tvLiveAccount = findViewById(R.id.tv_live_account)
+        etLiveUrl = etUrl
+        tvLiveChannel = findViewById(R.id.tv_live_channel)
 
         etUrl.setText(live.serverUrl)
         if (live.isConfigured) etToken.hint = getString(R.string.live_settings_token_saved)
@@ -383,7 +390,10 @@ class SettingsActivity : AppCompatActivity() {
         etUrl.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: Editable?) = updateSignInEnabled()
+            override fun afterTextChanged(s: Editable?) {
+                updateSignInEnabled()
+                refreshLiveChannel()
+            }
         })
 
         fun save(): Boolean {
@@ -394,6 +404,7 @@ class SettingsActivity : AppCompatActivity() {
             }
             if (url != live.serverUrl) live.accountName = null
             live.serverUrl = url
+            refreshLiveChannel()
             val token = etToken.text.toString().trim()
             if (token.isNotEmpty()) {
                 live.deviceToken = token
@@ -445,6 +456,24 @@ class SettingsActivity : AppCompatActivity() {
                 }
                 refreshLiveAccount()
             }
+        }
+    }
+
+    /**
+     * The saved server's release channel beside its URL (LIVE / LAB, from `GET /healthz`). Hidden
+     * until the server answers, and while the field holds a URL that hasn't been saved.
+     */
+    private fun refreshLiveChannel() {
+        val tv = tvLiveChannel ?: return
+        liveChannelJob?.cancel()
+        tv.visibility = View.GONE
+        val serverUrl = LiveSettings(this).serverUrl
+        if (etLiveUrl?.text?.toString()?.trim() != serverUrl) return
+        val client = runCatching { LiveApiClient(serverUrl, "") }.getOrNull() ?: return
+        liveChannelJob = lifecycleScope.launch {
+            val channel = client.channel() ?: return@launch
+            tv.setTextWithChannel("", channel)
+            tv.visibility = View.VISIBLE
         }
     }
 

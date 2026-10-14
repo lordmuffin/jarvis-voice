@@ -147,4 +147,22 @@ class LiveApiClientTest {
         gone.shutdown()
         assertFalse(LiveApiClient(url, "tok-123").isReachable())
     }
+
+    @Test fun channelReadsTheEnvironmentFromHealthz() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setBody("""{"status": "ok", "environment": "lab", "version": "0.12.0", "commit": "abc1234"}"""))
+        assertEquals(ServerChannel.Lab, client.channel())
+        assertEquals("/healthz", server.takeRequest().path)
+    }
+
+    @Test fun channelIsUnknownWhenTheServerDoesNotSay() = runBlocking<Unit> {
+        // An older server, a proxy error, then nothing listening at all.
+        server.enqueue(MockResponse().setBody("""{"status": "ok"}"""))
+        assertNull(client.channel())
+        server.enqueue(MockResponse().setResponseCode(502).setBody("""{"status": "ok", "environment": "live"}"""))
+        assertNull(client.channel())
+        val gone = MockWebServer().apply { start() }
+        val url = gone.url("/").toString()
+        gone.shutdown()
+        assertNull(LiveApiClient(url, "tok-123").channel())
+    }
 }

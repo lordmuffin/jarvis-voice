@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.SettingsActivity
+import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import java.text.DateFormat
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -38,6 +39,7 @@ class SessionsActivity : AppCompatActivity() {
     private var clientKey: Pair<String, String?>? = null
     private var nextOffset = 0
     private var hasMore = false
+    private var channelJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,9 +51,6 @@ class SessionsActivity : AppCompatActivity() {
         groupMessage = findViewById(R.id.group_sessions_message)
         tvMessage = findViewById(R.id.tv_sessions_message)
         btnRetry = findViewById(R.id.btn_sessions_retry)
-
-        findViewById<TextView>(R.id.tv_sessions_subtitle).text =
-            getString(R.string.history_subtitle, settings.serverUrl.removePrefix("https://").removePrefix("http://"))
 
         val layoutManager = LinearLayoutManager(this)
         rvSessions.layoutManager = layoutManager
@@ -68,8 +67,21 @@ class SessionsActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        refreshSubtitle()
         // Also picks up a sign-in finished in Settings after this screen showed "Sign in".
         if (adapter.sessionCount == 0 && loadJob?.isActive != true) reload()
+    }
+
+    /** "Your Jarvis Live sessions on <host>", then the server's channel tag once it answers. */
+    private fun refreshSubtitle() {
+        val tv = findViewById<TextView>(R.id.tv_sessions_subtitle)
+        val text = getString(R.string.history_subtitle, settings.serverUrl.removePrefix("https://").removePrefix("http://"))
+        tv.text = text
+        channelJob?.cancel()
+        val client = runCatching { client() }.getOrNull() ?: return
+        channelJob = lifecycleScope.launch {
+            tv.setTextWithChannel(text, client.channel())
+        }
     }
 
     private fun reload() {
