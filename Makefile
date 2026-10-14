@@ -5,7 +5,7 @@
 LEGACY_PY ?= python3
 RATCHET := python3 scripts/tdd/ratchet.py
 
-.PHONY: help deps tools test test-all lint lint-server lint-web lint-workflows \
+.PHONY: help deps tools test test-all lint lint-server lint-web lint-workflows lint-design lint-android lint-swift \
 	test-server test-legacy test-web test-policy \
 	test-server-full test-legacy-cov test-web-cov test-e2e test-android test-macos ratchet
 
@@ -24,16 +24,28 @@ tools:
 	scripts/tdd/install-tools.sh
 
 # ---- lint -------------------------------------------------------------------------------
-lint: lint-server lint-web lint-workflows
+lint: lint-server lint-web lint-workflows lint-design
 
 lint-server:
 	cd server && uv run ruff check . && uv run ruff format --check . && uv run mypy src
 
 lint-web:
-	cd web && npx tsc --noEmit
+	cd web && npx tsc --noEmit && npm run lint:css
 
 lint-workflows:
 	uvx --from actionlint-py actionlint .github/workflows/*.yml
+
+# Design-system guardrails: no hard-coded colours/sizes/fonts outside the vendored Instrument
+# trees. Web is stylelint (lint-web); Android and Swift are below. See CLAUDE.md.
+lint-design: lint-android lint-swift
+
+lint-android:
+	$(LEGACY_PY) -m pytest -q scripts/lint
+	$(LEGACY_PY) scripts/lint/check_android_design.py .
+
+lint-swift:
+	@if command -v swiftlint >/dev/null 2>&1; then cd macos && swiftlint lint --strict; \
+	else echo "SKIP swiftlint: not installed (CI runs it; brew install swiftlint)"; fi
 
 # ---- fast suite -------------------------------------------------------------------------
 test: lint test-server test-legacy test-web test-policy

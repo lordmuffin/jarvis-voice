@@ -24,6 +24,7 @@
 
 ## Rules
 
+- UI uses design-system tokens and components only. Never hard-code colours, sizes or fonts. If a component is missing, propose it for lordmuffin/instrument instead of building a local one. Enforced by the *Design lint* workflow (`make lint-design`: stylelint in `web/`, `scripts/lint/check_android_design.py`, SwiftLint in `macos/`); a justified exception needs an inline ignore with a reason (`design-lint:ignore` / `swiftlint:disable`).
 - Follow `TDD.md` for every change. Run `make test` before declaring any task done (`make test-all` adds Postgres integration, coverage/eval ratchets, Playwright, Android and Swift; see `TESTING.md`).
 - Commits and PR titles use Conventional Commits (`feat:`, `fix:`, `chore:`, with scope e.g. `feat(server):`). release-please derives versions and changelogs from them.
 - `src/jarvis_voice/` is legacy — bugfix only. New work goes in `server/`.

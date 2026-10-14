@@ -310,7 +310,7 @@
         <ScrollView
             android:id="@+id/sv_live_copilot"
             android:layout_width="match_parent"
-            android:layout_height="140dp"
+            android:layout_height="@dimen/app_live_copilot_height"
             android:background="@color/inst_surface"
             android:visibility="gone">
 

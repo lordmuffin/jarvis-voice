@@ -4,5 +4,5 @@
   Only the launcher icon keeps a fixed colour: the mark is drawn on a dark tile in both themes.
 -->
 <resources>
-    <color name="jv_launcher_bg">#0D1117</color>
+    <color name="jv_launcher_bg">#0D1117</color> <!-- design-lint:ignore launcher tile is a fixed colour in both themes -->
 </resources>

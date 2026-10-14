@@ -8,8 +8,8 @@
     android:padding="@dimen/inst_space_16">
 
     <ProgressBar
-        android:layout_width="36dp"
-        android:layout_height="36dp"
+        android:layout_width="@dimen/inst_control_md"
+        android:layout_height="@dimen/inst_control_md"
         android:indeterminate="true"
         android:indeterminateTint="@color/inst_accent" />
 

@@ -1,0 +1,12 @@
+{
+  "ignoreFiles": ["src/instrument/**", "dist/**", "node_modules/**"],
+  "rules": {
+    "color-no-hex": true,
+    "color-named": "never",
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla", "hwb", "lab", "lch", "oklab", "oklch", "color", "color-mix"],
+    "declaration-property-unit-disallowed-list": {
+      "font-size": ["px"],
+      "font": ["px"]
+    }
+  }
+}
