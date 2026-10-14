@@ -25,7 +25,7 @@ class WearSettingsActivity : WearBaseActivity() {
                 .putString(UploadWorker.PREF_API_KEY, etKey.text.toString().trim())
                 .putString(UploadWorker.PREF_SERVER_URL, etUrl.text.toString().trim().ifBlank { UploadWorker.DEFAULT_SERVER_URL })
                 .apply()
-            Toast.makeText(this, R.string.wear_saved, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
             finish()
         }
     }
