@@ -4,6 +4,11 @@
     <!-- Section heading: Inst.Text.Label, normal-case source text. Spacing is set on the view. -->
     <style name="Settings.Heading" parent="Inst.Text.Label" />
 
+    <!-- Group heading (Jarvis Live, Dictation, Models, Kai, Device, About), above its sub-sections. -->
+    <style name="Settings.Group" parent="Inst.Text.BodyLg">
+        <item name="android:textStyle">bold</item>
+    </style>
+
     <!-- Flat inst_surface panel; children are laid out by the view that wears it. -->
     <style name="Settings.Panel" parent="">
         <item name="android:background">@drawable/inst_row_surface</item>

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root is FrameLayout so the bottom nav floats over the ScrollView at all scroll positions.
-     One long column: Label heading, flat inst_surface rows/panels, 1dp inst_line rule between sections. -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/inst_bg">
@@ -20,248 +19,13 @@
             android:paddingTop="@dimen/inst_space_24"
             android:paddingBottom="@dimen/inst_space_24">
 
-            <!-- Version -->
-            <TextView
-                android:id="@+id/tv_version"
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_version_default"
-                android:layout_marginBottom="@dimen/inst_space_24" />
-
-            <!-- Overlay status -->
-
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_overlay_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <LinearLayout
-                style="@style/Settings.Panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:id="@+id/tv_overlay_status"
-                    style="@style/Inst.Text"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textStyle="bold"
-                    android:text="@string/settings_overlay_checking"
-                    android:textColor="@color/inst_text_2" />
-
-                <Button
-                    android:id="@+id/btn_restart_overlay"
-                    style="@style/Widget.Inst.Button.Secondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/inst_space_48"
-                    android:text="@string/settings_overlay_restart" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Metro stats -->
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_metro_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <LinearLayout
-                style="@style/Settings.Panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_last_words"
-                        style="@style/Settings.StatValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_none" />
-                    <TextView
-                        style="@style/Settings.StatCaption"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_last_words" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_last_wpm"
-                        style="@style/Settings.StatValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_none"
-                        android:textColor="@color/inst_accent" />
-                    <TextView
-                        style="@style/Settings.StatCaption"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_last_wpm" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_total_words"
-                        style="@style/Settings.StatValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_zero" />
-                    <TextView
-                        style="@style/Settings.StatCaption"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_total_words" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_avg_wpm"
-                        style="@style/Settings.StatValue"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_zero"
-                        android:textColor="@color/inst_accent" />
-                    <TextView
-                        style="@style/Settings.StatCaption"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_stat_avg_wpm" />
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- STT model -->
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_stt_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <Button
-                android:id="@+id/btn_open_stt_model_manager"
-                style="@style/Settings.RowButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_stt_model"
-                android:layout_marginBottom="@dimen/inst_space_4" />
-
-            <TextView
-                android:id="@+id/tv_active_stt_model"
-                style="@style/Settings.Help"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_stt_none"
-                android:layout_marginTop="@dimen/inst_space_4" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- LLM model -->
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_llm_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <Button
-                android:id="@+id/btn_open_model_manager"
-                style="@style/Settings.RowButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_llm_model"
-                android:layout_marginBottom="@dimen/inst_space_4" />
-
-            <TextView
-                android:id="@+id/tv_active_llm_model"
-                style="@style/Settings.Help"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_llm_off"
-                android:layout_marginTop="@dimen/inst_space_4"
-                android:layout_marginBottom="@dimen/inst_space_12" />
-
-            <TextView
-                style="@style/Settings.FieldLabel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_hf_label"
-                android:layout_marginBottom="@dimen/inst_space_4" />
-
-            <EditText
-                android:id="@+id/et_hf_token"
-                style="@style/Widget.Inst.EditText.Mono"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="@dimen/inst_space_48"
-                android:hint="@string/settings_hf_hint"
-                android:inputType="textPassword"
-                android:layout_marginBottom="@dimen/inst_space_4" />
-
-            <TextView
-                style="@style/Settings.Help"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_hf_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
             <!-- Jarvis Live -->
             <TextView
-                style="@style/Settings.Heading"
+                style="@style/Settings.Group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_settings_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -279,7 +43,7 @@
                     android:minHeight="@dimen/inst_space_48"
                     android:hint="@string/live_settings_url_hint"
                     android:inputType="textUri"
-                    android:importantForAutofill="no" />
+                    android:importantForAutofill="no"/>
 
                 <!-- The saved server's release channel (GET /healthz); gone until it answers. -->
                 <TextView
@@ -288,7 +52,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="@dimen/inst_space_8"
-                    android:visibility="gone" />
+                    android:visibility="gone"/>
             </LinearLayout>
 
             <Button
@@ -296,7 +60,7 @@
                 style="@style/Widget.Inst.Button.Primary.Lg"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/live_signin_button" />
+                android:text="@string/live_signin_button"/>
 
             <TextView
                 android:id="@+id/tv_live_account"
@@ -305,14 +69,14 @@
                 android:layout_height="wrap_content"
                 android:text="@string/live_signin_desc"
                 android:layout_marginTop="@dimen/inst_space_4"
-                android:layout_marginBottom="@dimen/inst_space_12" />
+                android:layout_marginBottom="@dimen/inst_space_12"/>
 
             <TextView
                 style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_signin_token_label"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <EditText
                 android:id="@+id/et_live_device_token"
@@ -323,7 +87,7 @@
                 android:hint="@string/live_settings_token_hint"
                 android:inputType="textPassword"
                 android:importantForAutofill="no"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -338,7 +102,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:minHeight="@dimen/inst_space_48"
-                    android:text="@string/live_settings_save" />
+                    android:text="@string/live_settings_save"/>
 
                 <Button
                     android:id="@+id/btn_live_test"
@@ -348,7 +112,7 @@
                     android:layout_weight="1"
                     android:layout_marginStart="@dimen/inst_space_8"
                     android:minHeight="@dimen/inst_space_48"
-                    android:text="@string/live_settings_test" />
+                    android:text="@string/live_settings_test"/>
             </LinearLayout>
 
             <LinearLayout
@@ -368,22 +132,20 @@
                         style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/live_away_setting" />
+                        android:text="@string/live_away_setting"/>
 
                     <TextView
                         style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/live_away_setting_desc"
-                        android:layout_marginTop="@dimen/inst_space_4" />
-
+                        android:layout_marginTop="@dimen/inst_space_4"/>
                 </LinearLayout>
 
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/switch_live_away"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
+                    android:layout_height="wrap_content"/>
             </LinearLayout>
 
             <TextView
@@ -392,28 +154,339 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_settings_desc"
-                android:layout_marginTop="@dimen/inst_space_8" />
+                android:layout_marginTop="@dimen/inst_space_8"/>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/inst_border_hairline"
                 android:layout_marginTop="@dimen/inst_space_24"
                 android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Custom model server -->
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_dictation"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_overlay_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_overlay_status"
+                    style="@style/Inst.Text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textStyle="bold"
+                    android:text="@string/settings_overlay_checking"
+                    android:textColor="@color/inst_text_2"/>
+
+                <Button
+                    android:id="@+id/btn_restart_overlay"
+                    style="@style/Widget.Inst.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_overlay_restart"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_metro_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_last_words"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_none"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_last_words"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_last_wpm"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_none"
+                        android:textColor="@color/inst_accent"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_last_wpm"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_total_words"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_zero"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_total_words"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_avg_wpm"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_zero"
+                        android:textColor="@color/inst_accent"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_avg_wpm"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_open_stt_model_manager"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_model"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                android:id="@+id/tv_active_stt_model"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_none"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_backend_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Settings.RowTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_offline_title"/>
+
+                    <TextView
+                        style="@style/Settings.RowDesc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_offline_desc"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_offline_stt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_open_history"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_history"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <Button
+                android:id="@+id/btn_open_dictionary"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_dictionary"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_models"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_open_model_manager"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_model"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                android:id="@+id/tv_active_llm_model"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_off"
+                android:layout_marginTop="@dimen/inst_space_4"
+                android:layout_marginBottom="@dimen/inst_space_12"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_hf_label"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_hf_token"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_hf_hint"
+                android:inputType="textPassword"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_hf_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
             <TextView
                 style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_server_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <TextView
                 style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_llm_url_label"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <EditText
                 android:id="@+id/et_llm_base_url"
@@ -423,14 +496,14 @@
                 android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/settings_llm_url_hint"
                 android:inputType="textUri"
-                android:layout_marginBottom="@dimen/inst_space_12" />
+                android:layout_marginBottom="@dimen/inst_space_12"/>
 
             <TextView
                 style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_stt_url_label"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <EditText
                 android:id="@+id/et_stt_base_url"
@@ -440,14 +513,14 @@
                 android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/settings_stt_url_hint"
                 android:inputType="textUri"
-                android:layout_marginBottom="@dimen/inst_space_12" />
+                android:layout_marginBottom="@dimen/inst_space_12"/>
 
             <TextView
                 style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_server_token_label"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <EditText
                 android:id="@+id/et_server_token"
@@ -457,14 +530,32 @@
                 android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/settings_server_token_hint"
                 android:inputType="textPassword"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <TextView
                 style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_server_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_kai"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
 
             <TextView
                 style="@style/Settings.FieldLabel"
@@ -472,7 +563,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/settings_capture_label"
                 android:layout_marginTop="@dimen/inst_space_12"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <EditText
                 android:id="@+id/et_vault_api_key"
@@ -482,14 +573,18 @@
                 android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/settings_capture_hint"
                 android:inputType="textPassword"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <TextView
                 style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_capture_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
 
             <TextView
                 style="@style/Settings.Heading"
@@ -497,7 +592,7 @@
                 android:layout_height="wrap_content"
                 android:text="@string/settings_tts_header"
                 android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <EditText
                 android:id="@+id/et_tts_url"
@@ -507,7 +602,7 @@
                 android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/settings_tts_url_hint"
                 android:inputType="textUri"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <EditText
                 android:id="@+id/et_tts_voice"
@@ -517,67 +612,129 @@
                 android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/settings_tts_voice_hint"
                 android:inputType="text"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <TextView
                 style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_tts_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
+                android:layout_marginTop="@dimen/inst_space_4"/>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Features -->
+                android:layout_height="@dimen/inst_space_16"/>
+
             <TextView
                 style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_features_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:text="@string/settings_vault_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <TextView
+                android:id="@+id/tv_vault_folder"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/inst_type_caption"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <Button
-                android:id="@+id/btn_open_history"
+                android:id="@+id/btn_pick_vault_folder"
                 style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_features_history"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:text="@string/settings_vault_pick"
+                android:textColor="@color/inst_text"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
-            <Button
-                android:id="@+id/btn_open_dictionary"
-                style="@style/Settings.RowButton"
+            <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_features_dictionary"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:text="@string/settings_vault_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
 
-            <Button
-                android:id="@+id/btn_open_debug_log"
-                style="@style/Settings.RowButton"
+            <View
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_features_debug_log"
-                android:textColor="@color/inst_text_2"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_height="@dimen/inst_space_16"/>
 
             <View
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/inst_border_hairline"
                 android:layout_marginTop="@dimen/inst_space_24"
                 android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Data storage -->
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_device"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_audio_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Settings.RowTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_mic_title"/>
+
+                    <TextView
+                        android:id="@+id/tv_input_device"
+                        style="@style/Settings.RowDesc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_mic_default"
+                        android:textColor="@color/inst_accent"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_pick_input_device"
+                    style="@style/Widget.Inst.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_mic_change"/>
+            </LinearLayout>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_mic_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
             <TextView
                 style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_storage_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <TextView
                 android:id="@+id/tv_storage_location"
@@ -585,7 +742,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:textSize="@dimen/inst_type_caption"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <Button
                 android:id="@+id/btn_grant_storage"
@@ -595,28 +752,25 @@
                 android:text="@string/settings_storage_grant"
                 android:textColor="@color/inst_accent"
                 android:visibility="gone"
-                android:layout_marginBottom="@dimen/inst_space_4" />
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
             <TextView
                 style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_storage_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
+                android:layout_marginTop="@dimen/inst_space_4"/>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Notifications -->
+                android:layout_height="@dimen/inst_space_16"/>
+
             <TextView
                 style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_notifications_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <LinearLayout
                 style="@style/Settings.Panel"
@@ -635,191 +789,39 @@
                         style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/settings_clipboard_title" />
+                        android:text="@string/settings_clipboard_title"/>
 
                     <TextView
                         style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/settings_clipboard_desc"
-                        android:layout_marginTop="@dimen/inst_space_4" />
-
+                        android:layout_marginTop="@dimen/inst_space_4"/>
                 </LinearLayout>
 
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/switch_clipboard_notify"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
+                    android:layout_height="wrap_content"/>
             </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- STT backend -->
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_backend_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_height="@dimen/inst_space_16"/>
 
-            <LinearLayout
-                style="@style/Settings.Panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="@dimen/inst_space_48"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        style="@style/Settings.RowTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_offline_title" />
-
-                    <TextView
-                        style="@style/Settings.RowDesc"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_offline_desc"
-                        android:layout_marginTop="@dimen/inst_space_4" />
-
-                </LinearLayout>
-
-                <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switch_offline_stt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Vault folder -->
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_vault_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <TextView
-                android:id="@+id/tv_vault_folder"
-                style="@style/Settings.Help"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="@dimen/inst_type_caption"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <Button
-                android:id="@+id/btn_pick_vault_folder"
-                style="@style/Settings.RowButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_vault_pick"
-                android:textColor="@color/inst_text"
-                android:layout_marginBottom="@dimen/inst_space_4" />
-
-            <TextView
-                style="@style/Settings.Help"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_vault_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Audio input -->
-            <TextView
-                style="@style/Settings.Heading"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_audio_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
-
-            <LinearLayout
-                style="@style/Settings.Panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        style="@style/Settings.RowTitle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_mic_title" />
-
-                    <TextView
-                        android:id="@+id/tv_input_device"
-                        style="@style/Settings.RowDesc"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_mic_default"
-                        android:textColor="@color/inst_accent"
-                        android:layout_marginTop="@dimen/inst_space_4" />
-
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/btn_pick_input_device"
-                    style="@style/Widget.Inst.Button.Secondary"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minHeight="@dimen/inst_space_48"
-                    android:text="@string/settings_mic_change" />
-
-            </LinearLayout>
-
-            <TextView
-                style="@style/Settings.Help"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/settings_mic_help"
-                android:layout_marginTop="@dimen/inst_space_4" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="@dimen/inst_border_hairline"
-                android:layout_marginTop="@dimen/inst_space_24"
-                android:layout_marginBottom="@dimen/inst_space_24"
-                android:background="@color/inst_line" />
-            <!-- Appearance -->
             <TextView
                 style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_appearance_header"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <TextView
                 style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/settings_appearance_caption"
-                android:layout_marginBottom="@dimen/inst_space_8" />
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <RadioGroup
                 android:id="@+id/rg_theme_mode"
@@ -833,7 +835,7 @@
                     android:layout_width="0dp"
                     android:layout_height="@dimen/inst_space_48"
                     android:layout_weight="1"
-                    android:text="@string/settings_theme_system" />
+                    android:text="@string/settings_theme_system"/>
 
                 <RadioButton
                     android:id="@+id/rb_theme_light"
@@ -841,7 +843,7 @@
                     android:layout_width="0dp"
                     android:layout_height="@dimen/inst_space_48"
                     android:layout_weight="1"
-                    android:text="@string/settings_theme_light" />
+                    android:text="@string/settings_theme_light"/>
 
                 <RadioButton
                     android:id="@+id/rb_theme_dark"
@@ -849,10 +851,43 @@
                     android:layout_width="0dp"
                     android:layout_height="@dimen/inst_space_48"
                     android:layout_weight="1"
-                    android:text="@string/settings_theme_dark" />
-
+                    android:text="@string/settings_theme_dark"/>
             </RadioGroup>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_about"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                android:id="@+id/tv_version"
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_version_default"
+                android:layout_marginBottom="@dimen/inst_space_24"/>
+
+            <Button
+                android:id="@+id/btn_open_debug_log"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_debug_log"
+                android:textColor="@color/inst_text_2"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
         </LinearLayout>
     </ScrollView>
 
@@ -860,6 +895,5 @@
         layout="@layout/bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom" />
-
+        android:layout_gravity="bottom"/>
 </FrameLayout>
