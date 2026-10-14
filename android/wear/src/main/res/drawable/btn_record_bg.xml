@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Instrument "wb--go": accent fill, on-accent glyph. -->
+<!-- Instrument go pill: accent fill, on-accent glyph. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="oval">
