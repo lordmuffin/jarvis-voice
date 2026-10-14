@@ -274,3 +274,44 @@ describe("connection", () => {
     expect(s.connection).toBe("open");
   });
 });
+
+describe("a final replaces its draft in place", () => {
+  const mic = (id: string, start: number, end: number, text: string) =>
+    ({ ...(segment as object), type: "segment", id, channel: "mic", speaker: "me", start_ms: start, end_ms: end, text }) as ServerEvent;
+  const them = (id: string, start: number, end: number, text: string) =>
+    ({ ...(segment as object), type: "segment", id, channel: "system", speaker: "them", start_ms: start, end_ms: end, text }) as ServerEvent;
+  const mdraft = (start: number, end: number, text: string) =>
+    ({ ...(draft as object), type: "draft_segment", channel: "mic", start_ms: start, end_ms: end, text, final: false }) as ServerEvent;
+
+  it("gives the final the draft's key, so the row is reused", () => {
+    let s = fold([mdraft(1000, 2000, "let's pilot on the")]);
+    const [before] = transcriptLines(s);
+    s = reduce(s, mic("seg_a", 1000, 2600, "Let's pilot on the k3s2 cluster."));
+    const [after] = transcriptLines(s);
+    expect(before!.key).toMatch(/^draft-/);
+    expect(after!.kind).toBe("segment");
+    expect(after!.key).toBe(before!.key);
+    expect(after!.text).toBe("Let's pilot on the k3s2 cluster.");
+  });
+
+  it("keeps the draft's place in the order when the final starts a little later", () => {
+    // Them speaks at 1500 while Me's draft started at 1000; the final starts at 1600 but still overlaps it.
+    let s = fold([them("seg_t", 1500, 1700, "Sure."), mdraft(1000, 1800, "send me the")]);
+    expect(transcriptLines(s).map((l) => l.text)).toEqual(["send me the", "Sure."]);
+    s = reduce(s, mic("seg_m", 1600, 2400, "Send me the pricing."));
+    expect(transcriptLines(s).map((l) => l.text)).toEqual(["Send me the pricing.", "Sure."]);
+  });
+
+  it("uses the segment id as the key when there was no draft", () => {
+    const s = fold([mic("seg_x", 500, 900, "hello")]);
+    expect(transcriptLines(s)[0]!.key).toBe("seg_x");
+  });
+
+  it("keeps the slot across a repeated snapshot of the same final", () => {
+    let s = fold([mdraft(1000, 2000, "let's")]);
+    s = reduce(s, mic("seg_a", 1000, 2600, "Let's go."));
+    const key = transcriptLines(s)[0]!.key;
+    s = reduce(s, mic("seg_a", 1000, 2600, "Let's go, team."));
+    expect(transcriptLines(s)[0]!.key).toBe(key);
+  });
+});

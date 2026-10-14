@@ -1,10 +1,11 @@
 import type { ComponentChildren, HTMLAttributes } from "preact";
 import { cx } from "../classes";
 
-export type TextSize = "display" | "title" | "body-lg" | "body" | "caption" | "meta" | "label" | "mono";
+export type TextSize = "stat" | "display" | "title" | "body-lg" | "body" | "caption" | "meta" | "label" | "mono";
 export type TextTone = "default" | "muted" | "error" | "warning" | "ok" | "accent";
 
 const SIZE: Record<TextSize, string> = {
+  stat: "t-stat",
   display: "t-display",
   title: "t-title",
   "body-lg": "t-body-lg",
@@ -56,6 +57,15 @@ export function Text({
     <Tag {...(rest as object)} class={cls || undefined}>
       {children}
     </Tag>
+  );
+}
+
+/** A short reason beside a disabled or flagged control ("⚑ Close the pull request first"). */
+export function Reason({ children, id }: { children: ComponentChildren; id?: string }) {
+  return (
+    <span class="i-reason" id={id}>
+      {children}
+    </span>
   );
 }
 

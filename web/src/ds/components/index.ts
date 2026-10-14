@@ -14,7 +14,7 @@ export { ShowOnceCard } from "./ShowOnceCard";
 export { StatusChip } from "./StatusChip";
 export { Cell, Table } from "./Table";
 export { Pane, PaneBody, PaneGrid, TabBar } from "./PaneLayout";
-export { PageTitle, SectionLabel, Text } from "./Text";
+export { PageTitle, Reason, SectionLabel, Text } from "./Text";
 export { Toast, ToastRegion } from "./Toast";
 export {
   Actions,
@@ -22,12 +22,14 @@ export {
   Block,
   Bullets,
   Code,
+  Column,
   CodeBlock,
   Form,
   FormRow,
   Head,
   InlineForm,
   ItemMain,
+  ListHead,
   List,
   ListItem,
   RowLink,
@@ -39,5 +41,5 @@ export {
   Spacer,
   Stack,
 } from "./Layout";
-export { NoteBody, Player, Recordings, TranscriptMarker, Utterance } from "./Transcript";
+export { NoteBody, Player, Recordings } from "./Transcript";
 export { Item, Quote, Related, RunBox, RunHead, WorkCard } from "./WorkCard";

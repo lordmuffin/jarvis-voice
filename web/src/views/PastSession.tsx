@@ -1,14 +1,14 @@
 import { audioUrl } from "../api";
-import { Head, Player, Recordings as RecordingList, Section, Text } from "../ds/components";
-import { duration, when } from "../format";
+import { Column, Player, Recordings as RecordingList } from "../ds/components";
+import { duration } from "../format";
+import { NoNote } from "../jarvis/NoNote";
+import { SessionHeader } from "../jarvis/SessionHeader";
+import { Timeline } from "../jarvis/Timeline";
 import { initialState, reduce, transcriptLines } from "../reducer";
 import type { Channel, SessionDetail, SessionSummary } from "../types";
 import { NotePane } from "./NotePane";
-import { OwnerLabel } from "./OwnerLabel";
 import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
-import { StatusChip } from "../ds/components";
-import { Transcript } from "./Transcript";
 import { SessionWorkItems } from "./WorkItems";
 
 // Same names as the transcript: the mic is the local speaker, system audio everyone else.
@@ -45,32 +45,17 @@ export function PastSession({
 
   const noteContent = note ? (
     <NotePane detail={detail} onChanged={onChanged} />
-  ) : detail.status === "failed" ? (
-    <Text as="p" tone="error">
-      This session failed before a note was written.
-    </Text>
-  ) : detail.local_only ? (
-    <Text as="p" tone="muted">
-      Local-only session: no note was generated.
-    </Text>
   ) : (
-    <Text as="p" tone="muted">
-      No note was written for this session.
-    </Text>
+    <NoNote reason={detail.status === "failed" ? "failed" : detail.local_only ? "local" : "none"} />
   );
 
   return (
-    <Section>
-      <Head data-testid="session-head">
-        <SessionTitle session={detail} onRenamed={onRenamed} />
-        <StatusChip status={detail.status} streaming={detail.streaming} />
-        <OwnerLabel owner={detail.owner} />
-        <Text size="meta" tone="muted">
-          {when(detail.started_at)}
-          {duration(detail.started_at, detail.ended_at) &&
-            ` · ${duration(detail.started_at, detail.ended_at)}`}
-        </Text>
-      </Head>
+    <Column wide>
+      <SessionHeader
+        session={detail}
+        suffix={duration(detail.started_at, detail.ended_at) || undefined}
+        title={<SessionTitle session={detail} onRenamed={onRenamed} />}
+      />
       <Recordings detail={detail} />
       <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <Panes
@@ -79,10 +64,10 @@ export function PastSession({
           {
             id: "transcript",
             label: "Transcript",
-            content: <Transcript lines={lines} markers={state.markers} />,
+            content: <Timeline label="Transcript text" lines={lines} markers={state.markers} />,
           },
         ]}
       />
-    </Section>
+    </Column>
   );
 }

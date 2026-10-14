@@ -97,7 +97,7 @@ export function Segmented<T extends string>({
 }: {
   label: string;
   value: T;
-  options: readonly { id: T; label: string }[];
+  options: readonly { id: T; label: string; count?: number }[];
   onChange: (id: T) => void;
   role?: "radiogroup" | "tablist";
   /** For tabs: ids `${idPrefix}-${id}` on the tab and `${idPrefix}-panel` it controls. */
@@ -118,6 +118,12 @@ export function Segmented<T extends string>({
           onClick={() => onChange(o.id)}
         >
           {o.label}
+          {o.count !== undefined && (
+            <>
+              {" "}
+              <span class="t-mono">{o.count}</span>
+            </>
+          )}
         </button>
       ))}
     </div>

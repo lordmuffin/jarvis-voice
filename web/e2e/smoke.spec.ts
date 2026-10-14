@@ -75,9 +75,9 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   // Live view: transcript segments and a copilot note arrive over the WebSocket.
   await expect(page.getByTestId("connection")).toHaveText("Connected");
   await expect(page.getByTestId("segment").first()).toContainText("seg-1");
-  await expect(page.getByTestId("copilot-note").first()).toHaveText("Kickoff covered");
+  await expect(page.getByTestId("copilot-note").first()).toContainText("Kickoff covered");
   await expect(page.getByTestId("copilot-action").first()).toContainText("Send the deck");
-  await expect(page.getByTestId("copilot-decision").first()).toHaveText("Ship on Friday");
+  await expect(page.getByTestId("copilot-decision").first()).toContainText("Ship on Friday");
   await expect(page.getByTestId("suggestion").first()).toContainText("Who owns QA?");
   // The copilot's first cycle names the untitled session; the page picks it up by polling.
   await expect(page.getByTestId("session-title")).toHaveText("Standup kickoff");
@@ -252,7 +252,6 @@ test("admin: users table, one user's sessions, all users", async ({ page, reques
 });
 
 test("publishing: edit a note, open its pull request, merge it", async ({ page }) => {
-  page.on("dialog", (d) => void d.accept());
   // e2e_server seeds a finished "E2E publish me" session for root (an admin) on every start.
   await signIn(page, "root", "/publishing");
   await expect(page.getByRole("heading", { name: "Publishing" })).toBeVisible();
@@ -280,6 +279,10 @@ test("publishing: edit a note, open its pull request, merge it", async ({ page }
   await expect(page.getByRole("link", { name: "Review" })).toHaveAttribute("href", /\/pull\/\d+\/files$/);
   await expect(page.getByRole("button", { name: "Regenerate" })).toBeDisabled();
   await page.getByRole("button", { name: "Merge", exact: true }).click();
+  const confirm = page.getByRole("dialog", { name: /^Merge PR #\d+\?$/ });
+  await expect(confirm).toContainText("Merge this note into the vault's main branch?");
+  await expect(confirm.getByRole("button", { name: "Cancel" })).toBeFocused();
+  await confirm.getByRole("button", { name: "Merge", exact: true }).click();
   await expect(chip).toHaveText(/Merged/);
 
   await page.getByRole("link", { name: "Publishing", exact: true }).click();
@@ -341,7 +344,7 @@ test("upload a recording: it is transcribed and gets a note", async ({ page }) =
   const form = page.getByTestId("upload-form");
   await expect(form).toContainText("voice memo.wav");
   await expect(form.getByLabel("Title")).toHaveAttribute("placeholder", "voice memo");
-  await form.getByLabel("Mode").selectOption("meeting");
+  await form.getByRole("radio", { name: "Meeting" }).click();
   await form.getByRole("button", { name: "Upload" }).click();
 
   // The new session opens; its transcript arrives, then the note.

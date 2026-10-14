@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clock, matchesTitle, titleOf } from "../src/format";
+import { bytes, clock, matchesTitle, titleOf } from "../src/format";
 import { parseInline, parseMarkdown } from "../src/markdown";
 import { parseRoute } from "../src/route";
 
@@ -93,5 +93,15 @@ describe("markdown", () => {
     expect(ul && ul.t === "ul" && ul.items.map((i) => i.checked)).toEqual([false, true]);
     expect(JSON.stringify(blocks)).not.toContain("transcript-line");
     expect(JSON.stringify(blocks)).not.toContain("ai-output");
+  });
+});
+
+describe("bytes", () => {
+  it("shows sizes the way the upload form does", () => {
+    expect(bytes(0)).toBe("0 B");
+    expect(bytes(900)).toBe("900 B");
+    expect(bytes(40_000)).toBe("39.1 KB");
+    expect(bytes(38_200_000)).toBe("36.4 MB");
+    expect(bytes(812 * 1024 * 1024)).toBe("812.0 MB");
   });
 });

@@ -115,11 +115,15 @@ describe("ThemeToggle", () => {
     render(<ThemeToggle />, document.body);
     const btn = (name: string) =>
       [...document.querySelectorAll("button")].find((b) => b.textContent === name)!;
-    await act(() => btn("Dark").click());
+    await act(() => {
+      btn("Dark").click();
+    });
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(btn("Dark").getAttribute("aria-checked")).toBe("true");
     expect(localStorage.getItem("jarvis-live:theme")).toBe("dark");
-    await act(() => btn("System").click());
+    await act(() => {
+      btn("System").click();
+    });
     expect(document.documentElement.dataset.theme).toBeUndefined();
     setTheme("system");
   });
@@ -208,7 +212,10 @@ describe("ShowOnceCard", () => {
     vi.stubGlobal("navigator", { clipboard: { writeText } });
     const onDone = card();
     const btn = (name: RegExp) => [...document.querySelectorAll("button")].find((b) => name.test(b.textContent!))!;
-    await act(() => btn(/Copy/).click());
+    await act(async () => {
+      btn(/Copy/).click();
+      await new Promise((r) => setTimeout(r, 0));
+    });
     expect(writeText).toHaveBeenCalledWith("tok_secret");
     expect(q("[data-testid=new-token]")?.textContent).toContain("Copied to the clipboard.");
     btn(/Done/).click();
@@ -219,7 +226,10 @@ describe("ShowOnceCard", () => {
   it("tells you to copy by hand when the clipboard is blocked", async () => {
     vi.stubGlobal("navigator", { clipboard: { writeText: async () => Promise.reject(new Error("no")) } });
     card();
-    await act(() => [...document.querySelectorAll("button")].find((b) => /Copy/.test(b.textContent!))!.click());
+    await act(async () => {
+      [...document.querySelectorAll("button")].find((b) => /Copy/.test(b.textContent!))!.click();
+      await new Promise((r) => setTimeout(r, 0));
+    });
     expect(q("[data-testid=new-token]")?.textContent).toContain("copy it by hand");
     vi.unstubAllGlobals();
   });

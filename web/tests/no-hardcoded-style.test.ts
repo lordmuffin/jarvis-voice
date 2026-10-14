@@ -34,8 +34,8 @@ describe("web/ takes its look from Instrument", () => {
     expect(bad.map((f) => relative(SRC, f))).toEqual([]);
   });
 
-  it("keeps raw Instrument classes inside ds/", () => {
-    const outside = files(SRC).filter((f) => /\.tsx$/.test(f) && !relative(SRC, f).startsWith("ds"));
+  it("keeps raw Instrument classes inside ds/ and jarvis/", () => {
+    const outside = files(SRC).filter((f) => /\.tsx$/.test(f) && !/^(ds|jarvis)[\\/]/.test(relative(SRC, f)));
     const bad = outside.filter((f) => /class=["{`][^"}`]*\b(i-|j-|d-)[a-z]/.test(readFileSync(f, "utf8")));
     expect(bad.map((f) => relative(SRC, f))).toEqual([]);
   });

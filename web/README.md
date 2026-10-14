@@ -41,7 +41,9 @@ npx playwright test
 | `src/reducer.ts` | Pure `(state, event) => state` for every server event type |
 | `src/api.ts`, `src/ws.ts` | REST client (cookie auth), viewer WebSocket with reconnect |
 | `src/views/` | Sessions list, live and past session, devices, admin, shared panes |
-| `src/ds/components/` | Thin Preact wrappers over Instrument's classes (Shell, Button, Banner, Table, Dialog, …). Pages use these, never raw `i-*` / `j-*` class strings |
+| `src/jarvis/` | The Jarvis components over Instrument's rules: TranscriptLine, MarkerRow, NowDock/SuggestionCard, CopilotItem, RelatedNoteCard, ConnectionChip, SessionRow, SessionHeader, WorkItemCard/RunBlock, UploadForm, Timeline (the feed), FeedFilter, JumpPill. `dock.ts` is the Now dock's rules |
+| `src/feed.ts`, `src/follow.ts`, `src/look.ts`, `src/dismissals.ts` | Feed order and "new" marks, auto-follow, "since you looked", per-session suggestion dismissals (localStorage) |
+| `src/ds/components/` | Thin Preact wrappers over Instrument's classes (Shell, Button, Banner, Table, Dialog, …). Views use these and `src/jarvis/`, never raw `i-*` / `j-*` class strings |
 | `src/ds/ds.css` | Layout glue and two specificity fixes, from `--inst-*` tokens only |
 | `src/instrument/` | **Managed** copy of [Instrument](https://github.com/lordmuffin/instrument), the family design system. Never edit it: the *Instrument* CI check fails on hand edits; changes go upstream and arrive as a sync PR |
 | `src/theme.ts` | System / Light / Dark choice, saved in `localStorage` (guarded; it can throw) |
@@ -66,7 +68,7 @@ are in [`docs/design/instrument/web/`](../docs/design/instrument/web).
 users alice, bob, root (admin) and mallory). The tests sign in by clicking a user; one streams
 a generated WAV as alice through `jarvis-live replay` and checks the live and past views
 (recording included), others check that bob can't see alice's session, the Devices page, and
-the admin views. `e2e/screenshots.spec.ts` also writes login, sessions, devices and admin in
+the admin views. `e2e/feed.spec.ts` drives the live feed from a scripted session (`e2e/live-fixture.ts`: mocked REST and a mocked viewer WebSocket). `e2e/screenshots.spec.ts` also writes every page (login, sessions, live, past, note editor, publishing, work items, devices, admin) in
 light and dark to [`screenshots/`](screenshots). It needs Postgres: set `JARVIS_LIVE_TEST_DATABASE_URL`, or have Docker
 available for a testcontainer. Run `npm run build` first.
 

@@ -11,10 +11,13 @@ import {
 import {
   Banner,
   Bar,
+  Block,
   Button,
   ButtonLink,
   Code,
+  Dialog,
   Form,
+  Reason,
   Section,
   Spacer,
   Text,
@@ -22,7 +25,7 @@ import {
 } from "../ds/components";
 import type { SessionDetail } from "../types";
 import { NoteView } from "./NoteView";
-import { PublicationChip } from "./PublicationChip";
+import { PublicationChip } from "../jarvis/PublicationChip";
 
 const BUSY: Record<PublishAction | "save" | "regenerate", string> = {
   publish: "Opening a pull request…",
@@ -87,14 +90,9 @@ export function NotePane({
 
   const act = (action: PublishAction) => run(action, () => publicationAction(detail.id, action));
 
-  function merge() {
-    if (confirm("Merge this note into the vault's main branch?")) void act("merge");
-  }
-
-  function regenerate() {
-    const msg = "Write the note again from the transcript? The current note, edits included, is replaced.";
-    if (confirm(msg)) void run("regenerate", () => regenerateNote(detail.id));
-  }
+  const [confirming, setConfirming] = useState<"merge" | "regenerate" | null>(null);
+  const merge = () => setConfirming("merge");
+  const regenerate = () => setConfirming("regenerate");
 
   async function save() {
     if (draft === note.markdown) return setEditing(false);
@@ -107,6 +105,7 @@ export function NotePane({
 
   return (
     <Section>
+      <Block>
       <Bar role="toolbar" aria-label="Note">
         {detail.can_publish && <PublicationChip publication={pub} />}
         {pub?.pr_url && (
@@ -117,9 +116,7 @@ export function NotePane({
           </Text>
         )}
         {detail.can_publish && pub?.changed && state !== "open" && (
-          <Text size="meta" tone="warning">
-            Edited since it was published
-          </Text>
+          <Reason>⚑ Edited since it was published</Reason>
         )}
         <Spacer />
         {detail.can_publish && (
@@ -187,13 +184,18 @@ export function NotePane({
             variant="quiet"
             size="sm"
             disabled={disabled || prOpen}
-            title={prOpen ? "Close the pull request first" : "Write the note again from the transcript"}
+            title={prOpen ? undefined : "Write the note again from the transcript"}
+            aria-describedby={prOpen ? "regenerate-why" : undefined}
             onClick={regenerate}
           >
             Regenerate
           </Button>
         )}
+        {detail.can_regenerate && !editing && prOpen && (
+          <Reason id="regenerate-why">⚑ Close the pull request first</Reason>
+        )}
       </Bar>
+      </Block>
       {busy && (
         <Text as="p" size="meta" tone="muted" role="status">
           {BUSY[busy]}
@@ -241,6 +243,53 @@ export function NotePane({
         <Text as="p" tone="muted">
           The note “{note.title}” is no longer available on the server.
         </Text>
+      )}
+      {confirming === "merge" && (
+        <Dialog
+          title={pub?.pr_number ? `Merge PR #${pub.pr_number}?` : "Merge this note?"}
+          onClose={() => setConfirming(null)}
+          actions={
+            <>
+              <Button onClick={() => setConfirming(null)}>Cancel</Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setConfirming(null);
+                  void act("merge");
+                }}
+              >
+                Merge
+              </Button>
+            </>
+          }
+        >
+          <Text tone="muted">Merge this note into the vault's main branch?</Text>
+        </Dialog>
+      )}
+      {confirming === "regenerate" && (
+        <Dialog
+          eyebrow="⚑ Replaces your edits"
+          title="Regenerate the note?"
+          onClose={() => setConfirming(null)}
+          actions={
+            <>
+              <Button onClick={() => setConfirming(null)}>Cancel</Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  setConfirming(null);
+                  void run("regenerate", () => regenerateNote(detail.id));
+                }}
+              >
+                Regenerate
+              </Button>
+            </>
+          }
+        >
+          <Text tone="muted">
+            Write the note again from the transcript? The current note, edits included, is replaced.
+          </Text>
+        </Dialog>
       )}
     </Section>
   );

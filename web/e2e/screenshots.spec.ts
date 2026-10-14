@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, type Page } from "@playwright/test";
+import { BACKLOG, DRAFTS, FRESH, LIVE_ID, PAST_ID, mockLive, mockPast } from "./live-fixture";
 
 // Screenshots of the four main screens in both themes, for the PR and for design review. They
 // are written, not compared: the fake Pocket-ID and the seeded data make them stable enough to
@@ -48,6 +49,56 @@ for (const theme of THEMES) {
       await expect(page.getByTestId("new-token")).toBeVisible();
       await page.getByTestId("new-token").getByLabel("Device token").blur();
       await shoot(page, "devices", theme);
+    });
+
+    test("live session (scripted)", async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 1040 });
+      await page.clock.install();
+      await signIn(page, "root");
+      const me = await page.request.get("/v1/me");
+      const live = await mockLive(page, { ownerId: ((await me.json()) as { id: string }).id });
+      await page.goto(`/sessions/${LIVE_ID}`);
+      await live.waitForSocket(1);
+      live.send(...BACKLOG, ...DRAFTS);
+      await expect(page.getByTestId("segment")).toHaveCount(10);
+      await page.clock.fastForward(4000);
+      live.send(FRESH);
+      await expect(page.getByTestId("new-rule")).toBeVisible();
+      await expect(page.getByRole("region", { name: "Now" })).toContainText("Ask whether ARM images");
+      await shoot(page, "live", theme);
+
+      // Scrolled up: follow paused, the pill counts what arrived since.
+      await page.getByRole("log").evaluate((el) => (el.scrollTop = 0));
+      await expect(page.getByTestId("follow-state")).toHaveText("Follow paused");
+      live.send({ type: "segment", id: "z1", channel: "me", speaker: "me", start_ms: 1_130_000, end_ms: 1_134_000, text: "Thanks, that is everything for today.", stt_tier: "pve" });
+      await expect(page.getByRole("button", { name: /Jump to latest/ })).toBeVisible();
+      await shoot(page, "live-paused", theme);
+    });
+
+    test("past session: note and transcript (scripted)", async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 1000 });
+      await signIn(page, "root");
+      const me = await page.request.get("/v1/me");
+      await mockPast(page, { ownerId: ((await me.json()) as { id: string }).id });
+      await page.goto(`/sessions/${PAST_ID}`);
+      await expect(page.getByTestId("note")).toBeVisible();
+      await expect(page.getByTestId("segment").first()).toBeVisible();
+      await shoot(page, "past", theme);
+      await page.getByRole("toolbar", { name: "Note" }).getByRole("button", { name: "Edit" }).click();
+      await expect(page.getByLabel("Note Markdown")).toBeVisible();
+      await shoot(page, "note-editor", theme);
+    });
+
+    test("publishing", async ({ page }) => {
+      await signIn(page, "root", "/publishing");
+      await expect(page.getByTestId("publishing-ready")).toBeVisible();
+      await shoot(page, "publishing", theme);
+    });
+
+    test("work items", async ({ page }) => {
+      await signIn(page, "root", "/work-items");
+      await expect(page.getByTestId("work-item").first()).toBeVisible();
+      await shoot(page, "work-items", theme);
     });
 
     test("admin", async ({ page }) => {

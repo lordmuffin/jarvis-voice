@@ -306,3 +306,151 @@ body {
 .inst .i-btn[disabled] {
   color: var(--inst-text-disabled);
 }
+
+/* The live session column and its feed. */
+.d-column {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.d-feedwrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+/* The log is the scroller: follow and the jump pill act on this element. The dock is outside it,
+   so it never scrolls. */
+.d-log {
+  height: clamp(280px, 56vh, 520px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.d-log--past {
+  height: clamp(320px, 74vh, 740px);
+}
+.d-log > :first-child {
+  margin-top: auto;
+}
+.d-log--past > :first-child {
+  margin-top: 0;
+}
+.d-log--empty {
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--inst-line);
+}
+.d-log--empty > :first-child {
+  margin-top: 0;
+}
+.d-jump {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.d-jump > * {
+  pointer-events: auto;
+}
+.d-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.d-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 28px;
+  align-items: flex-start;
+}
+.d-block-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 32px;
+  padding: 12px 16px;
+}
+.d-grow-main {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.d-wide {
+  width: 100%;
+}
+.d-dl-mono {
+  font-family: var(--inst-mono);
+}
+.d-none {
+  font-style: italic;
+  color: var(--inst-text-2);
+}
+.d-wi-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+}
+.d-wi-head > h3 {
+  flex: 1 1 220px;
+  min-width: 0;
+  font-size: var(--inst-type-body-lg-size);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.d-dock-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.d-label {
+  color: var(--inst-text);
+}
+.d-end {
+  margin-left: auto;
+}
+.d-grow {
+  flex: 1;
+  min-width: 0;
+}
+.d-nonote {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 16px;
+}
+.d-nonote-glyph {
+  width: 32px;
+  height: 32px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--inst-surface-2);
+  font-weight: 700;
+}
+.d-column.d-wide {
+  max-width: none;
+}
+/* Work item sources sit side by side. */
+.j-wi dd[data-testid="work-item-sources"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+/* Tabs mark the chosen one with aria-selected; Instrument's segmented control only styles
+   aria-checked. Same look, same tokens. */
+.inst .i-seg button[aria-selected="true"] {
+  background: var(--inst-surface);
+  color: var(--inst-text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--inst-accent);
+}

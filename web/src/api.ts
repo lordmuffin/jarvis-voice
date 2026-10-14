@@ -157,6 +157,10 @@ export const editNote = (id: string, markdown: string, f?: typeof fetch) =>
   request<SessionDetail>(`${sid(id)}/note`, { method: "PUT", body: JSON.stringify({ markdown }) }, f);
 
 /** Write the note again from the transcript; the session is `finalizing` meanwhile. */
+/** Stop recording and write the note. Owner only; returns the updated session. */
+export const endSession = (id: string, f?: typeof fetch) =>
+  request<SessionSummary>(`${sid(id)}/end`, { method: "POST" }, f);
+
 export const regenerateNote = (id: string, f?: typeof fetch) =>
   request<SessionDetail>(`${sid(id)}/regenerate`, { method: "POST" }, f);
 

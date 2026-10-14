@@ -38,6 +38,11 @@ export interface LiveState {
   streamMs: number;
   /** The session row (title, status, streaming) as of the latest REST snapshot or rename. */
   session: SessionSummary | null;
+  /**
+   * A final segment that replaced a draft keeps the draft's row: its render key and the time it
+   * sorts by. Keyed by segment id; a segment with no draft is not listed (it is its own row).
+   */
+  slots: Record<string, { key: string; sortMs: number }>;
 }
 
 /** Events the reducer folds: every server message plus local lifecycle/bootstrap events. */
@@ -68,6 +73,7 @@ export const initialState: LiveState = {
   connection: "idle",
   streamMs: 0,
   session: null,
+  slots: {},
 };
 
 const overlaps = (a: { start_ms: number; end_ms: number }, b: { start_ms: number; end_ms: number }) =>
@@ -101,16 +107,24 @@ function applyDraft(drafts: Draft[], msg: DraftSegmentMsg): Draft[] {
   return [...kept, incoming].sort(byStart);
 }
 
+export const draftKey = (d: Pick<Draft, "channel" | "start_ms">) => `draft-${d.channel}-${d.start_ms}`;
+
 function mergeSegments(state: LiveState, incoming: Segment[]): LiveState {
   let segments = state.segments;
   for (const s of incoming) segments = upsertSegment(segments, s);
   if (segments === state.segments) return state;
-  // Final segments replace drafts they overlap on the same channel.
+  // Final segments replace drafts they overlap on the same channel, and take over their row.
+  const slots = { ...state.slots };
+  for (const s of incoming) {
+    if (slots[s.id]) continue;
+    const replaced = state.drafts.find((d) => d.channel === s.channel && overlaps(s, d));
+    if (replaced) slots[s.id] = { key: draftKey(replaced), sortMs: replaced.start_ms };
+  }
   const drafts = state.drafts.filter(
     (d) => !incoming.some((s) => s.channel === d.channel && overlaps(s, d)),
   );
   const streamMs = Math.max(state.streamMs, ...incoming.map((s) => s.end_ms));
-  return { ...state, segments, drafts, streamMs };
+  return { ...state, segments, drafts, streamMs, slots };
 }
 
 function applyCopilot(state: LiveState, c: Copilot): LiveState {
@@ -182,15 +196,28 @@ export function reduce(state: LiveState, event: Event): LiveState {
   }
 }
 
-/** Transcript lines for display: authoritative segments plus the drafts not yet replaced. */
-export type Line =
-  | { kind: "segment"; start_ms: number; end_ms: number; speaker: "me" | "them"; text: string; id: string }
-  | { kind: "draft"; start_ms: number; end_ms: number; speaker: "me" | "them"; text: string; id: string };
+/**
+ * Transcript lines for display: authoritative segments plus the drafts not yet replaced. `key`
+ * is the row's identity (a final reuses its draft's), `sortMs` where it sits in the order.
+ */
+export type Line = {
+  kind: "segment" | "draft";
+  key: string;
+  sortMs: number;
+  start_ms: number;
+  end_ms: number;
+  speaker: "me" | "them";
+  text: string;
+  id: string;
+};
 
-export function transcriptLines(state: Pick<LiveState, "segments" | "drafts">): Line[] {
+export function transcriptLines(state: Pick<LiveState, "segments" | "drafts"> & Partial<Pick<LiveState, "slots">>): Line[] {
+  const slots = state.slots ?? {};
   const lines: Line[] = state.segments.map((s) => ({
     kind: "segment",
     id: s.id,
+    key: slots[s.id]?.key ?? s.id,
+    sortMs: slots[s.id]?.sortMs ?? s.start_ms,
     start_ms: s.start_ms,
     end_ms: s.end_ms,
     speaker: s.speaker,
@@ -199,7 +226,9 @@ export function transcriptLines(state: Pick<LiveState, "segments" | "drafts">): 
   for (const d of state.drafts) {
     lines.push({
       kind: "draft",
-      id: `draft-${d.channel}-${d.start_ms}`,
+      id: draftKey(d),
+      key: draftKey(d),
+      sortMs: d.start_ms,
       start_ms: d.start_ms,
       end_ms: d.end_ms,
       // The mic channel is the local speaker; system audio is everyone else.
@@ -207,5 +236,5 @@ export function transcriptLines(state: Pick<LiveState, "segments" | "drafts">): 
       text: d.text,
     });
   }
-  return lines.sort(byStart);
+  return lines.sort((a, b) => a.sortMs - b.sortMs);
 }

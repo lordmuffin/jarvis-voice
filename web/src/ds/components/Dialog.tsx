@@ -1,5 +1,5 @@
 import type { ComponentChildren } from "preact";
-import { useEffect, useId, useRef } from "preact/hooks";
+import { useId, useLayoutEffect, useRef } from "preact/hooks";
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -9,11 +9,14 @@ const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select
  */
 export function Dialog({
   title,
+  eyebrow,
   onClose,
   actions,
   children,
 }: {
   title: ComponentChildren;
+  /** A short warning above the title (what this replaces). */
+  eyebrow?: ComponentChildren;
   onClose: () => void;
   actions: ComponentChildren;
   children?: ComponentChildren;
@@ -21,7 +24,7 @@ export function Dialog({
   const box = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const before = document.activeElement as HTMLElement | null;
     // Start on the safest action: the first footer button (Cancel).
     const first = box.current?.querySelector<HTMLElement>(".i-dialog-ft button");
@@ -66,6 +69,7 @@ export function Dialog({
         onKeyDown={onKeyDown}
       >
         <div class="i-dialog-hd">
+          {eyebrow && <span class="t-tag d-tone-warning">{eyebrow}</span>}
           <h2 id={titleId}>{title}</h2>
         </div>
         {children && <div class="i-dialog-bd">{children}</div>}
