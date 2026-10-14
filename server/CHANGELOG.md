@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.18.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.17.0...server-v0.18.0) (2026-10-14)
+
+
+### Features
+
+* **server:** upload recorded files and process them like live sessions ([7c58ea5](https://github.com/lordmuffin/jarvis-voice/commit/7c58ea588e8397e4d418bb1b4598e64bb3b06dcd))
+* upload recordings and process them like live sessions ([7872130](https://github.com/lordmuffin/jarvis-voice/commit/787213077af68e00111566f7ae1e05746584f04e))
+
+
+### Bug Fixes
+
+* **server:** don't fail when the producer being replaced is already gone ([bffff7e](https://github.com/lordmuffin/jarvis-voice/commit/bffff7ea1616c6b4ce0ce769d11af9f1d61072d6))
+
 ## [0.17.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.16.0...server-v0.17.0) (2026-10-12)
 
 

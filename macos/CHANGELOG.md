@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.11.0...macos-v0.12.0) (2026-10-14)
+
+
+### Features
+
+* **macos:** show live as a red LIVE tag, like the dashboard ([c74c9ae](https://github.com/lordmuffin/jarvis-voice/commit/c74c9ae679e5d13527dd462ae23209899f6407a5))
+* **macos:** show live as a red LIVE tag, like the dashboard ([fc490cc](https://github.com/lordmuffin/jarvis-voice/commit/fc490ccfff27bc79cf737824fad4183975d2a470))
+
 ## [0.11.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.10.0...macos-v0.11.0) (2026-10-12)
 
 
