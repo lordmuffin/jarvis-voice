@@ -1,5 +1,25 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { ApiError, createDevice, listDevices, revokeDevice } from "../api";
+import {
+  Banner,
+  Button,
+  Dialog,
+  EmptyState,
+  Field,
+  Form,
+  FormRow,
+  Input,
+  ItemMain,
+  List,
+  ListItem,
+  Loading,
+  PageTitle,
+  Pill,
+  Section,
+  SectionLabel,
+  ShowOnceCard,
+  Text,
+} from "../ds/components";
 import { when } from "../format";
 import type { Device, NewDevice } from "../types";
 
@@ -10,6 +30,7 @@ export function Devices() {
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
   const [created, setCreated] = useState<NewDevice | null>(null);
+  const [revoking, setRevoking] = useState<Device | null>(null);
 
   async function load() {
     try {
@@ -43,7 +64,7 @@ export function Devices() {
   }
 
   async function revoke(d: Device) {
-    if (!confirm(`Revoke “${d.name}”? It stops working right away.`)) return;
+    setRevoking(null);
     try {
       await revokeDevice(d.id);
       if (created?.id === d.id) setCreated(null);
@@ -55,112 +76,101 @@ export function Devices() {
   }
 
   return (
-    <section class="page">
-      <h1 class="h1">Devices</h1>
-      <p class="muted">
+    <Section>
+      <PageTitle>Devices</PageTitle>
+      <Text as="p" tone="muted" prose>
         A device token lets a recorder, such as the Jarvis Live Mac app, stream sessions to your
         account. Revoke a token to sign that device out.
-      </p>
+      </Text>
 
-      <form class="inline-form" onSubmit={add}>
-        <label class="label" for="device-name">
-          New device
-        </label>
-        <div class="inline-row">
-          <input
-            id="device-name"
-            class="field"
-            placeholder="e.g. Work MacBook"
-            maxLength={200}
-            autocomplete="off"
-            value={name}
-            onInput={(e) => setName((e.target as HTMLInputElement).value)}
-          />
-          <button class="btn" type="submit" disabled={adding || !name.trim()}>
+      <Form narrow onSubmit={add}>
+        <FormRow>
+          <Field label="New device" htmlFor="device-name">
+            <Input
+              id="device-name"
+              placeholder="e.g. Work MacBook"
+              maxLength={200}
+              autocomplete="off"
+              value={name}
+              onInput={(e) => setName((e.target as HTMLInputElement).value)}
+            />
+          </Field>
+          <Button variant="primary" type="submit" disabled={adding || !name.trim()}>
             {adding ? "Adding…" : "Add Device"}
-          </button>
-        </div>
-      </form>
+          </Button>
+        </FormRow>
+      </Form>
 
-      {created && <NewToken device={created} onDone={() => setCreated(null)} />}
-
-      {error && (
-        <p class="error" role="alert">
-          {error}
-        </p>
+      {created && (
+        <ShowOnceCard
+          heading="Device token"
+          intro={
+            <>
+              <strong>{created.name}</strong> is ready. Paste this token into the Jarvis Live Mac app.
+            </>
+          }
+          warning="It is shown only once. Copy it now. If you lose it, revoke the device and add it again."
+          value={created.token}
+          valueLabel="Device token"
+          footnote="The token is never logged."
+          onDone={() => setCreated(null)}
+        />
       )}
-      {devices === null && !error && <p class="muted">Loading…</p>}
-      {devices !== null && devices.length === 0 && <p class="muted">No devices yet.</p>}
-      <ul class="rows" aria-label="Devices">
+
+      {error && <Banner variant="error">{error}</Banner>}
+      <SectionLabel>Your devices{devices ? ` (${devices.length})` : ""}</SectionLabel>
+      {devices === null && !error && <Loading />}
+      {devices !== null && devices.length === 0 && (
+        <EmptyState hint="Name one above, then paste its token into the Mac app.">No devices yet.</EmptyState>
+      )}
+      <List aria-label="Devices">
         {(devices ?? []).map((d) => (
-          <li key={d.id} class="row row-static" data-testid="device-row">
-            <span class="row-main">
-              <span class="row-title">{d.name}</span>
-              <span class="meta">Added {when(d.created_at)}</span>
-            </span>
+          <ListItem key={d.id} data-testid="device-row">
+            <ItemMain>
+              <Text strong>{d.name}</Text>
+              <Text size="meta" tone="muted">
+                Added {when(d.created_at)}
+              </Text>
+            </ItemMain>
             {d.revoked_at ? (
-              <span class="chip chip-revoked" title={`Revoked ${when(d.revoked_at)}`}>
+              <Pill tone="failed" title={`Revoked ${when(d.revoked_at)}`}>
                 <span aria-hidden="true">✕ </span>Revoked
-              </span>
+              </Pill>
             ) : (
-              <button
-                class="btn btn-sm btn-danger"
-                type="button"
+              <Button
+                variant="danger-quiet"
+                size="sm"
                 aria-label={`Revoke ${d.name}`}
-                onClick={() => void revoke(d)}
+                onClick={() => setRevoking(d)}
               >
                 Revoke
-              </button>
+              </Button>
             )}
-          </li>
+          </ListItem>
         ))}
-      </ul>
-    </section>
-  );
-}
+      </List>
+      <Text size="meta" tone="muted">
+        Jarvis keeps only a hash of each token, so it can’t show one again.
+      </Text>
 
-function NewToken({ device, onDone }: { device: NewDevice; onDone: () => void }) {
-  const [copied, setCopied] = useState<"yes" | "no" | null>(null);
-  const field = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    field.current?.select();
-  }, [device.id]);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(device.token);
-      setCopied("yes");
-    } catch {
-      field.current?.select();
-      setCopied("no");
-    }
-  }
-
-  return (
-    <div class="token-card" role="status" data-testid="new-token">
-      <p>
-        <strong>{device.name}</strong> is ready. Paste this token into the Jarvis Live Mac app.
-        It is shown only once.
-      </p>
-      <div class="inline-row">
-        <input
-          ref={field}
-          class="field mono"
-          readOnly
-          aria-label="Device token"
-          value={device.token}
-          onFocus={(e) => (e.target as HTMLInputElement).select()}
-        />
-        <button class="btn" type="button" onClick={() => void copy()}>
-          ⎘ Copy
-        </button>
-        <button class="btn btn-quiet" type="button" onClick={onDone}>
-          Done
-        </button>
-      </div>
-      {copied === "yes" && <p class="meta">Copied to the clipboard.</p>}
-      {copied === "no" && <p class="meta">Couldn't copy. The token is selected: copy it by hand.</p>}
-    </div>
+      {revoking && (
+        <Dialog
+          title={`Revoke “${revoking.name}”?`}
+          onClose={() => setRevoking(null)}
+          actions={
+            <>
+              <Button variant="quiet" onClick={() => setRevoking(null)}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={() => void revoke(revoking)}>
+                Revoke {revoking.name}
+              </Button>
+            </>
+          }
+        >
+          <Text>It stops working right away.</Text>
+        </Dialog>
+      )}
+    </Section>
   );
 }

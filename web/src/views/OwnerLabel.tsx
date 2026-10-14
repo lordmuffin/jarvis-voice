@@ -1,3 +1,4 @@
+import { Text, VisuallyHidden } from "../ds/components";
 import { currentUser } from "../store";
 import type { Owner } from "../types";
 
@@ -8,10 +9,10 @@ export function OwnerLabel({ owner, after = "" }: { owner: Owner; after?: string
   if (isMine(owner)) return null;
   return (
     <>
-      <span class="owner" data-testid="owner" title="Owner">
-        <span class="visually-hidden">Owner: </span>
+      <Text data-testid="owner" title="Owner" strong>
+        <VisuallyHidden>Owner: </VisuallyHidden>
         {owner.display_name}
-      </span>
+      </Text>
       {after}
     </>
   );

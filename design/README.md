@@ -1,5 +1,9 @@
 # Jarvis Voice design system
 
+> **Source of truth: [lordmuffin/instrument](https://github.com/lordmuffin/instrument).** Instrument is the design system for every self-hosted app (Jarvis Voice, Sleep Dashboard, Home). Its `tokens/instrument.tokens.json` holds the tokens in light and dark; this repo vendors a pinned release through the Instrument sync PR into `web/src/instrument/`, `macos/JarvisVoiceMac/Sources/Instrument/` and the Android module, plus the design artboards in `docs/design/instrument/`. Those vendored folders are managed: never edit them, change Instrument instead. The macOS app and the web dashboard build on Instrument (`Color.inst.*`, `--inst-*`). New work reads Instrument, not this file.
+>
+> What follows is the original dark-only extraction from the Android app, kept for the Android resources that still use the `jv_*` names. Where it disagrees with Instrument, Instrument wins.
+
 Tokens and usage rules for every Jarvis Voice UI. Extracted from the Android app (`android/app/src/main/res`); `tokens.json` holds the values, this file says how to use them. The browsable version, with live component previews, is the [Jarvis Voice design system artifact](https://claude.ai/artifact/WvwABBJrY2E6VgqVC8wX1F).
 
 Token names match the Android resources (`jv_bg` is `@color/jv_bg`). Lengths are dp/sp on Android and px on the web.
@@ -76,7 +80,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 ## Platforms
 
 - **Android** is the source of every value here (`android/app/src/main/res`).
-- **macOS** (Jarvis Live, `macos/JarvisVoiceMac`) is a menu-bar app: live-session recorder, Copilot panel, dictation HUD and settings window. `macos/JarvisVoiceMac/Sources/UI/Theme.swift` mirrors the color tokens (`JV.bg`, `JV.accent`, …); keep it in step with `tokens.json`.
+- **macOS** (Jarvis Live, `macos/JarvisVoiceMac`) is a working menu-bar app: live-session recorder, Copilot panel, dictation HUD and settings window. It uses Instrument directly (`Color.inst.*`, `InstType`, light and dark from the system appearance) and no longer mirrors these tokens.
 - The legacy web capture page (`src/jarvis_voice/static/capture.html`) uses its own red/green palette. It is bugfix-only; do not copy its colors.
 
 ## Gaps

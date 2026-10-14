@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { EmptyState, ScrollStack, TranscriptMarker, Utterance } from "../ds/components";
 import { clock } from "../format";
 import { hashTime } from "../workitems";
 import type { Line } from "../reducer";
@@ -52,12 +53,13 @@ export function Transcript({
     ...markers.map((marker) => ({ at: marker.t_ms, marker })),
   ].sort((a, b) => a.at - b.at);
 
-  if (items.length === 0) return <p class="muted">Nothing yet.</p>;
+  if (items.length === 0) return <EmptyState>Nothing yet.</EmptyState>;
 
   return (
-    <div
-      class="transcript"
-      ref={box}
+    <ScrollStack
+      elRef={(el) => {
+        box.current = el;
+      }}
       onScroll={(e) => {
         const el = e.currentTarget as HTMLElement;
         atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -65,28 +67,27 @@ export function Transcript({
     >
       {items.map((it) =>
         "marker" in it ? (
-          <div class="marker" key={`m-${it.marker.t_ms}-${it.marker.label}`} data-testid="marker">
-            <span aria-hidden="true">⚑ </span>
+          <TranscriptMarker
+            key={`m-${it.marker.t_ms}-${it.marker.label}`}
+            time={clock(it.marker.t_ms)}
+            data-testid="marker"
+          >
             {it.marker.label}
-            <span class="time"> · {clock(it.marker.t_ms)}</span>
-          </div>
+          </TranscriptMarker>
         ) : (
-          <div
+          <Utterance
             key={it.line.id}
-            class={`line line-${it.line.speaker}${it.line.kind === "draft" ? " line-draft" : ""}${
-              it.line.id === hit?.id ? " line-target" : ""
-            }`}
+            speaker={it.line.speaker}
+            time={clock(it.line.start_ms)}
+            draft={it.line.kind === "draft"}
+            target={it.line.id === hit?.id}
             data-line={it.line.id}
             data-testid={it.line.kind === "draft" ? "draft" : "segment"}
           >
-            <span class="time">{clock(it.line.start_ms)}</span>
-            <div>
-              <div class="who">{it.line.speaker === "me" ? "Me" : "Them"}</div>
-              <div class="text">{it.line.text}</div>
-            </div>
-          </div>
+            {it.line.text}
+          </Utterance>
         ),
       )}
-    </div>
+    </ScrollStack>
   );
 }

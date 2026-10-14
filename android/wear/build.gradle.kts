@@ -43,4 +43,6 @@ dependencies {
     implementation(libs.androidx.wear.input)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.okhttp)
+
+    testImplementation(libs.junit)
 }

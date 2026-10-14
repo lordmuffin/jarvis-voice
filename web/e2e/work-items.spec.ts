@@ -8,7 +8,7 @@ const BASE = "http://127.0.0.1:8765";
 
 async function signIn(page: Page, user: string, path = "/"): Promise<void> {
   await page.goto(path);
-  await page.getByRole("button", { name: "Sign in with Pocket-ID" }).click();
+  await page.getByRole("button", { name: "Sign In with Pocket-ID" }).click();
   await expect(page).toHaveTitle("Fake Pocket-ID");
   await page.getByRole("link", { name: user, exact: true }).click();
   await expect(page.getByTestId("user-name")).toBeVisible();
@@ -36,7 +36,7 @@ test("review work items: edit, approve, copy, merge, discard", async ({ page }) 
   await srt.getByLabel("Acceptance criteria (one per line)").fill("- exports valid SRT\n");
   await srt.getByRole("button", { name: "Save" }).click();
   await expect(srt.getByTestId("work-item-problems")).toHaveCount(0);
-  await expect(srt.locator(".wi-criteria")).toContainText("exports valid SRT");
+  await expect(srt.getByTestId("work-item-criteria")).toContainText("exports valid SRT");
 
   // Approve the Gotify item, then copy its frozen prompt.
   const gotify = card(page, "Retry failed Gotify notifications");
@@ -66,7 +66,7 @@ test("review work items: edit, approve, copy, merge, discard", async ({ page }) 
   const bar = page.getByTestId("merge-bar");
   await bar.getByRole("button", { name: "Export transcripts as SRT" }).click();
   await expect(card(page, "Log when Gotify retries give up")).toHaveCount(0); // merged away
-  await expect(srt.locator(".wi-sources a")).toHaveCount(2);
+  await expect(srt.getByTestId("work-item-sources").locator("a")).toHaveCount(2);
 
   // Discard the merged draft; it moves to the Discarded view, and can come back.
   page.once("dialog", (d) => void d.accept());
@@ -81,5 +81,5 @@ test("review work items: edit, approve, copy, merge, discard", async ({ page }) 
   await gotify.getByRole("link", { name: "▶ 0:21" }).click();
   await expect(page).toHaveURL(/\/sessions\/.+#t=21000$/);
   await expect(page.getByTestId("work-items")).toBeVisible();
-  await expect(page.locator(".line-target")).toContainText("Gotify pushes vanish");
+  await expect(page.locator(".i-utt--target")).toContainText("Gotify pushes vanish");
 });

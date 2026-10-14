@@ -3,7 +3,7 @@ import { h, render } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadHealth, releaseChannel, serverBuild } from "../src/store";
 import { ServerVersion } from "../src/views/ServerVersion";
-import { Wordmark } from "../src/views/Wordmark";
+import { Brand } from "../src/ds/components";
 
 const healthz = (body: unknown) =>
   vi.stubGlobal(
@@ -56,34 +56,41 @@ describe("server version", () => {
   });
 });
 
-describe("release channel tag", () => {
+describe("release channel badge", () => {
   const tag = () => document.querySelector("[data-testid=release-channel]");
+  const show = () => render(h(Brand, { channel: releaseChannel.value }), document.body);
 
-  it("tags live as live, in the live (red) style", () => {
+  it("badges live as Live, in the live (red) style", () => {
     releaseChannel.value = "live";
-    render(h(Wordmark, {}), document.body);
-    expect(tag()?.textContent).toBe("live");
-    expect(tag()?.classList.contains("release-channel--live")).toBe(true);
+    show();
+    expect(tag()?.textContent).toBe("Live");
+    expect(tag()?.classList.contains("i-badge--live")).toBe(true);
   });
 
-  it("tags lab as lab, not in the live style", () => {
+  it("badges lab as Lab, not in the live style", () => {
     releaseChannel.value = "lab";
-    render(h(Wordmark, {}), document.body);
-    expect(tag()?.textContent).toBe("lab");
-    expect(tag()?.classList.contains("release-channel--live")).toBe(false);
-    expect(tag()?.classList.contains("release-channel--lab")).toBe(true);
+    show();
+    expect(tag()?.textContent).toBe("Lab");
+    expect(tag()?.classList.contains("i-badge--live")).toBe(false);
+    expect(tag()?.classList.contains("i-badge--lab")).toBe(true);
   });
 
-  // design/README.md, Color: amber is lab's; any other channel (a dev server) is grey.
-  it("tags any other channel in neither the live nor the lab style", () => {
+  // Any other channel (a dev server) is the neutral grey badge.
+  it("badges any other channel in neither the live nor the lab style", () => {
     releaseChannel.value = "dev";
-    render(h(Wordmark, {}), document.body);
+    show();
     expect(tag()?.textContent).toBe("dev");
-    expect(tag()?.className).toBe("release-channel");
+    expect(tag()?.className).toBe("i-badge");
   });
 
-  it("shows no tag while the channel is unknown", () => {
-    render(h(Wordmark, {}), document.body);
+  it("shows no badge while the channel is unknown", () => {
+    show();
     expect(tag()).toBeNull();
+  });
+
+  it("says in the tooltip when this is not the live server", () => {
+    releaseChannel.value = "lab";
+    show();
+    expect(tag()?.getAttribute("title")).toBe("This is the lab server, not live");
   });
 });

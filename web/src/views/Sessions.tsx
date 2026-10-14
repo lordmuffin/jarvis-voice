@@ -1,10 +1,27 @@
 import { useEffect, useState } from "preact/hooks";
-import { ApiError, listSessions, listUsers, type ListOptions } from "../api";
+import { ApiError, listSessions, type ListOptions } from "../api";
+import {
+  Banner,
+  Bar,
+  Button,
+  Choice,
+  EmptyState,
+  ItemMain,
+  List,
+  Loading,
+  PageTitle,
+  RowLink,
+  RowMeta,
+  RowTitle,
+  SearchInput,
+  Section,
+  StatusChip,
+  Text,
+} from "../ds/components";
 import { duration, matchesTitle, titleOf, when } from "../format";
 import { currentUser, navigate } from "../store";
 import type { SessionSummary } from "../types";
 import { OwnerLabel } from "./OwnerLabel";
-import { StatusChip } from "./StatusChip";
 import { UploadRecording } from "./UploadRecording";
 
 const PAGE = 100;
@@ -20,7 +37,6 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
   const isAdmin = currentUser()?.is_admin ?? false;
   const filter: ListOptions = { all, userId };
 
@@ -50,18 +66,6 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
     };
   }, []);
 
-  useEffect(() => {
-    if (!userId || !isAdmin) return;
-    let stopped = false;
-    listUsers().then(
-      (users) => !stopped && setUserName(users.find((u) => u.id === userId)?.display_name ?? null),
-      () => undefined,
-    );
-    return () => {
-      stopped = true;
-    };
-  }, [userId]);
-
   async function loadMore() {
     try {
       const offset = PAGE + more.length;
@@ -76,65 +80,42 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
   const shown = rows.filter((s) => matchesTitle(s, query));
 
   return (
-    <section>
-      <div class="toolbar">
-        <h1 class="h1">Sessions</h1>
+    <Section>
+      <Bar>
+        <PageTitle>Sessions</PageTitle>
         {isAdmin && !userId && (
-          <label class="toggle">
-            <input
-              type="checkbox"
-              checked={all}
-              onChange={(e) => navigate((e.target as HTMLInputElement).checked ? "/?all=1" : "/")}
-            />
-            All users
-          </label>
+          <Choice
+            label="All users"
+            checked={all}
+            onChange={(e) => navigate((e.target as HTMLInputElement).checked ? "/?all=1" : "/")}
+          />
         )}
-        {userId && (
-          <span class="filter-chip" data-testid="user-filter">
-            {userName ?? head?.[0]?.owner.display_name ?? "One user"}
-            <button
-              class="chip-clear"
-              type="button"
-              aria-label="Clear user filter"
-              onClick={() => navigate("/")}
-            >
-              ✕
-            </button>
-          </span>
-        )}
-        <input
-          class="field search"
-          type="search"
+        <SearchInput
           placeholder="Search by title"
           aria-label="Search sessions by title"
           value={query}
           onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
         />
         {!userId && <UploadRecording />}
-      </div>
-      {error && (
-        <p class="error" role="alert">
-          {error}
-        </p>
-      )}
-      {head === null && !error && <p class="muted">Loading…</p>}
+      </Bar>
+      {error && <Banner variant="error">{error}</Banner>}
+      {head === null && !error && <Loading />}
       {head !== null && rows.length === 0 && (
-        <p class="muted">
+        <EmptyState>
           {userId
             ? "No sessions for this user."
             : all
               ? "No sessions yet."
               : "No sessions yet. Start one from the Mac app, or upload a recording."}
-        </p>
+        </EmptyState>
       )}
       {head !== null && rows.length > 0 && shown.length === 0 && (
-        <p class="muted">No sessions match “{query}”.</p>
+        <EmptyState>No sessions match “{query}”.</EmptyState>
       )}
-      <ul class="rows">
+      <List>
         {shown.map((s) => (
           <li key={s.id}>
-            <a
-              class="row"
+            <RowLink
               data-testid="session-row"
               href={`/sessions/${s.id}`}
               onClick={(e) => {
@@ -142,30 +123,30 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
                 navigate(`/sessions/${s.id}`);
               }}
             >
-              <span class="row-main">
-                <span class="row-title">{titleOf(s)}</span>
-                <span class="meta">
+              <ItemMain>
+                <RowTitle>{titleOf(s)}</RowTitle>
+                <RowMeta>
                   <OwnerLabel owner={s.owner} after=" · " />
                   {when(s.started_at)}
                   {duration(s.started_at, s.ended_at) && ` · ${duration(s.started_at, s.ended_at)}`}
                   {` · ${s.mode}`}
-                </span>
-              </span>
+                </RowMeta>
+              </ItemMain>
               <StatusChip status={s.status} streaming={s.streaming} />
-            </a>
+            </RowLink>
           </li>
         ))}
-      </ul>
+      </List>
       {head !== null && rows.length < total && query.trim() === "" && (
-        <button class="btn" onClick={loadMore}>
-          Load more
-        </button>
+        <div>
+          <Button onClick={loadMore}>Load more</Button>
+        </div>
       )}
       {head !== null && rows.length < total && query.trim() !== "" && (
-        <p class="muted small">
+        <Text size="caption" tone="muted">
           Searching {rows.length} of {total} sessions. Clear the search to load more.
-        </p>
+        </Text>
       )}
-    </section>
+    </Section>
   );
 }

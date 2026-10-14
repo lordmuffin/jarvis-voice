@@ -8,7 +8,7 @@ There is no browser-side recording: producers are the Mac app and, later, Androi
 
 ## Use
 
-Sign in with **Sign in with Pocket-ID**: the browser goes to `/auth/login`, through Pocket-ID,
+Sign in with **Sign In with Pocket-ID**: the browser goes to `/auth/login`, through Pocket-ID,
 and back to the page it started on with an HttpOnly session cookie. The dashboard holds no
 credential of its own; every request rides on that cookie, and WebSocket access uses
 short-lived **viewer** tickets. Any 401 returns to the sign-in screen.
@@ -41,6 +41,10 @@ npx playwright test
 | `src/reducer.ts` | Pure `(state, event) => state` for every server event type |
 | `src/api.ts`, `src/ws.ts` | REST client (cookie auth), viewer WebSocket with reconnect |
 | `src/views/` | Sessions list, live and past session, devices, admin, shared panes |
+| `src/ds/components/` | Thin Preact wrappers over Instrument's classes (Shell, Button, Banner, Table, Dialog, …). Pages use these, never raw `i-*` / `j-*` class strings |
+| `src/ds/ds.css` | Layout glue and two specificity fixes, from `--inst-*` tokens only |
+| `src/instrument/` | **Managed** copy of [Instrument](https://github.com/lordmuffin/instrument), the family design system. Never edit it: the *Instrument* CI check fails on hand edits; changes go upstream and arrive as a sync PR |
+| `src/theme.ts` | System / Light / Dark choice, saved in `localStorage` (guarded; it can throw) |
 | `tests/` | vitest: reducer (events from the protocol fixtures), API client, routes |
 | `e2e/` | Playwright smoke against the real server (`server/tests/e2e_server.py`) |
 
@@ -48,8 +52,12 @@ Reducer rules: final segments replace overlapping drafts on the same channel; a 
 snapshot replaces state only when its `version` is higher; the REST snapshot and the stream
 may overlap freely.
 
-Layout: two panes from 840 px, tabs below; colours follow `prefers-color-scheme` using the
-tokens in [`design/`](../design).
+Layout: two panes from 840 px, tabs below. Look and feel come from Instrument (`.inst` on the
+app root, `--inst-*` tokens, light and dark both first-class). Colours follow
+`prefers-color-scheme` until the header's System / Light / Dark control overrides it with
+`data-theme` on `<html>`. No hard-coded colours, font stacks or inline styles in `src/` outside
+`instrument/` (`tests/no-hardcoded-style.test.ts` enforces it). The artboards this is built from
+are in [`docs/design/instrument/web/`](../docs/design/instrument/web).
 
 ## Playwright smoke
 
@@ -58,7 +66,8 @@ tokens in [`design/`](../design).
 users alice, bob, root (admin) and mallory). The tests sign in by clicking a user; one streams
 a generated WAV as alice through `jarvis-live replay` and checks the live and past views
 (recording included), others check that bob can't see alice's session, the Devices page, and
-the admin views. It needs Postgres: set `JARVIS_LIVE_TEST_DATABASE_URL`, or have Docker
+the admin views. `e2e/screenshots.spec.ts` also writes login, sessions, devices and admin in
+light and dark to [`screenshots/`](screenshots). It needs Postgres: set `JARVIS_LIVE_TEST_DATABASE_URL`, or have Docker
 available for a testcontainer. Run `npm run build` first.
 
 ## Image

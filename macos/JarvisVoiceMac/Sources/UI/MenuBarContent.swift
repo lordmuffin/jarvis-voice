@@ -7,9 +7,14 @@ struct MenuBarContent: View {
     @Environment(\.openSettings) private var openSettings
 
     var body: some View {
-        Text("Jarvis Voice v\(AppInfo.version)")
+        Text("Jarvis Voice \(AppInfo.version)")
         if let serverText {
             Text(serverText)
+        }
+        Text(MenuText.status(link: model.link, isRecording: model.isRecording))
+        Text("STT: \(sttText)")
+        if let progress = model.assetProgress {
+            Text("Installing speech model \(Int(progress * 100))%")
         }
 
         Divider()
@@ -33,27 +38,22 @@ struct MenuBarContent: View {
 
         Divider()
 
-        Text("\(statusGlyph) \(statusText)")
-        Text("STT: \(sttText)")
-        if let progress = model.assetProgress {
-            Text("Installing speech model \(Int(progress * 100))%")
-        }
         if model.isRecording {
             if model.mode == .meeting {
                 switch model.systemState {
-                case .failed(let why): Text("\u{26A0} System audio off: \(why)")
-                case .noAudio: Text("\u{26A0} No system audio. Check Privacy \u{203A} Audio Capture.")
+                case .failed(let why): Text(MenuText.warning("System audio off: \(why)"))
+                case .noAudio: Text(MenuText.warning("No system audio. Check Privacy \u{203A} Audio Capture."))
                 case .running, .idle: EmptyView()
                 }
             }
-            if !model.voiceProcessing { Text("\u{26A0} Echo cancellation unavailable on this input") }
+            if !model.voiceProcessing { Text(MenuText.warning("Echo cancellation unavailable on this input")) }
         }
         if let notice = model.notice { Text(notice) }
         if model.settings.dictationKey != .off {
             if model.dictation.accessibilityTrusted {
                 Text("Dictation: \(dictationHint)")
             } else {
-                Text("\u{26A0} Dictation needs Accessibility (see Settings)")
+                Text(MenuText.warning("Dictation needs Accessibility (see Settings)"))
             }
         }
 
@@ -89,9 +89,7 @@ struct MenuBarContent: View {
 
     /// Which server sessions go to: "Server: LAB · live.lab.apj.dev (0.12.0)"; nil without a valid URL.
     private var serverText: String? {
-        guard let channel = model.serverChannel, let host = model.settings.serverBaseURL?.host() else { return nil }
-        let version = model.serverVersion.map { " (\($0))" } ?? ""
-        return "Server: \(channel.tag) \u{00B7} \(host)\(version)"
+        MenuText.server(channel: model.serverChannel, host: model.settings.serverBaseURL?.host(), version: model.serverVersion)
     }
 
     /// `showSettingsWindow:` does nothing since macOS 14; `openSettings` is the supported way.
@@ -106,26 +104,6 @@ struct MenuBarContent: View {
                     .first { $0.identifier?.rawValue == "com_apple_SwiftUI_Settings_window" }?
                     .orderFrontRegardless()
             }
-        }
-    }
-
-    private var statusGlyph: String {
-        switch model.link {
-        case .connected: "\u{1F7E2}"
-        case .reconnecting: "\u{1F7E0}"
-        case .offlineLocal: "\u{1F535}"
-        case .failed: "\u{1F534}"
-        case .idle: "\u{26AA}\u{FE0F}"
-        }
-    }
-
-    private var statusText: String {
-        switch model.link {
-        case .connected: "Connected"
-        case .reconnecting: "Reconnecting\u{2026}"
-        case .offlineLocal: "Offline (local only)"
-        case .failed(let why): "Failed: \(why)"
-        case .idle: model.isRecording ? "Recording" : "Idle"
         }
     }
 

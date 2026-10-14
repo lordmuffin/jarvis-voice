@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="car_title">Jarvis</string>
+    <string name="car_ready">Tap Record to speak to Jarvis.</string>
+    <string name="car_muted">Jarvis is muted.\nTap Unmute to resume.</string>
+    <string name="car_listening">Listening…</string>
+    <string name="car_processing">Processing…</string>
+    <string name="car_record">Record</string>
+    <string name="car_stop">Stop</string>
+    <string name="car_mute">Mute</string>
+    <string name="car_unmute">Unmute</string>
+</resources>

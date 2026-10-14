@@ -44,6 +44,12 @@ jobs:
         run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
       - run: npx playwright test
       - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-screenshots
+          path: web/screenshots
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report

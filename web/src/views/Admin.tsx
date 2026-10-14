@@ -1,5 +1,6 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, listUsers } from "../api";
+import { Banner, Cell, EmptyState, Loading, PageTitle, Pill, Section, Table, Text } from "../ds/components";
 import { when } from "../format";
 import { currentUser } from "../store";
 import type { AdminUser } from "../types";
@@ -27,46 +28,50 @@ export function Admin() {
   }, []);
 
   return (
-    <section class="page">
-      <h1 class="h1">Users</h1>
-      {!isAdmin && <p class="muted">Admins only.</p>}
-      {error && (
-        <p class="error" role="alert">
-          {error}
-        </p>
-      )}
-      {isAdmin && users === null && !error && <p class="muted">Loading…</p>}
+    <Section>
+      <PageTitle>Users</PageTitle>
+      <Text as="p" tone="muted">
+        Everyone who has signed in with Pocket-ID.
+      </Text>
+      {!isAdmin && <EmptyState>Admins only.</EmptyState>}
+      {error && <Banner variant="error">{error}</Banner>}
+      {isAdmin && users === null && !error && <Loading />}
       {users !== null && (
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col" class="num">
-                  Sessions
+        <Table label="Users">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Email</th>
+              <Cell as="th" scope="col" num>
+                Sessions
+              </Cell>
+              <th scope="col">Last sign-in</th>
+              <th scope="col">Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} data-testid="user-row">
+                <th scope="row">
+                  <Link href={`/?user=${encodeURIComponent(u.id)}`}>{u.display_name}</Link>
+                  {u.is_admin && (
+                    <Pill tag>
+                      Admin
+                    </Pill>
+                  )}
                 </th>
-                <th scope="col">Last sign-in</th>
-                <th scope="col">Joined</th>
+                <td>{u.email ?? "—"}</td>
+                <Cell num>{u.sessions}</Cell>
+                <td>{u.last_login_at ? when(u.last_login_at) : "—"}</td>
+                <td>{when(u.created_at)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} data-testid="user-row">
-                  <th scope="row">
-                    <Link href={`/?user=${encodeURIComponent(u.id)}`}>{u.display_name}</Link>
-                    {u.is_admin && <span class="tag">Admin</span>}
-                  </th>
-                  <td>{u.email ?? "—"}</td>
-                  <td class="num">{u.sessions}</td>
-                  <td>{u.last_login_at ? when(u.last_login_at) : "—"}</td>
-                  <td>{when(u.created_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </Table>
       )}
-    </section>
+      <Text size="meta" tone="muted">
+        Accounts come from Pocket-ID. Admins can view anyone's sessions.
+      </Text>
+    </Section>
   );
 }

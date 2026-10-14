@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, getSession } from "../api";
-import { navigate } from "../store";
+import { Banner, Loading } from "../ds/components";
 import type { SessionDetail } from "../types";
+import { Link } from "./Link";
 import { LiveSession } from "./LiveSession";
 import { PastSession } from "./PastSession";
 
@@ -23,33 +24,20 @@ export function SessionPage({ id }: { id: string }) {
     };
   }, [id]);
 
-  const back = (
-    <a
-      class="back"
-      href="/"
-      onClick={(e) => {
-        e.preventDefault();
-        navigate("/");
-      }}
-    >
-      ← Sessions
-    </a>
-  );
+  const back = <Link href="/">← Sessions</Link>;
 
   if (error)
     return (
       <>
         {back}
-        <p class="error" role="alert">
-          {error}
-        </p>
+        <Banner variant="error">{error}</Banner>
       </>
     );
   if (!detail)
     return (
       <>
         {back}
-        <p class="muted">Loading…</p>
+        <Loading />
       </>
     );
 
