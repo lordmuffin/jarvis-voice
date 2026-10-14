@@ -2,4 +2,6 @@
 <resources>
     <!-- Dark system-bar icons on the light theme; overridden in values-night. -->
     <bool name="inst_light_bars">true</bool>
+    <!-- Unfolded / tablet widths (>= 840dp) get the two-pane Record and Session Detail layouts. -->
+    <bool name="is_wide">false</bool>
 </resources>

@@ -81,6 +81,7 @@ class LiveActivity : AppCompatActivity() {
     private val adapter = LineAdapter()
 
     private var copilotExpanded = true
+    private val wide by lazy { resources.getBoolean(R.bool.is_wide) }
     private var lastPending: List<SessionMeta> = emptyList()
     /** Set while [renderAwayMode] moves the switch, so it doesn't count as the user's choice. */
     private var settingSwitch = false
@@ -141,7 +142,7 @@ class LiveActivity : AppCompatActivity() {
             LiveSessionService.marker(this)
             InstToast.show(this, R.string.live_marker_added)
         }
-        tvCopilotHeader.setOnClickListener {
+        if (!wide) tvCopilotHeader.setOnClickListener {
             copilotExpanded = !copilotExpanded
             render(LiveSessionService.ui.value)
         }
@@ -360,6 +361,13 @@ class LiveActivity : AppCompatActivity() {
             }
         }?.trimEnd()
         val has = !text.isNullOrEmpty()
+        if (wide) {
+            // Unfolded: the copilot has its own pane, always open, so there is nothing to collapse.
+            tvCopilotHeader.visibility = View.VISIBLE
+            svCopilot.visibility = View.VISIBLE
+            tvCopilot.text = text
+            return
+        }
         tvCopilotHeader.visibility = if (has) View.VISIBLE else View.GONE
         tvCopilotHeader.text = "${getString(R.string.live_copilot)} ${getString(if (copilotExpanded) R.string.livesess_copilot_expanded else R.string.livesess_copilot_collapsed)}"
         svCopilot.visibility = if (has && copilotExpanded) View.VISIBLE else View.GONE

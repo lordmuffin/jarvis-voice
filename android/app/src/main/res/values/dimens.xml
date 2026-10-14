@@ -11,4 +11,6 @@
     <dimen name="app_pill_spinner">12dp</dimen>
     <dimen name="app_pill_meter_width">20dp</dimen>
     <dimen name="app_pill_meter_height">14dp</dimen>
+    <dimen name="app_nav_total">57dp</dimen>
+    <dimen name="app_detail_left_pane">380dp</dimen>
 </resources>

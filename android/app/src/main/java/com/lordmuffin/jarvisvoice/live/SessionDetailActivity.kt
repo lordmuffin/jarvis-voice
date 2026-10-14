@@ -189,9 +189,35 @@ class SessionDetailActivity : AppCompatActivity() {
         )
 
         renderAudio(d)
-        groupTabs.visibility = View.VISIBLE
-        selectTab(tab)
+        if (wide) {
+            groupTabs.visibility = View.GONE
+            renderPanes(d)
+        } else {
+            groupTabs.visibility = View.VISIBLE
+            selectTab(tab)
+        }
     }
+
+    /** Unfolded: summary and actions on the left, the transcript beside the recordings on the right. */
+    private fun renderPanes(d: RemoteSessionDetail) {
+        val left = SpannableStringBuilder()
+        for (part in listOf(summaryText(d), actionsText(d.copilot))) {
+            if (part is Placeholder) continue
+            if (left.isNotEmpty()) left.append("\n\n")
+            left.append(part as CharSequence)
+        }
+        val summary = summaryText(d)
+        if (left.isEmpty() && summary is Placeholder) left.append(summary.text)
+        tvText.text = left
+        tvText.setTextColor(getColor(R.color.inst_text))
+        svText.visibility = View.VISIBLE
+        val empty = d.segments.isEmpty()
+        findViewById<View?>(R.id.tv_detail_transcript_empty)?.visibility = if (empty) View.VISIBLE else View.GONE
+        rvTranscript.visibility = if (empty) View.GONE else View.VISIBLE
+        segmentAdapter.submitList(d.segments)
+    }
+
+    private val wide by lazy { resources.getBoolean(R.bool.is_wide) }
 
     private fun selectTab(t: Tab) {
         tab = t
