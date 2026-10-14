@@ -152,7 +152,7 @@ class SessionsActivity : AppCompatActivity() {
 
     private fun errorText(e: Exception): String = when {
         e is LiveHttpException && e.status == 401 -> getString(R.string.history_unauthorized)
-        e is LiveHttpException -> getString(R.string.history_error, "HTTP ${e.status}")
+        e is LiveHttpException -> getString(R.string.history_error, getString(R.string.livesess_http, e.status))
         else -> getString(R.string.history_error, e.message ?: e.javaClass.simpleName)
     }
 

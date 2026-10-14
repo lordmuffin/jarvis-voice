@@ -3,54 +3,47 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/inst_surface">
+    android:background="@drawable/inst_sheet_bg">
 
     <!-- Header row -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="@dimen/inst_touch_target_android"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="12dp">
+        android:paddingStart="@dimen/inst_space_16"
+        android:paddingEnd="@dimen/inst_space_12">
 
         <TextView
+            style="@style/Inst.Text.Title"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Conversations"
-            android:textColor="@color/inst_text"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:text="@string/chat_sessions_title" />
 
         <Button
             android:id="@+id/btn_session_new"
+            style="@style/Widget.Inst.Button.Primary.Sm"
             android:layout_width="wrap_content"
-            android:layout_height="34dp"
-            android:text="+ New"
-            android:textSize="12sp"
-            android:textAllCaps="false"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:backgroundTint="@color/inst_accent"
-            android:textColor="@color/inst_on_accent"
-            android:stateListAnimator="@null" />
+            android:layout_height="wrap_content"
+            android:text="@string/chat_session_new" />
 
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/inst_surface_2" />
+        android:layout_height="@dimen/inst_border_hairline"
+        android:background="@color/inst_line" />
 
     <!-- Session list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_sessions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxHeight="420dp"
+        android:maxHeight="@dimen/app_chat_sheet_list_max"
         android:overScrollMode="never"
-        android:paddingTop="4dp"
-        android:paddingBottom="8dp" />
+        android:background="@color/inst_bg"
+        android:paddingTop="@dimen/inst_space_4"
+        android:paddingBottom="@dimen/inst_space_8" />
 
 </LinearLayout>

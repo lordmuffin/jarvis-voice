@@ -1,40 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Utterance row: surface block, 3dp left rule (you = accent, them = them; set by SessionDetailActivity). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/LiveSess.Utt"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:paddingTop="6dp"
-    android:paddingBottom="6dp">
+    android:layout_marginBottom="@dimen/inst_space_4">
 
     <TextView
         android:id="@+id/tv_seg_time"
-        android:layout_width="48dp"
+        style="@style/Inst.Text.Meta"
+        android:layout_width="44dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="1dp"
-        android:fontFamily="monospace"
-        android:textColor="@color/inst_text_2"
-        android:textSize="12sp" />
+        android:fontFamily="monospace" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/inst_space_8"
         android:layout_weight="1"
         android:orientation="vertical">
 
         <TextView
             android:id="@+id/tv_seg_speaker"
+            style="@style/Inst.Text.Tag"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="11sp"
-            android:textStyle="bold" />
+            android:layout_height="wrap_content" />
 
         <TextView
             android:id="@+id/tv_seg_text"
+            style="@style/Inst.Text.Chat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:textColor="@color/inst_text"
-            android:textIsSelectable="true"
-            android:textSize="15sp" />
+            android:layout_marginTop="@dimen/inst_space_4"
+            android:textIsSelectable="true" />
     </LinearLayout>
 </LinearLayout>

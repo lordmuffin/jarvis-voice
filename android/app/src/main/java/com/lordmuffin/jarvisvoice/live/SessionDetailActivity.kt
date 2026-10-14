@@ -2,7 +2,6 @@ package com.lordmuffin.jarvisvoice.live
 
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.graphics.Typeface
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -21,7 +20,6 @@ import android.widget.ProgressBar
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -31,6 +29,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.live.protocol.CopilotItem
+import com.lordmuffin.jarvisvoice.ui.InstToast
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -156,14 +155,14 @@ class SessionDetailActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 val reason = when {
                     e is LiveHttpException && e.status == 401 -> getString(R.string.history_unauthorized)
-                    e is LiveHttpException -> getString(R.string.detail_error, "HTTP ${e.status}")
+                    e is LiveHttpException -> getString(R.string.detail_error, getString(R.string.livesess_http, e.status))
                     else -> getString(R.string.detail_error, e.message ?: e.javaClass.simpleName)
                 }
                 if (detail == null) {
                     tvError.text = reason
                     groupError.visibility = View.VISIBLE
                 } else {
-                    Toast.makeText(this@SessionDetailActivity, reason, Toast.LENGTH_LONG).show()
+                    InstToast.show(this@SessionDetailActivity, reason)
                 }
             } finally {
                 pbDetail.visibility = View.GONE
@@ -197,8 +196,7 @@ class SessionDetailActivity : AppCompatActivity() {
         tab = t
         tabButtons.forEach { (key, button) ->
             val selected = key == t
-            button.backgroundTintList = ColorStateList.valueOf(getColor(if (selected) R.color.inst_surface_2 else R.color.inst_surface))
-            button.setTextColor(getColor(if (selected) R.color.inst_accent else R.color.inst_text_2))
+            button.isSelected = selected
         }
         val d = detail ?: return
         when (t) {
@@ -381,7 +379,7 @@ class SessionDetailActivity : AppCompatActivity() {
                 throw e
             } catch (e: LiveHttpException) {
                 row.time.text = if (e.status == 404) getString(R.string.detail_audio_missing)
-                else getString(R.string.detail_audio_failed, "HTTP ${e.status}")
+                else getString(R.string.detail_audio_failed, getString(R.string.livesess_http, e.status))
             } catch (e: Exception) {
                 row.time.text = getString(R.string.detail_audio_failed, e.message ?: e.javaClass.simpleName)
             } finally {
@@ -473,7 +471,8 @@ class SessionDetailActivity : AppCompatActivity() {
             val me = seg.speaker == "me"
             holder.time.text = LocalMarkdown.clock(seg.startMs)
             holder.speaker.text = ctx.getString(if (me) R.string.detail_speaker_me else R.string.detail_speaker_them)
-            holder.speaker.setTextColor(ctx.getColor(if (me) R.color.inst_accent else R.color.inst_text_2))
+            holder.speaker.setTextColor(ctx.getColor(if (me) R.color.inst_accent else R.color.inst_them_text))
+            holder.itemView.setBackgroundResource(if (me) R.drawable.livesess_utt_me else R.drawable.livesess_utt_them)
             holder.text.text = seg.text
         }
 

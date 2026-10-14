@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root is FrameLayout so the FAB floats over the ScrollView at all scroll positions -->
+<!-- Root is FrameLayout so the bottom nav floats over the ScrollView at all scroll positions.
+     One long column: Label heading, flat inst_surface rows/panels, 1dp inst_line rule between sections. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -8,91 +9,80 @@
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="64dp">
+        android:layout_marginBottom="@dimen/inst_bottombar">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="@dimen/inst_space_16"
+            android:paddingEnd="@dimen/inst_space_16"
+            android:paddingTop="@dimen/inst_space_24"
+            android:paddingBottom="@dimen/inst_space_24">
 
-            <!-- ── Version ─────────────────────────────────────────────── -->
+            <!-- Version -->
             <TextView
                 android:id="@+id/tv_version"
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Jarvis Voice"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="20dp" />
+                android:text="@string/settings_version_default"
+                android:layout_marginBottom="@dimen/inst_space_24" />
 
-            <!-- ── Overlay Status ─────────────────────────────────────────── -->
+            <!-- Overlay status -->
+
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Overlay"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_overlay_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@color/inst_surface"
-                android:padding="12dp"
-                android:layout_marginBottom="12dp">
+                android:orientation="horizontal">
 
                 <TextView
                     android:id="@+id/tv_overlay_status"
+                    style="@style/Inst.Text"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Checking…"
-                    android:textColor="@color/inst_text_2"
-                    android:textSize="14sp" />
+                    android:textStyle="bold"
+                    android:text="@string/settings_overlay_checking"
+                    android:textColor="@color/inst_text_2" />
 
                 <Button
                     android:id="@+id/btn_restart_overlay"
+                    style="@style/Widget.Inst.Button.Secondary"
                     android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="Restart"
-                    android:backgroundTint="@color/inst_surface_2"
-                    android:textColor="@color/inst_accent"
-                    android:textSize="13sp"
-                    android:paddingHorizontal="16dp" />
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_overlay_restart" />
 
             </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Metro Stats ──────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Metro stats -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Metro"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_metro_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/inst_surface"
-                android:padding="12dp">
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -102,18 +92,15 @@
                     android:gravity="center">
                     <TextView
                         android:id="@+id/tv_stat_last_words"
+                        style="@style/Settings.StatValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="@color/inst_text"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:text="@string/settings_stat_none" />
                     <TextView
+                        style="@style/Settings.StatCaption"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="last words"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="10sp" />
+                        android:text="@string/settings_stat_last_words" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -124,18 +111,16 @@
                     android:gravity="center">
                     <TextView
                         android:id="@+id/tv_stat_last_wpm"
+                        style="@style/Settings.StatValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="@color/inst_accent"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:text="@string/settings_stat_none"
+                        android:textColor="@color/inst_accent" />
                     <TextView
+                        style="@style/Settings.StatCaption"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="last wpm"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="10sp" />
+                        android:text="@string/settings_stat_last_wpm" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -146,18 +131,15 @@
                     android:gravity="center">
                     <TextView
                         android:id="@+id/tv_stat_total_words"
+                        style="@style/Settings.StatValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/inst_text"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:text="@string/settings_stat_zero" />
                     <TextView
+                        style="@style/Settings.StatCaption"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="total words"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="10sp" />
+                        android:text="@string/settings_stat_total_words" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -168,257 +150,213 @@
                     android:gravity="center">
                     <TextView
                         android:id="@+id/tv_stat_avg_wpm"
+                        style="@style/Settings.StatValue"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/inst_accent"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
+                        android:text="@string/settings_stat_zero"
+                        android:textColor="@color/inst_accent" />
                     <TextView
+                        style="@style/Settings.StatCaption"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="avg wpm"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="10sp" />
+                        android:text="@string/settings_stat_avg_wpm" />
                 </LinearLayout>
 
             </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── STT Model ─────────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- STT model -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Speech Recognition"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_stt_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_open_stt_model_manager"
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="STT Model"
-                android:backgroundTint="@color/inst_surface_2"
-                android:textColor="@color/inst_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_stt_model"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
                 android:id="@+id/tv_active_stt_model"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="No model downloaded"
-                android:textColor="@color/inst_text_2"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="12dp" />
+                android:text="@string/settings_stt_none"
+                android:layout_marginTop="@dimen/inst_space_4" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── LLM Model ────────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- LLM model -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="LLM Enhancement"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_llm_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_open_model_manager"
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="LLM Model"
-                android:backgroundTint="@color/inst_surface_2"
-                android:textColor="@color/inst_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_llm_model"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
                 android:id="@+id/tv_active_llm_model"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Enhancement: Off"
-                android:textColor="@color/inst_text_2"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="12dp" />
+                android:text="@string/settings_llm_off"
+                android:layout_marginTop="@dimen/inst_space_4"
+                android:layout_marginBottom="@dimen/inst_space_12" />
 
             <TextView
+                style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="HuggingFace Token"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_hf_label"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_hf_token"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="hf_xxxxxxxxxxxxxxxx"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_hf_hint"
                 android:inputType="textPassword"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Only needed when using HuggingFace (no custom URL set below)."
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_hf_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Jarvis Live ─────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Jarvis Live -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_settings_header"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="6dp">
+                android:layout_marginBottom="@dimen/inst_space_8">
 
                 <EditText
                     android:id="@+id/et_live_server_url"
+                    style="@style/Widget.Inst.EditText.Mono"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:minHeight="@dimen/inst_space_48"
                     android:hint="@string/live_settings_url_hint"
                     android:inputType="textUri"
-                    android:importantForAutofill="no"
-                    android:textColor="@color/inst_text"
-                    android:textColorHint="@color/inst_text_2"
-                    android:background="@drawable/permission_card_bg"
-                    android:padding="12dp"
-                    android:textSize="13sp"
-                    android:fontFamily="monospace" />
+                    android:importantForAutofill="no" />
 
                 <!-- The saved server's release channel (GET /healthz); gone until it answers. -->
                 <TextView
                     android:id="@+id/tv_live_channel"
+                    style="@style/Inst.Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:textSize="13sp"
+                    android:layout_marginStart="@dimen/inst_space_8"
                     android:visibility="gone" />
             </LinearLayout>
 
             <Button
                 android:id="@+id/btn_live_sign_in"
+                style="@style/Widget.Inst.Button.Primary.Lg"
                 android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="@string/live_signin_button"
-                android:backgroundTint="@color/inst_accent"
-                android:textColor="@color/inst_on_accent"
-                android:textSize="13sp" />
+                android:layout_height="wrap_content"
+                android:text="@string/live_signin_button" />
 
             <TextView
                 android:id="@+id/tv_live_account"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_signin_desc"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginTop="@dimen/inst_space_4"
+                android:layout_marginBottom="@dimen/inst_space_12" />
 
             <TextView
+                style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_signin_token_label"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_live_device_token"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
                 android:hint="@string/live_settings_token_hint"
                 android:inputType="textPassword"
                 android:importantForAutofill="no"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="6dp" />
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginBottom="4dp">
+                android:layout_marginBottom="@dimen/inst_space_8">
 
                 <Button
                     android:id="@+id/btn_live_save"
+                    style="@style/Widget.Inst.Button.Secondary"
                     android:layout_width="0dp"
-                    android:layout_height="44dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/live_settings_save"
-                    android:backgroundTint="@color/inst_surface_2"
-                    android:textColor="@color/inst_text"
-                    android:textSize="13sp" />
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/live_settings_save" />
 
                 <Button
                     android:id="@+id/btn_live_test"
+                    style="@style/Widget.Inst.Button.Secondary"
                     android:layout_width="0dp"
-                    android:layout_height="44dp"
+                    android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="@string/live_settings_test"
-                    android:backgroundTint="@color/inst_surface_2"
-                    android:textColor="@color/inst_text"
-                    android:textSize="13sp" />
+                    android:layout_marginStart="@dimen/inst_space_8"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/live_settings_test" />
             </LinearLayout>
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -427,19 +365,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/live_away_setting"
-                        android:textColor="@color/inst_text"
-                        android:textSize="16sp" />
+                        android:text="@string/live_away_setting" />
 
                     <TextView
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/live_away_setting_desc"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
+                        android:layout_marginTop="@dimen/inst_space_4" />
 
                 </LinearLayout>
 
@@ -452,309 +388,242 @@
 
             <TextView
                 android:id="@+id/tv_live_settings_status"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/live_settings_desc"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginTop="@dimen/inst_space_8" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Custom Model Server ─────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Custom model server -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Custom Model Server"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_server_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <TextView
+                style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="LLM Models URL"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_llm_url_label"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_llm_base_url"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="https://your-bucket/models/llm/"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_llm_url_hint"
                 android:inputType="textUri"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="@dimen/inst_space_12" />
 
             <TextView
+                style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="STT Models URL"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_stt_url_label"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_stt_base_url"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="https://your-bucket/models/stt/"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_stt_url_hint"
                 android:inputType="textUri"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="12dp" />
+                android:layout_marginBottom="@dimen/inst_space_12" />
 
             <TextView
+                style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Auth Token (optional)"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_server_token_label"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_server_token"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Bearer abc123..."
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_server_token_hint"
                 android:inputType="textPassword"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Sent as the Authorization header. Leave blank for public buckets. LLM bucket expects: gemma4-12b.litertlm, gemma4-2b.litertlm, gemma3-1b.litertlm. STT bucket expects: sherpa-onnx-whisper-{tiny,base,small,medium}.en.tar.bz2"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_server_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
 
-            <!-- ── Vault API (note read/write tool calls) ─────────────── -->
             <TextView
+                style="@style/Settings.FieldLabel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Capture key"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_capture_label"
+                android:layout_marginTop="@dimen/inst_space_12"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_vault_api_key"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Capture key (JARVIS_CAPTURE_KEY on the server)"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_capture_hint"
                 android:inputType="textPassword"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Key from /home/lordmuffin/.jarvis-capture.env on GamingPC. Required for vault note tools (read, search, write)."
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_capture_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
 
-            <!-- ── Voice TTS ──────────────────────────────────────────────── -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Voice (TTS)"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="4dp" />
+                android:text="@string/settings_tts_header"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <EditText
                 android:id="@+id/et_tts_url"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="http://192.168.1.43:8880"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_tts_url_hint"
                 android:inputType="textUri"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="6dp" />
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <EditText
                 android:id="@+id/et_tts_voice"
+                style="@style/Widget.Inst.EditText.Mono"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="af_sky"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_tts_voice_hint"
                 android:inputType="text"
-                android:textColor="@color/inst_text"
-                android:textColorHint="@color/inst_text_2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Kokoro TTS server URL + voice name. Leave URL blank to use Android TTS. Kokoro voices: af_sky, af_heart, am_michael, etc."
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_tts_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Features ─────────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Features -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Features"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_features_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_open_history"
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Dictation History"
-                android:backgroundTint="@color/inst_surface_2"
-                android:textColor="@color/inst_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_features_history"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <Button
                 android:id="@+id/btn_open_dictionary"
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Custom Dictionary"
-                android:backgroundTint="@color/inst_surface_2"
-                android:textColor="@color/inst_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_features_dictionary"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <Button
                 android:id="@+id/btn_open_debug_log"
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Debug Log"
-                android:backgroundTint="@color/inst_surface_2"
+                android:text="@string/settings_features_debug_log"
                 android:textColor="@color/inst_text_2"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp" />
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Data Storage ─────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Data storage -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Data Storage"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_storage_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <TextView
                 android:id="@+id/tv_storage_location"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textColor="@color/inst_text_2"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="8dp" />
+                android:textSize="@dimen/inst_type_caption"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_grant_storage"
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Grant All Files Access"
-                android:backgroundTint="@color/inst_surface_2"
+                android:text="@string/settings_storage_grant"
                 android:textColor="@color/inst_accent"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp"
-                android:visibility="gone" />
+                android:visibility="gone"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Grant once to store history and logs in /sdcard/Documents/JarvisVoice/. Existing data migrates automatically."
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_storage_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Notifications ────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Notifications -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Notifications"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_notifications_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -763,19 +632,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Clipboard notification"
-                        android:textColor="@color/inst_text"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_clipboard_title" />
 
                     <TextView
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Show in tray when dictation is copied to clipboard"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
+                        android:text="@string/settings_clipboard_desc"
+                        android:layout_marginTop="@dimen/inst_space_4" />
 
                 </LinearLayout>
 
@@ -788,29 +655,24 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── STT Backend ──────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- STT backend -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="STT Backend"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_backend_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -819,19 +681,17 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="On-device STT (Offline)"
-                        android:textColor="@color/inst_text"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_offline_title" />
 
                     <TextView
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Uses local Whisper model, no internet required"
-                        android:textColor="@color/inst_text_2"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
+                        android:text="@string/settings_offline_desc"
+                        android:layout_marginTop="@dimen/inst_space_4" />
 
                 </LinearLayout>
 
@@ -844,68 +704,61 @@
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/inst_surface_2"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Vault Folder ───────────────────────────────────────────── -->
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Vault folder -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Vault Folder"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_vault_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <TextView
                 android:id="@+id/tv_vault_folder"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="8dp" />
+                android:textSize="@dimen/inst_type_caption"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_pick_vault_folder"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="Pick Vault Folder"
-                android:backgroundTint="@color/inst_surface_2"
-                android:textColor="@color/inst_text_2"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Pick any local folder — Record session notes are saved inside it. Works great pointed at a Syncthing-synced vault folder."
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_vault_pick"
+                android:textColor="@color/inst_text"
+                android:layout_marginBottom="@dimen/inst_space_4" />
 
-            <!-- ── Audio Input ───────────────────────────────────────────── -->
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Audio Input"
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_vault_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Audio input -->
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_audio_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -914,42 +767,91 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Microphone"
-                        android:textColor="@color/inst_text"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_mic_title" />
 
                     <TextView
                         android:id="@+id/tv_input_device"
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="System Default"
+                        android:text="@string/settings_mic_default"
                         android:textColor="@color/inst_accent"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
+                        android:layout_marginTop="@dimen/inst_space_4" />
 
                 </LinearLayout>
 
                 <Button
                     android:id="@+id/btn_pick_input_device"
+                    style="@style/Widget.Inst.Button.Secondary"
                     android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="Change"
-                    android:backgroundTint="@color/inst_surface_2"
-                    android:textColor="@color/inst_text_2"
-                    android:textSize="13sp"
-                    android:paddingHorizontal="16dp" />
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_mic_change" />
 
             </LinearLayout>
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Select your earbud or headset mic. Bluetooth devices must be connected before tapping Change."
-                android:textColor="@color/inst_text_2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp" />
+                android:text="@string/settings_mic_help"
+                android:layout_marginTop="@dimen/inst_space_4" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line" />
+            <!-- Appearance -->
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_appearance_header"
+                android:layout_marginBottom="@dimen/inst_space_8" />
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_appearance_caption"
+                android:layout_marginBottom="@dimen/inst_space_8" />
+
+            <RadioGroup
+                android:id="@+id/rg_theme_mode"
+                style="@style/Widget.Inst.Seg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <RadioButton
+                    android:id="@+id/rb_theme_system"
+                    style="@style/Widget.Inst.Seg.Item"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/inst_space_48"
+                    android:layout_weight="1"
+                    android:text="@string/settings_theme_system" />
+
+                <RadioButton
+                    android:id="@+id/rb_theme_light"
+                    style="@style/Widget.Inst.Seg.Item"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/inst_space_48"
+                    android:layout_weight="1"
+                    android:text="@string/settings_theme_light" />
+
+                <RadioButton
+                    android:id="@+id/rb_theme_dark"
+                    style="@style/Widget.Inst.Seg.Item"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/inst_space_48"
+                    android:layout_weight="1"
+                    android:text="@string/settings_theme_dark" />
+
+            </RadioGroup>
 
         </LinearLayout>
     </ScrollView>

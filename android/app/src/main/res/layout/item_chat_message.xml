@@ -2,19 +2,18 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="12dp"
-    android:paddingEnd="12dp"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp">
+    android:paddingStart="@dimen/inst_space_12"
+    android:paddingEnd="@dimen/inst_space_12"
+    android:paddingTop="@dimen/inst_space_4"
+    android:paddingBottom="@dimen/inst_space_4">
 
     <TextView
         android:id="@+id/tv_message"
+        style="@style/Inst.Text.Chat"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:maxWidth="290dp"
-        android:padding="10dp"
-        android:textSize="15sp"
-        android:lineSpacingMultiplier="1.35"
-        android:textColor="@color/inst_text" />
+        android:maxWidth="@dimen/app_chat_bubble_max_width"
+        android:padding="@dimen/inst_space_12"
+        android:lineSpacingMultiplier="1.35" />
 
 </FrameLayout>

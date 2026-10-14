@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Banner on a single TextView (the view code shows/hides): warning tint, 12x8dp, body text. -->
+    <style name="LiveSess.BannerText.Warning" parent="Widget.Inst.Banner.Warning">
+        <item name="android:textColor">@color/inst_text</item>
+        <item name="android:textSize">@dimen/inst_type_caption</item>
+        <item name="android:minHeight">@dimen/inst_touch_target_android</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+    <!-- Utterance row: surface block, left rule drawn by the background (livesess_utt_*). -->
+    <style name="LiveSess.Utt" parent="">
+        <item name="android:background">@drawable/livesess_utt_me</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingStart">15dp</item>
+        <item name="android:paddingEnd">@dimen/inst_space_12</item>
+        <item name="android:paddingTop">@dimen/inst_space_8</item>
+        <item name="android:paddingBottom">@dimen/inst_space_8</item>
+    </style>
+    <!-- Flat segmented tab inside Widget.Inst.Seg; selected via View.setSelected (selectTab). -->
+    <style name="LiveSess.Tab" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:background">@drawable/livesess_tab_bg</item>
+        <item name="android:textColor">@color/livesess_tab_text</item>
+        <item name="android:textSize">@dimen/inst_type_caption</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:gravity">center</item>
+        <item name="android:minHeight">28dp</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:paddingStart">@dimen/inst_space_12</item>
+        <item name="android:paddingEnd">@dimen/inst_space_12</item>
+    </style>
+</resources>

@@ -3,32 +3,29 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="@dimen/inst_space_16">
 
     <TextView
+        style="@style/Inst.Text.Label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Task name (optional)"
-        android:textColor="@color/inst_text_2"
-        android:textSize="12sp"
-        android:layout_marginBottom="4dp" />
+        android:text="@string/chat_task_dialog_name_label"
+        android:layout_marginBottom="@dimen/inst_space_4" />
 
     <EditText
         android:id="@+id/et_task_name"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Auto-generated from prompt"
-        android:textColorHint="@color/inst_text_2"
+        android:hint="@string/chat_task_dialog_name_hint"
         android:inputType="textCapSentences"
-        android:layout_marginBottom="12dp" />
+        android:layout_marginBottom="@dimen/inst_space_12" />
 
     <TextView
+        style="@style/Inst.Text.Label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Prompt"
-        android:textColor="@color/inst_text_2"
-        android:textSize="12sp"
-        android:layout_marginBottom="4dp" />
+        android:text="@string/chat_task_dialog_prompt_label"
+        android:layout_marginBottom="@dimen/inst_space_4" />
 
     <EditText
         android:id="@+id/et_task_prompt"
@@ -38,20 +35,21 @@
         android:maxLines="8"
         android:gravity="top"
         android:inputType="textMultiLine|textCapSentences"
-        android:hint="What should Kai work on?"
-        android:textColorHint="@color/inst_text_2"
-        android:layout_marginBottom="12dp" />
+        android:hint="@string/chat_agent_prompt_hint"
+        android:paddingTop="@dimen/inst_space_12"
+        android:paddingBottom="@dimen/inst_space_12"
+        android:layout_marginBottom="@dimen/inst_space_12" />
 
     <TextView
+        style="@style/Inst.Text.Label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Model"
-        android:textColor="@color/inst_text_2"
-        android:textSize="12sp"
-        android:layout_marginBottom="4dp" />
+        android:text="@string/chat_task_dialog_model_label"
+        android:layout_marginBottom="@dimen/inst_space_4" />
 
     <Spinner
         android:id="@+id/sp_task_model"
+        style="@style/Widget.Inst.Spinner"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 

@@ -23,13 +23,13 @@ fun TextView.setTextWithChannel(text: CharSequence, channel: ServerChannel?) {
     if (text.isNotEmpty()) out.append(' ')
     val start = out.length
     out.append(channel.tag)
-    val span = ChannelTagSpan(context.getColor(channel.color), context.getColor(R.color.inst_on_channel), resources.displayMetrics.density)
+    val span = ChannelTagSpan(context.getColor(channel.color), context.getColor(R.color.inst_on_channel), resources.displayMetrics.density, resources.configuration.fontScale)
     out.setSpan(span, start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     this.text = out
 }
 
 /**
- * The server's release channel as a small filled pill inside a line of text, like the dashboard's
+ * The server's release channel as an 18dp full-pill badge inside a line of text, like the dashboard's
  * wordmark tag and the Mac app's `ChannelTag`: bold, tracked, `inst_on_channel` on [fill]. Inline, so it can
  * sit beside the server's address wherever a screen names it, and wraps as one piece.
  */
@@ -37,6 +37,7 @@ class ChannelTagSpan(
     @param:ColorInt private val fill: Int,
     @param:ColorInt private val textColor: Int,
     private val density: Float,
+    private val fontScale: Float = 1f,
 ) : ReplacementSpan() {
     private val rect = RectF()
 
@@ -52,28 +53,28 @@ class ChannelTagSpan(
         val own = tag.fontMetrics
         // Centred on the surrounding text rather than its baseline, since the tag is smaller.
         val centre = y + (line.ascent + line.descent) / 2
-        val half = (own.descent - own.ascent) / 2 + PAD_V_DP * density
+        val half = HEIGHT_DP * density / 2
         rect.set(x, centre - half, x + getSize(paint, text, start, end, null), centre + half)
         tag.color = fill
-        val radius = RADIUS_DP * density
-        canvas.drawRoundRect(rect, radius, radius, tag)
+        // Full pill: corner radius is half the 18dp (inst_badge) height.
+        canvas.drawRoundRect(rect, half, half, tag)
         tag.color = textColor
         canvas.drawText(text, start, end, x + PAD_H_DP * density, centre - (own.ascent + own.descent) / 2, tag)
     }
 
     private fun tagPaint(base: Paint) = Paint(base).apply {
         typeface = Typeface.create(base.typeface, Typeface.BOLD)
-        textSize = base.textSize * SCALE
+        textSize = TEXT_SP * density * fontScale
         letterSpacing = TRACKING
     }
 
     private companion object {
-        /** Relative to the line it sits in: 13sp text gets a ~10sp tag. */
-        const val SCALE = 0.8f
+        /** `inst_type_tag`: 9sp bold. */
+        const val TEXT_SP = 9f
+        /** `inst_badge`. */
+        const val HEIGHT_DP = 18f
         /** `design/README.md`, Type: uppercase gets tracking; `tag` is 0.1em. */
         const val TRACKING = 0.1f
-        const val PAD_H_DP = 5f
-        const val PAD_V_DP = 1.5f
-        const val RADIUS_DP = 3f
+        const val PAD_H_DP = 8f
     }
 }

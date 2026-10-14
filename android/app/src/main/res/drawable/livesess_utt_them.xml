@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Utterance row: surface block with a 3dp rule on the left (instrument.css .i-utt). Them = inst_them. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape>
+            <solid android:color="@color/inst_surface" />
+        </shape>
+    </item>
+    <item android:gravity="start" android:width="3dp">
+        <shape>
+            <solid android:color="@color/inst_them" />
+        </shape>
+    </item>
+</layer-list>

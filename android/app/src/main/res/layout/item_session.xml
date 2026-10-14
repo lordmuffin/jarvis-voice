@@ -3,12 +3,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="12dp"
-    android:background="@color/inst_surface"
+    android:padding="@dimen/inst_space_12"
+    android:background="@drawable/inst_row_surface"
     android:foreground="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
-    android:layout_marginBottom="4dp">
+    android:layout_marginBottom="@dimen/inst_space_4">
 
     <!-- Time + stats + expand chevron -->
     <LinearLayout
@@ -19,27 +19,25 @@
 
         <TextView
             android:id="@+id/tv_session_time"
+            style="@style/Inst.Text.Meta"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/inst_text_2"
-            android:textSize="11sp" />
+            android:layout_weight="1" />
 
         <TextView
             android:id="@+id/tv_session_stats"
+            style="@style/Inst.Text.Meta"
+            android:textColor="@color/inst_accent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/inst_accent"
-            android:textSize="11sp"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
         <TextView
             android:id="@+id/tv_expand_chevron"
+            style="@style/Inst.Text.Micro"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="▼"
-            android:textColor="@color/inst_text_2"
-            android:textSize="10sp" />
+            android:text="@string/chat_history_chevron_down" />
 
     </LinearLayout>
 
@@ -53,53 +51,45 @@
 
         <TextView
             android:id="@+id/tv_whisper_label"
+            style="@style/Inst.Text.Tag"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="WHISPER"
-            android:textColor="@color/inst_text_2"
-            android:textSize="9sp"
-            android:letterSpacing="0.1"
-            android:textAllCaps="true" />
+            android:layout_marginTop="@dimen/inst_space_8"
+            android:text="@string/chat_history_whisper" />
 
         <TextView
             android:id="@+id/tv_raw_transcript"
+            style="@style/Inst.Text.Caption"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/inst_text_2"
-            android:textSize="13sp"
             android:maxLines="2"
             android:ellipsize="end"
-            android:layout_marginTop="1dp" />
+            android:layout_marginTop="@dimen/inst_space_4" />
 
         <View
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="6dp"
-            android:layout_marginBottom="2dp"
-            android:background="@color/inst_surface_2" />
+            android:layout_height="@dimen/inst_border_hairline"
+            android:layout_marginTop="@dimen/inst_space_8"
+            android:layout_marginBottom="@dimen/inst_space_4"
+            android:background="@color/inst_line" />
 
         <TextView
             android:id="@+id/tv_enhanced_label"
+            style="@style/Inst.Text.Tag"
+            android:textColor="@color/inst_accent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ENHANCED"
-            android:textColor="@color/inst_accent"
-            android:textSize="9sp"
-            android:letterSpacing="0.1"
-            android:textAllCaps="true"
-            android:layout_marginBottom="1dp" />
+            android:text="@string/chat_history_enhanced" />
 
     </LinearLayout>
 
     <!-- Final transcript — always visible; maxLines toggled in adapter -->
     <TextView
         android:id="@+id/tv_session_transcript"
+        style="@style/Inst.Text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/inst_text"
-        android:textSize="14sp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="@dimen/inst_space_4"
         android:maxLines="2"
         android:ellipsize="end" />
 
@@ -109,31 +99,27 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="@dimen/inst_space_12"
         android:visibility="gone">
 
         <!-- Copy the final (enhanced) transcript -->
         <Button
             android:id="@+id/btn_copy_final"
+            style="@style/Widget.Inst.Button.Secondary"
             android:layout_width="0dp"
-            android:layout_height="36dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Copy"
-            android:textSize="12sp"
-            android:backgroundTint="@color/inst_surface_2"
-            android:textColor="@color/inst_text"
-            android:layout_marginEnd="6dp" />
+            android:text="@string/chat_history_copy"
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
         <!-- Only visible when LLM ran: copy the raw Whisper transcript -->
         <Button
             android:id="@+id/btn_copy_raw"
+            style="@style/Widget.Inst.Button.Secondary"
             android:layout_width="0dp"
-            android:layout_height="36dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Copy Whisper"
-            android:textSize="12sp"
-            android:backgroundTint="@color/inst_surface_2"
-            android:textColor="@color/inst_text_2"
+            android:text="@string/chat_history_copy_whisper"
             android:visibility="gone" />
 
     </LinearLayout>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Voice chat -->
+    <string name="chat_title">Kai Chat</string>
+    <string name="chat_tokens_zero">0 tkns</string>
+    <string name="chat_tokens">%1$d tkns</string>
+    <string name="chat_tokens_k">%1$sk tkns</string>
+    <string name="chat_btn_chats">Chats</string>
+    <string name="chat_btn_new">New</string>
+    <string name="chat_btn_compact">Compact</string>
+    <string name="chat_mode_voice">🎙 Voice</string>
+    <string name="chat_mode_type">⌨️ Type</string>
+    <string name="chat_model_default">Model ▾</string>
+    <string name="chat_model_label">%1$s ▾</string>
+    <string name="chat_talk_start">🎙  Start Talking</string>
+    <string name="chat_talk_to_kai">🎙  Talk to Kai</string>
+    <string name="chat_talk_interrupt">🎙  Interrupt Kai</string>
+    <string name="chat_talk_end">⏹  End Conversation</string>
+    <string name="chat_type_hint">Type a message…</string>
+    <string name="chat_send_glyph" translatable="false">▶</string>
+    <string name="chat_delegate_glyph" translatable="false">🤖</string>
+    <string name="chat_status_listening">Listening…</string>
+    <string name="chat_status_thinking">Thinking…</string>
+    <string name="chat_status_speaking">Speaking…</string>
+
+    <!-- Conversations sheet -->
+    <string name="chat_sessions_title">Conversations</string>
+    <string name="chat_session_new">+ New</string>
+    <string name="chat_session_msgs">%1$d msgs</string>
+    <string name="chat_session_no_messages">No messages yet</string>
+    <string name="chat_menu_rename">Rename</string>
+    <string name="chat_menu_delete">Delete</string>
+    <string name="chat_rename_title">Rename conversation</string>
+    <string name="chat_rename_save">Save</string>
+    <string name="chat_cancel">Cancel</string>
+    <string name="chat_delete_title">Delete conversation?</string>
+    <string name="chat_delete_message">\"%1$s\" will be permanently removed.</string>
+    <string name="chat_delete_confirm">Delete</string>
+
+    <!-- Agent tasks -->
+    <string name="chat_agent_title">Agent Tasks</string>
+    <string name="chat_agent_empty_glyph" translatable="false">🤖</string>
+    <string name="chat_agent_empty_title">No agent tasks yet</string>
+    <string name="chat_agent_empty_hint">Type a prompt below and tap Run</string>
+    <string name="chat_agent_model_label">Model:</string>
+    <string name="chat_agent_name_hint">Name (optional)</string>
+    <string name="chat_agent_prompt_hint">What should Kai work on?</string>
+    <string name="chat_agent_run">▶ Run</string>
+    <string name="chat_agent_prompt_required">Enter a prompt</string>
+    <string name="chat_agent_remove_title">Remove task?</string>
+    <string name="chat_agent_remove_message">\"%1$s\" will be cancelled and removed.</string>
+    <string name="chat_agent_remove_confirm">Remove</string>
+    <string name="chat_agent_cancel">Cancel</string>
+    <string name="chat_agent_delete_glyph" translatable="false">✕</string>
+    <string name="chat_agent_show_output">Show output ▼</string>
+    <string name="chat_agent_hide_output">Hide output ▲</string>
+    <string name="chat_agent_copy">⎘ Copy</string>
+    <string name="chat_agent_reply">↩ Reply</string>
+    <string name="chat_agent_copied">Copied</string>
+    <string name="chat_agent_followup_hint">Follow up…</string>
+    <string name="chat_agent_elapsed_running">running…</string>
+    <string name="chat_agent_elapsed_ms">%1$dms</string>
+    <string name="chat_agent_elapsed_s">%1$ss</string>
+    <string name="chat_agent_elapsed_ms_s">%1$dm %2$ds</string>
+    <string name="chat_task_dialog_name_label">Task name (optional)</string>
+    <string name="chat_task_dialog_name_hint">Auto-generated from prompt</string>
+    <string name="chat_task_dialog_prompt_label">Prompt</string>
+    <string name="chat_task_dialog_model_label">Model</string>
+
+    <!-- Dictation history -->
+    <string name="chat_history_title">Dictation History</string>
+    <string name="chat_history_dash" translatable="false">—</string>
+    <string name="chat_history_zero" translatable="false">0</string>
+    <string name="chat_history_last_words">last words</string>
+    <string name="chat_history_last_wpm">last wpm</string>
+    <string name="chat_history_total_words">total words</string>
+    <string name="chat_history_avg_wpm">avg wpm</string>
+    <string name="chat_history_whisper">WHISPER</string>
+    <string name="chat_history_enhanced">ENHANCED</string>
+    <string name="chat_history_enhanced_fallback">Enhanced</string>
+    <string name="chat_history_chevron_down" translatable="false">▼</string>
+    <string name="chat_history_chevron_up" translatable="false">▲</string>
+    <string name="chat_history_stats">%1$d words · %2$s wpm</string>
+    <string name="chat_history_stt">STT %1$s</string>
+    <string name="chat_history_copy">Copy</string>
+    <string name="chat_history_copy_whisper">Copy Whisper</string>
+    <string name="chat_history_copied">Copied</string>
+
+    <!-- Custom dictionary -->
+    <string name="chat_dict_title">Custom Dictionary</string>
+    <string name="chat_dict_intro">Replace spoken words automatically. Left column: what you say. Right column: what gets typed.</string>
+    <string name="chat_dict_add">+ Add word substitution</string>
+    <string name="chat_dict_arrow">→  %1$s</string>
+    <string name="chat_dict_delete_glyph" translatable="false">✕</string>
+    <string name="chat_dict_when_i_say">When I say:</string>
+    <string name="chat_dict_from_hint">e.g. jarvis</string>
+    <string name="chat_dict_replace_with">Replace with:</string>
+    <string name="chat_dict_to_hint">e.g. Jarvis AI</string>
+    <string name="chat_dict_dialog_add">Add substitution</string>
+    <string name="chat_dict_dialog_edit">Edit substitution</string>
+    <string name="chat_dict_save">Save</string>
+    <string name="chat_dict_cancel">Cancel</string>
+    <string name="chat_dict_both_required">Both fields required</string>
+
+    <!-- Debug log -->
+    <string name="chat_debug_title">Debug Log</string>
+    <string name="chat_debug_copy_all">Copy all</string>
+    <string name="chat_debug_clear">Clear</string>
+    <string name="chat_debug_empty">(log is empty)</string>
+    <string name="chat_debug_copied">Log copied</string>
+    <string name="chat_debug_cleared">(cleared)</string>
+</resources>

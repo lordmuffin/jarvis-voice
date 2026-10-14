@@ -9,42 +9,40 @@
         android:id="@+id/rv_tasks"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="200dp"
+        android:layout_marginBottom="@dimen/app_chat_task_panel_reserve"
         android:clipToPadding="false"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp" />
+        android:paddingTop="@dimen/inst_space_8"
+        android:paddingBottom="@dimen/inst_space_8" />
 
     <!-- Empty state (centered in upper portion) -->
     <LinearLayout
         android:id="@+id/ll_empty"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="200dp"
+        android:layout_marginBottom="@dimen/app_chat_task_panel_reserve"
         android:orientation="vertical"
         android:gravity="center"
         android:visibility="gone">
 
         <TextView
+            style="@style/Widget.Inst.EmptyGlyph"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="🤖"
-            android:textSize="48sp" />
+            android:text="@string/chat_agent_empty_glyph" />
 
         <TextView
+            style="@style/Widget.Inst.EmptyTitle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="No agent tasks yet"
-            android:textColor="@color/inst_text"
-            android:textSize="16sp"
-            android:layout_marginTop="12dp" />
+            android:text="@string/chat_agent_empty_title"
+            android:layout_marginTop="@dimen/inst_space_12" />
 
         <TextView
+            style="@style/Widget.Inst.EmptyHint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Type a prompt below and tap Run"
-            android:textColor="@color/inst_text_2"
-            android:textSize="13sp"
-            android:layout_marginTop="4dp" />
+            android:text="@string/chat_agent_empty_hint"
+            android:layout_marginTop="@dimen/inst_space_4" />
 
     </LinearLayout>
 
@@ -53,10 +51,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_marginBottom="64dp"
+        android:layout_marginBottom="@dimen/app_chat_nav_inset"
         android:orientation="vertical"
         android:background="@color/inst_bg"
-        android:paddingTop="8dp">
+        android:paddingTop="@dimen/inst_space_8">
 
         <!-- Model selector + task name row -->
         <LinearLayout
@@ -64,40 +62,34 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="4dp">
+            android:paddingStart="@dimen/inst_space_12"
+            android:paddingEnd="@dimen/inst_space_12"
+            android:paddingBottom="@dimen/inst_space_4">
 
             <TextView
+                style="@style/Inst.Text.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Model:"
-                android:textColor="@color/inst_text_2"
-                android:textSize="12sp"
-                android:layout_marginEnd="6dp" />
+                android:text="@string/chat_agent_model_label"
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <Spinner
                 android:id="@+id/sp_model"
+                style="@style/Widget.Inst.Spinner"
                 android:layout_width="0dp"
-                android:layout_height="36dp"
+                android:layout_height="@dimen/inst_control_md"
                 android:layout_weight="1"
-                android:background="@drawable/pill_background_dim"
-                android:paddingStart="10dp"
-                android:paddingEnd="4dp" />
+                android:paddingStart="@dimen/inst_space_8"
+                android:paddingEnd="@dimen/inst_space_4" />
 
             <EditText
                 android:id="@+id/et_task_name"
                 android:layout_width="0dp"
-                android:layout_height="36dp"
+                android:layout_height="@dimen/inst_control_md"
                 android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/pill_background_dim"
-                android:hint="Name (optional)"
-                android:textColorHint="@color/inst_text_2"
-                android:textColor="@color/inst_text"
-                android:textSize="12sp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
+                android:layout_marginStart="@dimen/inst_space_8"
+                android:hint="@string/chat_agent_name_hint"
+                android:textSize="@dimen/inst_type_caption"
                 android:inputType="textCapSentences"
                 android:maxLines="1"
                 android:singleLine="true" />
@@ -110,9 +102,9 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="bottom"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="6dp">
+            android:paddingStart="@dimen/inst_space_12"
+            android:paddingEnd="@dimen/inst_space_12"
+            android:paddingBottom="@dimen/inst_space_8">
 
             <EditText
                 android:id="@+id/et_prompt"
@@ -121,29 +113,22 @@
                 android:layout_weight="1"
                 android:minLines="2"
                 android:maxLines="5"
-                android:background="@drawable/pill_background_dim"
-                android:hint="What should Kai work on?"
-                android:textColorHint="@color/inst_text_2"
-                android:textColor="@color/inst_text"
-                android:textSize="14sp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp"
+                android:hint="@string/chat_agent_prompt_hint"
+                android:paddingTop="@dimen/inst_space_12"
+                android:paddingBottom="@dimen/inst_space_12"
                 android:inputType="textMultiLine|textCapSentences"
                 android:gravity="top"
-                android:layout_marginEnd="8dp" />
+                android:layout_marginEnd="@dimen/inst_space_8" />
 
             <Button
                 android:id="@+id/btn_run_task"
-                android:layout_width="64dp"
-                android:layout_height="52dp"
-                android:text="▶ Run"
-                android:textSize="11sp"
-                android:textAllCaps="false"
-                android:background="@drawable/pill_background_accent"
-                android:textColor="#ffffff"
-                android:stateListAnimator="@null"
+                style="@style/Widget.Inst.Button.Primary.Lg"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/inst_control_lg"
+                android:text="@string/chat_agent_run"
+                android:textSize="@dimen/inst_type_caption"
+                android:paddingStart="@dimen/inst_space_12"
+                android:paddingEnd="@dimen/inst_space_12"
                 android:layout_gravity="bottom" />
 
         </LinearLayout>

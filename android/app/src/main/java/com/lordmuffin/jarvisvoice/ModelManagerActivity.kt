@@ -10,7 +10,6 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.TextView
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +22,9 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.google.mlkit.genai.common.DownloadStatus
 import com.google.mlkit.genai.common.FeatureStatus
+import com.lordmuffin.jarvisvoice.ui.InstButtonKind
+import com.lordmuffin.jarvisvoice.ui.InstToast
+import com.lordmuffin.jarvisvoice.ui.setInstKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
@@ -47,7 +49,7 @@ class ModelManagerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_model_manager)
-        supportActionBar?.title = "LLM Model"
+        supportActionBar?.title = getString(R.string.models_llm_model)
         BottomNav.wire(this, BottomNav.Tab.MODELS)
 
         mgr = LlmModelManager(this)
@@ -78,8 +80,8 @@ class ModelManagerActivity : AppCompatActivity() {
                     val info = infos?.firstOrNull() ?: return@Observer
                     if (info.state == WorkInfo.State.FAILED) {
                         val error = info.outputData.getString(ModelDownloadWorker.KEY_ERROR)
-                            ?: "Download failed"
-                        Toast.makeText(this, "${config.displayName}: $error", Toast.LENGTH_LONG).show()
+                            ?: getString(R.string.models_download_failed_default)
+                        InstToast.show(this, getString(R.string.models_toast_model_error, config.displayName, error))
                     }
                     adapter.updateDownloadState(config.id, info)
                 })
@@ -90,14 +92,14 @@ class ModelManagerActivity : AppCompatActivity() {
         mgr.setActiveModel(config.id)
         VoiceOverlayService.instance?.reloadLlmModel()
         adapter.notifyDataSetChanged()
-        Toast.makeText(this, "${config.displayName} selected", Toast.LENGTH_SHORT).show()
+        InstToast.show(this, getString(R.string.models_toast_selected, config.displayName))
     }
 
     private fun onClearModel() {
         mgr.setActiveModel(ModelRegistry.NO_LLM)
         VoiceOverlayService.instance?.reloadLlmModel()
         adapter.notifyDataSetChanged()
-        Toast.makeText(this, "LLM enhancement disabled", Toast.LENGTH_SHORT).show()
+        InstToast.show(this, R.string.models_toast_llm_disabled)
     }
 
     private fun onDownload(config: ModelConfig) {
@@ -119,14 +121,14 @@ class ModelManagerActivity : AppCompatActivity() {
 
     private fun onDelete(config: ModelConfig) {
         AlertDialog.Builder(this)
-            .setTitle("Delete ${config.displayName}?")
-            .setMessage("${config.fileSizeMb} MB will be freed.")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(getString(R.string.models_delete_title, config.displayName))
+            .setMessage(getString(R.string.models_delete_message, config.fileSizeMb))
+            .setPositiveButton(R.string.models_delete) { _, _ ->
                 mgr.deleteModel(config)
                 VoiceOverlayService.instance?.reloadLlmModel()
                 adapter.notifyDataSetChanged()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.models_cancel, null)
             .show()
     }
 
@@ -139,8 +141,7 @@ class ModelManagerActivity : AppCompatActivity() {
                 val flow: Flow<DownloadStatus>? = withContext(Dispatchers.IO) { AiCoreEnhancer.downloadFlow() }
                 if (flow == null) {
                     adapter.setAiCoreDownloading(false)
-                    Toast.makeText(this@ModelManagerActivity,
-                        "Could not start download — try again.", Toast.LENGTH_LONG).show()
+                    InstToast.show(this@ModelManagerActivity, R.string.models_toast_download_start_failed)
                     return@launch
                 }
                 flow.collect { status ->
@@ -159,22 +160,21 @@ class ModelManagerActivity : AppCompatActivity() {
                             adapter.notifyDataSetChanged()
                             if (AiCoreEnhancer.isReady()) {
                                 VoiceOverlayService.instance?.reloadLlmModel()
-                                Toast.makeText(this@ModelManagerActivity,
-                                    "Gemini Nano ready!", Toast.LENGTH_SHORT).show()
+                                InstToast.show(this@ModelManagerActivity, R.string.models_toast_gemini_ready)
                             }
                         }
                         is DownloadStatus.DownloadFailed -> {
                             adapter.setAiCoreDownloading(false)
-                            Toast.makeText(this@ModelManagerActivity,
-                                "Download failed: ${status.e.message}", Toast.LENGTH_LONG).show()
+                            InstToast.show(this@ModelManagerActivity,
+                                getString(R.string.models_toast_download_failed, status.e.message))
                         }
                     }
                 }
             } catch (e: Exception) {
                 adapter.setAiCoreDownloading(false)
                 if (e !is kotlinx.coroutines.CancellationException) {
-                    Toast.makeText(this@ModelManagerActivity,
-                        "Download error: ${e.message}", Toast.LENGTH_LONG).show()
+                    InstToast.show(this@ModelManagerActivity,
+                        getString(R.string.models_toast_download_error, e.message))
                 }
             }
         }
@@ -187,22 +187,22 @@ class ModelManagerActivity : AppCompatActivity() {
     }
 
     private fun buildProgressLabel(pct: Int, speedBps: Long, etaSec: Long): String {
-        val sb = StringBuilder("$pct%")
-        if (speedBps > 0) sb.append("  ·  ").append(formatSpeed(speedBps))
-        if (etaSec >= 0) sb.append("  ·  ETA ").append(formatEta(etaSec))
+        val sb = StringBuilder(getString(R.string.models_progress_pct, pct))
+        if (speedBps > 0) sb.append(getString(R.string.models_progress_speed, formatSpeed(speedBps)))
+        if (etaSec >= 0) sb.append(getString(R.string.models_progress_eta, formatEta(etaSec)))
         return sb.toString()
     }
 
     private fun formatSpeed(bps: Long): String = when {
-        bps < 1_024         -> "$bps B/s"
-        bps < 1_048_576     -> "${bps / 1_024} KB/s"
-        else                -> "%.1f MB/s".format(bps.toDouble() / 1_048_576)
+        bps < 1_024         -> getString(R.string.models_speed_bps, bps)
+        bps < 1_048_576     -> getString(R.string.models_speed_kbps, bps / 1_024)
+        else                -> getString(R.string.models_speed_mbps, bps.toDouble() / 1_048_576)
     }
 
     private fun formatEta(sec: Long): String = when {
-        sec < 60    -> "${sec}s"
-        sec < 3_600 -> "${sec / 60}m ${sec % 60}s"
-        else        -> "${sec / 3_600}h ${(sec % 3_600) / 60}m"
+        sec < 60    -> getString(R.string.models_eta_s, sec)
+        sec < 3_600 -> getString(R.string.models_eta_ms, sec / 60, sec % 60)
+        else        -> getString(R.string.models_eta_hm, sec / 3_600, (sec % 3_600) / 60)
     }
 
     // ── Adapter ──────────────────────────────────────────────────────────────
@@ -275,13 +275,13 @@ class ModelManagerActivity : AppCompatActivity() {
                 }
 
                 tvStatus.text = when {
-                    isDownloading -> "Downloading…"
+                    isDownloading -> getString(R.string.models_downloading)
                     isInstalled   -> {
                         val base = mgr.getStatusLabel(config)
                         val backend = LlmEnhancer.activeBackend.takeIf { it != "none" && isActive }
-                        if (backend != null) "$base  [$backend]" else base
+                        if (backend != null) getString(R.string.models_status_installed_backend, base, backend) else base
                     }
-                    else          -> "${config.fileSizeMb} MB · min ${config.minRamGb} GB RAM"
+                    else          -> getString(R.string.models_status_not_installed_llm, config.fileSizeMb, config.minRamGb)
                 }
 
                 val progress = workInfo?.progress?.getInt(ModelDownloadWorker.KEY_PROGRESS, -1) ?: -1
@@ -294,30 +294,26 @@ class ModelManagerActivity : AppCompatActivity() {
                     progressBar.max = 100
                     progressBar.progress = progress.coerceIn(0, 100)
                     tvProgress.text = if (progress >= 0) buildProgressLabel(progress, speedBps, etaSec)
-                                      else "Connecting…"
+                                      else getString(R.string.models_connecting)
                 }
 
                 when {
                     isDownloading -> {
                         btnAction.visibility = View.VISIBLE
-                        btnAction.text = "Cancel"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF333333.toInt())
+                        btnAction.text = getString(R.string.models_cancel)
+                        btnAction.setInstKind(InstButtonKind.SECONDARY)
                         btnAction.setOnClickListener { onCancelDownload(config) }
                     }
                     isInstalled -> {
                         btnAction.visibility = View.VISIBLE
-                        btnAction.text = if (isActive) "Remove" else "Delete"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF442222.toInt())
+                        btnAction.text = getString(if (isActive) R.string.models_remove else R.string.models_delete)
+                        btnAction.setInstKind(InstButtonKind.DANGER)
                         btnAction.setOnClickListener { onDelete(config) }
                     }
                     else -> {
                         btnAction.visibility = View.VISIBLE
-                        btnAction.text = "Download"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())
-                        btnAction.setTextColor(0xFF04130F.toInt())
+                        btnAction.text = getString(R.string.models_download)
+                        btnAction.setInstKind(InstButtonKind.PRIMARY)
                         btnAction.setOnClickListener { onDownload(config) }
                     }
                 }
@@ -339,16 +335,16 @@ class ModelManagerActivity : AppCompatActivity() {
                             val pct = ((aiCoreBytesDownloaded.toFloat() / aiCoreBytesTotal) * 100).toInt()
                             val mb = aiCoreBytesDownloaded / (1024 * 1024)
                             val totalMb = aiCoreBytesTotal / (1024 * 1024)
-                            "Downloading $pct%  ·  ${mb} MB / ${totalMb} MB"
-                        } else "Downloading…"
+                            getString(R.string.models_aicore_downloading_pct, pct, mb, totalMb)
+                        } else getString(R.string.models_downloading)
                     }
                     AiCoreEnhancer.isReady() -> {
-                        val backend = if (isActive) "  [aicore]" else ""
-                        "Ready · Gemini Nano · AI Core$backend"
+                        val backend = if (isActive) getString(R.string.models_aicore_backend_suffix) else ""
+                        getString(R.string.models_aicore_ready, backend)
                     }
-                    status == FeatureStatus.UNAVAILABLE -> "Not available on this device"
-                    status == -1 -> "Checking availability…"
-                    else -> "Download required · tap Download to install Gemini Nano"
+                    status == FeatureStatus.UNAVAILABLE -> getString(R.string.models_aicore_unavailable)
+                    status == -1 -> getString(R.string.models_aicore_checking)
+                    else -> getString(R.string.models_aicore_download_required)
                 }
 
                 progressBar.visibility = if (isDownloading) View.VISIBLE else View.GONE
@@ -365,9 +361,8 @@ class ModelManagerActivity : AppCompatActivity() {
                 when {
                     isDownloading -> {
                         btnAction.visibility = View.VISIBLE
-                        btnAction.text = "Cancel"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF333333.toInt())
+                        btnAction.text = getString(R.string.models_cancel)
+                        btnAction.setInstKind(InstButtonKind.SECONDARY)
                         btnAction.setOnClickListener { onCancelAiCoreDownload() }
                     }
                     AiCoreEnhancer.isReady() || status == FeatureStatus.UNAVAILABLE || status == -1 -> {
@@ -376,10 +371,8 @@ class ModelManagerActivity : AppCompatActivity() {
                     else -> {
                         // DOWNLOADABLE state
                         btnAction.visibility = View.VISIBLE
-                        btnAction.text = "Download"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())
-                        btnAction.setTextColor(0xFF04130F.toInt())
+                        btnAction.text = getString(R.string.models_download)
+                        btnAction.setInstKind(InstButtonKind.PRIMARY)
                         btnAction.setOnClickListener { onDownloadAiCore() }
                     }
                 }
