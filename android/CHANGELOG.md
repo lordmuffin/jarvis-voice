@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.12.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.1...android-v1.12.0) (2026-10-14)
+
+
+### Features
+
+* **android:** show the server's LAB/LIVE channel tag ([80d503e](https://github.com/lordmuffin/jarvis-voice/commit/80d503e048bfc55504a1a5f95d0f3a3ebb3eb46c))
+* **android:** show the server's LAB/LIVE channel tag ([782ddf3](https://github.com/lordmuffin/jarvis-voice/commit/782ddf3b49220b45ad0ce544d308398fc3b65d2c))
+
 ## [1.11.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.0...android-v1.11.1) (2026-10-12)
 
 
