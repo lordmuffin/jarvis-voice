@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.14.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.0...android-v1.14.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* align copy and vocabulary with the Instrument design system ([492b090](https://github.com/lordmuffin/jarvis-voice/commit/492b0906ddf2fae45a3e25d340fb9e36637a1dcb))
+* **android:** align copy with Instrument vocabulary ([341a869](https://github.com/lordmuffin/jarvis-voice/commit/341a8693d69c9868302b8cdcb71c66c048b8647c))
+
 ## [1.14.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.13.0...android-v1.14.0) (2026-10-14)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.13.0...macos-v0.13.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* align copy and vocabulary with the Instrument design system ([492b090](https://github.com/lordmuffin/jarvis-voice/commit/492b0906ddf2fae45a3e25d340fb9e36637a1dcb))
+* **macos:** align copy with Instrument vocabulary ([311d47f](https://github.com/lordmuffin/jarvis-voice/commit/311d47fba793665256a99624280e1bcd00d9a81e))
+
 ## [0.13.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.12.0...macos-v0.13.0) (2026-10-14)
 
 
