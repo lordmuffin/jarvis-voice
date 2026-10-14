@@ -7,12 +7,15 @@ import type { ComponentChildren } from "preact";
 export function Shell({
   brand,
   nav,
+  bottom,
   tools,
   banner,
   children,
 }: {
   brand: ComponentChildren;
   nav: ComponentChildren;
+  /** The same tabs for the narrow bottom bar (below 600px, where the header tabs hide). */
+  bottom?: ComponentChildren;
   tools: ComponentChildren;
   banner?: ComponentChildren;
   children: ComponentChildren;
@@ -22,7 +25,7 @@ export function Shell({
       <header class="i-header">
         <div class="i-header-in">
           <div class="i-brand">{brand}</div>
-          <nav class="i-nav" aria-label="Main">
+          <nav class={bottom ? "i-nav i-nav--wide" : "i-nav"} aria-label="Main">
             {nav}
           </nav>
           <div class="i-user">{tools}</div>
@@ -30,6 +33,11 @@ export function Shell({
       </header>
       {banner}
       <main class="i-page">{children}</main>
+      {bottom && (
+        <nav class="i-bottombar d-bottombar" aria-label="Main">
+          {bottom}
+        </nav>
+      )}
     </div>
   );
 }
@@ -40,5 +48,14 @@ export function CenterCard({ children }: { children: ComponentChildren }) {
     <div class="inst d-center">
       <div class="d-card">{children}</div>
     </div>
+  );
+}
+
+/** The icon above a bottom-bar tab's label. */
+export function TabIcon({ children }: { children: ComponentChildren }) {
+  return (
+    <span class="i-ico" aria-hidden="true">
+      {children}
+    </span>
   );
 }

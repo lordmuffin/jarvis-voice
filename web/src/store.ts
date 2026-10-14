@@ -1,7 +1,7 @@
 import { signal } from "@preact/signals";
-import { ApiError, health, logout, me as fetchMe, onUnauthorized } from "./api";
+import { ApiError, familyApps as fetchFamilyApps, health, logout, me as fetchMe, onUnauthorized } from "./api";
 import { parseRoute, type Route } from "./route";
-import type { Me } from "./types";
+import type { FamilyApp, Me } from "./types";
 
 /** The signed-in user; null shows the sign-in screen. */
 export const me = signal<Me | null | "loading">("loading");
@@ -43,6 +43,18 @@ export async function loadHealth(): Promise<void> {
     serverBuild.value = version ? { version, commit: commit ?? "" } : null;
   } catch {
     /* an old server without the field, or offline: show nothing */
+  }
+}
+
+/** The apps in the ▦ family switcher. Empty (the default, and after any failure) means no
+ * switcher: it fails closed. */
+export const familyApps = signal<FamilyApp[]>([]);
+
+export async function loadFamilyApps(): Promise<void> {
+  try {
+    familyApps.value = await fetchFamilyApps();
+  } catch {
+    familyApps.value = [];
   }
 }
 

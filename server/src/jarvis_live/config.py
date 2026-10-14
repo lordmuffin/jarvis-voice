@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # marked as such: in /healthz, the dashboard header and Gotify titles.
     environment: str = "live"
     data_dir: Path = Path("/data")
+    # The family's shared apps list (JSON), behind the dashboard's ▦ switcher. Read once at
+    # startup; unset or unreadable means no switcher. See jarvis_live/apps.py.
+    apps_list_path: Path | None = None
 
     # Ingest
     ack_interval_ms: int = 250  # protocol requires an ack at least every 500 ms

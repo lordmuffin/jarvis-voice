@@ -342,3 +342,14 @@ export interface WorkItemEdit {
   acceptance_criteria?: string[];
   done_when?: string | null;
 }
+
+/** One entry of the ▦ family switcher (`GET /v1/apps`). `url` is already on this server's
+ * release channel; null (`available: false`) means the app has no copy there. */
+export interface FamilyApp {
+  id: string;
+  name: string;
+  url: string | null;
+  available: boolean;
+  current: boolean;
+  glance_url: string | null;
+}

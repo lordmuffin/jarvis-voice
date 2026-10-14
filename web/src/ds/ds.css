@@ -454,3 +454,79 @@ body {
   font-weight: 600;
   box-shadow: inset 0 -2px 0 var(--inst-accent);
 }
+
+/* Family switcher: the ▦ button and its menu (Instrument's .i-switcher and .i-popover). */
+.d-switcher {
+  position: relative;
+  display: inline-flex;
+}
+.d-switcher-pop {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  width: 340px;
+  max-width: calc(100vw - 16px);
+}
+.d-switcher-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px 6px;
+}
+.d-switcher-item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  border-top: 1px solid var(--inst-line);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--inst-text);
+  text-decoration: none;
+}
+.inst a.d-switcher-item:hover,
+.d-switcher-item:focus-visible {
+  background: var(--inst-surface-2);
+  color: var(--inst-text);
+}
+.d-switcher-item[aria-current="page"] {
+  background: var(--inst-surface-2);
+}
+.d-switcher-item--off {
+  color: var(--inst-text-2);
+}
+.d-switcher-mark {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--inst-accent);
+}
+.d-switcher-foot {
+  padding: 8px 12px;
+  border-top: 1px solid var(--inst-line);
+}
+
+/* Narrow: the tabs move to the bottom bar, and the switcher opens full width. */
+.d-bottombar {
+  display: none;
+}
+@media (max-width: 600px) {
+  .d-bottombar {
+    display: flex;
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  .d-switcher {
+    position: static;
+  }
+  .d-switcher-pop {
+    position: fixed;
+    top: 48px;
+    left: 0;
+    right: 0;
+    width: auto;
+    max-width: none;
+  }
+}

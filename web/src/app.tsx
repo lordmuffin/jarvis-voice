@@ -1,5 +1,5 @@
-import { Brand, Button, CenterCard, Loading, Shell } from "./ds/components";
-import { me, navigate, releaseChannel, route, signOut } from "./store";
+import { Brand, Button, CenterCard, FamilySwitcher, Loading, Shell, TabIcon } from "./ds/components";
+import { familyApps, me, navigate, releaseChannel, route, signOut } from "./store";
 import type { Route } from "./route";
 import { Admin } from "./views/Admin";
 import { Devices } from "./views/Devices";
@@ -42,41 +42,49 @@ export function App() {
   if (!user) return <Login />;
   const r = route.value;
   const current = (name: Route["name"]) => (r.name === name ? ("page" as const) : undefined);
+  const tabs: { name: Route["name"]; href: string; label: string; ico: string }[] = [
+    { name: "sessions", href: "/", label: "Sessions", ico: "📋" },
+    { name: "devices", href: "/devices", label: "Devices", ico: "📱" },
+    ...(user.work_items
+      ? [{ name: "work-items" as const, href: "/work-items", label: "Work Items", ico: "🤖" }]
+      : []),
+    ...(user.can_publish
+      ? [{ name: "publishing" as const, href: "/publishing", label: "Publishing", ico: "📝" }]
+      : []),
+    ...(user.is_admin ? [{ name: "admin" as const, href: "/admin", label: "Admin", ico: "⚙" }] : []),
+  ];
   return (
     <Shell
       brand={
-        <Brand
-          href="/"
-          channel={releaseChannel.value}
-          onNavigate={(e) => {
-            e.preventDefault();
-            navigate("/");
-          }}
-        />
+        <>
+          <FamilySwitcher apps={familyApps.value} channel={releaseChannel.value} />
+          <Brand
+            href="/"
+            channel={releaseChannel.value}
+            onNavigate={(e) => {
+              e.preventDefault();
+              navigate("/");
+            }}
+          />
+        </>
+      }
+      bottom={
+        <>
+          {tabs.map((t) => (
+            <Link href={t.href} aria-current={current(t.name)}>
+              <TabIcon>{t.ico}</TabIcon>
+              {t.label}
+            </Link>
+          ))}
+        </>
       }
       nav={
         <>
-          <Link href="/" aria-current={current("sessions")}>
-            Sessions
-          </Link>
-          <Link href="/devices" aria-current={current("devices")}>
-            Devices
-          </Link>
-          {user.work_items && (
-            <Link href="/work-items" aria-current={current("work-items")}>
-              Work Items
+          {tabs.map((t) => (
+            <Link href={t.href} aria-current={current(t.name)}>
+              {t.label}
             </Link>
-          )}
-          {user.can_publish && (
-            <Link href="/publishing" aria-current={current("publishing")}>
-              Publishing
-            </Link>
-          )}
-          {user.is_admin && (
-            <Link href="/admin" aria-current={current("admin")}>
-              Admin
-            </Link>
-          )}
+          ))}
         </>
       }
       tools={
