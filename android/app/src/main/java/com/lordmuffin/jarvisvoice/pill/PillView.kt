@@ -37,7 +37,7 @@ class PillView @JvmOverloads constructor(
     private val divider: View by lazy { findViewById(R.id.pill_divider) }
     private val action: TextView by lazy { findViewById(R.id.pill_action) }
 
-    private val handler = Handler(Looper.getMainLooper())
+    private val ticker = Handler(Looper.getMainLooper())
     private var listeningSince = -1L
     private var shown: PillState? = null
 
@@ -47,14 +47,14 @@ class PillView @JvmOverloads constructor(
             val text = PillFormat.elapsed(SystemClock.elapsedRealtime() - listeningSince)
             time.text = text
             contentDescription = context.getString(R.string.pill_cd_listening, text)
-            handler.postDelayed(this, 1_000L)
+            ticker.postDelayed(this, 1_000L)
         }
     }
 
     fun render(state: PillState) {
         if (state == shown) return
         shown = state
-        handler.removeCallbacks(tick)
+        ticker.removeCallbacks(tick)
         listeningSince = -1L
         meter.stopAnimation()
         dot.clearAnimation()
@@ -153,7 +153,7 @@ class PillView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
-        handler.removeCallbacks(tick)
+        ticker.removeCallbacks(tick)
         meter.stopAnimation()
         super.onDetachedFromWindow()
     }

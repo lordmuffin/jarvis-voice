@@ -24,7 +24,7 @@ import com.lordmuffin.jarvisvoice.R
 object InstToast {
     private const val DURATION_MS = 4000L
 
-    fun show(activity: Activity, @StringRes text: Int, lead: CharSequence? = null) =
+    fun show(activity: Activity, @StringRes text: Int, lead: CharSequence? = null): Unit =
         show(activity, activity.getString(text), lead)
 
     fun show(activity: Activity, text: CharSequence, lead: CharSequence? = null) {
