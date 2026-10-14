@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.13.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.1...android-v1.13.0) (2026-10-14)
+
+
+### Features
+
+* **android:** adopt Instrument design system on Wear and Android Auto ([791a960](https://github.com/lordmuffin/jarvis-voice/commit/791a9607a0551ff0fb164d12dc7ea0b2ec1c8c68))
+* **android:** adopt Instrument design system on Wear and Android Auto ([9a119fd](https://github.com/lordmuffin/jarvis-voice/commit/9a119fd5ef32306ff2fcae2c20d2b8a826b5d4a5))
+
+
+### Bug Fixes
+
+* **android:** remove double hyphen from Wear drawable comments ([badadd0](https://github.com/lordmuffin/jarvis-voice/commit/badadd0dc94cbaf7c2c576814c45d637da542a68))
+* **android:** remove double hyphen from Wear drawable comments ([65c98fc](https://github.com/lordmuffin/jarvis-voice/commit/65c98fce153f8766d545ecef85d404946472fa10))
+
 ## [1.12.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.0...android-v1.12.1) (2026-10-14)
 
 
