@@ -39,7 +39,7 @@
             <EditText
                 android:id="@+id/et_api_key"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="@dimen/inst_touch_target_android"
                 android:inputType="textPassword"
                 android:fontFamily="monospace"
                 android:textColor="@color/inst_text"
@@ -62,7 +62,7 @@
             <EditText
                 android:id="@+id/et_server_url"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="@dimen/inst_touch_target_android"
                 android:inputType="textUri"
                 android:fontFamily="monospace"
                 android:textColor="@color/inst_text"
@@ -77,7 +77,7 @@
             <Button
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"
-                android:layout_height="48dp"
+                android:layout_height="@dimen/inst_touch_target_android"
                 android:text="Save"
                 android:textColor="@color/inst_on_accent"
                 android:textSize="@dimen/inst_type_body"

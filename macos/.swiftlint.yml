@@ -1,0 +1,32 @@
+# Design-system guardrails only (UI uses Instrument tokens, never literals); not a general style
+# linter. Instrument itself (Sources/Instrument) is vendored and managed, so it is excluded.
+# Exception, when a literal is truly required (e.g. a template image): add
+# `// swiftlint:disable:next <rule>` with the reason. A missing token or component belongs in
+# lordmuffin/instrument, not in a local workaround.
+only_rules:
+  - custom_rules
+
+included:
+  - JarvisVoiceMac/Sources
+  - JarvisLiveKit/Sources
+
+excluded:
+  - "**/Instrument"
+  - "**/.build"
+
+custom_rules:
+  design_no_color_literal:
+    name: "Hard-coded colour"
+    regex: '#colorLiteral|\b(?:NS|UI)?Color\(\s*(?:(?:red|white|hue|hex|calibratedRed|calibratedWhite|srgbRed|displayP3Red|deviceRed|genericGamma22White)\s*:|\.(?:sRGB|displayP3|sRGBLinear)\b|")'
+    message: "Use an Instrument colour (Color.inst.*), not a colour literal."
+    severity: error
+  design_no_system_color:
+    name: "Palette colour instead of a token"
+    regex: '\b(?:NS|UI)?Color\.(?:red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|black|gray)\b|\b(?:foregroundStyle|foregroundColor|fill|stroke|background|tint|border|shadow)\(\s*\.(?:red|orange|yellow|green|mint|teal|cyan|blue|indigo|purple|pink|brown|white|black|gray)\b'
+    message: "Use an Instrument colour (Color.inst.*), not a system palette colour."
+    severity: error
+  design_no_raw_font_size:
+    name: "Hard-coded font"
+    regex: '\.system\(\s*size:|\.custom\(\s*"|\bNSFont\.\w+\(ofSize:|\bNSFont\(name:|\bUIFont\.\w+\(ofSize:'
+    message: "Use an Instrument type style (InstType.*), not a raw font size or family."
+    severity: error

@@ -142,8 +142,8 @@
             </ScrollView>
             <ProgressBar
                 android:id="@+id/pb_detail"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
+                android:layout_width="@dimen/inst_control_md"
+                android:layout_height="@dimen/inst_control_md"
                 android:layout_gravity="center"
                 android:indeterminate="true"
                 android:indeterminateTint="@color/inst_accent"

@@ -1,5 +1,9 @@
 import AppKit
 
+// A template image is an alpha mask: black is how it is drawn (the menu bar tints it), and the 8 pt
+// glyphs are fitted to the 16 pt bar height, so neither is a design token.
+// swiftlint:disable design_no_system_color design_no_raw_font_size
+
 /// Draws the menu-bar item from a `MenuBarIconSpec`. Always a template image, so the menu bar tints it
 /// for light, dark and wallpaper. State is shape: a waveform when idle, an outlined capsule with the
 /// elapsed time while recording, a filled capsule with a microphone while dictating. The channel badge

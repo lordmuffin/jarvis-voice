@@ -32,19 +32,19 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textColor="@color/inst_text"
-            android:textSize="28sp"
+            android:textSize="@dimen/wear_state_glyph"
             android:visibility="gone" />
 
         <!-- Record button: shared pill, 72dp round on the watch -->
         <Button
             android:id="@+id/btn_record"
-            android:layout_width="72dp"
-            android:layout_height="72dp"
+            android:layout_width="@dimen/wear_record_button"
+            android:layout_height="@dimen/wear_record_button"
             android:layout_marginTop="@dimen/inst_space_8"
             android:layout_marginBottom="@dimen/inst_space_8"
             android:text="🎙"
             android:textColor="@color/inst_on_accent"
-            android:textSize="28sp"
+            android:textSize="@dimen/wear_state_glyph"
             android:contentDescription="@string/wear_start_capture"
             android:background="@drawable/btn_record_bg"
             android:stateListAnimator="@null" />
