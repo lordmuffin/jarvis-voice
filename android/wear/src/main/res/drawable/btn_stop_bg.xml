@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Instrument "wb--stop": surface-2 fill, 1.5dp accent ring. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="oval">
+            <solid android:color="@color/inst_surface" />
+            <stroke android:width="@dimen/inst_border_focus" android:color="@color/inst_accent" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@color/inst_surface_2" />
+            <stroke android:width="@dimen/inst_border_active" android:color="@color/inst_accent" />
+        </shape>
+    </item>
+</selector>

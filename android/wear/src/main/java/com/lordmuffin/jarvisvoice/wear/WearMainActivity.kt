@@ -10,9 +10,9 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
@@ -24,21 +24,25 @@ import com.lordmuffin.jarvisvoice.wear.db.SyncStatus
 import com.lordmuffin.jarvisvoice.wear.sync.UploadWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 private const val RC_AUDIO = 1001
 
-class WearMainActivity : AppCompatActivity() {
+class WearMainActivity : WearBaseActivity() {
 
     private lateinit var btnRecord: Button
     private lateinit var tvTimer: TextView
     private lateinit var tvResponse: TextView
     private lateinit var tvSyncStatus: TextView
+    private lateinit var tvGlyph: TextView
+    private lateinit var root: View
 
     private var recorder: AudioRecorder? = null
 
     private val handler = Handler(Looper.getMainLooper())
     private var elapsedSeconds = 0
+    private var lastDuration: String? = null
     private val timerRunnable = object : Runnable {
         override fun run() {
             elapsedSeconds++
@@ -57,6 +61,8 @@ class WearMainActivity : AppCompatActivity() {
         tvTimer      = findViewById(R.id.tv_timer)
         tvResponse   = findViewById(R.id.tv_response)
         tvSyncStatus = findViewById(R.id.tv_sync_status)
+        tvGlyph      = findViewById(R.id.tv_state_glyph)
+        root         = findViewById(R.id.root)
 
         recorder = AudioRecorder(filesDir)
 
@@ -85,27 +91,42 @@ class WearMainActivity : AppCompatActivity() {
     private fun startCapture(rec: AudioRecorder) {
         rec.startRecording()
         elapsedSeconds = 0
+        tvTimer.text = "0:00"
         tvTimer.visibility = View.VISIBLE
+        tvGlyph.visibility = View.GONE
         handler.post(timerRunnable)
+        root.setBackgroundResource(R.drawable.rec_ring)
+        btnRecord.setBackgroundResource(R.drawable.btn_stop_bg)
+        btnRecord.setTextColor(ContextCompat.getColor(this, R.color.inst_text))
+        btnRecord.contentDescription = getString(R.string.wear_stop_capture)
         btnRecord.text = "⏹"
-        tvResponse.text = "Recording…"
+        tvResponse.setText(R.string.wear_state_recording)
+        tvResponse.setTextColor(ContextCompat.getColor(this, R.color.inst_text))
+        tvResponse.setCompoundDrawablesWithIntrinsicBounds(R.drawable.rec_dot, 0, 0, 0)
+        tvResponse.compoundDrawablePadding = 6
         tvSyncStatus.text = ""
     }
 
     private fun stopCapture(rec: AudioRecorder) {
         val file = rec.stopRecording()
         handler.removeCallbacks(timerRunnable)
-        tvTimer.visibility = View.INVISIBLE
+        tvTimer.visibility = View.GONE
+        root.setBackgroundColor(ContextCompat.getColor(this, R.color.inst_bg))
+        btnRecord.setBackgroundResource(R.drawable.btn_record_bg)
+        btnRecord.setTextColor(ContextCompat.getColor(this, R.color.inst_on_accent))
+        btnRecord.contentDescription = getString(R.string.wear_start_capture)
         btnRecord.text = "🎙"
+        tvResponse.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
 
         if (file == null) return
 
+        val duration = String.format(Locale.US, "%d:%02d", elapsedSeconds / 60, elapsedSeconds % 60)
         lifecycleScope.launch(Dispatchers.IO) {
             RecordingStore.get(applicationContext).insert(file.absolutePath, System.currentTimeMillis())
             enqueueUpload()
         }
-        tvResponse.text = "Saved — will sync on WiFi"
-        tvSyncStatus.text = "⏳ pending"
+        // The latestFlow collector renders the Saved state; remember the length for its meta line.
+        lastDuration = duration
     }
 
     private fun enqueueUpload() {
@@ -122,27 +143,39 @@ class WearMainActivity : AppCompatActivity() {
     private fun observeLatestRecording() {
         lifecycleScope.launch {
             RecordingStore.get(this@WearMainActivity).latestFlow.collect { rec ->
-                if (rec == null) {
-                    tvResponse.text = "Tap to capture"
-                    tvSyncStatus.text = ""
-                    return@collect
+                if (recorder?.isActive == true) return@collect // Recording owns the screen.
+                val waiting = withContext(Dispatchers.IO) {
+                    RecordingStore.get(applicationContext).getPending().size
                 }
-                when (rec.status) {
-                    SyncStatus.PENDING -> {
-                        tvResponse.text = "Saved — will sync on WiFi"
-                        tvSyncStatus.text = "⏳ pending"
-                    }
-                    SyncStatus.SYNCED -> {
-                        tvResponse.text = rec.response?.takeIf { it.isNotBlank() } ?: "✓ Captured"
-                        tvSyncStatus.text = "✓ synced"
-                    }
-                    SyncStatus.FAILED -> {
-                        tvResponse.text = "⚠ Sync failed — will retry"
-                        tvSyncStatus.text = "✗ failed"
-                    }
-                }
+                render(WearUiState.forLatest(rec?.status, waiting, rec?.response))
             }
         }
+    }
+
+    private fun render(ui: WearUiState) {
+        val tone = when (ui.tone) {
+            WearUiState.Tone.SUCCESS -> R.color.inst_success
+            WearUiState.Tone.WARNING -> R.color.inst_warning
+            else -> R.color.inst_text
+        }
+        tvGlyph.isVisible = ui.glyph != WearUiState.Glyph.NONE
+        tvGlyph.text = when (ui.glyph) {
+            WearUiState.Glyph.SQUARE -> "■"
+            WearUiState.Glyph.CHECK -> "✓"
+            WearUiState.Glyph.FLAG -> "⚑"
+            WearUiState.Glyph.NONE -> ""
+        }
+        tvGlyph.setTextColor(ContextCompat.getColor(this, tone))
+        tvResponse.text = ui.response ?: getString(ui.labelRes)
+        tvResponse.setTextColor(ContextCompat.getColor(this, R.color.inst_text))
+        val meta = buildList {
+            if (ui.glyph == WearUiState.Glyph.SQUARE) {
+                lastDuration?.let { add(it) }
+                add(getString(R.string.wear_meta_waiting, ui.waiting))
+            }
+            ui.metaRes?.let { add(getString(it)) }
+        }
+        tvSyncStatus.text = meta.joinToString(" · ")
     }
 
     override fun onRequestPermissionsResult(
@@ -152,7 +185,7 @@ class WearMainActivity : AppCompatActivity() {
         if (requestCode == RC_AUDIO && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
             startCapture(recorder ?: return)
         } else {
-            Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.wear_mic_required), Toast.LENGTH_SHORT).show()
         }
     }
 

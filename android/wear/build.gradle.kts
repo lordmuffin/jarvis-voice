@@ -22,6 +22,8 @@ android {
         }
     }
 
+    sourceSets["main"].res.srcDir("src/instrument/android/res")
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -40,4 +42,6 @@ dependencies {
     implementation(libs.androidx.wear.input)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.okhttp)
+
+    testImplementation(libs.junit)
 }
