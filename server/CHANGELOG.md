@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.18.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.18.0...server-v0.18.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* align copy and vocabulary with the Instrument design system ([492b090](https://github.com/lordmuffin/jarvis-voice/commit/492b0906ddf2fae45a3e25d340fb9e36637a1dcb))
+* **web,server:** align copy with Instrument vocabulary ([1c44e92](https://github.com/lordmuffin/jarvis-voice/commit/1c44e921e4953f508900dd17b9e62731c4bb6f5d))
+
 ## [0.18.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.17.0...server-v0.18.0) (2026-10-14)
 
 
