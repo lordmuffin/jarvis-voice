@@ -22,6 +22,8 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (prefs.getBoolean("onboarding_done", false)) {
+            // Set up already: MainActivity checks the grants and opens Record (home).
+            startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
         }

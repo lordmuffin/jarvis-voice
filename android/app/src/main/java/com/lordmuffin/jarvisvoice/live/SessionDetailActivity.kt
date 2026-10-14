@@ -28,8 +28,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
-import com.lordmuffin.jarvisvoice.live.protocol.CopilotItem
+import com.lordmuffin.jarvisvoice.live.protocol.Speaker
 import com.lordmuffin.jarvisvoice.ui.InstToast
+import com.lordmuffin.jarvisvoice.ui.bindSpeaker
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -178,7 +179,7 @@ class SessionDetailActivity : AppCompatActivity() {
         val d = detail ?: return
         val s = d.session
         tvTitle.text = s.title ?: getString(R.string.history_untitled)
-        SessionLabels.bindStatus(tvStatus, s.status)
+        SessionLabels.bindStatus(tvStatus, s.status, s.streaming)
         tvStatus.visibility = View.VISIBLE
         tvMeta.text = SessionLabels.meta(this, s)
 
@@ -252,15 +253,21 @@ class SessionDetailActivity : AppCompatActivity() {
         val accent = getColor(R.color.inst_accent)
         val muted = getColor(R.color.inst_text_2)
 
-        fun section(title: String, items: List<CopilotItem>, glyph: String) {
-            if (items.isEmpty()) return
+        // Same order as every other copilot surface (CopilotSections); past sessions only have these three.
+        for ((section, entries) in CopilotSections.build(copilot)) {
+            val (title, glyph) = when (section) {
+                CopilotSection.ACTIONS -> getString(R.string.copilot_section_actions) to "☐"
+                CopilotSection.DECISIONS -> getString(R.string.copilot_section_decisions) to "✓"
+                CopilotSection.NOTES -> getString(R.string.copilot_section_notes) to "•"
+                else -> continue
+            }
             if (sb.isNotEmpty()) sb.append("\n\n")
             val start = sb.length
             sb.append(title.uppercase())
             sb.setSpan(ForegroundColorSpan(muted), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             sb.setSpan(RelativeSizeSpan(0.8f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             sb.setSpan(StyleSpan(Typeface.BOLD), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            for (item in items) {
+            for (item in entries) {
                 sb.append('\n')
                 val g = sb.length
                 sb.append(glyph).append("  ")
@@ -279,10 +286,6 @@ class SessionDetailActivity : AppCompatActivity() {
                 }
             }
         }
-
-        section(getString(R.string.detail_section_actions), copilot.actions, "☐")
-        section(getString(R.string.detail_section_decisions), copilot.decisions, "✓")
-        section(getString(R.string.detail_section_notes), copilot.notes, "•")
         return sb
     }
 
@@ -312,7 +315,7 @@ class SessionDetailActivity : AppCompatActivity() {
                     time = view.findViewById(R.id.tv_audio_time),
                     seek = view.findViewById(R.id.sb_audio),
                 ).also { row ->
-                    row.label.text = getString(if (channel == "mic") R.string.detail_audio_mic else R.string.detail_audio_system)
+                    row.label.text = getString(if (speakerFor(channel) == Speaker.ME) R.string.detail_audio_mic else R.string.detail_audio_system)
                     row.button.setOnClickListener { onPlayTapped(row) }
                     row.seek.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
@@ -467,12 +470,10 @@ class SessionDetailActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val seg = getItem(position)
-            val ctx = holder.itemView.context
-            val me = seg.speaker == "me"
+            val speaker = speakerFor(seg.speaker)
             holder.time.text = LocalMarkdown.clock(seg.startMs)
-            holder.speaker.text = ctx.getString(if (me) R.string.detail_speaker_me else R.string.detail_speaker_them)
-            holder.speaker.setTextColor(ctx.getColor(if (me) R.color.inst_accent else R.color.inst_them_text))
-            holder.itemView.setBackgroundResource(if (me) R.drawable.livesess_utt_me else R.drawable.livesess_utt_them)
+            holder.speaker.bindSpeaker(speaker)
+            holder.itemView.setBackgroundResource(if (speaker == Speaker.ME) R.drawable.livesess_utt_me else R.drawable.livesess_utt_them)
             holder.text.text = seg.text
         }
 

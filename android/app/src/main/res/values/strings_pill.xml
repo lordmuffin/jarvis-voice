@@ -9,7 +9,7 @@
     <string name="pill_err_mic_busy">⚑ Mic in use</string>
     <string name="pill_err_engine">✕ Speech model unavailable</string>
     <string name="pill_action_open_settings">Open Settings ▶</string>
-    <string name="pill_action_open_models">Open Models ▶</string>
+    <string name="pill_action_open_models">Open STT Model ▶</string>
 
     <string name="pill_cd_idle">Start dictating</string>
     <string name="pill_cd_listening">Stop dictating, %1$s</string>

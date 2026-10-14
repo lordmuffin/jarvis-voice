@@ -28,4 +28,12 @@
         <item name="android:paddingStart">@dimen/inst_space_12</item>
         <item name="android:paddingEnd">@dimen/inst_space_12</item>
     </style>
+    <!-- Speaker tag: Me (accent) / Them (violet). Fill and text colour are set by SpeakerTag.bind. -->
+    <style name="Widget.Inst.SpeakerTag" parent="Inst.Text.Tag">
+        <item name="android:minHeight">@dimen/inst_chip</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:paddingStart">5dp</item>
+        <item name="android:paddingEnd">5dp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
 </resources>

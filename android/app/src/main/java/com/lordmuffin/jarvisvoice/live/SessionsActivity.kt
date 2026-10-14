@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lordmuffin.jarvisvoice.R
+import com.lordmuffin.jarvisvoice.ui.bindOffline
 import com.lordmuffin.jarvisvoice.SettingsActivity
 import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import java.text.DateFormat
@@ -236,7 +237,7 @@ class SessionsActivity : AppCompatActivity() {
                 is Row -> {
                     val s = sessions[position]
                     holder.title.text = s.title ?: ctx.getString(R.string.history_untitled)
-                    SessionLabels.bindStatus(holder.status, s.status)
+                    SessionLabels.bindStatus(holder.status, s.status, s.streaming)
                     holder.meta.text = SessionLabels.meta(ctx, s)
                     holder.itemView.setOnClickListener { onOpen(s) }
                 }
@@ -286,7 +287,13 @@ internal object SessionLabels {
         else -> R.color.inst_text_2
     }
 
-    fun bindStatus(view: TextView, status: String) {
+    /** A live session that is not receiving audio reads "Offline" (as on web), not "Live". */
+    fun bindStatus(view: TextView, status: String, streaming: Boolean = true) {
+        if (ConnectionChip.isOffline(status, streaming)) {
+            view.bindOffline()
+            return
+        }
+        view.contentDescription = null
         view.text = statusLabel(view.context, status)
         view.setTextColor(view.context.getColor(statusColor(status)))
     }
