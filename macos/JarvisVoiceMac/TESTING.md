@@ -32,7 +32,7 @@ Record the result and a line of evidence for each.
 
 | # | Check | Steps | Pass when | Result |
 |---|---|---|---|---|
-| B1 | First-run permission prompts | Fresh grants. Start a **Meeting** session. | Mic prompt appears, then the audio-capture prompt. Both granted: recording starts, red glyph shows. Deny audio capture: the menu shows the "No system audio" warning and the mic channel keeps working. | NOT RUN |
+| B1 | First-run permission prompts | Fresh grants. Start a **Meeting** session. | Mic prompt appears, then the audio-capture prompt. Both granted: recording starts, the menu-bar item shows the recording capsule with the elapsed time. Deny audio capture: the menu shows the "No system audio" warning and the mic channel keeps working. | NOT RUN |
 | B2 | Speech model install | First start after install, or after clearing the asset. | Menu shows "Installing speech model N%", then drafts appear. Second run does not download again. | NOT RUN |
 | B3 | Solo session end to end | Solo mode, speak ~1 min, markers with ⌃⌥M, stop with ⌃⌥J. | Grey italic drafts become normal text as server segments arrive. Final note shows in the panel and appears in the next vault-writer PR (or the dry-run log). | NOT RUN |
 | B4 | Call on headphones (Zoom / Meet / Teams) | Meeting mode, 5 min call with someone talking. | Both channels transcribed: you as Me, remote as Them. No cross-bleed. | NOT RUN |

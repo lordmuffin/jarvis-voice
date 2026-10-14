@@ -68,6 +68,8 @@ final class AppModel {
     private var serverInfo: ServerInfo?
     private var serverInfoURL: URL?
     var dismissedSuggestionIDs: Set<String> = []
+    /// Whole seconds into the recording, refreshed once a second; drives the menu-bar and panel clocks.
+    private(set) var elapsedSeconds = 0
 
     let settings: SettingsModel
     let dictation: DictationController
@@ -77,6 +79,7 @@ final class AppModel {
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
     @ObservationIgnored private var networkCheck: Task<Void, Never>?
     @ObservationIgnored private var serverInfoCheck: Task<Void, Never>?
+    @ObservationIgnored private var elapsedTicker: Task<Void, Never>?
 
     init() {
         let settings = SettingsModel()
@@ -119,14 +122,12 @@ final class AppModel {
 
     var menuBarImage: NSImage {
         // A recording session wins over dictation.
-        let dictating = !isRecording && dictation.isActive
-        let name = isRecording ? "record.circle.fill" : dictating ? "mic.fill" : "waveform"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: "Jarvis Voice") ?? NSImage()
-        let color: NSColor? = isRecording ? .systemRed : dictating ? .systemOrange : nil
-        let symbol = color.flatMap { image.withSymbolConfiguration(.init(paletteColors: [$0])) } ?? image
-        symbol.isTemplate = color == nil
-        let channel = serverChannel
-        return MenuBarIcon.image(symbol: symbol, tag: channel?.tag, filled: channel != .live, color: color)
+        MenuBarIcon.image(MenuBarIconSpec.make(
+            isRecording: isRecording,
+            isDictating: dictation.isActive,
+            elapsedSeconds: elapsedSeconds,
+            channel: serverChannel
+        ))
     }
 
     /// The server's own word once it has answered at the current address, else a guess from the
@@ -207,6 +208,7 @@ final class AppModel {
             sessionClock = run.clock
             sessionIsLocalOnly = localOnly
             phase = .recording
+            startElapsedTicker()
             panel.show()
         } catch {
             if let built { await tearDown(built, writeFile: false) }
@@ -219,10 +221,24 @@ final class AppModel {
     func stop() async {
         guard phase == .recording, let run else { return }
         phase = .stopping
+        elapsedTicker?.cancel()
         await tearDown(run, writeFile: run.localOnly)
         self.run = nil
         phase = .idle
+        elapsedSeconds = 0
         refreshLocalSessions()
+    }
+
+    private func startElapsedTicker() {
+        elapsedTicker?.cancel()
+        elapsedSeconds = 0
+        elapsedTicker = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.isRecording else { return }
+                self.elapsedSeconds = (self.sessionClock?.elapsedMs() ?? 0) / 1000
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
     }
 
     func addMarker() {

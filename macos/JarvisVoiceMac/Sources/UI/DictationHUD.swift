@@ -51,60 +51,72 @@ final class DictationHUD {
     }
 }
 
+/// The shared pill: surface, hairline border, fully rounded, 52pt tall. Listening, Transcribing, the
+/// live tail, Copied and the error states all use it; only the border colour and contents change.
 struct DictationPill: View {
     let dictation: DictationController
 
     var body: some View {
+        let content = HUDContent.make(
+            state: dictation.state, message: dictation.message,
+            liveText: dictation.liveText, assetProgress: dictation.assetProgress
+        )
         VStack {
             Spacer(minLength: 0)
-            HStack(alignment: .center, spacing: 10) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .symbolEffect(.pulse, isActive: dictation.state == .listening)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.caption.weight(.semibold)).foregroundStyle(JV.text2)
-                    if dictation.message == nil, !dictation.liveText.isEmpty {
-                        Text(DictationText.tail(dictation.liveText))
-                            .font(.callout)
-                            .lineLimit(2)
+            HStack(alignment: .center, spacing: 12) {
+                if content.spinner {
+                    InstSpinner().frame(width: 14, height: 14)
+                } else if content.meter {
+                    InstDot(size: 10, breathing: true)
+                }
+                if let tail = content.tail, content.tone == .active {
+                    Text(tail)
+                        .instStyle(InstType.body)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                        .foregroundStyle(Color.inst.text)
+                } else {
+                    Text(content.label)
+                        .instStyle(InstType.tag)
+                        .foregroundStyle(labelColor(content.tone))
+                    if let note = content.tail {
+                        Text(note).instStyle(InstType.caption).foregroundStyle(Color.inst.text).lineLimit(2)
                     }
                 }
+                if content.meter { InstMeter(height: 18) }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(JV.surface))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(JV.border))
-            .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
+            .padding(.horizontal, 20)
+            .frame(minHeight: InstSize.livePillHud)
+            .background(Capsule().fill(Color.inst.surface))
+            .overlay(Capsule().stroke(border(content.tone), lineWidth: 1))
+            .shadow(color: .black.opacity(0.3), radius: 10, y: 4)
             .frame(maxWidth: 480)
             .fixedSize(horizontal: false, vertical: true)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(content.tail.map { "\(content.label) \($0)" } ?? content.label)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.bottom, 12)
-        .foregroundStyle(JV.text)
-        .preferredColorScheme(.dark)
         .animation(.easeOut(duration: 0.15), value: dictation.liveText)
     }
 
-    private var title: String {
-        if let message = dictation.message { return message }
-        if dictation.state != .idle, let progress = dictation.assetProgress {
-            return "Installing speech model \(Int(progress * 100))%"
-        }
-        switch dictation.state {
-        case .listening: return "Listening\u{2026}"
-        case .finishing: return "Transcribing\u{2026}"
-        case .idle: return ""
+    private func border(_ tone: HUDContent.Tone) -> Color {
+        switch tone {
+        case .active: Color.inst.accent
+        case .quiet: Color.inst.control
+        case .done: Color.inst.line
+        case .error: Color.inst.error
+        case .notice: Color.inst.warning
         }
     }
 
-    private var symbol: String {
-        if dictation.message != nil { return "info.circle.fill" }
-        return dictation.state == .finishing ? "waveform" : "mic.fill"
-    }
-
-    private var tint: Color {
-        if dictation.message != nil { return JV.text2 }
-        return dictation.state == .finishing ? JV.text2 : JV.accent
+    private func labelColor(_ tone: HUDContent.Tone) -> Color {
+        switch tone {
+        case .active: Color.inst.accent
+        case .quiet: Color.inst.text2
+        case .done: Color.inst.success
+        case .error: Color.inst.error
+        case .notice: Color.inst.warning
+        }
     }
 }

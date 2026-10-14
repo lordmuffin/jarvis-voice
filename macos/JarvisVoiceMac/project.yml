@@ -23,7 +23,13 @@ targets:
     type: application
     platform: macOS
     sources:
+      # Includes Sources/Instrument/swift: InstrumentTokens.swift compiles into the app and
+      # Instrument.xcassets (the inst/* colour sets) is bundled as a resource. That folder is managed by
+      # the Instrument sync PR; only its bookkeeping files are kept out of the app bundle.
       - path: Sources
+        excludes:
+          - "Instrument/.instrument-manifest"
+          - "Instrument/INSTRUMENT_VERSION"
     dependencies:
       - package: JarvisLiveKit
     settings:
