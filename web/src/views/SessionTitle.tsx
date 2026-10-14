@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, renameSession } from "../api";
+import { Button, Form, Input, PageTitle, Text } from "../ds/components";
 import { titleOf } from "../format";
 import type { SessionSummary } from "../types";
 
@@ -15,10 +16,10 @@ export function SessionTitle({
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const input = useRef<HTMLInputElement>(null);
+  const form = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (editing) input.current?.select();
+    if (editing) form.current?.querySelector("input")?.select();
   }, [editing]);
 
   function start() {
@@ -45,24 +46,26 @@ export function SessionTitle({
   if (!editing)
     return (
       <>
-        <h1 class="h1">{titleOf(session)}</h1>
-        <button class="btn btn-quiet btn-sm" onClick={start} aria-label="Rename session">
+        <PageTitle data-testid="session-title">{titleOf(session)}</PageTitle>
+        <Button variant="quiet" size="sm" onClick={start} aria-label="Rename session">
           Rename
-        </button>
+        </Button>
       </>
     );
 
   return (
-    <form
-      class="rename"
+    <Form
+      inline
+      grow
+      elRef={(el) => {
+        form.current = el;
+      }}
       onSubmit={(e) => {
         e.preventDefault();
         void save();
       }}
     >
-      <input
-        ref={input}
-        class="field rename-field"
+      <Input
         aria-label="Session title"
         placeholder="Untitled session"
         maxLength={200}
@@ -73,17 +76,17 @@ export function SessionTitle({
           if (e.key === "Escape") setEditing(false);
         }}
       />
-      <button class="btn btn-sm" type="submit" disabled={saving}>
+      <Button variant="primary" size="sm" type="submit" disabled={saving}>
         Save
-      </button>
-      <button class="btn btn-quiet btn-sm" type="button" onClick={() => setEditing(false)}>
+      </Button>
+      <Button variant="quiet" size="sm" onClick={() => setEditing(false)}>
         Cancel
-      </button>
+      </Button>
       {error && (
-        <span class="error small" role="alert">
+        <Text size="caption" tone="error" role="alert">
           {error}
-        </span>
+        </Text>
       )}
-    </form>
+    </Form>
   );
 }

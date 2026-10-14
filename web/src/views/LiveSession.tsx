@@ -1,5 +1,6 @@
 import { signal } from "@preact/signals";
 import { useEffect, useMemo } from "preact/hooks";
+import { Banner, Head, Section, StatusChip, Text } from "../ds/components";
 import { initialState, reduce, transcriptLines, type Event } from "../reducer";
 import type { SessionDetail } from "../types";
 import { watchSession } from "../ws";
@@ -7,7 +8,6 @@ import { CopilotPanel } from "./CopilotPanel";
 import { OwnerLabel } from "./OwnerLabel";
 import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
-import { StatusChip } from "./StatusChip";
 import { Transcript } from "./Transcript";
 import { SessionWorkItems } from "./WorkItems";
 
@@ -48,27 +48,23 @@ export function LiveSession({
   const session = s.session ?? detail;
 
   return (
-    <section>
-      <div class="session-head">
+    <Section>
+      <Head data-testid="session-head">
         <SessionTitle session={session} onRenamed={(r) => dispatch({ type: "session", session: r })} />
         <StatusChip status={session.status} streaming={session.streaming} />
         <OwnerLabel owner={session.owner} />
-        <span class="meta" data-testid="connection">
+        <Text size="meta" tone="muted" data-testid="connection">
           {CONNECTION_LABEL[s.connection]}
-        </span>
+        </Text>
         {/* The last status message goes stale once audio stops; don't show it as current. */}
         {s.status && session.streaming && (
-          <span class="meta">
+          <Text size="meta" tone="muted">
             {s.status.stt_tier ?? "no STT"} · lag {s.status.lag_ms} ms
             {!s.status.llm_ok && " · copilot offline"}
-          </span>
+          </Text>
         )}
-      </div>
-      {s.error && (
-        <p class="error" role="alert">
-          {s.error.message}
-        </p>
-      )}
+      </Head>
+      {s.error && <Banner variant="error">{s.error.message}</Banner>}
       <Panes
         panes={[
           {
@@ -88,6 +84,6 @@ export function LiveSession({
           },
         ]}
       />
-    </section>
+    </Section>
   );
 }

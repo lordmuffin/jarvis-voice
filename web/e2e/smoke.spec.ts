@@ -15,7 +15,7 @@ const asAlice = { headers: { Authorization: `Bearer ${TOKEN}` } };
 /** Sign in through the fake Pocket-ID, starting at `path`; it sends the browser back there. */
 async function signIn(page: Page, user: string, path = "/"): Promise<void> {
   await page.goto(path);
-  await page.getByRole("button", { name: "Sign in with Pocket-ID" }).click();
+  await page.getByRole("button", { name: "Sign In with Pocket-ID" }).click();
   await expect(page).toHaveTitle("Fake Pocket-ID");
   await page.getByRole("link", { name: user, exact: true }).click();
   await expect(page.getByTestId("user-name")).toBeVisible();
@@ -80,7 +80,7 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   await expect(page.getByTestId("copilot-decision").first()).toHaveText("Ship on Friday");
   await expect(page.getByTestId("suggestion").first()).toContainText("Who owns QA?");
   // The copilot's first cycle names the untitled session; the page picks it up by polling.
-  await expect(page.locator(".session-head h1")).toHaveText("Standup kickoff");
+  await expect(page.getByTestId("session-title")).toHaveText("Standup kickoff");
   // Her own session: no owner label.
   await expect(page.getByTestId("owner")).toHaveCount(0);
 
@@ -91,7 +91,7 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   await expect(page.getByTestId("status-chip").first()).toHaveText(/Done/);
   await expect(page.getByTestId("segment").first()).toContainText("seg-1"); // transcript pane
   // The copilot's name is kept over the note's title (the note renders its own heading).
-  const sessionTitle = page.locator(".session-head h1");
+  const sessionTitle = page.getByTestId("session-title");
   await expect(sessionTitle).toHaveText("Standup kickoff");
 
   // The recording plays from the server: one player for the mic channel, seekable.
@@ -128,9 +128,9 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
 
   // Sign out: back to the sign-in screen, and it sticks across a reload.
   await page.getByRole("button", { name: "Sign out" }).click();
-  await expect(page.getByRole("button", { name: "Sign in with Pocket-ID" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign In with Pocket-ID" })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Sign in with Pocket-ID" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign In with Pocket-ID" })).toBeVisible();
 });
 
 test("layout: two panes when wide, tabs when narrow", async ({ page, request }) => {
@@ -171,7 +171,7 @@ test("users see only their own sessions", async ({ page, request }) => {
 
 test("devices: add one, see its token once, revoke it", async ({ page, request }) => {
   await signIn(page, "alice", "/devices"); // comes back to the page it started on
-  await expect(page.getByRole("heading", { name: "Devices" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Devices", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Devices" })).toHaveAttribute("aria-current", "page");
 
   const name = `Mac ${Date.now()}`;
@@ -198,9 +198,15 @@ test("devices: add one, see its token once, revoke it", async ({ page, request }
   await expect(page.getByText(token)).toHaveCount(0);
   await expect(page.getByLabel("Device token")).toHaveCount(0);
 
-  // Revoke, after confirming; the token stops working.
-  page.once("dialog", (d) => void d.accept());
+  // Revoke, after confirming in the dialog; the token stops working.
   await row.getByRole("button", { name: `Revoke ${name}` }).click();
+  const dialog = page.getByRole("dialog", { name: `Revoke “${name}”?` });
+  await expect(dialog).toContainText("It stops working right away.");
+  await dialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row).not.toContainText("Revoked");
+  await row.getByRole("button", { name: `Revoke ${name}` }).click();
+  await page.getByRole("dialog").getByRole("button", { name: `Revoke ${name}` }).click();
   await expect(row).toContainText("Revoked");
   await expect(row.getByRole("button")).toHaveCount(0);
   expect((await request.get("/v1/me", auth)).status()).toBe(401);
@@ -223,25 +229,26 @@ test("admin: users table, one user's sessions, all users", async ({ page, reques
   // A user's name opens their sessions, owner named on each row.
   await alice.getByRole("link", { name: "Alice Example" }).click();
   await expect(page).toHaveURL(/\/\?user=/);
-  await expect(page.getByTestId("user-filter")).toContainText("Alice Example");
+  await expect(page.getByTestId("viewing-banner")).toContainText("Viewing Alice Example's sessions.");
   await expect(aliceRow).toBeVisible();
   await expect(aliceRow.getByTestId("owner")).toHaveText(/Alice Example/);
-  await page.getByRole("button", { name: "Clear user filter" }).click();
+  await page.getByRole("link", { name: "Back to your own" }).click();
   await expect(page).toHaveURL(`${BASE}/`);
-  await expect(page.getByTestId("user-filter")).toHaveCount(0);
+  await expect(page.getByTestId("viewing-banner")).toHaveCount(0);
 
   // Own sessions by default; All users adds everyone's.
   await expect(page.getByText("Loading…")).toHaveCount(0);
   await expect(aliceRow).toHaveCount(0);
   await page.getByLabel("All users").check();
   await expect(page).toHaveURL(`${BASE}/?all=1`);
+  await expect(page.getByTestId("viewing-banner")).toContainText("Viewing everyone's sessions.");
   await expect(aliceRow).toBeVisible();
   await page.getByLabel("All users").uncheck();
   await expect(aliceRow).toHaveCount(0);
 
   // An admin can open someone else's session; it names the owner.
   await page.goto(`/sessions/${id}`);
-  await expect(page.locator(".session-head").getByTestId("owner")).toHaveText(/Alice Example/);
+  await expect(page.getByTestId("session-head").getByTestId("owner")).toHaveText(/Alice Example/);
 });
 
 test("publishing: edit a note, open its pull request, merge it", async ({ page }) => {
@@ -288,8 +295,8 @@ test("release channel tag: LAB on lab, LIVE on live, signed out and in", async (
   // This server is live: a red LIVE tag.
   await page.goto("/");
   const liveHeading = page.getByRole("heading", { name: /Jarvis Live/ });
-  await expect(liveHeading.getByTestId("release-channel")).toHaveText("live");
-  await expect(liveHeading.getByTestId("release-channel")).toHaveClass(/release-channel--live/);
+  await expect(liveHeading.getByTestId("release-channel")).toHaveText("Live");
+  await expect(liveHeading.getByTestId("release-channel")).toHaveClass(/i-badge--live/);
 
   // The same app, told it is the lab server.
   await page.route("**/healthz", (route) =>
@@ -299,12 +306,14 @@ test("release channel tag: LAB on lab, LIVE on live, signed out and in", async (
   );
   await page.goto("/");
   const heading = page.getByRole("heading", { name: /Jarvis Live/ });
-  await expect(heading.getByTestId("release-channel")).toHaveText("lab");
-  await expect(heading.getByTestId("release-channel")).not.toHaveClass(/release-channel--live/);
+  await expect(heading.getByTestId("release-channel")).toHaveText("Lab");
+  await expect(heading.getByTestId("release-channel")).not.toHaveClass(/i-badge--live/);
+  await expect(heading.getByTestId("release-channel")).toHaveClass(/i-badge--lab/);
   await expect(heading.getByTestId("release-channel")).toHaveCSS("text-transform", "uppercase");
   await signIn(page, "alice");
-  const brand = page.getByRole("banner").getByRole("link", { name: /Jarvis Live/ });
-  await expect(brand.getByTestId("release-channel")).toBeVisible();
+  const banner = page.getByRole("banner");
+  await expect(banner.getByRole("link", { name: "Jarvis Live" })).toBeVisible();
+  await expect(banner.getByTestId("release-channel")).toHaveText("Lab");
 });
 
 test("the server's version sits next to the user name", async ({ page }) => {
@@ -337,7 +346,7 @@ test("upload a recording: it is transcribed and gets a note", async ({ page }) =
 
   // The new session opens; its transcript arrives, then the note.
   await expect(page).toHaveURL(/\/sessions\/[0-9a-f-]{36}$/);
-  await expect(page.locator(".session-head h1")).toHaveText(/voice memo|Standup kickoff/);
+  await expect(page.getByTestId("session-title")).toHaveText(/voice memo|Standup kickoff/);
   await expect(page.getByTestId("segment").first()).toContainText("seg-");
   await expect(page.getByTestId("note")).toContainText("The team kicked off", { timeout: 30_000 });
   await expect(page.getByTestId("status-chip").first()).toHaveText(/Done/);
