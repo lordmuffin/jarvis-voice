@@ -80,7 +80,7 @@ async def wav_response(
     except OSError:
         pcm_len = 0
     if pcm_len == 0:
-        raise HTTPException(404, "no recording (never recorded, or past retention)")
+        raise HTTPException(404, "No recording. It was never recorded, or is past retention.")
     pcm_len -= pcm_len % 2  # a live recording may end mid-sample
     size = HEADER_LEN + pcm_len
     header = wav_header(pcm_len)

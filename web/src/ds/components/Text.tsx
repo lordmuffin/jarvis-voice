@@ -60,7 +60,7 @@ export function Text({
   );
 }
 
-/** A short reason beside a disabled or flagged control ("⚑ Close the pull request first"). */
+/** A short reason beside a disabled or flagged control ("⚑ Close the pull request first."). */
 export function Reason({ children, id }: { children: ComponentChildren; id?: string }) {
   return (
     <span class="i-reason" id={id}>

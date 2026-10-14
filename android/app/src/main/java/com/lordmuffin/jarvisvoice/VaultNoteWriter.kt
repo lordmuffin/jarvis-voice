@@ -36,7 +36,7 @@ object VaultNoteWriter {
 
     /** Human-readable path for display (best-effort — SAF URIs aren't pretty). */
     fun displayPath(context: Context): String {
-        val raw = savedUri(context) ?: return "Not set"
+        val raw = savedUri(context) ?: return "—"
         val tree = DocumentFile.fromTreeUri(context, Uri.parse(raw)) ?: return "Invalid"
         return tree.name ?: raw
     }

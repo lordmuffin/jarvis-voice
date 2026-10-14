@@ -131,7 +131,7 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
       </List>
       {head !== null && rows.length < total && query.trim() === "" && (
         <div>
-          <Button onClick={loadMore}>Load more</Button>
+          <Button onClick={loadMore}>Load More</Button>
         </div>
       )}
       {head !== null && rows.length < total && query.trim() !== "" && (

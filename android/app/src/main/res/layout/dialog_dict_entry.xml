@@ -18,7 +18,17 @@
         android:layout_height="wrap_content"
         android:hint="@string/chat_dict_from_hint"
         android:inputType="text"
-        android:layout_marginBottom="@dimen/inst_space_16" />
+        android:layout_marginBottom="@dimen/inst_space_4" />
+
+    <!-- Shown only when editing: why the spoken word is greyed out. -->
+    <TextView
+        android:id="@+id/tv_word_from_locked"
+        style="@style/Inst.Text.Meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/chat_dict_locked"
+        android:layout_marginBottom="@dimen/inst_space_16"
+        android:visibility="gone" />
 
     <TextView
         style="@style/Inst.Text.Label"

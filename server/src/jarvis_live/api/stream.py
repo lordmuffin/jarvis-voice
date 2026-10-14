@@ -101,7 +101,7 @@ async def _reject(
 async def _viewer(ws: WebSocket, sub: Subscription, log: SessionLogger) -> None:
     log.info("viewer connected")
     if await _recv(ws) is not None:
-        await _reject(sub, ws, "read_only", "viewers cannot send messages", log)
+        await _reject(sub, ws, "read_only", "Viewers cannot send messages.", log)
     log.info("viewer disconnected")
 
 
@@ -117,10 +117,10 @@ async def _producer(
     except ValidationError:
         hello = None
     if not isinstance(hello, Hello):
-        await _reject(sub, ws, "hello_required", "first message must be a valid hello", log)
+        await _reject(sub, ws, "hello_required", "The first message must be a valid hello.", log)
         return
     if row.status != "live":
-        await _reject(sub, ws, "session_not_live", f"session is {row.status}", log)
+        await _reject(sub, ws, "session_not_live", f"This session is {row.status}.", log)
         return
 
     ing = await hub.get(row.id, list(row.channels))
@@ -186,7 +186,9 @@ async def _producer_loop(
                 return False
             channel = CHANNEL_NAMES[frame.channel]
             if channel not in ing.channels:
-                await _reject(sub, ws, "bad_channel", f"session has no {channel} channel", log)
+                await _reject(
+                    sub, ws, "bad_channel", f"This session has no {channel} channel.", log
+                )
                 return False
             try:
                 outcome = await ing.store.append(frame)
@@ -194,7 +196,7 @@ async def _producer_loop(
                 await _reject(sub, ws, "seq_gap", str(e), log)
                 return False
             except StoreClosed:
-                await _reject(sub, ws, "session_not_live", "session has ended", log)
+                await _reject(sub, ws, "session_not_live", "This session is not live.", log)
                 return False
             if outcome == "stored":
                 ing.pipeline.feed(channel, frame.pcm)
@@ -217,6 +219,6 @@ async def _producer_loop(
             await hub.end(ing.session_id, caller=ws)
             return True
         else:
-            await _reject(sub, ws, "unexpected_hello", "hello already received", log)
+            await _reject(sub, ws, "unexpected_hello", "Hello was already received.", log)
             return False
     return False

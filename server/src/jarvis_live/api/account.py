@@ -66,7 +66,7 @@ class MeUpdate(BaseModel):
 @router.patch("/me")
 async def update_me(body: MeUpdate, principal: PrincipalDep, db: Db, request: Request) -> MeOut:
     if body.auto_publish and not request.app.state.publishing.can_publish(principal.user):
-        raise HTTPException(403, "only the owner and admins publish notes")
+        raise HTTPException(403, "Only the owner and admins publish notes.")
     user = await db.get(User, principal.user.id)
     assert user is not None
     user.auto_publish = body.auto_publish
@@ -124,7 +124,7 @@ async def add_device(
     """New device token for e.g. the macOS app. Only from a signed-in browser: a device token
     cannot mint more tokens."""
     if principal.device is not None:
-        raise HTTPException(403, "sign in on the web to add devices")
+        raise HTTPException(403, "Sign in on the web to add devices.")
     device_id, token = await create_device(
         request.app.state.sessionmaker, body.name.strip(), principal.user.id
     )
@@ -139,7 +139,7 @@ async def add_device(
 async def revoke_device(device_id: uuid.UUID, principal: PrincipalDep, db: Db) -> None:
     d = await db.get(Device, device_id)
     if d is None or d.user_id != principal.user.id:
-        raise HTTPException(404, "device not found")
+        raise HTTPException(404, "Device not found.")
     if d.revoked_at is None:
         d.revoked_at = func.now()
         await db.commit()

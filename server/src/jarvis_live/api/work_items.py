@@ -383,7 +383,7 @@ async def cancel_dispatch(
     """Stop the item's queued or running run (its Job is deleted)."""
     dispatch: DispatchService | None = request.app.state.dispatch
     if dispatch is None:
-        raise HTTPException(503, "dispatch is not configured on this server")
+        raise HTTPException(503, "Dispatch is not configured on this server.")
     try:
         await dispatch.cancel(item_id, _actor(principal))
     except WorkItemError as e:

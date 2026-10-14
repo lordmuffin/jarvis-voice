@@ -36,9 +36,9 @@ class LiveUploader(private val context: Context) {
     }
 
     suspend fun upload(sessionId: String): Outcome {
-        var meta = repo.read(sessionId) ?: return Outcome.Failed("session not found")
+        var meta = repo.read(sessionId) ?: return Outcome.Failed("Session not found.")
         if (meta.state == SessionMeta.State.DONE) return Outcome.Done(meta.serverId ?: meta.id)
-        if (!settings.isConfigured) return Outcome.Failed("Jarvis Live device token not set")
+        if (!settings.isConfigured) return Outcome.Failed("Jarvis Live device token not set.")
         val api = settings.apiClient()
 
         try {

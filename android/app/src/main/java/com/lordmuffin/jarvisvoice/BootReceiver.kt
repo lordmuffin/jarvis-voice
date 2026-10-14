@@ -43,7 +43,7 @@ class BootReceiver : BroadcastReceiver() {
         )
         val notif = NotificationCompat.Builder(context, VoiceOverlayService.CHANNEL_ID)
             .setContentTitle("Jarvis Voice")
-            .setContentText("Tap to restore after reboot")
+            .setContentText("Tap to restore after reboot.")
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setContentIntent(pi)
             .setAutoCancel(true)

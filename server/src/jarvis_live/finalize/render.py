@@ -116,8 +116,8 @@ def render_note(
         if items:
             out.extend([f"## {title}", "", *items, ""])
 
-    section("Decisions", [f"- {_one_line(d)}" for d in note.decisions])
     section("Actions", [_action(a) for a in note.actions])
+    section("Decisions", [f"- {_one_line(d)}" for d in note.decisions])
     section("Open questions", [f"- {_one_line(q)}" for q in note.open_questions])
     section("Follow-ups", [f"- {_one_line(f)}" for f in note.follow_ups])
     if work_items:

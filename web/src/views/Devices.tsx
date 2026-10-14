@@ -95,9 +95,19 @@ export function Devices() {
               onInput={(e) => setName((e.target as HTMLInputElement).value)}
             />
           </Field>
-          <Button variant="primary" type="submit" disabled={adding || !name.trim()}>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={adding || !name.trim()}
+            title={adding ? "Adding the device." : !name.trim() ? "Enter a device name." : undefined}
+          >
             {adding ? "Adding…" : "Add Device"}
           </Button>
+          {!adding && !name.trim() && (
+            <Text size="caption" tone="muted">
+              Enter a device name.
+            </Text>
+          )}
         </FormRow>
       </Form>
 

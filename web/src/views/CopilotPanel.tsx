@@ -85,18 +85,6 @@ export function CopilotPanel({
         </CopilotSection>
       )}
 
-      {copilot.notes.length > 0 && (
-        <CopilotSection title="Notes">
-          <Bullets>
-            {copilot.notes.map((n) => (
-              <li key={n.id} data-testid="copilot-note">
-                {n.text}
-              </li>
-            ))}
-          </Bullets>
-        </CopilotSection>
-      )}
-
       {copilot.actions.length > 0 && (
         <CopilotSection title="Actions">
           <Bullets>
@@ -120,6 +108,18 @@ export function CopilotPanel({
             {copilot.decisions.map((d) => (
               <li key={d.id} data-testid="copilot-decision">
                 {d.text}
+              </li>
+            ))}
+          </Bullets>
+        </CopilotSection>
+      )}
+
+      {copilot.notes.length > 0 && (
+        <CopilotSection title="Notes">
+          <Bullets>
+            {copilot.notes.map((n) => (
+              <li key={n.id} data-testid="copilot-note">
+                {n.text}
               </li>
             ))}
           </Bullets>

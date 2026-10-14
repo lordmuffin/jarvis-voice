@@ -73,7 +73,7 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   await page.goto(`/sessions/${id}`);
 
   // Live view: transcript segments and a copilot note arrive over the WebSocket.
-  await expect(page.getByTestId("connection")).toHaveText("Connected");
+  await expect(page.getByTestId("connection")).toHaveText("Live");
   await expect(page.getByTestId("segment").first()).toContainText("seg-1");
   await expect(page.getByTestId("copilot-note").first()).toContainText("Kickoff covered");
   await expect(page.getByTestId("copilot-action").first()).toContainText("Send the deck");
@@ -127,7 +127,7 @@ test("replayed audio shows up live, then as a past session", async ({ page, requ
   await expect(page.getByTestId("session-row").first()).toContainText("Friday ship plan");
 
   // Sign out: back to the sign-in screen, and it sticks across a reload.
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Sign Out" }).click();
   await expect(page.getByRole("button", { name: "Sign In with Pocket-ID" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("button", { name: "Sign In with Pocket-ID" })).toBeVisible();

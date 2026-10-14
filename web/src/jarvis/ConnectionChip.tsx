@@ -2,15 +2,15 @@ import type { ConnectionState } from "../reducer";
 import type { Status } from "../types";
 
 const LABEL: Record<ConnectionState, string> = {
-  idle: "Idle",
-  connecting: "Connecting…",
-  open: "Connected",
+  idle: "Offline",
+  connecting: "Reconnecting…",
+  open: "Live",
   closed: "Reconnecting…",
 };
 
 /**
  * The link to the server: state chip, then the tier and lag (quiet), and a warning when the
- * copilot is offline. `degraded` and `queuedMs` are for server fields that don't exist yet
+ * copilot is degraded. `degraded` and `queuedMs` are for server fields that don't exist yet
  * (a fallback tier, audio queued while reconnecting); nothing passes them today.
  */
 export function ConnectionChip({
@@ -46,9 +46,9 @@ export function ConnectionChip({
       {status && (
         <span class="t-meta t-2">
           <span class="t-mono">
-            {status.stt_tier ?? "no STT"} · lag {status.lag_ms} ms
+            {status.stt_tier ?? "—"} · lag {status.lag_ms} ms
           </span>
-          {copilotOffline && <span class="d-tone-warning"> · copilot offline</span>}
+          {copilotOffline && <span class="d-tone-warning"> · copilot degraded</span>}
         </span>
       )}
     </span>

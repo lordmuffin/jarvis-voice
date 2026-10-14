@@ -87,7 +87,7 @@ async def test_title_prefix_marks_the_channel(tmp_path: Path) -> None:
         "http://gotify.local",
         f,
         httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-        title_prefix="[lab] ",
+        title_prefix="[LAB] ",
     )
     await n.notify("Session finished", "m", 5)
-    assert json.loads(seen[0].content)["title"] == "[lab] Session finished"
+    assert json.loads(seen[0].content)["title"] == "[LAB] Session finished"

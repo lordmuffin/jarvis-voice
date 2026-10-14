@@ -203,6 +203,10 @@ class LiveActivity : AppCompatActivity() {
         }
     }
 
+    /** The saved server's channel once /healthz has answered for the current URL; null until then. */
+    private fun currentChannel(): ServerChannel? =
+        serverChannel?.takeIf { it.first == settings.serverUrl }?.second
+
     /** Asks the server which release channel it is, for the tag beside its address. */
     private fun refreshServerChannel() {
         channelJob?.cancel()
@@ -289,13 +293,13 @@ class LiveActivity : AppCompatActivity() {
         when (state.phase) {
             LiveUiState.Phase.IDLE -> if (settings.isConfigured) {
                 val url = settings.serverUrl
-                tvStatus.setTextWithChannel(getString(R.string.livesess_server, url), serverChannel?.takeIf { it.first == url }?.second)
+                tvStatus.setTextWithChannel(getString(R.string.livesess_server, url), currentChannel())
             } else {
                 tvStatus.text = getString(R.string.live_not_configured)
             }
-            LiveUiState.Phase.STARTING -> tvStatus.text = getString(R.string.livesess_starting)
-            LiveUiState.Phase.RECORDING -> tvStatus.text = connectionDetail(state)
-            LiveUiState.Phase.STOPPING -> tvStatus.text = getString(R.string.livesess_finishing)
+            LiveUiState.Phase.STARTING -> tvStatus.setTextWithChannel(getString(R.string.livesess_starting), currentChannel())
+            LiveUiState.Phase.RECORDING -> tvStatus.setTextWithChannel(connectionDetail(state), currentChannel())
+            LiveUiState.Phase.STOPPING -> tvStatus.setTextWithChannel(getString(R.string.livesess_finishing), currentChannel())
         }
         val chip = if (idle) ConnectionChip(ConnectionKind.IDLE)
         else ConnectionChip.of(state.connection, state.localOnly, state.session.lagMs, state.session.llmOk)

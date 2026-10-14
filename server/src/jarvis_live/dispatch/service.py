@@ -434,7 +434,7 @@ class DispatchService:
     async def _tell(
         self, run: WorkItemDispatch, item: WorkItem | None, session: SessionRow | None
     ) -> None:
-        """The owner's phone, like a finished note. Lab's notifier marks itself [lab]. A run
+        """The owner's phone, like a finished note. Lab's notifier marks itself [LAB]. A run
         that needs input links to the work items page, where the owner replies."""
         if item is None:
             return

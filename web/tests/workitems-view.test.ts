@@ -120,7 +120,7 @@ describe("work item cards", () => {
       "choose a repository",
     );
     expect(button("✓ Approve").disabled).toBe(true);
-    expect(root.textContent).toContain("no repository yet");
+    expect(root.textContent).toContain("—");
     // On a session's own page, a source is a hash link into its transcript.
     expect(root.querySelector(".i-src")?.getAttribute("href")).toBe("#t=21000");
   });

@@ -42,7 +42,7 @@ _CHALLENGE = r"^[A-Za-z0-9_-]{43}$"  # base64url(sha256), unpadded
 def _oidc(request: Request) -> OIDCClient:
     oidc: OIDCClient | None = request.app.state.oidc
     if oidc is None:
-        raise HTTPException(404, "sign-in is not configured")
+        raise HTTPException(404, "Sign-in is not configured.")
     return oidc
 
 
@@ -69,7 +69,7 @@ async def login(
 ) -> RedirectResponse:
     oidc = _oidc(request)
     if client == "android" and challenge is None:
-        raise HTTPException(400, "android sign-in needs a PKCE challenge")
+        raise HTTPException(400, "Android sign-in needs a PKCE challenge.")
     flow = OidcFlow(
         state=new_secret(),
         nonce=new_secret(),
@@ -92,7 +92,7 @@ async def login(
         )
     except Exception as e:
         log.exception("identity provider unavailable")
-        raise HTTPException(502, "the identity provider is unavailable") from e
+        raise HTTPException(502, "The identity provider is unavailable.") from e
     return RedirectResponse(url, status_code=303)
 
 
@@ -224,6 +224,6 @@ async def redeem_device_code(body: DeviceCodeRequest, request: Request) -> Devic
         ).one_or_none()
         await db.commit()
     if found is None or not hmac.compare_digest(s256(body.verifier), found.app_challenge):
-        raise HTTPException(400, "invalid or expired code")
+        raise HTTPException(400, "Invalid or expired code.")
     device_id, token = await create_device(sm, body.device_name, found.user_id)
     return DeviceTokenResponse(device_id=str(device_id), token=token)

@@ -109,13 +109,13 @@ test("follow: stays at the bottom, pauses when you scroll up, a pill counts what
   await expect(page.getByText("Filler line 39.")).toBeVisible();
   expect(await atBottom(page)).toBe(true);
   await expect(page.getByTestId("follow-state")).toHaveText("↓ Following live");
-  await expect(page.getByRole("button", { name: /Jump to latest/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Jump To Latest/ })).toHaveCount(0);
 
   // Scrolling the log up pauses follow.
   await feed(page).evaluate((el) => (el.scrollTop = el.scrollHeight / 2));
   await expect(page.getByTestId("follow-state")).toHaveText("Follow paused");
   live.send(...flood(40, 3));
-  const pill = page.getByRole("button", { name: "↓ Jump to latest · 3 new" });
+  const pill = page.getByRole("button", { name: "↓ Jump To Latest · 3 new" });
   await expect(pill).toBeVisible();
   expect(await atBottom(page)).toBe(false); // new lines did not yank the reader down
 
@@ -161,7 +161,7 @@ test("the filter groups findings in the design's order, with counts", async ({ p
   await expect(show.getByRole("radio", { name: "Decisions 1" })).toBeVisible();
   await expect(show.getByRole("radio", { name: "Notes 1" })).toBeVisible();
   await expect(show.getByRole("radio", { name: "Related 1" })).toBeVisible();
-  await expect(show.getByRole("radio", { name: "Work 1" })).toBeVisible();
+  await expect(show.getByRole("radio", { name: "Work items 1" })).toBeVisible();
   await show.getByRole("radio", { name: "Actions 2" }).click();
   await expect(feed(page).getByTestId("copilot-action")).toHaveCount(2);
   await expect(feed(page).getByTestId("segment")).toHaveCount(0);
@@ -229,7 +229,7 @@ test("the header shows status, elapsed and the link", async ({ page }) => {
   await expect(head).toContainText("Meeting");
   await expect(head.getByTestId("status-chip")).toContainText("Live");
   await expect(head.getByTestId("elapsed")).toHaveText("18:41");
-  await expect(head.getByTestId("connection")).toHaveText("Connected");
+  await expect(head.getByTestId("connection")).toHaveText("Live");
   await expect(head).toContainText("pve · lag 840 ms");
 });
 

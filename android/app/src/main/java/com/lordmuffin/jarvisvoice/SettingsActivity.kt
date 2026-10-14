@@ -389,6 +389,10 @@ class SettingsActivity : AppCompatActivity() {
         fun updateSignInEnabled() {
             btnSignIn.isEnabled = validUrl(etUrl.text.toString().trim())
             btnSignIn.alpha = if (btnSignIn.isEnabled) 1f else 0.5f
+            // Say why Sign In is greyed out, in the line under it.
+            if (live.deviceToken.isNullOrBlank()) {
+                tvLiveAccount?.text = getString(if (btnSignIn.isEnabled) R.string.live_signin_desc else R.string.live_signin_need_url)
+            }
         }
         updateSignInEnabled()
         etUrl.addTextChangedListener(object : TextWatcher {

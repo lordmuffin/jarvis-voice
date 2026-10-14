@@ -71,7 +71,7 @@ for (const theme of THEMES) {
       await page.getByRole("log").evaluate((el) => (el.scrollTop = 0));
       await expect(page.getByTestId("follow-state")).toHaveText("Follow paused");
       live.send({ type: "segment", id: "z1", channel: "me", speaker: "me", start_ms: 1_130_000, end_ms: 1_134_000, text: "Thanks, that is everything for today.", stt_tier: "pve" });
-      await expect(page.getByRole("button", { name: /Jump to latest/ })).toBeVisible();
+      await expect(page.getByRole("button", { name: /Jump To Latest/ })).toBeVisible();
       await shoot(page, "live-paused", theme);
     });
 

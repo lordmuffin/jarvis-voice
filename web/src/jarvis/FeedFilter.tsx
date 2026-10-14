@@ -2,7 +2,7 @@ import { Segmented } from "../ds/components";
 import type { Filter } from "../feed";
 import { filterCounts, type Insight } from "../feed";
 
-/** All / Actions / Decisions / Notes / Related / Work, each with how many there are. */
+/** All / Actions / Decisions / Notes / Related / Work items, each with how many there are. */
 export function FeedFilter({
   insights,
   value,
@@ -24,7 +24,7 @@ export function FeedFilter({
         { id: "decision", label: "Decisions", count: c.decision },
         { id: "note", label: "Notes", count: c.note },
         { id: "related", label: "Related", count: c.related },
-        { id: "work", label: "Work", count: c.work },
+        { id: "work", label: "Work items", count: c.work },
       ]}
     />
   );

@@ -87,7 +87,7 @@ export function App() {
           </span>
           <ThemeToggle />
           <Button variant="quiet" size="sm" onClick={() => void signOut()}>
-            Sign out
+            Sign Out
           </Button>
         </>
       }

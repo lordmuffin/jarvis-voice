@@ -161,10 +161,10 @@ class LiveSessionService : Service() {
 
     private suspend fun startSession(mode: SessionMode, title: String?, requestedLocalOnly: Boolean) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            return abortStart("Microphone permission is required")
+            return abortStart("Microphone permission is required.")
         }
         if (!requestedLocalOnly && !settings.isConfigured) {
-            return abortStart("Set the Jarvis Live device token in Settings, or turn on Local only")
+            return abortStart("Set the Jarvis Live device token in Settings, or turn on Local-only.")
         }
         // Dictation and Live can't share the mic: whichever starts later wins.
         withContext(Dispatchers.Main) { VoiceOverlayService.instance?.cancelActiveRecording() }
@@ -361,9 +361,9 @@ class LiveSessionService : Service() {
         if (state == SessionMeta.State.PENDING && meta.serverId != null) LiveUploadWorker.enqueue(this, meta.id)
 
         val message = when {
-            failure != null -> "Server ended the session: $failure"
+            failure != null -> "Server ended the session. $failure"
             state == SessionMeta.State.PENDING && meta.serverId != null ->
-                "Still uploading — it will finish in the background."
+                "Still uploading. It will finish in the background."
             meta.localOnly -> "Saved locally. Upload it from Pending sessions."
             else -> error
         }
@@ -434,7 +434,7 @@ class LiveSessionService : Service() {
     } catch (e: Exception) {
         // Android 14 refuses a microphone FGS unless the app is visible.
         DebugLog.e(TAG, "startForeground refused", e)
-        _ui.value = LiveUiState(message = "Open Jarvis Voice to start a Live session")
+        _ui.value = LiveUiState(message = "Open Jarvis Voice to start a Live session.")
         stopSelf()
         false
     }
