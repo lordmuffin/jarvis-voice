@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.0...android-v1.12.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **android:** point the Record tab's missing-model hint at Settings → STT Model ([77becc0](https://github.com/lordmuffin/jarvis-voice/commit/77becc0f33bc9ba981ce4e675d024f423eb403f8))
+
 ## [1.12.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.1...android-v1.12.0) (2026-10-14)
 
 
