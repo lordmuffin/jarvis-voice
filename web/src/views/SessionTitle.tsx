@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { ApiError, renameSession } from "../api";
-import { Button, Form, Input, PageTitle, Text } from "../ds/components";
+import { Button, Form, Input, Text } from "../ds/components";
 import { titleOf } from "../format";
 import type { SessionSummary } from "../types";
 
@@ -46,7 +46,9 @@ export function SessionTitle({
   if (!editing)
     return (
       <>
-        <PageTitle data-testid="session-title">{titleOf(session)}</PageTitle>
+        <Text as="h1" size="body-lg" strong data-testid="session-title">
+          {titleOf(session)}
+        </Text>
         <Button variant="quiet" size="sm" onClick={start} aria-label="Rename session">
           Rename
         </Button>

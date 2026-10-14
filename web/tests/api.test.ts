@@ -4,6 +4,7 @@ import {
   audioUrl,
   createDevice,
   editNote,
+  endSession,
   getPublishing,
   health,
   listSessions,
@@ -187,5 +188,18 @@ describe("api", () => {
     const { f, calls } = fakeFetch(200, { status: "ok", environment: "lab", version: "0.11.0" });
     expect((await health(f)).environment).toBe("lab");
     expect(calls[0]).toMatchObject({ url: "/healthz" });
+  });
+});
+
+describe("endSession", () => {
+  it("asks the server to end the session and returns the updated row", async () => {
+    const { f, calls } = fakeFetch(200, { id: "s1", status: "finalizing" });
+    expect((await endSession("s1", f)).status).toBe("finalizing");
+    expect(calls[0]).toMatchObject({ url: "/v1/sessions/s1/end", init: { method: "POST" } });
+  });
+
+  it("says why when the server refuses (not yours)", async () => {
+    const { f } = fakeFetch(404, { detail: "not found" });
+    await expect(endSession("s1", f)).rejects.toBeInstanceOf(ApiError);
   });
 });

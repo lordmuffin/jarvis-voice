@@ -217,3 +217,24 @@ export function SourceLink({
     </a>
   );
 }
+
+/** A page column capped at 960 px (the live session), centred in the page. */
+export function Column({ children, wide, ...rest }: Kids & { wide?: boolean }) {
+  return (
+    <div {...rest} class={cx("d-column", wide && "d-wide", rest.class)}>
+      {children}
+    </div>
+  );
+}
+
+/** A heading line for a list: label, then a count. */
+export function ListHead({ title, count, id }: { title: string; count?: number; id?: string }) {
+  return (
+    <div class="j-sec">
+      <h2 class="t-label" id={id}>
+        {title}
+      </h2>
+      {count !== undefined && <span class="t-mono t-meta t-2">{count}</span>}
+    </div>
+  );
+}

@@ -3,25 +3,21 @@ import { ApiError, listSessions, type ListOptions } from "../api";
 import {
   Banner,
   Bar,
+  Block,
   Button,
   Choice,
   EmptyState,
-  ItemMain,
   List,
   Loading,
   PageTitle,
-  RowLink,
-  RowMeta,
-  RowTitle,
   SearchInput,
   Section,
-  StatusChip,
   Text,
 } from "../ds/components";
-import { duration, matchesTitle, titleOf, when } from "../format";
+import { matchesTitle } from "../format";
+import { SessionRow } from "../jarvis/SessionRow";
 import { currentUser, navigate } from "../store";
 import type { SessionSummary } from "../types";
-import { OwnerLabel } from "./OwnerLabel";
 import { UploadRecording } from "./UploadRecording";
 
 const PAGE = 100;
@@ -81,59 +77,55 @@ export function SessionsView({ all = false, userId }: { all?: boolean; userId?: 
 
   return (
     <Section>
-      <Bar>
-        <PageTitle>Sessions</PageTitle>
-        {isAdmin && !userId && (
-          <Choice
-            label="All users"
-            checked={all}
-            onChange={(e) => navigate((e.target as HTMLInputElement).checked ? "/?all=1" : "/")}
+      <PageTitle>Sessions</PageTitle>
+      <Block>
+        <Bar>
+          <SearchInput
+            placeholder="Search by title"
+            aria-label="Search sessions by title"
+            value={query}
+            onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
           />
-        )}
-        <SearchInput
-          placeholder="Search by title"
-          aria-label="Search sessions by title"
-          value={query}
-          onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
-        />
-        {!userId && <UploadRecording />}
-      </Bar>
+          {isAdmin && !userId && (
+            <Choice
+              label="All users"
+              checked={all}
+              onChange={(e) => navigate((e.target as HTMLInputElement).checked ? "/?all=1" : "/")}
+            />
+          )}
+          {!userId && <UploadRecording />}
+        </Bar>
+      </Block>
       {error && <Banner variant="error">{error}</Banner>}
       {head === null && !error && <Loading />}
       {head !== null && rows.length === 0 && (
-        <EmptyState>
+        <EmptyState
+          hint={
+            !userId && !all ? "Start one from the Mac app, or upload a recording." : undefined
+          }
+        >
           {userId
             ? "No sessions for this user."
             : all
               ? "No sessions yet."
-              : "No sessions yet. Start one from the Mac app, or upload a recording."}
+              : "No sessions yet."}
         </EmptyState>
       )}
       {head !== null && rows.length > 0 && shown.length === 0 && (
-        <EmptyState>No sessions match “{query}”.</EmptyState>
+        <EmptyState
+          action={
+            <Button variant="quiet" size="sm" onClick={() => setQuery("")}>
+              Clear Search
+            </Button>
+          }
+        >
+          No sessions match “{query}”.
+        </EmptyState>
       )}
       <List>
         {shown.map((s) => (
           <li key={s.id}>
-            <RowLink
-              data-testid="session-row"
-              href={`/sessions/${s.id}`}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(`/sessions/${s.id}`);
-              }}
-            >
-              <ItemMain>
-                <RowTitle>{titleOf(s)}</RowTitle>
-                <RowMeta>
-                  <OwnerLabel owner={s.owner} after=" · " />
-                  {when(s.started_at)}
-                  {duration(s.started_at, s.ended_at) && ` · ${duration(s.started_at, s.ended_at)}`}
-                  {` · ${s.mode}`}
-                </RowMeta>
-              </ItemMain>
-              <StatusChip status={s.status} streaming={s.streaming} />
-            </RowLink>
+            <SessionRow session={s} onOpen={(id) => navigate(`/sessions/${id}`)} />
           </li>
         ))}
       </List>

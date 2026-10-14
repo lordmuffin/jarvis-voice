@@ -47,9 +47,9 @@ describe("upload a recording", () => {
     expect(form.textContent).toContain("Standup 10-12.m4a");
     const title = form.querySelector<HTMLInputElement>("input[name=title]")!;
     expect(title.placeholder).toBe("Standup 10-12");
-    const mode = form.querySelector<HTMLSelectElement>("select[name=mode]")!;
-    mode.value = "meeting";
-    mode.dispatchEvent(new Event("change"));
+    const meeting = [...form.querySelectorAll<HTMLButtonElement>("[role=radio]")].find((b) => b.textContent === "Meeting")!;
+    meeting.click();
+    await settle();
 
     form.dispatchEvent(new Event("submit", { cancelable: true }));
     await settle();

@@ -1,12 +1,11 @@
 import { useRef, useState } from "preact/hooks";
 import { ApiError, uploadRecording } from "../api";
-import { Banner, Button, Field, FilePick, InlineForm, Input, Select, Text } from "../ds/components";
+import { FilePick } from "../ds/components";
+import { UploadForm } from "../jarvis/UploadForm";
 import { navigate } from "../store";
 
 // What phones and recorders save; the server decodes anything ffmpeg reads.
 const ACCEPT = "audio/*,video/*,.m4a,.mp3,.wav,.ogg,.opus,.flac,.aac,.amr,.caf,.webm,.wma";
-
-const stem = (name: string) => name.replace(/\.[^.]+$/, "");
 
 /**
  * Upload a recording made elsewhere (a voice memo, a meeting recorded on another app). It
@@ -20,11 +19,13 @@ export function UploadRecording({
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<"solo" | "meeting">("solo");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
     setFile(null);
+    setMode("solo");
     setError(null);
     if (input.current) input.current.value = "";
   }
@@ -34,7 +35,6 @@ export function UploadRecording({
     if (!file || busy) return;
     const form = new FormData(e.currentTarget as HTMLFormElement);
     const title = String(form.get("title") ?? "");
-    const mode = form.get("mode") === "meeting" ? "meeting" : "solo";
     setBusy(true);
     setError(null);
     try {
@@ -64,27 +64,16 @@ export function UploadRecording({
         />
       </FilePick>
       {file && (
-        <InlineForm data-testid="upload-form" onSubmit={submit}>
-          <Text size="meta" tone="muted" wrap>
-            {file.name}
-          </Text>
-          <Field label="Title" hideLabel htmlFor="upload-title">
-            <Input id="upload-title" name="title" placeholder={stem(file.name)} aria-label="Title" />
-          </Field>
-          <Field label="Mode" hideLabel htmlFor="upload-mode">
-            <Select id="upload-mode" name="mode" aria-label="Mode">
-              <option value="solo">Solo</option>
-              <option value="meeting">Meeting</option>
-            </Select>
-          </Field>
-          <Button variant="primary" type="submit" disabled={busy}>
-            {busy ? "Uploading…" : "Upload"}
-          </Button>
-          <Button variant="quiet" data-testid="upload-cancel" onClick={reset}>
-            Cancel
-          </Button>
-          {error && <Banner variant="error">{error}</Banner>}
-        </InlineForm>
+        <UploadForm
+          file={file}
+          mode={mode}
+          busy={busy}
+          error={error}
+          onMode={setMode}
+          onSubmit={submit}
+          onCancel={reset}
+          onChangeFile={() => input.current?.click()}
+        />
       )}
     </>
   );

@@ -12,10 +12,12 @@ import {
   Actions,
   Banner,
   Bar,
+  Block,
   Button,
   ButtonLink,
   Choice,
   Code,
+  Dialog,
   EmptyState,
   Head,
   ItemMain,
@@ -31,7 +33,7 @@ import { when } from "../format";
 import { currentUser, me } from "../store";
 import type { PublishingItem, PublishingQueue } from "../types";
 import { Link } from "./Link";
-import { PublicationChip } from "./PublicationChip";
+import { PublicationChip } from "../jarvis/PublicationChip";
 
 const POLL_MS = 2000;
 const SHOWN = 20; // rows per list until "Show all"
@@ -46,6 +48,7 @@ export function Publishing() {
   const [busy, setBusy] = useState<string | null>(null); // a session id, or "sync" / "all"
   const allowed = currentUser()?.can_publish ?? false;
   const poll = useRef<number | undefined>(undefined);
+  const [merging, setMerging] = useState<PublishingItem | null>(null);
 
   async function load(fetcher: () => Promise<PublishingQueue> = getPublishing) {
     try {
@@ -66,7 +69,8 @@ export function Publishing() {
   }, []);
 
   async function act(item: PublishingItem, action: PublishAction) {
-    if (action === "merge" && !confirm(`Merge “${item.title}” into the vault's main branch?`)) return;
+    if (action === "merge" && merging?.session_id !== item.session_id) return setMerging(item);
+    setMerging(null);
     setBusy(item.session_id);
     try {
       await publicationAction(item.session_id, action);
@@ -124,6 +128,7 @@ export function Publishing() {
         Each note goes to {q ? <Code>{q.repo}</Code> : "the vault repo"} as its own pull request
         against <Code>{q?.base_branch ?? "main"}</Code>. Review and merge here or on GitHub.
       </Text>
+      <Block>
       <Bar>
         <Choice
           label="Auto-publish new notes"
@@ -135,6 +140,7 @@ export function Publishing() {
           {busy === "sync" ? "Syncing…" : "Sync Now"}
         </Button>
       </Bar>
+      </Block>
       {error && <Banner variant="error">{error}</Banner>}
       {!q && !error && <Loading />}
       {q && (
@@ -220,6 +226,22 @@ export function Publishing() {
             }
           />
         </>
+      )}
+      {merging && (
+        <Dialog
+          title={`Merge “${merging.title}”?`}
+          onClose={() => setMerging(null)}
+          actions={
+            <>
+              <Button onClick={() => setMerging(null)}>Cancel</Button>
+              <Button variant="primary" onClick={() => void act(merging, "merge")}>
+                Merge
+              </Button>
+            </>
+          }
+        >
+          <Text tone="muted">Merge “{merging.title}” into the vault's main branch?</Text>
+        </Dialog>
       )}
     </Section>
   );
