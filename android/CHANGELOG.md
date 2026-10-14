@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.14.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.13.0...android-v1.14.0) (2026-10-14)
+
+
+### Features
+
+* **android:** adopt Instrument; shared pill with errors, Record as home, fold layouts ([4750f64](https://github.com/lordmuffin/jarvis-voice/commit/4750f64fabec004e30aed24d6a888a3643be4580))
+* **android:** launcher opens Record; Me/Them labels, connection chips, copilot order ([d3b160c](https://github.com/lordmuffin/jarvis-voice/commit/d3b160c9d98d8ec90ba4b8ab1ac2e7e77ea86adb))
+* **android:** shared dictation pill with Error state ([a413f87](https://github.com/lordmuffin/jarvis-voice/commit/a413f878792ce3c3ba20aec6a2f9b897a54eec35))
+* **android:** two-pane Record and Session Detail at 840dp ([6aa192d](https://github.com/lordmuffin/jarvis-voice/commit/6aa192d5d717392fe408e61273cf9f41f6edefef))
+
+
+### Bug Fixes
+
+* **android:** repair the main build broken by the Wear/Instrument merge ([60b898c](https://github.com/lordmuffin/jarvis-voice/commit/60b898cc269ab85e2087658fb06e359b7a713d10))
+* **android:** repair the Wear resources and car screen after the merge ([c1f43b7](https://github.com/lordmuffin/jarvis-voice/commit/c1f43b76e1572bf9c48ea4a90947fe86c978e59f))
+
 ## [1.13.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.1...android-v1.13.0) (2026-10-14)
 
 
