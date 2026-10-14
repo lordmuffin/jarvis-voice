@@ -49,10 +49,10 @@ class ServerChannelTest {
         assertEquals("STAGING", ServerChannel.Other("staging").tag)
     }
 
-    /** design/README.md, Color: red for live, amber for lab, grey for anything else. */
+    /** Instrument channel tokens: red for live, amber for lab, grey for anything else. */
     @Test fun colors() {
-        assertEquals(R.color.jv_error, ServerChannel.Live.color)
-        assertEquals(R.color.jv_warning, ServerChannel.Lab.color)
-        assertEquals(R.color.jv_text2, ServerChannel.Other("dev").color)
+        assertEquals(R.color.inst_channel_live, ServerChannel.Live.color)
+        assertEquals(R.color.inst_channel_lab, ServerChannel.Lab.color)
+        assertEquals(R.color.inst_channel_other, ServerChannel.Other("dev").color)
     }
 }

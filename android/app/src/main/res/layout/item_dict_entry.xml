@@ -5,7 +5,7 @@
     android:orientation="horizontal"
     android:gravity="center_vertical"
     android:padding="12dp"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:layout_marginBottom="4dp">
 
     <TextView
@@ -13,7 +13,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textColor="@color/jv_text"
+        android:textColor="@color/inst_text"
         android:textSize="15sp" />
 
     <TextView
@@ -21,7 +21,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textColor="@color/jv_accent"
+        android:textColor="@color/inst_accent"
         android:textSize="15sp" />
 
     <Button
@@ -29,8 +29,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="✕"
-        android:backgroundTint="@color/jv_surface2"
-        android:textColor="@color/jv_error"
+        android:backgroundTint="@color/inst_surface_2"
+        android:textColor="@color/inst_error"
         android:minWidth="0dp"
         android:paddingHorizontal="12dp" />
 

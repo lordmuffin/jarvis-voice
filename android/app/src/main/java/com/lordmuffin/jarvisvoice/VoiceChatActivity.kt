@@ -297,17 +297,17 @@ class VoiceChatActivity : AppCompatActivity() {
     private fun applyModeUi() {
         if (voiceMode) {
             btnModeVoice.setBackgroundResource(R.drawable.pill_background_accent)
-            btnModeVoice.setTextColor(getColor(R.color.jv_text))
+            btnModeVoice.setTextColor(getColor(R.color.inst_text))
             btnModeType.setBackgroundResource(R.drawable.pill_background_dim)
-            btnModeType.setTextColor(getColor(R.color.jv_text2))
+            btnModeType.setTextColor(getColor(R.color.inst_text_2))
             btnTalk.visibility     = View.VISIBLE
             llTypeInput.visibility = View.GONE
             dismissKeyboard()
         } else {
             btnModeType.setBackgroundResource(R.drawable.pill_background_accent)
-            btnModeType.setTextColor(getColor(R.color.jv_text))
+            btnModeType.setTextColor(getColor(R.color.inst_text))
             btnModeVoice.setBackgroundResource(R.drawable.pill_background_dim)
-            btnModeVoice.setTextColor(getColor(R.color.jv_text2))
+            btnModeVoice.setTextColor(getColor(R.color.inst_text_2))
             btnTalk.visibility     = View.GONE
             llTypeInput.visibility = View.VISIBLE
         }
@@ -416,9 +416,9 @@ class VoiceChatActivity : AppCompatActivity() {
                 }
                 // Colour the bar: green → yellow → red as context fills
                 val tint = when {
-                    tokens < 16_000 -> getColor(R.color.jv_accent)
-                    tokens < 28_000 -> getColor(R.color.jv_warning)
-                    else            -> getColor(R.color.jv_error)
+                    tokens < 16_000 -> getColor(R.color.inst_accent)
+                    tokens < 28_000 -> getColor(R.color.inst_warning)
+                    else            -> getColor(R.color.inst_error)
                 }
                 pbContext.progressTintList =
                     android.content.res.ColorStateList.valueOf(tint)
@@ -499,11 +499,11 @@ class VoiceChatActivity : AppCompatActivity() {
             if (msg.role == "user") {
                 lp.gravity = Gravity.END
                 tvMsg.setBackgroundResource(R.drawable.chat_bubble_user)
-                tvMsg.setTextColor(getColor(R.color.jv_bg))
+                tvMsg.setTextColor(getColor(R.color.inst_on_accent))
             } else {
                 lp.gravity = Gravity.START
                 tvMsg.setBackgroundResource(R.drawable.chat_bubble_ai)
-                tvMsg.setTextColor(getColor(R.color.jv_text))
+                tvMsg.setTextColor(getColor(R.color.inst_text))
             }
             tvMsg.layoutParams = lp
         }
@@ -604,7 +604,7 @@ class VoiceChatActivity : AppCompatActivity() {
             h.tvCount.text   = "${s.messageCount} msgs"
             h.tvPreview.text = s.preview.ifBlank { "No messages yet" }
             h.tvName.setTextColor(
-                getColor(if (isActive) R.color.jv_accent else R.color.jv_text)
+                getColor(if (isActive) R.color.inst_accent else R.color.inst_text)
             )
             h.itemView.setOnClickListener { onSwitch(s.id) }
             h.itemView.setOnLongClickListener {

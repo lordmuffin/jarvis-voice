@@ -258,7 +258,7 @@ class SettingsActivity : AppCompatActivity() {
         val running = VoiceOverlayService.instance != null
         tvOverlayStatus.text = if (running) "● Running" else "○ Not running"
         tvOverlayStatus.setTextColor(
-            getColor(if (running) R.color.jv_success else R.color.jv_error)
+            getColor(if (running) R.color.inst_success else R.color.inst_error)
         )
         btnRestartOverlay.text = if (running) "Restart" else "Start"
     }
@@ -285,10 +285,10 @@ class SettingsActivity : AppCompatActivity() {
     private fun refreshVaultFolderLabel() {
         if (VaultNoteWriter.isConfigured(this)) {
             tvVaultFolder.text = "Folder: ${VaultNoteWriter.displayPath(this)}"
-            tvVaultFolder.setTextColor(getColor(R.color.jv_success))
+            tvVaultFolder.setTextColor(getColor(R.color.inst_success))
         } else {
             tvVaultFolder.text = "No folder selected"
-            tvVaultFolder.setTextColor(getColor(R.color.jv_text2))
+            tvVaultFolder.setTextColor(getColor(R.color.inst_text_2))
         }
     }
 
@@ -480,8 +480,8 @@ class SettingsActivity : AppCompatActivity() {
     /** Opens the Pocket-ID login page in a Custom Tab, falling back to any browser. */
     private fun openSignInPage(uri: Uri, tvStatus: TextView) {
         val colors = CustomTabColorSchemeParams.Builder()
-            .setToolbarColor(getColor(R.color.jv_surface))
-            .setNavigationBarColor(getColor(R.color.jv_bg))
+            .setToolbarColor(getColor(R.color.inst_surface))
+            .setNavigationBarColor(getColor(R.color.inst_bg))
             .build()
         val tab = CustomTabsIntent.Builder()
             .setDefaultColorSchemeParams(colors)
@@ -506,24 +506,24 @@ class SettingsActivity : AppCompatActivity() {
         val token = live.deviceToken
         if (token.isNullOrBlank()) {
             tv.text = getString(R.string.live_signin_desc)
-            tv.setTextColor(getColor(R.color.jv_text2))
+            tv.setTextColor(getColor(R.color.inst_text_2))
             return
         }
         val cached = live.accountName
         tv.text = cached?.let { getString(R.string.live_signin_as, it) } ?: getString(R.string.live_signin_checking)
-        tv.setTextColor(getColor(if (cached != null) R.color.jv_success else R.color.jv_text2))
+        tv.setTextColor(getColor(if (cached != null) R.color.inst_success else R.color.inst_text_2))
         val serverUrl = live.serverUrl
         liveAccountJob = lifecycleScope.launch {
             try {
                 val me = LiveApiClient(serverUrl, token).me()
                 live.accountName = me.displayName.ifBlank { me.email }
                 tv.text = getString(R.string.live_signin_as, live.accountName ?: me.id)
-                tv.setTextColor(getColor(R.color.jv_success))
+                tv.setTextColor(getColor(R.color.inst_success))
             } catch (e: LiveHttpException) {
                 if (e.status == 401 || e.status == 403) {
                     live.accountName = null
                     tv.text = getString(R.string.live_signin_rejected)
-                    tv.setTextColor(getColor(R.color.jv_error))
+                    tv.setTextColor(getColor(R.color.inst_error))
                 } else if (cached == null) {
                     tv.text = getString(R.string.live_signin_offline, "HTTP ${e.status}")
                 }

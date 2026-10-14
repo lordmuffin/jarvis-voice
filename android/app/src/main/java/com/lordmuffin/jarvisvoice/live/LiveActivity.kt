@@ -392,7 +392,7 @@ class LiveActivity : AppCompatActivity() {
             holder.time.text = LocalMarkdown.clock(line.startMs)
             holder.text.text = line.text
             holder.text.setTypeface(null, if (line.isDraft) Typeface.ITALIC else Typeface.NORMAL)
-            holder.text.setTextColor(ctx.getColor(if (line.isDraft) R.color.jv_text2 else R.color.jv_text))
+            holder.text.setTextColor(ctx.getColor(if (line.isDraft) R.color.inst_text_2 else R.color.inst_text))
         }
 
         companion object {

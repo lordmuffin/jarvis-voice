@@ -197,8 +197,8 @@ class SessionDetailActivity : AppCompatActivity() {
         tab = t
         tabButtons.forEach { (key, button) ->
             val selected = key == t
-            button.backgroundTintList = ColorStateList.valueOf(getColor(if (selected) R.color.jv_surface2 else R.color.jv_surface))
-            button.setTextColor(getColor(if (selected) R.color.jv_accent else R.color.jv_text2))
+            button.backgroundTintList = ColorStateList.valueOf(getColor(if (selected) R.color.inst_surface_2 else R.color.inst_surface))
+            button.setTextColor(getColor(if (selected) R.color.inst_accent else R.color.inst_text_2))
         }
         val d = detail ?: return
         when (t) {
@@ -224,10 +224,10 @@ class SessionDetailActivity : AppCompatActivity() {
         svText.visibility = View.VISIBLE
         if (content is Placeholder) {
             tvText.text = content.text
-            tvText.setTextColor(getColor(R.color.jv_text2))
+            tvText.setTextColor(getColor(R.color.inst_text_2))
         } else {
             tvText.text = content as CharSequence
-            tvText.setTextColor(getColor(R.color.jv_text))
+            tvText.setTextColor(getColor(R.color.inst_text))
         }
         svText.scrollTo(0, 0)
     }
@@ -238,8 +238,8 @@ class SessionDetailActivity : AppCompatActivity() {
         return when {
             body != null -> MarkdownSpans.render(
                 body,
-                accentColor = getColor(R.color.jv_accent),
-                mutedColor = getColor(R.color.jv_text2),
+                accentColor = getColor(R.color.inst_accent),
+                mutedColor = getColor(R.color.inst_text_2),
                 indentPx = dp(16),
             )
             note != null && note.markdown == null -> Placeholder(getString(R.string.detail_summary_gone, note.path))
@@ -251,8 +251,8 @@ class SessionDetailActivity : AppCompatActivity() {
     private fun actionsText(copilot: RemoteCopilot): Any {
         if (copilot.isEmpty) return Placeholder(getString(R.string.detail_actions_empty))
         val sb = SpannableStringBuilder()
-        val accent = getColor(R.color.jv_accent)
-        val muted = getColor(R.color.jv_text2)
+        val accent = getColor(R.color.inst_accent)
+        val muted = getColor(R.color.inst_text_2)
 
         fun section(title: String, items: List<CopilotItem>, glyph: String) {
             if (items.isEmpty()) return
@@ -473,7 +473,7 @@ class SessionDetailActivity : AppCompatActivity() {
             val me = seg.speaker == "me"
             holder.time.text = LocalMarkdown.clock(seg.startMs)
             holder.speaker.text = ctx.getString(if (me) R.string.detail_speaker_me else R.string.detail_speaker_them)
-            holder.speaker.setTextColor(ctx.getColor(if (me) R.color.jv_accent else R.color.jv_text2))
+            holder.speaker.setTextColor(ctx.getColor(if (me) R.color.inst_accent else R.color.inst_text_2))
             holder.text.text = seg.text
         }
 

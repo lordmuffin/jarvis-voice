@@ -9,7 +9,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Task name (optional)"
-        android:textColor="@color/jv_text2"
+        android:textColor="@color/inst_text_2"
         android:textSize="12sp"
         android:layout_marginBottom="4dp" />
 
@@ -18,7 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="Auto-generated from prompt"
-        android:textColorHint="@color/jv_text2"
+        android:textColorHint="@color/inst_text_2"
         android:inputType="textCapSentences"
         android:layout_marginBottom="12dp" />
 
@@ -26,7 +26,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Prompt"
-        android:textColor="@color/jv_text2"
+        android:textColor="@color/inst_text_2"
         android:textSize="12sp"
         android:layout_marginBottom="4dp" />
 
@@ -39,14 +39,14 @@
         android:gravity="top"
         android:inputType="textMultiLine|textCapSentences"
         android:hint="What should Kai work on?"
-        android:textColorHint="@color/jv_text2"
+        android:textColorHint="@color/inst_text_2"
         android:layout_marginBottom="12dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Model"
-        android:textColor="@color/jv_text2"
+        android:textColor="@color/inst_text_2"
         android:textSize="12sp"
         android:layout_marginBottom="4dp" />
 

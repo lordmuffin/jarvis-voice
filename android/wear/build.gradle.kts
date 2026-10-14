@@ -22,6 +22,9 @@ android {
         }
     }
 
+    // Instrument design-system resources, vendored (managed, never edit) by the Instrument sync PR.
+    sourceSets["main"].res.srcDir("src/instrument/android/res")
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

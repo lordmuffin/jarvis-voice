@@ -40,7 +40,7 @@ class OnboardingActivity : AppCompatActivity() {
             lp.width = if (i == s) dpToPx(22) else dpToPx(7)
             v.layoutParams = lp
             v.setBackgroundColor(
-                if (i == s) getColor(R.color.jv_accent) else 0x598B949E.toInt()
+                if (i == s) getColor(R.color.inst_accent) else 0x598B949E.toInt()
             )
         }
         findViewById<View>(R.id.step_0).visibility = if (s == 0) View.VISIBLE else View.GONE
@@ -81,17 +81,17 @@ class OnboardingActivity : AppCompatActivity() {
         val btn = findViewById<Button>(btnId) ?: return
         if (granted) {
             btn.text = "✓ Granted"
-            btn.setTextColor(getColor(R.color.jv_bg))
-            btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_success)
+            btn.setTextColor(getColor(R.color.inst_on_accent))
+            btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.inst_success)
             btn.isEnabled = false
         } else {
             btn.text = "Grant"
             if (isOverlay) {
-                btn.setTextColor(getColor(R.color.jv_text2))
-                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_surface2)
+                btn.setTextColor(getColor(R.color.inst_text_2))
+                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.inst_surface_2)
             } else {
                 btn.setTextColor(getColor(android.R.color.black))
-                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_accent)
+                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.inst_accent)
             }
             btn.isEnabled = true
         }

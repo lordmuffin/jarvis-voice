@@ -4,13 +4,13 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:elevation="8dp">
 
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/jv_surface2" />
+        android:background="@color/inst_surface_2" />
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -34,7 +34,7 @@
                 android:layout_height="wrap_content"
                 android:text="🎙"
                 android:textSize="20sp"
-                android:textColor="@color/jv_text2" />
+                android:textColor="@color/inst_text_2" />
 
             <TextView
                 android:id="@+id/nav_label_record"
@@ -42,7 +42,7 @@
                 android:layout_height="wrap_content"
                 android:text="Record"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:layout_marginTop="2dp" />
 
         </LinearLayout>
@@ -64,7 +64,7 @@
                 android:layout_height="wrap_content"
                 android:text="💬"
                 android:textSize="20sp"
-                android:textColor="@color/jv_text2" />
+                android:textColor="@color/inst_text_2" />
 
             <TextView
                 android:id="@+id/nav_label_chat"
@@ -72,7 +72,7 @@
                 android:layout_height="wrap_content"
                 android:text="Chat"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:layout_marginTop="2dp" />
 
         </LinearLayout>
@@ -94,7 +94,7 @@
                 android:layout_height="wrap_content"
                 android:text="📋"
                 android:textSize="20sp"
-                android:textColor="@color/jv_text2" />
+                android:textColor="@color/inst_text_2" />
 
             <TextView
                 android:id="@+id/nav_label_history"
@@ -102,7 +102,7 @@
                 android:layout_height="wrap_content"
                 android:text="History"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:layout_marginTop="2dp" />
 
         </LinearLayout>
@@ -124,7 +124,7 @@
                 android:layout_height="wrap_content"
                 android:text="⚙️"
                 android:textSize="20sp"
-                android:textColor="@color/jv_text2" />
+                android:textColor="@color/inst_text_2" />
 
             <TextView
                 android:id="@+id/nav_label_settings"
@@ -132,7 +132,7 @@
                 android:layout_height="wrap_content"
                 android:text="Settings"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:layout_marginTop="2dp" />
 
         </LinearLayout>
@@ -154,7 +154,7 @@
                 android:layout_height="wrap_content"
                 android:text="📦"
                 android:textSize="20sp"
-                android:textColor="@color/jv_text2" />
+                android:textColor="@color/inst_text_2" />
 
             <TextView
                 android:id="@+id/nav_label_models"
@@ -162,7 +162,7 @@
                 android:layout_height="wrap_content"
                 android:text="Models"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:layout_marginTop="2dp" />
 
         </LinearLayout>
@@ -184,7 +184,7 @@
                 android:layout_height="wrap_content"
                 android:text="🤖"
                 android:textSize="20sp"
-                android:textColor="@color/jv_text2" />
+                android:textColor="@color/inst_text_2" />
 
             <TextView
                 android:id="@+id/nav_label_agent"
@@ -192,7 +192,7 @@
                 android:layout_height="wrap_content"
                 android:text="Agent"
                 android:textSize="10sp"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:layout_marginTop="2dp" />
 
         </LinearLayout>

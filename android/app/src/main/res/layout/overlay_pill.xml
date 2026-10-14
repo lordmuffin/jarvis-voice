@@ -31,7 +31,7 @@
         android:layout_gravity="center"
         android:indeterminate="true"
         android:visibility="gone"
-        android:indeterminateTint="@color/jv_accent" />
+        android:indeterminateTint="@color/jv_overlay_accent" />
 
     <!-- Keep mic_icon for code compatibility (hidden in new design - dot_idle replaces it) -->
     <ImageView

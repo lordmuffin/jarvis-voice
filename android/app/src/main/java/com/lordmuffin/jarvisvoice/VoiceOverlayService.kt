@@ -10,7 +10,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.os.Handler
 import android.os.IBinder
@@ -382,7 +381,7 @@ class VoiceOverlayService : Service() {
         dotIdle.visibility = View.GONE
         progressSpinner.visibility = View.GONE
         micIcon.visibility = View.GONE
-        waveformView.barColor = Color.parseColor("#00F5D4")
+        waveformView.barColor = getColor(R.color.jv_overlay_accent)
         waveformView.visibility = View.VISIBLE
         waveformView.startAnimation()
         overlayView.setBackgroundResource(R.drawable.pill_background_red)

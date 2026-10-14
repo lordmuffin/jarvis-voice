@@ -22,7 +22,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/jv_text"
+            android:textColor="@color/inst_text"
             android:textSize="14sp"
             android:textStyle="bold"
             android:maxLines="1"
@@ -32,7 +32,7 @@
             android:id="@+id/tv_session_count"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="11sp"
             android:layout_marginStart="8dp" />
 
@@ -42,7 +42,7 @@
         android:id="@+id/tv_session_preview"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/jv_text2"
+        android:textColor="@color/inst_text_2"
         android:textSize="12sp"
         android:maxLines="1"
         android:ellipsize="end"

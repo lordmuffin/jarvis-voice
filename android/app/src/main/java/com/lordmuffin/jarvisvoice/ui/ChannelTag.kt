@@ -23,14 +23,14 @@ fun TextView.setTextWithChannel(text: CharSequence, channel: ServerChannel?) {
     if (text.isNotEmpty()) out.append(' ')
     val start = out.length
     out.append(channel.tag)
-    val span = ChannelTagSpan(context.getColor(channel.color), context.getColor(R.color.jv_bg), resources.displayMetrics.density)
+    val span = ChannelTagSpan(context.getColor(channel.color), context.getColor(R.color.inst_on_channel), resources.displayMetrics.density)
     out.setSpan(span, start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     this.text = out
 }
 
 /**
  * The server's release channel as a small filled pill inside a line of text, like the dashboard's
- * wordmark tag and the Mac app's `ChannelTag`: bold, tracked, `jv_bg` on [fill]. Inline, so it can
+ * wordmark tag and the Mac app's `ChannelTag`: bold, tracked, `inst_on_channel` on [fill]. Inline, so it can
  * sit beside the server's address wherever a screen names it, and wraps as one piece.
  */
 class ChannelTagSpan(

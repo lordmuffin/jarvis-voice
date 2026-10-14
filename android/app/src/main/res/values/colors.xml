@@ -1,24 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  App colours come from Instrument (@color/inst_*, vendored under src/instrument, day + night).
+  What stays here is the dictation pill and the launcher icon, which are fixed dark on purpose:
+  the pill floats over other apps and the launcher mark is drawn on a dark tile, so neither
+  follows the app's day/night theme.
+-->
 <resources>
-    <color name="jv_bg">#0D1117</color>
-    <color name="jv_surface">#161B22</color>
-    <color name="jv_surface2">#1C2230</color>
-    <color name="jv_accent">#00F5D4</color>
-    <color name="jv_violet">#7B2FD4</color>
-    <color name="jv_text">#E6EDF3</color>
-    <color name="jv_text2">#8B949E</color>
-    <color name="jv_success">#3FB950</color>
-    <color name="jv_warning">#D29922</color>
-    <color name="jv_error">#F85149</color>
-    <color name="jv_glass_border">#24FFFFFF</color>
     <color name="jv_glass_bg">#C7161B22</color>
-    <color name="jv_on_accent">#04130F</color>
-    <color name="jv_fab_stop">#E53935</color>
-    <color name="jv_danger_fill">#442222</color>
-    <color name="jv_disabled_fill">#333333</color>
-    <!-- legacy aliases used by existing code -->
-    <color name="pill_bg">@color/jv_bg</color>
-    <color name="accent">@color/jv_accent</color>
-    <color name="white">#FFFFFF</color>
-    <color name="dim">#88FFFFFF</color>
+    <color name="jv_glass_border">#24FFFFFF</color>
+    <color name="jv_overlay_accent">#00F5D4</color>
+    <color name="jv_launcher_bg">#0D1117</color>
 </resources>

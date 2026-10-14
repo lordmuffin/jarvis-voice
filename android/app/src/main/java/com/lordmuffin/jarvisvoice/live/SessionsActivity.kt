@@ -279,11 +279,11 @@ internal object SessionLabels {
 
     /** State colors carry state only, and always come with the word. */
     fun statusColor(status: String): Int = when (status) {
-        RemoteSession.STATUS_LIVE -> R.color.jv_accent
-        RemoteSession.STATUS_FINALIZING -> R.color.jv_warning
-        RemoteSession.STATUS_DONE -> R.color.jv_success
-        RemoteSession.STATUS_FAILED -> R.color.jv_error
-        else -> R.color.jv_text2
+        RemoteSession.STATUS_LIVE -> R.color.inst_accent
+        RemoteSession.STATUS_FINALIZING -> R.color.inst_warning
+        RemoteSession.STATUS_DONE -> R.color.inst_success
+        RemoteSession.STATUS_FAILED -> R.color.inst_error
+        else -> R.color.inst_text_2
     }
 
     fun bindStatus(view: TextView, status: String) {

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App-specific sizes with no Instrument token. Everything else is @dimen/inst_*. -->
+<resources>
+    <dimen name="app_empty_glyph">40sp</dimen>
+    <dimen name="app_nav_icon">20sp</dimen>
+    <dimen name="app_nav_indicator">2dp</dimen>
+    <dimen name="app_toast_max_width">360dp</dimen>
+</resources>

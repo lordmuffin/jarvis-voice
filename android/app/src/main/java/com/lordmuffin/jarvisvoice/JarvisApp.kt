@@ -2,6 +2,7 @@ package com.lordmuffin.jarvisvoice
 
 import android.app.Application
 import androidx.work.WorkManager
+import com.lordmuffin.jarvisvoice.ui.ThemeMode
 
 class JarvisApp : Application() {
 
@@ -12,6 +13,7 @@ class JarvisApp : Application() {
     override fun onCreate() {
         super.onCreate()
         DebugLog.init(this)
+        ThemeMode.apply(ThemeMode.load(this))
 
         // Cancel model downloads on every cold start. This handles:
         //   - adb install -r  (am force-stop doesn't trigger UncaughtExceptionHandler,

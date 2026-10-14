@@ -4,7 +4,7 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="12dp"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:foreground="?attr/selectableItemBackground"
     android:clickable="true"
     android:focusable="true"
@@ -22,14 +22,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="11sp" />
 
         <TextView
             android:id="@+id/tv_session_stats"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_accent"
+            android:textColor="@color/inst_accent"
             android:textSize="11sp"
             android:layout_marginEnd="8dp" />
 
@@ -38,7 +38,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="▼"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="10sp" />
 
     </LinearLayout>
@@ -57,7 +57,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:text="WHISPER"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="9sp"
             android:letterSpacing="0.1"
             android:textAllCaps="true" />
@@ -66,7 +66,7 @@
             android:id="@+id/tv_raw_transcript"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="13sp"
             android:maxLines="2"
             android:ellipsize="end"
@@ -77,14 +77,14 @@
             android:layout_height="1dp"
             android:layout_marginTop="6dp"
             android:layout_marginBottom="2dp"
-            android:background="@color/jv_surface2" />
+            android:background="@color/inst_surface_2" />
 
         <TextView
             android:id="@+id/tv_enhanced_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="ENHANCED"
-            android:textColor="@color/jv_accent"
+            android:textColor="@color/inst_accent"
             android:textSize="9sp"
             android:letterSpacing="0.1"
             android:textAllCaps="true"
@@ -97,7 +97,7 @@
         android:id="@+id/tv_session_transcript"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/jv_text"
+        android:textColor="@color/inst_text"
         android:textSize="14sp"
         android:layout_marginTop="4dp"
         android:maxLines="2"
@@ -120,8 +120,8 @@
             android:layout_weight="1"
             android:text="Copy"
             android:textSize="12sp"
-            android:backgroundTint="@color/jv_surface2"
-            android:textColor="@color/jv_text"
+            android:backgroundTint="@color/inst_surface_2"
+            android:textColor="@color/inst_text"
             android:layout_marginEnd="6dp" />
 
         <!-- Only visible when LLM ran: copy the raw Whisper transcript -->
@@ -132,8 +132,8 @@
             android:layout_weight="1"
             android:text="Copy Whisper"
             android:textSize="12sp"
-            android:backgroundTint="@color/jv_surface2"
-            android:textColor="@color/jv_text2"
+            android:backgroundTint="@color/inst_surface_2"
+            android:textColor="@color/inst_text_2"
             android:visibility="gone" />
 
     </LinearLayout>

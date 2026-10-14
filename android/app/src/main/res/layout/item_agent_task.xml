@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:layout_marginStart="8dp"
     android:layout_marginEnd="8dp"
     android:layout_marginBottom="6dp"
@@ -33,7 +33,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/jv_text"
+            android:textColor="@color/inst_text"
             android:textSize="14sp"
             android:textStyle="bold"
             android:maxLines="1"
@@ -46,8 +46,8 @@
             android:layout_height="32dp"
             android:text="✕"
             android:textSize="12sp"
-            android:backgroundTint="@color/jv_surface2"
-            android:textColor="@color/jv_text2"
+            android:backgroundTint="@color/inst_surface_2"
+            android:textColor="@color/inst_text_2"
             android:stateListAnimator="@null"
             android:padding="0dp" />
 
@@ -65,9 +65,9 @@
             android:id="@+id/tv_task_model"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_accent"
+            android:textColor="@color/inst_accent"
             android:textSize="10sp"
-            android:background="@color/jv_surface2"
+            android:background="@color/inst_surface_2"
             android:paddingStart="6dp"
             android:paddingEnd="6dp"
             android:paddingTop="2dp"
@@ -79,14 +79,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="11sp" />
 
         <TextView
             android:id="@+id/tv_task_elapsed"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="11sp" />
 
     </LinearLayout>
@@ -96,7 +96,7 @@
         android:id="@+id/tv_task_output"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/jv_text"
+        android:textColor="@color/inst_text"
         android:textSize="12sp"
         android:layout_marginTop="6dp"
         android:maxLines="3"
@@ -120,7 +120,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Show output ▼"
-            android:textColor="@color/jv_accent"
+            android:textColor="@color/inst_accent"
             android:textSize="11sp" />
 
         <TextView
@@ -129,8 +129,8 @@
             android:layout_height="wrap_content"
             android:text="⎘ Copy"
             android:textSize="11sp"
-            android:textColor="@color/jv_accent"
-            android:background="@color/jv_surface2"
+            android:textColor="@color/inst_accent"
+            android:background="@color/inst_surface_2"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
             android:paddingTop="5dp"
@@ -144,8 +144,8 @@
             android:layout_height="wrap_content"
             android:text="↩ Reply"
             android:textSize="11sp"
-            android:textColor="@color/jv_accent"
-            android:background="@color/jv_surface2"
+            android:textColor="@color/inst_accent"
+            android:background="@color/inst_surface_2"
             android:paddingStart="10dp"
             android:paddingEnd="10dp"
             android:paddingTop="5dp"

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="6dp"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="10dp">
@@ -20,7 +20,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/jv_text"
+            android:textColor="@color/inst_text"
             android:textSize="14sp" />
 
         <TextView
@@ -28,7 +28,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="12sp" />
     </LinearLayout>
 
@@ -36,9 +36,9 @@
         android:id="@+id/btn_pending_upload"
         android:layout_width="wrap_content"
         android:layout_height="40dp"
-        android:backgroundTint="@color/jv_surface2"
+        android:backgroundTint="@color/inst_surface_2"
         android:text="@string/live_upload"
-        android:textColor="@color/jv_accent"
+        android:textColor="@color/inst_accent"
         android:textSize="12sp" />
 
     <Button
@@ -46,8 +46,8 @@
         android:layout_width="wrap_content"
         android:layout_height="40dp"
         android:layout_marginStart="6dp"
-        android:backgroundTint="@color/jv_danger_fill"
+        android:backgroundTint="@color/inst_error_tint"
         android:text="@string/live_delete"
-        android:textColor="@color/jv_text"
+        android:textColor="@color/inst_text"
         android:textSize="12sp" />
 </LinearLayout>

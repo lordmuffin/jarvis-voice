@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/jv_surface">
+    android:background="@color/inst_surface">
 
     <!-- Header row -->
     <LinearLayout
@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="Conversations"
-            android:textColor="@color/jv_text"
+            android:textColor="@color/inst_text"
             android:textSize="16sp"
             android:textStyle="bold" />
 
@@ -32,8 +32,8 @@
             android:textAllCaps="false"
             android:paddingStart="14dp"
             android:paddingEnd="14dp"
-            android:backgroundTint="@color/jv_accent"
-            android:textColor="@color/jv_bg"
+            android:backgroundTint="@color/inst_accent"
+            android:textColor="@color/inst_on_accent"
             android:stateListAnimator="@null" />
 
     </LinearLayout>
@@ -41,7 +41,7 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/jv_surface2" />
+        android:background="@color/inst_surface_2" />
 
     <!-- Session list -->
     <androidx.recyclerview.widget.RecyclerView

@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="4dp"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:padding="12dp">
@@ -15,10 +15,10 @@
         android:minWidth="0dp"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:backgroundTint="@color/jv_surface2"
+        android:backgroundTint="@color/inst_surface_2"
         android:text="@string/detail_play"
         android:textAllCaps="false"
-        android:textColor="@color/jv_accent"
+        android:textColor="@color/inst_accent"
         android:textSize="13sp" />
 
     <LinearLayout
@@ -38,7 +38,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textColor="@color/jv_text"
+                android:textColor="@color/inst_text"
                 android:textSize="13sp" />
 
             <TextView
@@ -46,7 +46,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:textSize="11sp" />
         </LinearLayout>
 
@@ -58,8 +58,8 @@
             android:enabled="false"
             android:paddingStart="0dp"
             android:paddingEnd="0dp"
-            android:progressBackgroundTint="@color/jv_surface2"
-            android:progressTint="@color/jv_accent"
-            android:thumbTint="@color/jv_accent" />
+            android:progressBackgroundTint="@color/inst_surface_2"
+            android:progressTint="@color/inst_accent"
+            android:thumbTint="@color/inst_accent" />
     </LinearLayout>
 </LinearLayout>

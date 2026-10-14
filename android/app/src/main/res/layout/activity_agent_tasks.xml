@@ -2,7 +2,7 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/jv_bg">
+    android:background="@color/inst_bg">
 
     <!-- Task list — leaves room for input panel + bottom nav -->
     <androidx.recyclerview.widget.RecyclerView
@@ -34,7 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="No agent tasks yet"
-            android:textColor="@color/jv_text"
+            android:textColor="@color/inst_text"
             android:textSize="16sp"
             android:layout_marginTop="12dp" />
 
@@ -42,7 +42,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Type a prompt below and tap Run"
-            android:textColor="@color/jv_text2"
+            android:textColor="@color/inst_text_2"
             android:textSize="13sp"
             android:layout_marginTop="4dp" />
 
@@ -55,7 +55,7 @@
         android:layout_gravity="bottom"
         android:layout_marginBottom="64dp"
         android:orientation="vertical"
-        android:background="@color/jv_bg"
+        android:background="@color/inst_bg"
         android:paddingTop="8dp">
 
         <!-- Model selector + task name row -->
@@ -72,7 +72,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Model:"
-                android:textColor="@color/jv_text2"
+                android:textColor="@color/inst_text_2"
                 android:textSize="12sp"
                 android:layout_marginEnd="6dp" />
 
@@ -93,8 +93,8 @@
                 android:layout_marginStart="8dp"
                 android:background="@drawable/pill_background_dim"
                 android:hint="Name (optional)"
-                android:textColorHint="@color/jv_text2"
-                android:textColor="@color/jv_text"
+                android:textColorHint="@color/inst_text_2"
+                android:textColor="@color/inst_text"
                 android:textSize="12sp"
                 android:paddingStart="10dp"
                 android:paddingEnd="10dp"
@@ -123,8 +123,8 @@
                 android:maxLines="5"
                 android:background="@drawable/pill_background_dim"
                 android:hint="What should Kai work on?"
-                android:textColorHint="@color/jv_text2"
-                android:textColor="@color/jv_text"
+                android:textColorHint="@color/inst_text_2"
+                android:textColor="@color/inst_text"
                 android:textSize="14sp"
                 android:paddingStart="14dp"
                 android:paddingEnd="14dp"

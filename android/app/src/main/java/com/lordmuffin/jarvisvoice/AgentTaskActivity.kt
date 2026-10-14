@@ -325,11 +325,11 @@ class AgentTaskActivity : AppCompatActivity() {
             if (role == "user") {
                 lp.gravity = Gravity.END
                 h.tvMsg.setBackgroundResource(R.drawable.chat_bubble_user)
-                h.tvMsg.setTextColor(getColor(R.color.jv_bg))
+                h.tvMsg.setTextColor(getColor(R.color.inst_on_accent))
             } else {
                 lp.gravity = Gravity.START
                 h.tvMsg.setBackgroundResource(R.drawable.chat_bubble_ai)
-                h.tvMsg.setTextColor(getColor(R.color.jv_text))
+                h.tvMsg.setTextColor(getColor(R.color.inst_text))
             }
             h.tvMsg.layoutParams = lp
         }
@@ -342,10 +342,10 @@ class AgentTaskActivity : AppCompatActivity() {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun statusColor(status: String) = when (status) {
-        "running"   -> R.color.jv_warning
-        "done"      -> R.color.jv_accent
-        "failed"    -> R.color.jv_error
-        else        -> R.color.jv_text2
+        "running"   -> R.color.inst_warning
+        "done"      -> R.color.inst_accent
+        "failed"    -> R.color.inst_error
+        else        -> R.color.inst_text_2
     }
 
     private fun AgentTask.elapsedLabel(): String {

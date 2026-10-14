@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="4dp"
-    android:background="@color/jv_surface"
+    android:background="@color/inst_surface"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
@@ -23,7 +23,7 @@
             android:layout_weight="1"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/jv_text"
+            android:textColor="@color/inst_text"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -32,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:background="@color/jv_surface2"
+            android:background="@color/inst_surface_2"
             android:letterSpacing="0.1"
             android:paddingStart="6dp"
             android:paddingTop="2dp"
@@ -47,6 +47,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:textColor="@color/jv_text2"
+        android:textColor="@color/inst_text_2"
         android:textSize="11sp" />
 </LinearLayout>

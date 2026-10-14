@@ -13,8 +13,8 @@ object BottomNav {
     fun wire(activity: AppCompatActivity, active: Tab) {
         val root = activity.findViewById<LinearLayout>(R.id.bottom_nav_root) ?: return
 
-        val accent = activity.getColor(R.color.jv_accent)
-        val dimmed = activity.getColor(R.color.jv_text2)
+        val accent = activity.getColor(R.color.inst_accent)
+        val dimmed = activity.getColor(R.color.inst_text_2)
 
         data class TabDef(val tab: Tab, val tabId: Int, val iconId: Int, val labelId: Int)
 
