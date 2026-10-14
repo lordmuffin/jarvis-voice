@@ -53,16 +53,30 @@ class LiveApiClient(
      * `GET /healthz` within [PROBE_TIMEOUT_S]: can this network reach the server at all? Any
      * failure is false. Checks the body so a captive portal answering 200 doesn't count.
      */
-    suspend fun isReachable(): Boolean = withContext(Dispatchers.IO) {
+    suspend fun isReachable(): Boolean {
+        val body = health() ?: return false
+        return try {
+            JSONObject(body).optString("status") == "ok"
+        } catch (e: JSONException) {
+            false
+        }
+    }
+
+    /**
+     * The server's release channel, from the `environment` in `GET /healthz` (unauthenticated).
+     * Null when it can't be reached within [PROBE_TIMEOUT_S] or doesn't say.
+     */
+    suspend fun channel(): ServerChannel? = health()?.let(ServerChannel::fromHealthz)
+
+    /** The body of a 2xx `GET /healthz` within [PROBE_TIMEOUT_S], or null. */
+    private suspend fun health(): String? = withContext(Dispatchers.IO) {
         val client = http.newBuilder().callTimeout(PROBE_TIMEOUT_S, TimeUnit.SECONDS).build()
         try {
             client.newCall(Request.Builder().url(url("healthz")).get().build()).execute().use { res ->
-                res.isSuccessful && JSONObject(res.body?.string().orEmpty()).optString("status") == "ok"
+                if (res.isSuccessful) res.body?.string().orEmpty() else null
             }
         } catch (e: IOException) {
-            false
-        } catch (e: JSONException) {
-            false
+            null
         }
     }
 

@@ -308,20 +308,37 @@
                 android:letterSpacing="0.08"
                 android:layout_marginBottom="8dp" />
 
-            <EditText
-                android:id="@+id/et_live_server_url"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="@string/live_settings_url_hint"
-                android:inputType="textUri"
-                android:importantForAutofill="no"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="6dp" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="6dp">
+
+                <EditText
+                    android:id="@+id/et_live_server_url"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/live_settings_url_hint"
+                    android:inputType="textUri"
+                    android:importantForAutofill="no"
+                    android:textColor="@color/jv_text"
+                    android:textColorHint="@color/jv_text2"
+                    android:background="@drawable/permission_card_bg"
+                    android:padding="12dp"
+                    android:textSize="13sp"
+                    android:fontFamily="monospace" />
+
+                <!-- The saved server's release channel (GET /healthz); gone until it answers. -->
+                <TextView
+                    android:id="@+id/tv_live_channel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <Button
                 android:id="@+id/btn_live_sign_in"

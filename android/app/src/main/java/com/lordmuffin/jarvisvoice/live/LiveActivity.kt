@@ -32,8 +32,10 @@ import androidx.work.WorkManager
 import com.lordmuffin.jarvisvoice.BottomNav
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
+import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -72,6 +74,9 @@ class LiveActivity : AppCompatActivity() {
     /** Set while [renderAwayMode] moves the switch, so it doesn't count as the user's choice. */
     private var settingSwitch = false
     private var checkingNetwork = false
+    /** The release channel `GET /healthz` reported, and for which server URL. */
+    private var serverChannel: Pair<String, ServerChannel>? = null
+    private var channelJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -155,6 +160,19 @@ class LiveActivity : AppCompatActivity() {
         // Finish online sessions a crash or network loss left behind.
         LiveUploadWorker.enqueueInterrupted(this, LiveSessionService.ui.value.sessionId)
         renderAwayMode()
+        refreshServerChannel()
+    }
+
+    /** Asks the server which release channel it is, for the tag beside its address. */
+    private fun refreshServerChannel() {
+        channelJob?.cancel()
+        if (!settings.isConfigured) return
+        val url = settings.serverUrl
+        val client = runCatching { LiveApiClient(url, "") }.getOrNull() ?: return
+        channelJob = lifecycleScope.launch {
+            serverChannel = client.channel()?.let { url to it }
+            render(LiveSessionService.ui.value)
+        }
     }
 
     /** Away from home and off NetBird → Local only, unless the user chose otherwise. */
@@ -228,12 +246,16 @@ class LiveActivity : AppCompatActivity() {
         recordingGroup.visibility = if (idle) View.GONE else View.VISIBLE
         btnStart.isEnabled = idle
 
-        tvStatus.text = when (state.phase) {
-            LiveUiState.Phase.IDLE -> if (settings.isConfigured) "Server: ${settings.serverUrl}"
-                else getString(R.string.live_not_configured)
-            LiveUiState.Phase.STARTING -> "Starting…"
-            LiveUiState.Phase.RECORDING -> connectionLabel(state)
-            LiveUiState.Phase.STOPPING -> "Finishing — sending the rest of the audio…"
+        when (state.phase) {
+            LiveUiState.Phase.IDLE -> if (settings.isConfigured) {
+                val url = settings.serverUrl
+                tvStatus.setTextWithChannel("Server: $url", serverChannel?.takeIf { it.first == url }?.second)
+            } else {
+                tvStatus.text = getString(R.string.live_not_configured)
+            }
+            LiveUiState.Phase.STARTING -> tvStatus.text = "Starting…"
+            LiveUiState.Phase.RECORDING -> tvStatus.text = connectionLabel(state)
+            LiveUiState.Phase.STOPPING -> tvStatus.text = "Finishing — sending the rest of the audio…"
         }
         tvMessage.text = state.message
         tvMessage.visibility = if (state.message.isNullOrBlank()) View.GONE else View.VISIBLE
