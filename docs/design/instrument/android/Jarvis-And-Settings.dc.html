@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android Settings</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.dv{width:412px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-1);display:flex;flex-direction:column;overflow:hidden}
+.ab{flex:none;display:flex;align-items:center;gap:4px;height:56px;padding:0 8px 0 4px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.ab .i-switcher{width:48px;height:48px}
+.ab h1{font-size:18px}
+.bd{flex:1;min-height:0;overflow:hidden;padding:0 16px 16px;display:flex;flex-direction:column}
+.sl{padding:14px 0 4px}
+.j-srow.sr{gap:8px;padding:6px 12px}
+.sr .lb{flex:none;font-size:14px}
+.sr .v{flex:1;min-width:0;text-align:right;font-size:12px;color:var(--inst-text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sr .af{flex:none;width:12px;text-align:center;font-size:11px;color:var(--inst-text-2)}
+.i-block.jl{display:flex;flex-direction:column;gap:12px;padding:12px}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1000px; height: 1920px; padding: 40px 64px; display: flex; gap: 48px; align-items: flex-start; background: var(--inst-bg); overflow: hidden;">
+
+  <!-- Tall: the regrouped settings, full scroll -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Folded · 412 · Settings, full scroll · signed in</span>
+    <section class="inst dv" aria-label="Settings">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">Settings</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div class="bd">
+        <section class="i-stack" aria-labelledby="s1">
+          <h2 id="s1" class="t-label sl">Jarvis Live</h2>
+          <div class="i-block jl">
+            <div class="i-field">
+              <label class="i-label" for="a-url" style="display: flex; align-items: center; gap: 8px;">Server URL <span class="i-badge i-badge--live">Live</span></label>
+              <input id="a-url" class="i-input i-input--mono" style="height: 48px;" value="https://live.apj.dev">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; min-height: 48px;">
+              <span class="i-stack" style="gap: 0; flex: 1; min-width: 0;"><span class="t-body"><span style="color: var(--inst-accent);">●</span> Signed in with Pocket ID</span><span class="t-meta t-2">andrew@apj.dev · Pixel Fold</span></span>
+              <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Sign Out</button>
+            </div>
+            <div class="i-field">
+              <label class="i-label" for="a-tok">Device token</label>
+              <input id="a-tok" class="i-input i-input--mono" style="height: 48px;" readonly value="jlv_dev_••••••••a41c" aria-describedby="a-tok-h">
+              <span id="a-tok-h" class="i-help">Set when you sign in. Paste one only if an admin gave it to you.</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="i-btn i-btn--primary" style="height: 48px; flex: 1;">Save</button>
+              <button type="button" class="i-btn i-btn--secondary" style="height: 48px; flex: 1;">Test Connection</button>
+            </div>
+            <span class="i-msg-ok" role="status" style="margin-top: -4px;">✓ Connected to <span class="t-mono">live.apj.dev</span></span>
+            <div class="i-stack" style="gap: 0;">
+              <button type="button" role="switch" aria-checked="true" class="i-switch" style="min-height: 48px;" aria-describedby="a-away"><span class="track"><span class="knob"></span></span><span class="state">ON</span><span>Local only away from home</span></button>
+              <span id="a-away" class="i-help">Away from your home network, sessions record on this phone. Upload them later.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="i-stack" aria-labelledby="s2">
+          <h2 id="s2" class="t-label sl">Dictation</h2>
+          <div class="i-block" style="display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 8px 8px 8px 12px;">
+            <span class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="t-body">Overlay <span class="t-strong" style="color: var(--inst-accent);">● Running</span></span><span class="t-meta t-2"><span class="t-mono">1,284</span> words today · <span class="t-mono">48.2k</span> all time · <span class="t-mono">136</span> wpm</span></span>
+            <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Restart</button>
+          </div>
+          <sc-for list="{{dict}}" as="r" hint-placeholder-count="5"><a href="#" class="j-srow sr"><span class="lb">{{r.l}}</span><span class="{{r.vc}}">{{r.v}}</span><span class="af" aria-hidden="true">{{r.a}}</span></a></sc-for>
+        </section>
+
+        <section class="i-stack" aria-labelledby="s3">
+          <h2 id="s3" class="t-label sl">Models</h2>
+          <sc-for list="{{models}}" as="r" hint-placeholder-count="4"><a href="#" class="j-srow sr"><span class="lb">{{r.l}}</span><span class="{{r.vc}}">{{r.v}}</span><span class="af" aria-hidden="true">{{r.a}}</span></a></sc-for>
+        </section>
+
+        <section class="i-stack" aria-labelledby="s4">
+          <h2 id="s4" class="t-label sl">Kai</h2>
+          <sc-for list="{{kai}}" as="r" hint-placeholder-count="3"><a href="#" class="j-srow sr"><span class="lb">{{r.l}}</span><span class="{{r.vc}}">{{r.v}}</span><span class="af" aria-hidden="true">{{r.a}}</span></a></sc-for>
+        </section>
+
+        <section class="i-stack" aria-labelledby="s5">
+          <h2 id="s5" class="t-label sl">Device</h2>
+          <sc-for list="{{device}}" as="r" hint-placeholder-count="2"><a href="#" class="j-srow sr"><span class="lb">{{r.l}}</span><span class="{{r.vc}}">{{r.v}}</span><span class="af" aria-hidden="true">{{r.a}}</span></a></sc-for>
+          <div class="i-block" style="display: flex; align-items: center; min-height: 52px; padding: 2px 12px;">
+            <button type="button" role="switch" aria-checked="true" class="i-switch" style="min-height: 48px; width: 100%;"><span style="flex: 1; text-align: left;">Notifications</span><span class="state">ON</span><span class="track"><span class="knob"></span></span></button>
+          </div>
+          <a href="#" class="j-srow sr" style="min-height: 60px;">
+            <span class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="lb">Notification settings <span class="i-chip" style="margin-left: 4px;">Planned</span></span><span class="t-meta t-2">Per-event toggles, priority, Send Test</span></span>
+            <span class="af" aria-hidden="true">▶</span>
+          </a>
+        </section>
+
+        <section class="i-stack" aria-labelledby="s6">
+          <h2 id="s6" class="t-label sl">About</h2>
+          <div class="i-block j-srow sr" style="cursor: default;"><span class="lb">Version</span><span class="v t-mono">Jarvis Voice 1.12.0 · 7c41e2b</span><span class="af"></span></div>
+          <a href="#" class="j-srow sr"><span class="lb">Debug log</span><span class="v">412 lines today</span><span class="af" aria-hidden="true">▶</span></a>
+        </section>
+      </div>
+      <nav class="i-bottombar" aria-label="Main" style="flex: none;">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+    </section>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 40px;">
+    <!-- Signed out, test error -->
+    <div class="i-stack" style="gap: 8px;">
+      <span class="t-micro t-2">Jarvis Live · signed out · token rejected by Test Connection</span>
+      <section class="inst dv" aria-label="Settings, Jarvis Live signed out" style="height: 892px;">
+        <header class="ab">
+          <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+          <h1 class="i-wordmark">Settings</h1>
+          <span class="i-badge i-badge--live">Live</span>
+        </header>
+        <div class="bd">
+          <section class="i-stack" aria-labelledby="o1">
+            <h2 id="o1" class="t-label sl">Jarvis Live</h2>
+            <div class="i-block jl">
+              <div class="i-field">
+                <label class="i-label" for="o-url" style="display: flex; align-items: center; gap: 8px;">Server URL <span class="i-badge i-badge--live">Live</span></label>
+                <input id="o-url" class="i-input i-input--mono" style="height: 48px;" value="https://live.apj.dev">
+              </div>
+              <div class="i-stack" style="gap: 8px;">
+                <span class="t-body"><span class="t-2">○</span> Not signed in</span>
+                <button type="button" class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">Sign In with Pocket ID</button>
+              </div>
+              <div class="i-field">
+                <label class="i-label" for="o-tok">Device token <span class="opt">(or paste one)</span></label>
+                <input id="o-tok" class="i-input i-input--mono" style="height: 48px;" aria-invalid="true" aria-describedby="o-tok-e" value="jlv_dev_3f9c2a1e…">
+                <span id="o-tok-e" class="i-msg-error" role="alert">✕ The server rejected this token. Sign in again.</span>
+              </div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" class="i-btn i-btn--secondary" style="height: 48px; flex: 1;">Save</button>
+                <button type="button" class="i-btn i-btn--secondary" style="height: 48px; flex: 1;">Test Connection</button>
+              </div>
+              <div class="i-stack" style="gap: 0;">
+                <button type="button" role="switch" aria-checked="true" class="i-switch" style="min-height: 48px;" aria-describedby="o-away"><span class="track"><span class="knob"></span></span><span class="state">ON</span><span>Local only away from home</span></button>
+                <span id="o-away" class="i-help">Away from your home network, sessions record on this phone. Upload them later.</span>
+              </div>
+            </div>
+          </section>
+          <section class="i-stack" aria-labelledby="o2">
+            <h2 id="o2" class="t-label sl">Dictation</h2>
+            <div class="i-block" style="display: flex; align-items: center; gap: 8px; min-height: 64px; padding: 8px 8px 8px 12px;">
+              <span class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="t-body">Overlay <span class="t-strong t-2">○ Not running</span></span><span class="t-meta t-2">Draw over apps is off.</span></span>
+              <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Restart</button>
+            </div>
+            <sc-for list="{{dict}}" as="r" hint-placeholder-count="5"><a href="#" class="j-srow sr"><span class="lb">{{r.l}}</span><span class="{{r.vc}}">{{r.v}}</span><span class="af" aria-hidden="true">{{r.a}}</span></a></sc-for>
+          </section>
+        </div>
+        <nav class="i-bottombar" aria-label="Main" style="flex: none;">
+          <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+        </nav>
+      </section>
+    </div>
+
+    <!-- Record when signed out -->
+    <div class="i-stack" style="gap: 8px;">
+      <span class="t-micro t-2">Record · signed out (top of screen)</span>
+      <section class="inst dv" aria-label="Record, signed out" style="height: 470px;">
+        <header class="ab">
+          <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+          <h1 class="i-wordmark">Record</h1>
+          <a href="#" class="i-btn i-btn--quiet" style="margin-left: auto; height: 48px;">History</a>
+        </header>
+        <div class="bd" style="padding-top: 12px; gap: 10px;">
+          <div class="i-banner" role="status" style="align-items: center;"><span id="r-so" style="flex: 1 1 200px;">Sign in to Jarvis Live in Settings to stream. Local only works without it.</span><a href="#" class="i-banner-act i-btn i-btn--secondary" style="height: 48px;">Open Settings</a></div>
+          <section class="i-block" aria-label="New session" style="display: flex; flex-direction: column; gap: 8px; padding: 12px;">
+            <div class="i-seg" role="radiogroup" aria-label="Mode" style="display: flex;">
+              <button type="button" role="radio" aria-checked="true" style="flex: 1; height: 44px; font-size: 14px;">🎙 Solo</button>
+              <button type="button" role="radio" aria-checked="false" style="flex: 1; height: 44px; font-size: 14px;">👥 Meeting</button>
+            </div>
+            <div class="i-field">
+              <label class="i-label" for="r-title">Title <span class="opt">(optional)</span></label>
+              <input id="r-title" class="i-input" style="height: 48px;" placeholder="Untitled session">
+            </div>
+            <button type="button" role="switch" aria-checked="true" class="i-switch" disabled aria-describedby="r-so" style="min-height: 48px;"><span class="track"><span class="knob"></span></span><span class="state">ON</span><span>Local only (no network)</span></button>
+            <span class="i-reason" style="margin-top: -6px;">⚑ On until you sign in.</span>
+            <button type="button" class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">Start Session</button>
+          </section>
+        </div>
+      </section>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1920}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (l, v, a, mono) => ({ l, v, a, vc: mono ? 'v t-mono' : 'v' });
+    const T = (ico, label, cur) => ({ ico, label, cur: cur ? 'page' : 'false' });
+    return {
+      dict: [
+        R('Capture key', 'Volume Down, hold', '▶'),
+        R('STT backend', 'On-device STT (Offline)', '▾'),
+        R('STT model', 'Whisper Small · 466 MB', '▾'),
+        R('Custom dictionary', '38 words', '▶'),
+        R('Dictation history', '1,912 entries', '▶')
+      ],
+      models: [
+        R('LLM enhancement', 'Gemma 4 E2B · on-device', '▾'),
+        R('HuggingFace token', 'hf_••••7Kq2', '▶', true),
+        R('Custom model server', '—', '▶'),
+        R('Models', '3 downloaded · 2.1 GB', '▶')
+      ],
+      kai: [
+        R('Voice (TTS) URL', 'tts.lab.apj.dev', '▶', true),
+        R('Voice', 'af_heart', '▾', true),
+        R('Vault folder', 'Documents/obsidian-vault', '▶', true)
+      ],
+      device: [
+        R('Audio input', 'Phone microphone', '▾'),
+        R('Data storage', 'Downloads/JarvisVoice · 1.4 GB', '▶')
+      ],
+      tabs: [T('🎙', 'Record'), T('💬', 'Chat'), T('📋', 'History'), T('🤖', 'Agent'), T('⚙️', 'Settings', true)]
+    };
+  }
+}
+</script>
+</body>
+</html>

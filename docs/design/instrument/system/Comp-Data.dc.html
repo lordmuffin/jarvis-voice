@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tables and charts</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1900px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+  <div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 1900px;">
+    <div class="i-stack" style="gap: 4px;">
+      <span class="t-label">3 · Components · {{th.name}}</span>
+      <h1 class="t-title">Tables and charts</h1>
+    </div>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Dense table · row states</h2>
+      <div class="i-table-wrap">
+        <table class="i-table">
+          <thead>
+            <tr><th scope="col">Night</th><th scope="col" class="num">Asleep</th><th scope="col" class="num i-hide-md">In bed ◌</th><th scope="col" class="num i-hide-sm">Wake ◌◌</th><th scope="col">Status</th><th scope="col" class="act"><span class="i-sr">Actions</span></th></tr>
+          </thead>
+          <tbody>
+            <tr class="i-group"><th scope="colgroup" colspan="6">October 2026</th></tr>
+            <tr><td style="font-weight: 600;">Sat 10</td><td class="num">6h 54m</td><td class="num i-hide-md">7h 30m</td><td class="num i-hide-sm">07:21</td><td><span class="i-chip i-chip--done">✓ Reviewed</span></td><td class="act"><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button></td></tr>
+            <tr class="is-hover"><td style="font-weight: 600;">Sun 11</td><td class="num">7h 24m</td><td class="num i-hide-md">7h 54m</td><td class="num i-hide-sm">06:56</td><td><span class="i-chip i-chip--done">✓ Reviewed</span></td><td class="act"><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button></td></tr>
+            <tr class="is-selected" aria-selected="true"><td style="font-weight: 600;">Mon 12</td><td class="num">5h 48m</td><td class="num i-hide-md">6h 36m</td><td class="num i-hide-sm">07:28</td><td><span class="i-chip i-chip--progress">To review</span></td><td class="act"><button type="button" class="i-btn i-btn--secondary i-btn--sm">Review</button></td></tr>
+            <tr class="is-saving" aria-busy="true"><td style="font-weight: 600;">Tue 13</td><td class="num">7h 06m</td><td class="num i-hide-md">7h 30m</td><td class="num i-hide-sm">07:06</td><td><span class="i-chip i-chip--progress">To review</span></td><td class="act"><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--inst-text-2);"><span class="i-spin"></span>Saving</span></td></tr>
+            <tr class="is-saved"><td style="font-weight: 600;">Wed 14</td><td class="num">7h 12m</td><td class="num i-hide-md">7h 48m</td><td class="num i-hide-sm">06:58</td><td><span class="i-chip i-chip--done">✓ Reviewed</span></td><td class="act"><span style="font-size: 12px; font-weight: 600; color: var(--inst-accent);">✓ Saved</span></td></tr>
+            <tr class="is-error"><td style="font-weight: 600;">Thu 15</td><td class="num">—</td><td class="num i-hide-md">—</td><td class="num i-hide-sm">—</td><td><span class="i-chip i-chip--failed">✕ Not saved</span></td><td class="act"><button type="button" class="i-btn i-btn--secondary i-btn--sm">↩ Retry</button></td></tr>
+            <tr class="i-group"><th scope="colgroup" colspan="6">September 2026</th></tr>
+            <tr aria-busy="true"><td><span class="i-skel" style="width: 48px;"></span></td><td class="num"><span class="i-skel" style="width: 44px;"></span></td><td class="num i-hide-md"><span class="i-skel" style="width: 44px;"></span></td><td class="num i-hide-sm"><span class="i-skel" style="width: 36px;"></span></td><td><span class="i-skel" style="width: 64px;"></span></td><td class="act"><span class="i-skel" style="width: 32px;"></span></td></tr>
+            <tr aria-busy="true"><td><span class="i-skel" style="width: 48px;"></span></td><td class="num"><span class="i-skel" style="width: 44px;"></span></td><td class="num i-hide-md"><span class="i-skel" style="width: 44px;"></span></td><td class="num i-hide-sm"><span class="i-skel" style="width: 36px;"></span></td><td><span class="i-skel" style="width: 64px;"></span></td><td class="act"><span class="i-skel" style="width: 32px;"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+        <div class="i-block t-caption"><b>Rows, top to bottom:</b> default · hover · selected · saving (dimmed, spinner, aria-busy) · just saved (accent tint for 2 s, then default) · failed (error tint, ↩ Retry) · loading skeleton (static, no shimmer).</div>
+        <div class="i-block t-caption"><b>In-place swap.</b> An action posts and the server returns the one row; HTMX swaps that &lt;tr&gt; (outerHTML). Columns marked ◌ hide below 900, ◌◌ below 600 (<span class="t-mono">.i-hide-md</span>, <span class="t-mono">.i-hide-sm</span>); the first column and the actions never hide.</div>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Bar chart · container vs value, mean, tooltip</h2>
+      <div class="i-block" style="padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;">
+          <span class="t-label">Last 14 nights</span>
+          <div class="i-legend">
+            <span><span class="i-sw" style="background: var(--inst-chart-1);"></span>Asleep</span>
+            <span><span class="i-sw i-sw--outline" style="border-color: var(--inst-chart-1);"></span>In bed</span>
+            <span><span class="i-sw--mean"></span>Mean</span>
+            <button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-pressed="true" style="color: var(--inst-accent);">Hide Table</button>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+          <div aria-hidden="true" style="width: 22px; flex: none; position: relative; height: 140px;" class="t-mono t-micro t-2">
+            <span style="position: absolute; right: 0; bottom: 106px;">8h</span><span style="position: absolute; right: 0; bottom: 50px;">4h</span><span style="position: absolute; right: 0; bottom: -6px;">0</span>
+          </div>
+          <div role="img" aria-label="Bar chart of asleep and in-bed time, 14 nights. Mean 7 hours 4 minutes. The table below has every value." style="flex: 1; position: relative; height: 140px; display: flex; gap: 4px; border-bottom: 1px solid var(--inst-control);">
+            <span style="position: absolute; left: 0; right: 0; bottom: 112px; border-top: 1px solid var(--inst-line);"></span>
+            <span style="position: absolute; left: 0; right: 0; bottom: 56px; border-top: 1px solid var(--inst-line);"></span>
+            <sc-for list="{{bars}}" as="b" hint-placeholder-count="14">
+              <div style="flex: 1; position: relative; height: 140px;">
+                <span style="position: absolute; bottom: 0; left: 18%; right: 18%; height: {{b.bed}}px; border: 1px solid var(--inst-chart-1); border-bottom: 0;"></span>
+                <span style="position: absolute; bottom: 0; left: 18%; right: 18%; height: {{b.sl}}px; background: var(--inst-chart-1);"></span>
+              </div>
+            </sc-for>
+            <span style="position: absolute; left: 0; right: 0; bottom: {{meanPx}}px; border-top: 1.5px dashed var(--inst-text);"></span>
+            <span style="position: absolute; left: 81%; bottom: 128px; border-left: 1px solid var(--inst-text-2); height: 12px;"></span>
+            <div class="i-tooltip" role="tooltip" style="position: absolute; left: 66%; bottom: 140px; white-space: nowrap;"><b class="t-mono">Mon 12</b><br>Asleep <span class="t-mono">5h 48m</span> · In bed <span class="t-mono">6h 36m</span></div>
+          </div>
+        </div>
+        <div class="i-table-wrap" style="border-top: 1px solid var(--inst-line);">
+          <table class="i-table" style="font-size: 12px;">
+            <caption class="i-sr">Data for the chart above</caption>
+            <thead><tr><th scope="col">Night</th><th scope="col" class="num">Asleep</th><th scope="col" class="num">In bed</th></tr></thead>
+            <tbody>
+              <tr><td>Mon 12</td><td class="num">5h 48m</td><td class="num">6h 36m</td></tr>
+              <tr><td>Tue 13</td><td class="num">7h 06m</td><td class="num">7h 30m</td></tr>
+              <tr><td>Wed 14</td><td class="num">7h 12m</td><td class="num">7h 48m</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Trend line, small multiples, empty chart</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+        <div class="i-block" style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="t-label">Asleep · 30 nights</span>
+          <svg viewBox="0 0 300 100" width="100%" height="100" role="img" aria-label="Line chart of nightly sleep with a 7-night trend. The trend is flat near 7 hours.">
+            <line x1="0" y1="20" x2="300" y2="20" style="stroke: var(--inst-line);" stroke-width="1"></line>
+            <line x1="0" y1="60" x2="300" y2="60" style="stroke: var(--inst-line);" stroke-width="1"></line>
+            <line x1="0" y1="99" x2="300" y2="99" style="stroke: var(--inst-control);" stroke-width="1"></line>
+            <polyline points="{{linePts}}" fill="none" style="stroke: var(--inst-chart-1);" stroke-width="1.5"></polyline>
+            <polyline points="{{trendPts}}" fill="none" style="stroke: var(--inst-text);" stroke-width="1.5" stroke-dasharray="4 3"></polyline>
+          </svg>
+          <div class="i-legend"><span><span class="i-sw" style="background: var(--inst-chart-1); height: 2px;"></span>Nightly</span><span><span class="i-sw--mean"></span>7-night trend</span></div>
+        </div>
+        <div class="i-block" style="display: flex; flex-direction: column; gap: 8px;">
+          <span class="t-label">Asleep by weekday · shared scale</span>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;">
+            <sc-for list="{{multiples}}" as="m" hint-placeholder-count="4">
+              <div class="i-stack" style="gap: 4px;">
+                <div role="img" aria-label="{{m.alt}}" style="height: 56px; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--inst-control);">
+                  <sc-for list="{{m.v}}" as="h" hint-placeholder-count="4"><span style="flex: 1; height: {{h}}px; background: {{m.c}};"></span></sc-for>
+                </div>
+                <span class="t-micro t-2">{{m.name}}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div class="i-block" style="grid-column: 1 / -1; display: flex; gap: 16px; align-items: stretch;">
+          <div style="flex: 1; height: 96px; border-left: 1px solid var(--inst-control); border-bottom: 1px solid var(--inst-control); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 16px;">
+            <span class="i-stack" style="gap: 2px; align-items: center;"><span style="font-size: 13px; font-weight: 600;">No nights yet</span><span class="t-caption t-2">The chart fills in after your first synced night.</span></span>
+          </div>
+          <div class="t-caption t-2" style="width: 240px;">An empty chart keeps its axes and says why it is empty. It never shows a zero line as if zero were data.</div>
+        </div>
+      </div>
+      <div class="i-block t-caption"><b>Chart rules.</b> Series take chart-1 to chart-4 in order. A value is a solid bar; its container (in bed, a budget, capacity) is the same colour outlined. Mean and trend lines are a dashed 1.5 text line. Gridlines use line, the baseline control, and labels are text-2 mono. Tooltips are inverse. Every chart has a role="img" summary and a Show Table toggle with the same numbers.</div>
+    </section>
+  </div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const asleep = [7.2, 6.8, 7.5, 6.1, 7.9, 7.0, 6.5, 7.3, 8.1, 6.9, 7.4, 5.8, 7.1, 7.2];
+    const extra = [0.5, 0.4, 0.6, 0.7, 0.4, 0.5, 0.6, 0.4, 0.5, 0.6, 0.5, 0.8, 0.4, 0.6];
+    const px = 14;
+    const mean = asleep.reduce((a, b) => a + b, 0) / asleep.length;
+    const n30 = [];
+    for (let i = 0; i < 30; i++) n30.push(7 + Math.sin(i * 1.3) * 0.6 + Math.cos(i * 0.7) * 0.4);
+    const y = (h) => (100 - h * 10).toFixed(1);
+    const x = (i) => (i * 300 / 29).toFixed(1);
+    const linePts = n30.map((h, i) => x(i) + ',' + y(h)).join(' ');
+    const trend = n30.map((_, i) => { const s = n30.slice(Math.max(0, i - 6), i + 1); return s.reduce((a, b) => a + b, 0) / s.length; });
+    const trendPts = trend.map((h, i) => x(i) + ',' + y(h)).join(' ');
+    const M = (name, v, c) => ({ name, v, c, alt: name + ': ' + v.length + ' weeks, shared 0 to 9 hour scale.' });
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      bars: asleep.map((h, i) => ({ sl: Math.round(h * px), bed: Math.round((h + extra[i]) * px) })),
+      meanPx: Math.round(mean * px),
+      linePts,
+      trendPts,
+      multiples: [
+        M('Mon–Thu', [40, 44, 38, 42], 'var(--inst-chart-1)'),
+        M('Fri', [36, 34, 40, 33], 'var(--inst-chart-1)'),
+        M('Sat', [48, 50, 46, 51], 'var(--inst-chart-1)'),
+        M('Sun', [45, 47, 49, 44], 'var(--inst-chart-1)')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

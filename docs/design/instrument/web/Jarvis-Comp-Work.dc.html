@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work item and run components</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inst-text);padding-bottom:4px}
+.st{font-size:10px;color:var(--inst-text-2);padding:8px 0 2px}
+.cap{font-size:11px;color:var(--inst-text-2);padding-top:4px}
+.wh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.wh .ti{font-size:14px;font-weight:700;flex:1 1 200px;min-width:0}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2500px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+<div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 2500px;">
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · 3 · Components · {{th.name}}</span>
+    <h1 class="t-title">Work item card and run block</h1>
+  </div>
+
+  <section class="i-stack">
+    <h2 class="h">Draft · not ready</h2>
+    <article class="j-wi">
+      <div class="wh"><label class="i-choice" style="min-height: 24px;"><input type="checkbox" aria-label="Select for merge"></label><span class="ti">Document GPU runner pricing in the vault</span><span class="i-chip">Draft</span></div>
+      <dl>
+        <dt>Repository</dt><dd class="t-2">no repository yet</dd>
+        <dt>Intent</dt><dd>Record the vendor's GPU runner SKU and price beside the DGX node note.</dd>
+        <dt>Acceptance</dt><dd class="t-2">—</dd>
+        <dt>Done when</dt><dd>The note links the quote and the date it was given.</dd>
+        <dt>Source</dt><dd><a href="#" class="i-src" title="“We can support ARC scale sets, but GPU runners are a separate SKU.”">▶ 15:40</a></dd>
+      </dl>
+      <span class="i-reason">⚑ To approve: choose a repository; add at least one acceptance criterion.</span>
+      <div class="j-acts">
+        <button type="button" class="i-btn i-btn--sm" disabled>✓ Approve</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Preview Prompt</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Edit</button>
+        <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+      </div>
+    </article>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Draft · ready · selected for merge</h2>
+    <article class="j-wi">
+      <div class="wh"><label class="i-choice" style="min-height: 24px;"><input type="checkbox" checked aria-label="Select for merge"></label><span class="ti">Add ARM runner scale set to k3s2</span><span class="i-chip">Draft</span></div>
+      <dl>
+        <dt>Repository</dt><dd class="t-mono" style="font-size: 12px;">lordmuffin/np-home-homelab</dd>
+        <dt>Intent</dt><dd>Give k3s2 an ARC runner scale set for ARM builds, scoped to the org.</dd>
+        <dt>Acceptance</dt><dd><ul><li>A scale set named arm64 registers with the org.</li><li>Jobs with runs-on: arm64 land on it.</li></ul></dd>
+        <dt>Done when</dt><dd>A test workflow passes on arm64.</dd>
+        <dt>Source</dt><dd><a href="#" class="i-src" title="“What's the timeline for the ARM images?”">▶ 14:32</a> <a href="#" class="i-src" title="“Org level works for us. Four repos need runners.”">▶ 14:20</a></dd>
+      </dl>
+      <div class="j-acts">
+        <button type="button" class="i-btn i-btn--primary i-btn--sm">✓ Approve</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Preview Prompt</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Edit</button>
+        <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+      </div>
+    </article>
+    <div class="i-banner" style="margin-top: 4px;"><b>2 selected</b><span>Merge 2 drafts into</span><span class="i-select" style="width: 240px;"><select class="i-input" aria-label="Merge into" style="height: 32px;"><option>Add ARM runner scale set to k3s2</option></select></span><button type="button" class="i-btn i-btn--secondary i-btn--sm i-banner-act">Merge…</button></div>
+    <span class="cap">Merging works only within one session. A draft from another session can't be ticked, and says why.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Approved · prompt shown · LAB</h2>
+    <article class="j-wi j-wi--approved">
+      <div class="wh"><span class="ti">Add ARM runner scale set to k3s2</span><span class="i-chip i-chip--live">✓ Approved</span></div>
+      <span class="t-meta"><span class="t-mono t-2">lordmuffin/np-home-homelab</span> · <a href="#" class="i-src">▶ 14:32</a></span>
+      <div class="i-stack" style="gap: 0;">
+        <span class="t-mono t-meta t-2" style="padding: 6px 0;">Approved prompt · sha256 9f2c1a7e04bd</span>
+        <pre class="j-prompt">Repository: lordmuffin/np-home-homelab
+Goal: Give k3s2 an ARC runner scale set for ARM builds, scoped to the org.
+Acceptance:
+- A scale set named arm64 registers with the org.
+- Jobs with runs-on: arm64 land on it.
+Done when: A test workflow passes on arm64.</pre>
+      </div>
+      <div class="j-acts">
+        <button type="button" class="i-btn i-btn--primary i-btn--sm">▶ Run in Claude Code</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">⎘ Copy Prompt</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Hide Prompt</button>
+        <button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button>
+        <button type="button" class="i-btn i-btn--quiet i-btn--sm">Unapprove</button>
+        <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+      </div>
+    </article>
+    <span class="st">Copied · on LIVE, dispatch is off · preview header</span>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+      <button type="button" class="i-btn i-btn--secondary i-btn--sm">✓ Copied</button>
+      <button type="button" class="i-btn i-btn--sm" disabled>▶ Run in Claude Code</button>
+      <span class="i-reason">⚑ Claude Code runs only in LAB.</span>
+    </div>
+    <span class="t-mono t-meta t-2" style="padding: 4px 0;">Preview. Approving freezes the prompt exactly as shown.</span>
+    <span class="cap">Edit returns an approved item to Draft and clears its hash.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Run block · states</h2>
+    <sc-for list="{{runs}}" as="r" hint-placeholder-count="9">
+      <div class="j-run">
+        <div class="hd"><span>Claude Code · attempt {{r.n}}</span><span class="{{r.chip}}">{{r.state}}</span><sc-if value="{{r.pr}}" hint-placeholder-val="{{false}}"><a href="#">Draft PR #{{r.pr}}</a></sc-if><span style="margin-left: auto;">{{r.when}}</span></div>
+        <sc-if value="{{r.body}}" hint-placeholder-val="{{true}}"><p>{{r.body}}</p></sc-if>
+        <sc-if value="{{r.ask}}" hint-placeholder-val="{{false}}"><blockquote><b>Claude asks:</b> {{r.ask}}</blockquote></sc-if>
+        <div class="j-acts">
+          <sc-if value="{{r.cancel}}" hint-placeholder-val="{{false}}"><button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Cancel Run</button></sc-if>
+          <sc-if value="{{r.again}}" hint-placeholder-val="{{true}}"><button type="button" class="i-btn i-btn--secondary i-btn--sm">▶ Run Again</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">↪ Steer Next Run</button></sc-if>
+          <sc-if value="{{r.answer}}" hint-placeholder-val="{{false}}"><button type="button" class="i-btn i-btn--primary i-btn--sm">↪ Answer Claude</button><button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Cancel Run</button></sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Steer form</h2>
+    <form class="j-run" style="gap: 8px;">
+      <div class="i-field"><label class="i-label" for="steer-{{th.id}}">Answer Claude</label>
+        <textarea id="steer-{{th.id}}" class="i-input" maxlength="4000" aria-describedby="steer-h-{{th.id}}">Use the arc-systems namespace. Pin the controller chart to 0.9.3.</textarea>
+        <div style="display: flex; justify-content: space-between;"><span id="steer-h-{{th.id}}" class="i-help">Claude reads this before it continues.</span><span class="t-mono t-meta t-2">64 / 4000</span></div>
+      </div>
+      <div class="j-acts"><button type="submit" class="i-btn i-btn--primary i-btn--sm">↪ Continue</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Cancel</button></div>
+    </form>
+    <span class="cap">The same form reads “Steer the next run” when no run is waiting on you.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Discarded · merged</h2>
+    <article class="j-wi j-wi--retired"><div class="wh"><span class="ti">Price GPU runners against cloud</span><span class="i-chip">Discarded</span></div><div class="j-acts"><button type="button" class="i-btn i-btn--secondary i-btn--sm">↩ Restore</button></div></article>
+    <article class="j-wi j-wi--retired"><div class="wh"><span class="ti">Add node inventory export script</span><span class="i-chip">✓ Merged</span></div><span class="t-meta">Merged into <a href="#">Add ARM runner scale set to k3s2</a></span></article>
+  </section>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (n, state, tone, extra) => Object.assign({ n, state, chip: 'i-chip' + (tone ? ' i-chip--' + tone : ''), pr: 0, body: '', ask: '', cancel: false, again: false, answer: false, when: '' }, extra);
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      runs: [
+        R(1, 'Queued', '', { body: 'Waiting for a runner.', cancel: true, when: '15:41' }),
+        R(1, 'Running', 'progress', { body: 'Reading apps/ci and the ARC chart values.', cancel: true, when: '3 min' }),
+        R(1, '⚑ Needs your input', 'progress', { ask: 'Should the scale set live in arc-systems or in a new arc-arm namespace?', answer: true, when: '6 min' }),
+        R(2, '✓ Draft PR opened', 'done', { pr: 318, body: 'Adds the arm64 scale set and a test workflow. The ARM node needs the arm64 label first.', again: true, when: '12 min' }),
+        R(2, 'No changes', '', { body: 'The scale set already exists on main.', again: true, when: '4 min' }),
+        R(2, '■ Cancelled', '', { body: 'You cancelled this run.', again: true, when: '1 min' }),
+        R(3, '✕ Failed', 'failed', { body: 'The clone failed: the deploy key was refused.', again: true, when: '0:40' }),
+        R(3, '✕ Timed out', 'failed', { body: 'Stopped after 30 minutes without finishing.', again: true, when: '30 min' }),
+        R(3, '✕ Hit the Claude usage limit', 'failed', { body: 'Try again after the limit resets at 18:00.', again: true, when: '9 min' })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

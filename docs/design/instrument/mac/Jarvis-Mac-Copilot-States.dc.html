@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mac copilot states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.col{display:flex;flex-direction:column;gap:6px}
+.gap{height:10px;flex:none}
+.pn{background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-1);display:flex;flex-direction:column;overflow:hidden}
+.pn-tb{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.pn-tb .ttl{font-size:13px;font-weight:700}
+.pn-tb .i-switch{margin-left:auto;font-size:12px;min-height:28px}
+.pn-hd{flex:none;background:var(--inst-surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pn-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.pn-feed{flex:1;min-height:0;overflow:hidden;padding:8px 8px 4px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px}
+.ib{width:32px;height:32px;padding:0}
+.pn .i-dock{flex:none}
+.stop{display:flex;justify-content:center;gap:6px;padding:6px 0;font-size:11px;color:var(--inst-text-2)}
+.jump{position:absolute;left:50%;bottom:12px;transform:translateX(-50%)}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1440px; height: 900px; padding: 32px; display: flex; gap: 32px; align-items: flex-start;">
+
+  <!-- Column 1: header states -->
+  <div class="col" style="width: 480px;">
+    <span class="t-micro t-2">Reconnecting · still recording</span>
+    <section class="pn" aria-label="Panel header, reconnecting">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd">
+        <div class="pn-row">
+          <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+        </div>
+        <div class="pn-row" role="status">
+          <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Reconnecting · 3.2 s queued</span>
+          <span class="t-meta t-2">Still recording. Nothing is lost.</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="gap"></div>
+    <span class="t-micro t-2">Degraded · slower transcription tier</span>
+    <section class="pn" aria-label="Panel header, degraded">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd">
+        <div class="pn-row">
+          <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+        </div>
+        <div class="pn-row" role="status">
+          <span class="i-chip i-chip--progress">⚑ Degraded · gamingpc</span>
+          <span class="t-mono t-meta t-2">STT: server gamingpc · lag 3.4 s</span>
+        </div>
+        <span class="t-meta t-2">pve is busy, so a slower tier took over. Lines arrive later.</span>
+      </div>
+    </section>
+
+    <div class="gap"></div>
+    <span class="t-micro t-2">Local only · on-device draft</span>
+    <section class="pn" aria-label="Panel, Local only">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd">
+        <div class="pn-row">
+          <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+        </div>
+        <div class="pn-row" role="status">
+          <span class="i-chip" style="color: var(--inst-text);"><span class="i-sq"></span>Local only</span>
+          <span class="t-mono t-meta t-2">STT: on-device draft</span>
+        </div>
+      </div>
+      <div class="i-dock i-dock--quiet" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span></div>
+        <p class="txt">Copilot is off in Local only. The server writes it after you upload.</p>
+      </div>
+    </section>
+
+    <div class="gap"></div>
+    <span class="t-micro t-2">Offline · no audio after 10 s</span>
+    <section class="pn" aria-label="Panel, offline">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd">
+        <div class="pn-row">
+          <span class="i-live" role="status" style="border-color: var(--inst-control); border-style: dashed;"><span class="i-dot i-dot--hollow" style="background: none; color: var(--inst-text-2);"></span><span class="lbl" style="color: var(--inst-text-2);">OFFLINE</span><span class="time t-2">18:52</span></span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+        </div>
+        <div class="pn-row" role="status">
+          <span class="i-chip"><span class="i-dot i-dot--hollow"></span>Offline</span>
+          <span class="t-meta t-2">No audio for <span class="t-mono">0:10</span></span>
+        </div>
+      </div>
+      <div class="i-dock i-dock--quiet" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span></div>
+        <p class="txt">No audio is streaming. The session ends on its own after 10 minutes.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Column 2: after Stop -->
+  <div class="col" style="width: 480px;">
+    <span class="t-micro t-2">Finalizing · after Stop</span>
+    <section class="pn" aria-label="Panel, finalizing" style="height: 384px;">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd">
+        <div class="pn-row" role="status">
+          <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span>
+          <span class="t-mono t-caption">30:04</span>
+          <span class="t-meta t-2">ARC runner migration vendor call</span>
+        </div>
+        <div class="pn-row">
+          <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+          <span class="t-mono t-meta t-2">STT: server pve</span>
+        </div>
+      </div>
+      <div class="pn-feed" role="log" aria-label="Transcript and copilot">
+        <div class="i-utt i-utt--them"><span class="t">18:05</span><span class="i-spk i-spk--them">Them</span><span class="x">That works. We'd want read access to the cluster metrics during the pilot.</span></div>
+        <div class="i-utt"><span class="t">18:31</span><span class="i-spk i-spk--me">Me</span><span class="x">Metrics are fine, but nothing with write access to the cluster.</span></div>
+        <div class="i-utt i-utt--them"><span class="t">18:38</span><span class="i-spk i-spk--them">Them</span><span class="x">Understood, read-only is fine.</span></div>
+        <div class="stop" role="separator">■ Stopped · <span class="t-mono">30:04</span></div>
+      </div>
+      <div class="i-dock i-dock--quiet" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="i-spin" aria-hidden="true"></span></div>
+        <p class="txt">Writing the final note. It lands at the bottom of the feed.</p>
+      </div>
+    </section>
+
+    <div class="gap"></div>
+    <span class="t-micro t-2">Done · Final note row</span>
+    <section class="pn" aria-label="Panel, final note ready" style="height: 384px;">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd">
+        <div class="pn-row" role="status">
+          <span class="i-chip i-chip--done">✓ Done</span>
+          <span class="t-mono t-caption">30:04</span>
+          <span class="t-meta t-2">ARC runner migration vendor call</span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">Start Session</button>
+        </div>
+      </div>
+      <div class="pn-feed" role="log" aria-label="Transcript and copilot">
+        <div class="i-utt"><span class="t">18:31</span><span class="i-spk i-spk--me">Me</span><span class="x">Metrics are fine, but nothing with write access to the cluster.</span></div>
+        <div class="i-utt i-utt--them"><span class="t">18:38</span><span class="i-spk i-spk--them">Them</span><span class="x">Understood, read-only is fine.</span></div>
+        <div class="stop" role="separator">■ Stopped · <span class="t-mono">30:04</span></div>
+        <div class="i-event i-fresh" style="grid-template-columns: 44px auto minmax(0, 1fr) auto;"><span class="t">30:05</span><span class="i-chip k">Final note</span><span class="t-body t-strong">ARC runner migration vendor call <span class="i-new">New</span></span><a href="#" class="i-src">▶ Open</a></div>
+      </div>
+      <div class="i-dock i-dock--quiet" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span></div>
+        <p class="txt">Session ended. Nothing waiting.</p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Column 3: follow paused -->
+  <div class="col" style="width: 320px;">
+    <span class="t-micro t-2">Follow paused · strip 320</span>
+    <section class="pn" aria-label="Panel, follow paused" style="height: 812px;">
+      <div class="pn-tb"><span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button></div>
+      <div class="pn-hd" style="padding: 8px 10px; gap: 4px;">
+        <div class="pn-row" style="gap: 6px;">
+          <span class="i-chip i-chip--live" style="border-radius: 24px; padding: 0 8px;"><span class="i-dot i-breathe"></span>Rec 18:42</span>
+          <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+          <button type="button" class="i-btn i-btn--secondary ib" aria-label="Add marker" style="margin-left: auto;">⚑</button>
+          <button type="button" class="i-btn i-btn--secondary ib" aria-label="Stop session">■</button>
+        </div>
+        <span class="t-meta t-2">Follow paused</span>
+      </div>
+      <div style="flex: 1; min-height: 0; position: relative; display: flex; flex-direction: column;">
+        <div class="pn-feed" role="log" aria-label="Transcript and copilot" style="justify-content: flex-start;">
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+            <sc-if value="{{r.marker}}" hint-placeholder-val="{{false}}">
+              <div class="j-marker" style="padding: 4px 13px;"><span>⚑ {{r.text}}</span><span class="t">· {{r.t}}</span></div>
+            </sc-if>
+            <sc-if value="{{r.speech}}" hint-placeholder-val="{{true}}">
+              <div class="{{r.cls}} i-utt--stack"><span class="hd"><span class="{{r.spk}}">{{r.who}}</span><span class="t">{{r.t}}</span></span><span class="x">{{r.text}}</span></div>
+            </sc-if>
+            <sc-if value="{{r.event}}" hint-placeholder-val="{{false}}">
+              <div class="i-event i-event--stack"><span class="hd"><span class="i-chip">{{r.kind}}</span><span class="t">{{r.t}}</span></span><span class="t-body"><span class="g">{{r.g}}</span>{{r.text}} <span class="m">{{r.meta}}</span></span><a href="#" class="i-src" title="{{r.quote}}">{{r.src}}</a></div>
+            </sc-if>
+          </sc-for>
+        </div>
+        <button type="button" class="i-btn i-btn--secondary i-jump jump">↓ Jump to Latest · 3 new</button>
+      </div>
+      <div class="i-dock" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+        <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+        <span class="t-meta t-2">1 more waiting · Gap</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (who, t, text) => ({
+      speech: true, t, text, who: who === 'me' ? 'Me' : 'Them',
+      cls: 'i-utt' + (who === 'them' ? ' i-utt--them' : ''), spk: 'i-spk i-spk--' + who
+    });
+    const E = (t, kind, g, text, meta, src, quote) => ({ event: true, t, kind, g, text, meta: meta ? '· ' + meta : '', src: '▶ ' + src, quote: '“' + quote + '”' });
+    const q1358 = 'We run the controller in its own namespace. Scale sets register per repository or per org.';
+    const q1540 = 'We can support ARC scale sets, but GPU runners are a separate SKU.';
+    return {
+      rows: [
+        S('them', '13:58', q1358),
+        E('14:05', 'Related', '▶', 'GitHub ARC on k3s — Build Spec', '10 Projects/Homelab', '13:58', q1358),
+        S('me', '14:20', 'Org level works for us. Four repos need runners.'),
+        S('me', '14:32', "What's the timeline for the ARM images?"),
+        S('them', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+        E('15:00', 'Note', '•', 'No date yet for the ARM images.', '', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+        S('them', '15:40', q1540),
+        E('15:58', 'Related', '▶', 'DGX Spark K3s Node — Architecture Capture', '10 Projects/Jarvis/Infrastructure', '15:40', q1540),
+        { marker: true, t: '16:05', text: 'Pricing' },
+        S('me', '16:12', "Send me the GPU runner pricing and we'll size it against the DGX node."),
+        E('16:30', 'Action', '☐', 'Confirm GPU runner pricing.', 'Vendor · —', '16:12', "Send me the GPU runner pricing and we'll size it against the DGX node."),
+        S('them', '16:40', 'Sure. Can you send the node inventory so we can quote?')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

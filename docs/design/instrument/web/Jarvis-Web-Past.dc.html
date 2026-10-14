@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Past session</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>
+body{margin:0;background:#0D1117}
+.panes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.ptabs{display:none}
+@media (max-width:839px){.panes{grid-template-columns:minmax(0,1fr)}.ptabs{display:inline-flex}.pane-t{display:none}}
+</style></helmet>
+<div class="inst" data-theme="{{theme}}" style="min-height: 1300px; display: flex; flex-direction: column;">
+
+<header class="i-header">
+  <div class="i-header-in">
+    <div class="i-brand">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <a href="#" class="i-wordmark">Jarvis Live</a>
+      <span class="i-badge i-badge--live">Live</span>
+    </div>
+    <nav class="i-nav" aria-label="Main">
+      <a href="#" aria-current="page">Sessions</a>
+      <a href="#">Devices</a>
+      <a href="#">Work Items</a>
+      <a href="#">Publishing</a>
+      <a href="#">Admin</a>
+    </nav>
+    <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+  </div>
+</header>
+
+<main class="i-page" style="width: 100%; flex: 1;">
+  <a href="#" class="t-caption" style="align-self: flex-start;">↩ Sessions</a>
+
+  <section aria-label="Session" class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; padding: 12px 16px;">
+    <div class="i-stack" style="flex: 1 1 320px; min-width: 0;">
+      <span class="t-label">Meeting · Oct 14, 3:05 PM · <span class="t-mono">30:04</span></span>
+      <div class="i-row" style="gap: 4px 8px;">
+        <h1 class="t-body-lg t-strong">ARC runner migration vendor call</h1>
+        <button type="button" class="i-btn i-btn--quiet i-btn--sm">Rename</button>
+      </div>
+    </div>
+    <div class="i-stack" style="gap: 4px;"><span class="t-label">Status</span><span class="i-chip i-chip--done" style="align-self: flex-start;">✓ Done</span></div>
+  </section>
+
+  <section aria-label="Audio" class="i-stack" style="gap: 4px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 4px;">
+      <div class="i-player"><button type="button" class="play" aria-label="Play Me">▶</button><span class="i-spk i-spk--me">Me</span><span class="trk" role="slider" aria-label="Me position" aria-valuemin="0" aria-valuemax="1804" aria-valuenow="872" aria-valuetext="14:32 of 30:04"><span style="width: 48%;"></span><i style="left: 48%;"></i></span><span class="t-mono t-meta t-2">14:32 / 30:04</span></div>
+      <div class="i-player i-player--them"><button type="button" class="play" aria-label="Play Them">▶</button><span class="i-spk i-spk--them">Them</span><span class="trk" role="slider" aria-label="Them position" aria-valuemin="0" aria-valuemax="1804" aria-valuenow="0" aria-valuetext="0:00 of 30:04"><span style="width: 0%;"></span><i style="left: 0%;"></i></span><span class="t-mono t-meta t-2">0:00 / 30:04</span></div>
+    </div>
+    <span class="t-meta t-2">Audio is deleted on Jan 12, 2027. The transcript and note are kept.</span>
+  </section>
+
+  <section aria-label="Work items" class="i-stack" style="gap: 4px;">
+    <div class="j-sec" style="padding-top: 0;"><h2 class="t-label">Work items</h2><span class="t-mono t-meta t-2">1</span></div>
+    <div class="j-item">
+      <span class="g" aria-hidden="true">▶</span>
+      <span style="min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px;">
+        <span class="t-body" style="font-weight: 600;">Add ARM runner scale set to k3s2</span>
+        <span class="m">lordmuffin/np-home-homelab</span>
+        <a href="#" class="i-src" title="“What's the timeline for the ARM images?”">▶ 14:32</a>
+      </span>
+      <span style="display: flex; align-items: center; gap: 8px;"><span class="i-chip">Draft</span><a href="#" class="t-caption">Review</a></span>
+    </div>
+  </section>
+
+  <div class="i-seg ptabs" role="radiogroup" aria-label="Show" style="align-self: flex-start;">
+    <button type="button" role="radio" aria-checked="true">Note</button>
+    <button type="button" role="radio" aria-checked="false">Transcript</button>
+  </div>
+
+  <div class="panes">
+    <section class="pane-n i-stack" aria-labelledby="pn-h" style="gap: 4px; min-width: 0;">
+      <div class="j-sec" style="padding-top: 0;"><h2 id="pn-h" class="t-label">Note</h2></div>
+      <div class="i-block j-toolbar" aria-label="Note actions" role="toolbar">
+        <span class="i-chip i-chip--live">PR open</span>
+        <a href="#" class="t-mono t-caption">PR #212</a>
+        <span class="i-reason">⚑ Edited since it was published</span>
+        <div class="j-acts" style="flex-basis: 100%;">
+          <button type="button" class="i-btn i-btn--primary i-btn--sm">Publish Changes</button>
+          <a href="#" class="i-btn i-btn--secondary i-btn--sm">Review</a>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" aria-haspopup="dialog">Merge</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm">Close PR</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm" disabled aria-describedby="rg-r">Regenerate</button>
+          <span id="rg-r" class="i-reason">⚑ Close the pull request first.</span>
+        </div>
+      </div>
+      <article class="j-note" aria-label="Note" style="height: 740px; overflow: auto;">
+        <h1>ARC runner migration vendor call</h1>
+        <p class="t-meta t-2">Meeting · Oct 14, 2026 · 30 min · Andrew and the vendor</p>
+        <p>The vendor supports <b>ARC scale sets</b> on Kubernetes, with the controller in its own namespace. We agreed to pilot on <code>k3s2</code> before moving anything else. GPU runners are a separate SKU, and the ARM images have no date yet.</p>
+
+        <h2>Decisions</h2>
+        <ul>
+          <li>Pilot on the <b>k3s2</b> cluster first. The VM runners stay as a fallback.</li>
+          <li>Register scale sets at the org level, not per repository.</li>
+          <li>The vendor gets read-only access to cluster metrics during the pilot.</li>
+        </ul>
+
+        <h2>Actions</h2>
+        <ul class="tasks">
+          <li><span class="t-2" aria-hidden="true">☐</span> <span class="i-sr">To do:</span>Send the node inventory. <span class="t-meta t-2">Me · Fri 16 Oct</span></li>
+          <li><span class="t-2" aria-hidden="true">☐</span> <span class="i-sr">To do:</span>Confirm GPU runner pricing. <span class="t-meta t-2">Vendor · —</span></li>
+          <li class="t-2"><span aria-hidden="true">☑</span> <span class="i-sr">Done:</span>List the four repos that need runners. <span class="t-meta">Me · Oct 14</span></li>
+        </ul>
+
+        <h2>Open questions</h2>
+        <ul>
+          <li>When do the ARM images leave preview?</li>
+          <li>Would a GPU runner pool share the DGX card with whisper, or need its own profile?</li>
+          <li>What does egress cost during the pilot?</li>
+        </ul>
+
+        <h2>Follow-ups</h2>
+        <ul>
+          <li>Size the GPU runner quote against the DGX node once it arrives.</li>
+          <li>Create a metrics-only service account for the vendor, with no write verbs on <code>arc-systems</code>.</li>
+        </ul>
+
+        <h2>Work items</h2>
+        <ul>
+          <li>Add ARM runner scale set to k3s2 · <code>lordmuffin/np-home-homelab</code> · Draft</li>
+        </ul>
+
+        <h2>Related</h2>
+        <ul>
+          <li><span class="wiki">[[DGX Spark K3s Node — Architecture Capture]]</span></li>
+          <li><span class="wiki">[[GitHub ARC on k3s — Build Spec]]</span></li>
+          <li><a href="#" class="t-mono" style="font-size: 13px;">https://github.com/actions/actions-runner-controller</a></li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="pane-t i-stack" aria-labelledby="pt-h" style="gap: 4px; min-width: 0;">
+      <div class="j-sec" style="padding-top: 0;"><h2 id="pt-h" class="t-label">Transcript</h2><span class="t-mono t-meta t-2">30:04</span></div>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+        <span class="t-caption t-2">Linked to <span class="t-mono" style="color: var(--inst-text);">14:32</span></span>
+        <button type="button" class="i-btn i-btn--quiet i-btn--sm">Clear</button>
+        <span style="margin-left: auto; display: inline-flex; gap: 6px;"><span class="i-spk i-spk--me">Me</span><span class="i-spk i-spk--them">Them</span></span>
+      </div>
+      <div role="region" aria-label="Transcript" tabindex="0" style="height: 740px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 4px;">
+        <sc-for list="{{lines}}" as="l" hint-placeholder-count="20">
+          <sc-if value="{{l.marker}}" hint-placeholder-val="{{false}}">
+            <div class="j-marker"><span>⚑ {{l.text}}</span><span class="t">· {{l.t}}</span></div>
+          </sc-if>
+          <sc-if value="{{l.speech}}" hint-placeholder-val="{{true}}">
+            <div class="{{l.cls}}" aria-current="{{l.cur}}"><span class="t">{{l.t}}</span><span class="{{l.spk}}">{{l.who}}</span><span class="x">{{l.text}}</span></div>
+          </sc-if>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="i-footer">
+  <span>Audio is kept for 90 days. The transcript and note are kept.</span>
+  <span class="t-mono">server-v0.18.0 · 39e69a0</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1280,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = (who, t, text, target) => ({
+      speech: true, t, text, who: who === 'me' ? 'Me' : 'Them', cur: target ? 'true' : 'false',
+      cls: 'i-utt' + (who === 'them' ? ' i-utt--them' : '') + (target ? ' i-utt--target' : ''),
+      spk: 'i-spk i-spk--' + who
+    });
+    return {
+      theme: this.props.theme ?? 'dark',
+      lines: [
+        L('me', '11:02', 'Our builds run on six VM runners today, across four repos.'),
+        L('them', '11:20', 'Are those ephemeral, or do they keep state between jobs?'),
+        L('me', '11:31', "They keep state. That's part of why we want to move."),
+        L('them', '11:48', 'Scale sets fix that. Every job gets a fresh pod.'),
+        L('me', '12:15', 'How do the runners authenticate to GitHub?'),
+        L('them', '12:29', 'A GitHub App, installed once at the org.'),
+        L('me', '13:10', 'Good. We already run one for Flux.'),
+        L('them', '13:58', 'We run the controller in its own namespace. Scale sets register per repository or per org.'),
+        L('me', '14:20', 'Org level works for us. Four repos need runners.'),
+        L('me', '14:32', "What's the timeline for the ARM images?", true),
+        L('them', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+        L('them', '15:40', 'We can support ARC scale sets, but GPU runners are a separate SKU.'),
+        { marker: true, t: '16:05', text: 'Pricing' },
+        L('me', '16:12', "Send me the GPU runner pricing and we'll size it against the DGX node."),
+        L('them', '16:40', 'Sure. Can you send the node inventory so we can quote?'),
+        L('me', '17:02', "I'll send it by Friday."),
+        L('me', '17:30', "Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback."),
+        L('them', '18:05', "That works. We'd want read access to the cluster metrics during the pilot."),
+        L('me', '18:31', 'Metrics are fine, but nothing with write access to the cluster.'),
+        L('them', '18:38', 'Understood, read-only is enough for us.')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

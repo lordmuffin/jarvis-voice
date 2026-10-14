@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>A Instrument: Jarvis Live copilot</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.fa{--bg:#0D1117;--sf:#161B22;--sf2:#1C2230;--tx:#E6EDF3;--tx2:#8B949E;--ac:#00F5D4;--onac:#04130F;--ok:#3FB950;--warn:#D29922;--err:#F85149;--them:#7B2FD4;--themtx:#B392F0;--line:#21262D;--ctl:#6E7681;--sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;--mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;font-family:var(--sans);color:var(--tx);background:var(--bg);font-variant-numeric:tabular-nums}
+.fa *{box-sizing:border-box}
+.fa a{color:var(--ac)}
+.fa a:hover{color:var(--tx)}
+.fa button,.fa input{font:inherit;color:inherit}
+.fa input::placeholder{color:var(--tx2)}
+.fa :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+@keyframes breathe{from{transform:scale(1);opacity:.85}to{transform:scale(1.4);opacity:1}}
+@keyframes lvl{0%,100%{transform:scaleY(.2)}50%{transform:scaleY(1)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.breathe{animation:breathe 1.4s ease-in-out infinite alternate}
+.lvl{transform-origin:bottom;animation:lvl .6s linear infinite}
+.spin{animation:spin .8s linear infinite}
+@media (prefers-reduced-motion:reduce){.breathe,.lvl,.spin{animation:none}}
+</style>
+</helmet>
+<div class="fa" style="min-height: 900px; display: flex; flex-direction: column;">
+
+<header style="background: var(--sf); border-bottom: 1px solid var(--line);">
+  <div style="max-width: 1280px; margin: 0 auto; padding: 0 16px; min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 24px;">
+    <div style="display: flex; align-items: center; gap: 8px; min-height: 44px; margin-left: -8px;">
+      <button type="button" aria-label="Switch app" aria-haspopup="true" style="width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; background: none; border: 0; color: var(--tx2); cursor: pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <span style="font-size: 15px; font-weight: 700; letter-spacing: -0.01em;">Jarvis Live</span>
+      <span style="display: inline-flex; align-items: center; height: 18px; padding: 0 8px; border-radius: 24px; background: #F85149; color: #0D1117; font-size: 9px; font-weight: 700; letter-spacing: 0.1em;">LIVE</span>
+    </div>
+    <nav aria-label="Main" style="display: flex; flex-wrap: wrap; flex: 1 1 auto;">
+      <a href="#" aria-current="page" style="display: flex; align-items: center; height: 44px; padding: 0 10px; font-size: 13px; font-weight: 600; color: var(--tx); text-decoration: none; border-bottom: 2px solid var(--ac);">Live</a>
+      <a href="#" style="display: flex; align-items: center; height: 44px; padding: 0 10px; font-size: 13px; color: var(--tx2); text-decoration: none; border-bottom: 2px solid transparent;">Sessions</a>
+      <a href="#" style="display: flex; align-items: center; height: 44px; padding: 0 10px; font-size: 13px; color: var(--tx2); text-decoration: none; border-bottom: 2px solid transparent;">Notes</a>
+      <a href="#" style="display: flex; align-items: center; height: 44px; padding: 0 10px; font-size: 13px; color: var(--tx2); text-decoration: none; border-bottom: 2px solid transparent;">Work</a>
+    </nav>
+    <div style="display: flex; align-items: center; gap: 12px; font-size: 12px; min-height: 44px;">
+      <span style="color: var(--tx2);">Andrew</span>
+      <button type="button" style="height: 32px; padding: 0 4px; background: none; border: 0; color: var(--tx2); font-size: 12px; text-decoration: underline; cursor: pointer;">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main style="flex: 1; width: 100%; max-width: 1280px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;">
+
+  <section aria-label="Session" style="background: var(--sf); padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px;">
+    <div style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+      <span style="font-size: 11px; letter-spacing: 0.08em; color: var(--tx2);">MEETING</span>
+      <h1 style="margin: 0; font-size: 16px; font-weight: 700;">Platform sync</h1>
+      <span style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">Started 14:02 · 3 speakers · English</span>
+    </div>
+    <div role="status" aria-label="Recording, 23 minutes 41 seconds" style="display: inline-flex; align-items: center; gap: 10px; height: 36px; padding: 0 14px; border-radius: 24px; border: 1.5px solid var(--ac); background: var(--sf2);">
+      <span class="breathe" style="width: 8px; height: 8px; border-radius: 50%; background: var(--ac);"></span>
+      <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: var(--ac);">REC</span>
+      <span style="font-family: var(--mono); font-size: 13px;">00:23:41</span>
+      <span aria-hidden="true" style="display: flex; align-items: flex-end; gap: 2px; height: 14px;">
+        <span class="lvl" style="width: 3px; height: 14px; background: var(--ac); border-radius: 1px;"></span>
+        <span class="lvl" style="width: 3px; height: 14px; background: var(--ac); border-radius: 1px; animation-duration: .72s; animation-delay: .08s;"></span>
+        <span class="lvl" style="width: 3px; height: 14px; background: var(--ac); border-radius: 1px; animation-duration: .84s; animation-delay: .16s;"></span>
+      </span>
+    </div>
+    <button type="button" style="height: 36px; padding: 0 16px; border-radius: 24px; background: var(--sf2); border: 1px solid var(--ctl); font-size: 13px; font-weight: 600; cursor: pointer;">■ Stop</button>
+  </section>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;">
+
+    <section aria-labelledby="a-tr" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 4px;">
+        <h2 id="a-tr" style="margin: 0; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; color: var(--tx2);">TRANSCRIPT</h2>
+        <span style="font-size: 11px; color: var(--tx2);">Auto-scroll on</span>
+      </div>
+      <sc-for list="{{lines}}" as="l" hint-placeholder-count="4">
+        <div style="background: var(--sf); padding: 12px; display: flex; gap: 12px;">
+          <div style="width: 64px; flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+            <sc-if value="{{l.you}}" hint-placeholder-val="{{true}}">
+              <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 6px; background: var(--ac); color: var(--onac);">YOU</span>
+            </sc-if>
+            <sc-if value="{{l.them}}" hint-placeholder-val="{{false}}">
+              <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 6px; background: var(--them); color: #FFFFFF;">THEM</span>
+            </sc-if>
+            <span style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">{{l.t}}</span>
+          </div>
+          <p style="margin: 0; font-size: 15px; line-height: 1.45;">{{l.text}}</p>
+        </div>
+      </sc-for>
+      <div style="background: var(--sf); padding: 12px; display: flex; gap: 12px;">
+        <div style="width: 64px; flex: none; display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
+          <span style="font-size: 9px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 6px; background: var(--them); color: #FFFFFF;">THEM</span>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">14:22:19</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <p style="margin: 0; font-size: 15px; line-height: 1.45; color: var(--tx2);">One more thing on the backup window…</p>
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--tx2);"><span class="spin" style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--sf2); border-top-color: var(--ac);"></span>Transcribing</span>
+        </div>
+      </div>
+    </section>
+
+    <aside aria-labelledby="a-cp" style="flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 4px;">
+        <h2 id="a-cp" style="margin: 0; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; color: var(--tx2);">COPILOT</h2>
+        <span style="font-size: 11px; color: var(--tx2);">Local model</span>
+      </div>
+
+      <div style="background: var(--sf); padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 9px; letter-spacing: 0.1em; color: var(--ac);">SUGGESTED QUESTION</span>
+          <span style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">14:22</span>
+        </div>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45;">Which two cron jobs still point at the old cluster, and who owns them?</p>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" style="height: 32px; padding: 0 12px; border-radius: 24px; background: var(--sf2); border: 1px solid var(--ctl); font-size: 12px; cursor: pointer;">⎘ Copy</button>
+          <button type="button" style="height: 32px; padding: 0 12px; border-radius: 24px; background: none; border: 0; color: var(--tx2); font-size: 12px; cursor: pointer;">✕ Dismiss</button>
+        </div>
+      </div>
+
+      <div style="background: var(--sf); padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 9px; letter-spacing: 0.1em; color: var(--tx2);">ACTION ITEM</span>
+        <p style="margin: 0; font-size: 14px; line-height: 1.45;">Move the two remaining cron jobs off the old cluster by Friday.</p>
+        <span style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">Owner: Them · Due Fri 16 Oct</span>
+        <div style="display: flex; gap: 8px;">
+          <button type="button" style="height: 32px; padding: 0 12px; border-radius: 24px; background: var(--sf2); border: 1px solid var(--ctl); font-size: 12px; cursor: pointer;">⚑ Add to Notes</button>
+        </div>
+      </div>
+
+      <div style="padding: 12px 0 4px;">
+        <h3 style="margin: 0; font-size: 11px; font-weight: 400; letter-spacing: 0.08em; color: var(--tx2);">WORK ITEMS</h3>
+      </div>
+      <div style="background: var(--sf); padding: 10px 12px; display: flex; align-items: center; gap: 12px;">
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 600;">Draft retirement checklist</div>
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">claude-code · 2 min ago</div>
+        </div>
+        <span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; background: var(--sf2); color: var(--warn); font-size: 9px; font-weight: 700; letter-spacing: 0.1em;">IN PROGRESS</span>
+      </div>
+      <div style="background: var(--sf); padding: 10px 12px; display: flex; align-items: center; gap: 12px;">
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 600;">Summarise last sync</div>
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">claude-code · 18 min ago</div>
+        </div>
+        <span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; background: var(--sf2); color: var(--ok); font-size: 9px; font-weight: 700; letter-spacing: 0.1em;">✓ DONE</span>
+      </div>
+      <div style="background: var(--sf); padding: 10px 12px; display: flex; align-items: center; gap: 12px;">
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-size: 13px; font-weight: 600;">Open notes pull request</div>
+          <div style="font-family: var(--mono); font-size: 11px; color: var(--tx2);">waits for Stop</div>
+        </div>
+        <span style="display: inline-flex; align-items: center; height: 18px; padding: 0 6px; background: var(--sf2); color: var(--tx2); font-size: 9px; font-weight: 700; letter-spacing: 0.1em;">QUEUED</span>
+      </div>
+
+      <form style="margin-top: 12px; background: var(--sf); padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+        <label for="a-ask" style="font-size: 11px; letter-spacing: 0.08em; color: var(--tx2);">ASK COPILOT</label>
+        <div style="display: flex; gap: 8px;">
+          <input id="a-ask" type="text" placeholder="Ask about this meeting" aria-describedby="a-ask-h" style="flex: 1; min-width: 0; height: 36px; border-radius: 12px; border: 1px solid var(--ctl); background: var(--bg); padding: 0 12px; font-size: 14px;">
+          <button type="submit" style="height: 36px; padding: 0 18px; border-radius: 24px; background: var(--ac); color: var(--onac); border: 0; font-size: 13px; font-weight: 700; cursor: pointer;">Ask</button>
+        </div>
+        <span id="a-ask-h" style="font-size: 11px; color: var(--tx2);">Answers use this meeting only. Nothing leaves your network.</span>
+      </form>
+    </aside>
+  </div>
+</main>
+
+<footer style="width: 100%; max-width: 1280px; margin: 0 auto; padding: 12px 16px 16px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--tx2);">
+  <span>Notes publish as a pull request when you stop.</span>
+  <span style="font-family: var(--mono);">server-v2.14.0 · 3f9c2a1</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const L = (who, t, text) => ({ you: who === 'you', them: who === 'them', t, text });
+    return {
+      lines: [
+        L('them', '14:21:08', 'We moved the ingest job to the new cluster last week. Error rate is flat since then.'),
+        L('you', '14:21:30', 'Good. What is still blocking retirement of the old one?'),
+        L('them', '14:21:44', 'Two cron jobs still point at it. I can move them by Friday.'),
+        L('you', '14:22:05', 'Put that in the notes with you as owner.')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

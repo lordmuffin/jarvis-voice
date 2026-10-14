@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Family navigation</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.callout{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;background:#00F5D4;color:#04130F;font:700 10px ui-monospace,monospace;flex:none}
+</style>
+</helmet>
+<div class="inst" data-theme="light" style="width: 1440px; min-height: 1640px; padding: 48px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px;">
+    <div class="i-stack" style="gap: 6px;">
+      <span class="t-label">Instrument · Family navigation</span>
+      <h1 class="t-display">One way to move, in every app</h1>
+      <p class="t-body-lg t-2" style="max-width: 720px;">There are three levels and they never change places. Family: the ▦ switcher, with Home as the hub. App: up to five tabs. Page: a segmented control or a ↩ back link.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, 180px); gap: 4px;">
+      <div class="i-block i-stack"><span class="t-tag" style="color: var(--inst-accent);">L0 · Family</span><span class="t-caption">▦ switcher → Home and every app</span></div>
+      <div class="i-block i-stack"><span class="t-tag" style="color: var(--inst-accent);">L1 · App</span><span class="t-caption">Header tabs, max 5. Bottom bar when narrow.</span></div>
+      <div class="i-block i-stack"><span class="t-tag" style="color: var(--inst-accent);">L2 · Page</span><span class="t-caption">Segmented control, or ↩ back to the list.</span></div>
+    </div>
+  </div>
+
+  <section aria-labelledby="n-anat" class="i-stack" style="gap: 8px;">
+    <h2 id="n-anat" class="t-label" style="color: var(--inst-text); font-weight: 700;">Shell anatomy · desktop</h2>
+    <div class="inst" data-theme="dark" style="background: var(--inst-bg); padding: 0 0 16px;">
+      <header class="i-header">
+        <div class="i-header-in">
+          <div class="i-brand">
+            <span class="callout" style="margin-right: -4px;">1</span>
+            <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true" aria-expanded="false">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg>
+            </button>
+            <span class="callout">2</span>
+            <a href="#" class="i-wordmark">Jarvis Live</a>
+            <span class="i-badge i-badge--live">Live</span>
+            <span class="callout">3</span>
+          </div>
+          <nav class="i-nav" aria-label="Main">
+            <span class="callout" style="align-self: center; margin-right: 4px;">4</span>
+            <a href="#" aria-current="page">Live</a><a href="#">Sessions</a><a href="#">Notes</a><a href="#">Work</a>
+          </nav>
+          <div class="i-user"><span class="callout">5</span><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button><span class="callout">6</span></div>
+        </div>
+      </header>
+      <div style="max-width: 1280px; margin: 0 auto; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;">
+        <div class="i-block" style="height: 72px;"></div><div class="i-block" style="height: 72px;"></div><div class="i-block" style="height: 72px;"></div><div class="i-block" style="height: 72px;"></div>
+      </div>
+      <footer class="i-footer"><span>Notes publish as a pull request when you stop.</span><span style="display: inline-flex; gap: 8px; align-items: center;"><span class="t-mono">server-v2.14.0 · 3f9c2a1</span><span class="callout">7</span></span></footer>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px;">
+      <sc-for list="{{parts}}" as="p" hint-placeholder-count="7">
+        <div class="i-block" style="display: flex; gap: 8px;"><span class="callout">{{p.n}}</span><span class="t-caption"><b>{{p.t}}</b> {{p.d}}</span></div>
+      </sc-for>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 400px; gap: 24px; align-items: start;">
+    <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+      <section class="inst" data-theme="{{th.id}}" aria-label="Switcher open, {{th.name}}" style="background: var(--inst-bg); padding: 16px; display: flex; flex-direction: column; gap: 8px; min-height: 520px;">
+        <span class="t-label">Switcher open · {{th.name}}</span>
+        <div style="display: flex; align-items: center; gap: 8px; background: var(--inst-surface); padding: 6px 8px; border-bottom: 1px solid var(--inst-line);">
+          <span class="i-switcher" aria-hidden="true" style="background: var(--inst-surface-2); color: var(--inst-text);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg>
+          </span>
+          <span class="i-wordmark">Sleep Dashboard</span><span class="i-badge i-badge--lab">Lab</span>
+        </div>
+        <div class="i-popover" role="menu" aria-label="Your apps" style="width: 340px; margin-left: 8px;">
+          <div style="padding: 10px 12px 6px; display: flex; justify-content: space-between; align-items: baseline;">
+            <span class="t-label">Your apps</span><span class="t-meta t-2">Opening in <b style="color: var(--inst-warning);">LAB</b></span>
+          </div>
+          <sc-for list="{{apps}}" as="a" hint-placeholder-count="4">
+            <a href="#" role="menuitem" aria-current="{{a.cur}}" style="display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; text-decoration: none; color: var(--inst-text); background: {{a.bg}}; border-top: 1px solid var(--inst-line);">
+              <span style="font-size: 12px; color: var(--inst-accent); font-weight: 700;">{{a.mark}}</span>
+              <span class="i-stack" style="gap: 0;"><span style="font-size: 13px; font-weight: 700;">{{a.name}}</span><span class="t-meta t-2">{{a.glance}}</span></span>
+              <span class="i-chip {{a.chip}}">{{a.state}}</span>
+            </a>
+          </sc-for>
+          <div style="padding: 8px 12px; border-top: 1px solid var(--inst-line); display: flex; flex-direction: column; gap: 4px;">
+            <span class="i-reason">⚑ [App name] has no LAB copy.</span>
+            <span class="t-meta t-2">Esc closes. ↑ ↓ moves. Enter opens.</span>
+          </div>
+        </div>
+      </section>
+    </sc-for>
+
+    <section aria-labelledby="n-rules" class="i-stack">
+      <h2 id="n-rules" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Rules</h2>
+      <sc-for list="{{rules}}" as="r" hint-placeholder-count="7">
+        <div class="i-block t-caption"><b>{{r.t}}</b> {{r.d}}</div>
+      </sc-for>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 360px 360px minmax(0, 1fr); gap: 24px; align-items: start;">
+    <sc-for list="{{phones}}" as="ph" hint-placeholder-count="2">
+      <section class="inst" data-theme="{{ph.theme}}" aria-label="Narrow layout, {{ph.app}}" style="width: 360px; height: 560px; background: var(--inst-bg); display: flex; flex-direction: column; box-shadow: 0 0 0 1px var(--inst-line);">
+        <header class="i-header">
+          <div style="display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px;">
+            <span class="i-switcher" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></span>
+            <span class="i-wordmark" style="font-size: 16px;">{{ph.app}}</span>
+            <span class="i-badge {{ph.badgeCls}}">{{ph.badge}}</span>
+            <span style="margin-left: auto; display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 8px; font-size: 12px; color: var(--inst-text-2);">A ▾</span>
+          </div>
+        </header>
+        <div style="flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 4px;">
+          <span class="t-label" style="padding-bottom: 4px;">{{ph.section}}</span>
+          <div class="i-block" style="height: 64px;"></div>
+          <div class="i-block" style="height: 64px;"></div>
+          <div class="i-block" style="height: 120px;"></div>
+          <span class="t-meta t-2 t-mono" style="margin-top: auto; text-align: center;">{{ph.version}}</span>
+        </div>
+        <nav class="i-bottombar" aria-label="Main">
+          <sc-for list="{{ph.tabs}}" as="tb" hint-placeholder-count="4">
+            <a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a>
+          </sc-for>
+        </nav>
+      </section>
+    </sc-for>
+
+    <section aria-labelledby="n-native" class="i-stack">
+      <h2 id="n-native" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">The same three levels on every platform</h2>
+      <div class="i-table-wrap">
+        <table class="i-table" style="white-space: normal;">
+          <thead><tr><th scope="col">Platform</th><th scope="col">L0 · Family</th><th scope="col">L1 · App</th><th scope="col">Channel</th></tr></thead>
+          <tbody>
+            <sc-for list="{{native}}" as="n" hint-placeholder-count="6">
+              <tr><th scope="row" style="font-weight: 700; white-space: nowrap; vertical-align: top; padding-top: 10px; padding-bottom: 10px;">{{n.p}}</th><td style="white-space: normal; vertical-align: top; padding-top: 10px; padding-bottom: 10px; font-size: 12px;">{{n.l0}}</td><td style="white-space: normal; vertical-align: top; padding-top: 10px; padding-bottom: 10px; font-size: 12px;">{{n.l1}}</td><td style="white-space: normal; vertical-align: top; padding-top: 10px; padding-bottom: 10px; font-size: 12px;">{{n.ch}}</td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const A = (name, glance, state, chip, current) => ({ name, glance, state, chip, cur: current ? 'page' : 'false', mark: current ? '✓' : '', bg: current ? 'var(--inst-accent-tint)' : 'transparent' });
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      parts: [
+        { n: '1', t: 'Switcher ▦.', d: 'Same place in every app. Opens Home and the other apps.' },
+        { n: '2', t: 'Wordmark.', d: 'The app name, typeset. Links to the app’s first tab.' },
+        { n: '3', t: 'Channel badge.', d: 'Always there, LIVE included.' },
+        { n: '4', t: 'Tabs.', d: 'Max 5. Current: text colour, 600, accent underline.' },
+        { n: '5', t: 'Your name.', d: 'Who is signed in. Admins viewing someone else also get a banner.' },
+        { n: '6', t: 'Sign out.', d: 'Quiet. Signs you out of the family, not one app.' },
+        { n: '7', t: 'Version.', d: 'Tag or branch + short hash, in the footer, mono.' }
+      ],
+      apps: [
+        A('Home', 'Family dashboard', 'Neutral', '', false),
+        A('Jarvis Live', 'Idle · last session 41 min ago', 'Offline', '', false),
+        A('Sleep Dashboard', 'Last night 7h 12m · 2 to review', '✓ Fresh', 'i-chip--done', true),
+        A('[App name]', 'No LAB copy', 'Neutral', '', false)
+      ],
+      rules: [
+        { t: 'Same list, same order.', d: 'Home is first, then apps A–Z. Every app reads the list from one shared file, so no app can add itself.' },
+        { t: 'You stay on your channel.', d: 'From a LAB copy, every link opens LAB. If an app has no copy on your channel, it is disabled and the reason is shown.' },
+        { t: 'One sign-in.', d: 'Pocket ID covers the family. Switching apps never asks you to sign in again.' },
+        { t: 'Five tabs at most.', d: 'A sixth idea is a segmented control on a page, not another tab.' },
+        { t: 'Always mark where you are.', d: 'Tab underline, ✓ in the switcher, the top rule on the bottom bar, aria-current on all three.' },
+        { t: 'Back is ↩ plus the list name.', d: '“↩ Nights” sits above a detail title. HTMX pushes the URL, so browser back always works.' },
+        { t: 'Home is an app like the others.', d: 'Same shell, same rules, wordmark “Home”. It links to apps, but never repeats their pages.' }
+      ],
+      phones: [
+        { theme: 'light', app: 'Sleep Dashboard', badge: 'Lab', badgeCls: 'i-badge--lab', section: 'Today', version: 'main · a41c0d2',
+          tabs: [{ ico: '🌙', label: 'Today', cur: 'page' }, { ico: '📈', label: 'Trends', cur: 'false' }, { ico: '📋', label: 'Nights', cur: 'false' }, { ico: '📝', label: 'Context', cur: 'false' }] },
+        { theme: 'dark', app: 'Jarvis Live', badge: 'Live', badgeCls: 'i-badge--live', section: 'Live', version: 'server-v2.14.0 · 3f9c2a1',
+          tabs: [{ ico: '🎙', label: 'Live', cur: 'page' }, { ico: '📋', label: 'Sessions', cur: 'false' }, { ico: '📝', label: 'Notes', cur: 'false' }, { ico: '🤖', label: 'Work', cur: 'false' }] }
+      ],
+      native: [
+        { p: 'Web ≥ 600', l0: '▦ switcher popover in the header.', l1: 'Header tabs with an accent underline.', ch: 'Filled badge after the wordmark.' },
+        { p: 'Web < 600', l0: '▦ switcher; it opens full width.', l1: 'Bottom bar, 56 high, up to 5 items.', ch: 'Badge stays; the name collapses to an initial, “A ▾”.' },
+        { p: 'macOS', l0: 'Menu-bar menu: a “Family ▸” submenu (Home, then apps).', l1: 'Menu items open floating panels titled wordmark + badge.', ch: 'Monochrome: LAB filled, LIVE outlined.' },
+        { p: 'Android / foldable', l0: 'Top app bar ▦ opens a sheet with the same list.', l1: 'Bottom bar; a square left rail from 600 dp.', ch: 'Badge after the title in the app bar.' },
+        { p: 'Wear OS', l0: 'None. The watch launcher is the switcher.', l1: 'One vertical list of sections.', ch: 'Badge text above the title: LIVE or LAB.' },
+        { p: 'Android Auto', l0: 'None. The car launcher is the switcher.', l1: 'System tab template, at most 4 tabs.', ch: '“LAB” in the subtitle. Live shows nothing extra.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

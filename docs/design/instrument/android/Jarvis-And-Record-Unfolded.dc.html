@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android Record, unfolded</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.dv{width:840px;height:892px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-1);display:flex;flex-direction:column;overflow:hidden}
+.ab{flex:none;display:flex;align-items:center;gap:4px;height:56px;padding:0 8px 0 4px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.ab .i-switcher{width:48px;height:48px}
+.ab h1{font-size:18px}
+.i-bottombar.rail{flex:none;flex-direction:column;width:80px;height:auto;border-top:0;border-right:1px solid var(--inst-line);padding-top:8px}
+.i-bottombar.rail a{flex:none;height:72px;margin-top:0;border-top:0}
+.i-bottombar.rail a[aria-current="page"]{border-top:0;box-shadow:inset 3px 0 0 var(--inst-accent)}
+.pane{min-height:0;display:flex;flex-direction:column}
+.cop{flex:none;display:flex;align-items:center;gap:8px;width:100%;height:48px;padding:0 12px;background:var(--inst-surface);border:0;border-bottom:1px solid var(--inst-line);color:var(--inst-text);cursor:pointer;text-align:left}
+.feed{flex:1;min-height:0;overflow:hidden;padding:8px 12px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1000px; height: 1000px; padding: 40px 80px; display: flex; flex-direction: column; gap: 8px; background: var(--inst-bg);">
+  <span class="t-micro t-2">Unfolded · 840 · Recording · controls and Now dock left, feed right</span>
+  <section class="inst dv" aria-label="Recording, unfolded">
+    <header class="ab">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <h1 class="i-wordmark">Record</h1>
+      <span class="i-badge i-badge--live">Live</span>
+      <a href="#" class="i-btn i-btn--quiet" style="margin-left: auto; height: 48px;">History</a>
+    </header>
+    <div style="flex: 1; min-height: 0; display: flex;">
+      <nav class="i-bottombar rail" aria-label="Main">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+
+      <div class="pane" style="width: 320px; flex: none; border-right: 1px solid var(--inst-line);">
+        <div style="background: var(--inst-surface); padding: 12px 16px; display: flex; flex-direction: column; gap: 4px; border-bottom: 1px solid var(--inst-line);">
+          <span class="t-label">Recording · Oct 14, 3:05 PM</span>
+          <h2 class="t-body-lg t-strong">ARC runner migration vendor call</h2>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 4px;">
+            <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+            <span class="t-meta t-mono t-2">STT pve · lag 840 ms · 0.0 s queued</span>
+          </div>
+          <span class="t-meta t-2">Meeting · on-device drafts on · 2 markers</span>
+        </div>
+        <section aria-labelledby="mk-h" class="i-stack" style="padding: 12px 16px 0;">
+          <h3 id="mk-h" class="t-label" style="padding-bottom: 2px;">Markers · 2</h3>
+          <a href="#" class="i-block j-marker" style="min-height: 48px; text-decoration: none; color: var(--inst-warning);"><span>⚑ ARM images</span><span class="t">· 14:30</span><span class="t-2" style="margin-left: auto;" aria-hidden="true">▶</span></a>
+          <a href="#" class="i-block j-marker" style="min-height: 48px; text-decoration: none; color: var(--inst-warning);"><span>⚑ Pricing</span><span class="t">· 16:05</span><span class="t-2" style="margin-left: auto;" aria-hidden="true">▶</span></a>
+        </section>
+        <div style="flex: 1;"></div>
+        <div class="i-dock" role="region" aria-label="Now" style="flex: none; padding: 0 0 12px 16px;">
+          <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion" style="width: 48px; height: 48px;">✕</button></div>
+          <p class="txt" style="padding-right: 16px;">Ask whether ARM images are on the public roadmap.</p>
+          <div class="more"><span class="t-tag t-2">Gap</span><span class="t-caption t-2" style="flex: 1; min-width: 0;">You haven't discussed egress costs.</span><span class="t-mono t-meta t-2">1:32</span><button type="button" class="i-x" aria-label="Dismiss suggestion" style="width: 48px; height: 48px;">✕</button></div>
+        </div>
+        <div style="flex: none; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 16px; background: var(--inst-surface); border-top: 1px solid var(--inst-line);">
+          <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds" style="justify-content: center;"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="i-btn i-btn--secondary i-btn--lg" style="flex: 1;">⚑ Marker</button>
+            <button type="button" class="i-btn i-btn--secondary i-btn--lg" style="flex: 1;">■ Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" style="flex: 1; min-width: 0;">
+        <button type="button" class="cop" aria-expanded="true"><span class="t-label" style="color: var(--inst-text);">Copilot ▼</span><span class="i-new" style="margin-left: auto;">3 new</span></button>
+        <div style="flex: none; padding: 8px 12px 0;">
+          <div class="i-seg" role="radiogroup" aria-label="Show">
+            <sc-for list="{{filters}}" as="f" hint-placeholder-count="6"><button type="button" role="radio" aria-checked="{{f.on}}" style="height: 44px; padding: 0 8px;">{{f.label}}<span class="t-mono">{{f.n}}</span></button></sc-for>
+          </div>
+        </div>
+        <div class="feed" role="log" aria-label="Transcript and copilot">
+          <sc-for list="{{rows}}" as="r" hint-placeholder-count="14">
+            <sc-if value="{{r.marker}}" hint-placeholder-val="{{false}}"><div class="j-marker"><span>⚑ {{r.text}}</span><span class="t">· {{r.t}}</span></div></sc-if>
+            <sc-if value="{{r.rule}}" hint-placeholder-val="{{false}}"><div class="i-unseen" role="separator"><span class="i-new">3 new since you looked at 17:15</span></div></sc-if>
+            <sc-if value="{{r.speech}}" hint-placeholder-val="{{true}}"><div class="{{r.cls}}"><span class="t">{{r.t}}</span><span class="{{r.spk}}">{{r.who}}</span><span class="x">{{r.text}}</span></div></sc-if>
+            <sc-if value="{{r.event}}" hint-placeholder-val="{{false}}"><a href="#" class="{{r.cls}}" title="{{r.quote}}" style="color: var(--inst-text); text-decoration: none; min-height: 48px; align-items: center;"><span class="t">{{r.t}}</span><span class="i-chip k">{{r.kind}}</span><span class="t-body"><span class="g">{{r.g}}</span>{{r.text}} <span class="m">{{r.meta}}</span> <span class="i-new">{{r.isNew}}</span></span><span class="i-src" style="color: var(--inst-accent);">▶ {{r.src}}</span></a></sc-if>
+          </sc-for>
+        </div>
+        <div style="flex: none; display: flex; align-items: center; min-height: 32px; padding: 0 12px 8px;"><span class="t-meta t-2">↓ Following live</span></div>
+      </div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1000,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (who, t, text, draft) => ({
+      speech: true, t, text, who: who === 'me' ? 'Me' : 'Them',
+      cls: 'i-utt' + (who === 'them' ? ' i-utt--them' : '') + (draft ? ' i-utt--draft' : ''),
+      spk: 'i-spk i-spk--' + who
+    });
+    const E = (t, kind, g, text, meta, src, quote, fresh) => ({
+      event: true, t, kind, g, text, meta: meta || '', src, quote,
+      isNew: fresh ? 'New' : '', cls: 'i-event' + (fresh ? ' i-fresh' : '')
+    });
+    const q1612 = "Send me the GPU runner pricing and we'll size it against the DGX node.";
+    const q1730 = "Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback.";
+    const F = (label, n, on) => ({ label, n: n ? ' ' + n : '', on: on ? 'true' : 'false' });
+    const T = (ico, label, cur) => ({ ico, label, cur: cur ? 'page' : 'false' });
+    return {
+      rows: [
+        S('me', '14:32', "What's the timeline for the ARM images?"),
+        S('them', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+        E('14:55', 'Work', '▶', 'Add ARM runner scale set to k3s2', 'Draft', '14:32', "What's the timeline for the ARM images?"),
+        E('15:00', 'Note', '•', 'No date yet for the ARM images.', '', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+        S('them', '15:40', 'We can support ARC scale sets, but GPU runners are a separate SKU.'),
+        E('15:58', 'Related', '▶', 'DGX Spark K3s Node — Architecture Capture', '', '15:40', 'We can support ARC scale sets, but GPU runners are a separate SKU.'),
+        { marker: true, t: '16:05', text: 'Pricing' },
+        S('me', '16:12', q1612),
+        E('16:30', 'Action', '☐', 'Confirm GPU runner pricing.', 'Vendor · —', '16:12', q1612),
+        S('them', '16:40', 'Sure. Can you send the node inventory so we can quote?'),
+        S('me', '17:02', "I'll send it by Friday."),
+        { rule: true },
+        E('17:20', 'Action', '☐', 'Send the node inventory.', 'Me · Fri 16 Oct', '17:02', "I'll send it by Friday.", true),
+        S('me', '17:30', q1730),
+        E('17:45', 'Decision', '✓', 'Pilot on the k3s2 cluster first.', '', '17:30', q1730, true),
+        S('them', '18:05', "That works. We'd want read access to the cluster metrics during the pilot."),
+        S('me', '18:31', 'Metrics are fine, but nothing with write access to the', true),
+        S('them', '18:38', 'Understood, read-only is', true)
+      ],
+      filters: [F('All', '', true), F('Actions', '2'), F('Decisions', '1'), F('Notes', '2'), F('Related', '1'), F('Work', '1')],
+      tabs: [T('🎙', 'Record', true), T('💬', 'Chat'), T('📋', 'History'), T('🤖', 'Agent'), T('⚙️', 'Settings')]
+    };
+  }
+}
+</script>
+</body>
+</html>

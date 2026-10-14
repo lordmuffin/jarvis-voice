@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sessions list</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0;background:#0D1117}</style></helmet>
+<div class="inst" data-theme="{{theme}}" style="min-height: 1100px; display: flex; flex-direction: column;">
+
+<header class="i-header">
+  <div class="i-header-in">
+    <div class="i-brand">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <a href="#" class="i-wordmark">Jarvis Live</a>
+      <span class="i-badge i-badge--live">Live</span>
+    </div>
+    <nav class="i-nav" aria-label="Main">
+      <a href="#" aria-current="page">Sessions</a>
+      <a href="#">Devices</a>
+      <a href="#">Work Items</a>
+      <a href="#">Publishing</a>
+      <a href="#">Admin</a>
+    </nav>
+    <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+  </div>
+</header>
+
+<main class="i-page" style="width: 100%; flex: 1;">
+
+  <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px;">
+    <div class="i-stack" style="gap: 2px;">
+      <span class="t-label">All users · 214 sessions</span>
+      <h1 class="t-title">Sessions</h1>
+    </div>
+  </div>
+
+  <section aria-label="Find and upload" class="i-stack" style="gap: 4px;">
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;">
+      <div style="flex: 1 1 260px; min-width: 0; display: flex; align-items: center; gap: 8px;">
+        <label class="i-sr" for="s-q">Search by title</label>
+        <input id="s-q" type="search" class="i-input" placeholder="Search by title" style="flex: 1; min-width: 0;">
+        <div class="i-seg" role="radiogroup" aria-label="Search in" style="flex: none;">
+          <button type="button" role="radio" aria-checked="true">Titles</button>
+          <button type="button" role="radio" aria-checked="false">Transcripts</button>
+        </div>
+      </div>
+      <label class="i-choice"><input type="checkbox" checked><span>All users</span></label>
+      <button type="button" class="i-btn i-btn--secondary" aria-expanded="true" aria-controls="s-up">Upload Recording</button>
+    </div>
+
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; padding-top: 8px; padding-bottom: 8px;">
+      <div class="i-seg" role="radiogroup" aria-label="Status">
+        <button type="button" role="radio" aria-checked="true">All</button>
+        <button type="button" role="radio" aria-checked="false">Live <span class="t-mono">1</span></button>
+        <button type="button" role="radio" aria-checked="false">Done</button>
+        <button type="button" role="radio" aria-checked="false">Failed <span class="t-mono">2</span></button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label class="t-label" for="s-mode">Mode</label>
+        <span class="i-select" style="width: 132px;"><select id="s-mode" class="i-input" style="height: 32px;"><option>Any mode</option><option>Meeting</option><option>Solo</option></select></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label class="t-label" for="s-date">Date</label>
+        <span class="i-select" style="width: 148px;"><select id="s-date" class="i-input" style="height: 32px;"><option>Any time</option><option>Today</option><option>Last 7 days</option><option>Last 30 days</option></select></span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
+        <label class="t-label" for="s-sort">Sort</label>
+        <span class="i-select" style="width: 148px;"><select id="s-sort" class="i-input" style="height: 32px;"><option>Newest first</option><option>Oldest first</option><option>Longest first</option></select></span>
+      </div>
+    </div>
+
+    <form id="s-up" class="j-upload" aria-label="Upload recording" style="box-shadow: inset 0 1.5px 0 var(--inst-accent);">
+      <div class="i-field" style="flex: 1 1 240px;">
+        <span class="i-label">File</span>
+        <div style="display: flex; align-items: center; gap: 8px; height: 36px; min-width: 0;">
+          <span class="t-mono t-caption" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">vendor-followup-2026-10-14.m4a</span>
+          <span class="t-mono t-meta t-2" style="flex: none;">38.2 MB</span>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm" style="flex: none;">Change</button>
+        </div>
+      </div>
+      <div class="i-field" style="flex: 2 1 260px;">
+        <label class="i-label" for="s-ut">Title <span class="opt">(optional)</span></label>
+        <input id="s-ut" class="i-input" placeholder="vendor-followup-2026-10-14.m4a">
+      </div>
+      <div class="i-field">
+        <span class="i-label" id="s-um">Mode</span>
+        <div class="i-seg" role="radiogroup" aria-labelledby="s-um" style="height: 36px; align-items: center;">
+          <button type="button" role="radio" aria-checked="false">Solo</button>
+          <button type="button" role="radio" aria-checked="true">Meeting</button>
+        </div>
+      </div>
+      <div class="j-acts">
+        <button type="submit" class="i-btn i-btn--primary">Upload</button>
+        <button type="button" class="i-btn i-btn--quiet">Cancel</button>
+      </div>
+      <span class="i-help" style="flex-basis: 100%;">Up to 500 MB. When it finishes, the new session opens and transcribes live.</span>
+    </form>
+  </section>
+
+  <section aria-label="Session list" class="i-stack" style="gap: 4px;">
+    <a href="#" class="j-srow j-srow--pinned" aria-label="Live session: ARC runner migration vendor call, 18 minutes 42 seconds">
+      <span class="i-chip i-chip--live" style="flex: none;"><span class="i-dot i-breathe"></span>Live</span>
+      <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+        <span class="ti">ARC runner migration vendor call</span>
+        <span class="mt">Oct 14, 3:05 PM · Meeting · Transcribing live</span>
+      </span>
+      <span class="i-stack" style="gap: 0; align-items: flex-end; flex: none;">
+        <span class="t-mono" style="font-size: 16px; font-weight: 700;">18:42</span>
+        <span class="t-meta t-2">Elapsed</span>
+      </span>
+      <span class="t-caption" style="color: var(--inst-accent); flex: none;">Open ▶</span>
+    </a>
+
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+      <a href="#" class="j-srow">
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+          <span class="{{r.tiCls}}">{{r.title}}</span>
+          <span class="mt"><sc-if value="{{r.hasOwner}}" hint-placeholder-val="{{false}}"><span style="color: var(--inst-text); font-weight: 600;">{{r.owner}}</span> · </sc-if>{{r.when}} · <span class="t-mono">{{r.dur}}</span> · {{r.mode}}</span>
+        </span>
+        <sc-if value="{{r.done}}" hint-placeholder-val="{{true}}"><span class="i-chip i-chip--done">✓ Done</span></sc-if>
+        <sc-if value="{{r.failed}}" hint-placeholder-val="{{false}}"><span class="i-chip i-chip--failed">✕ Failed</span></sc-if>
+        <sc-if value="{{r.fin}}" hint-placeholder-val="{{false}}"><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span></sc-if>
+        <sc-if value="{{r.off}}" hint-placeholder-val="{{false}}"><span class="i-chip"><span class="i-dot i-dot--hollow"></span>Offline</span></sc-if>
+      </a>
+    </sc-for>
+
+    <div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px; padding-top: 12px;">
+      <button type="button" class="i-btn i-btn--secondary">Load More</button>
+      <span class="t-meta t-2"><span class="t-mono">100</span> of <span class="t-mono">214</span> shown</span>
+    </div>
+  </section>
+</main>
+
+<footer class="i-footer">
+  <span>Audio is kept for 90 days. The transcript and note are kept.</span>
+  <span class="t-mono">server-v0.18.0 · 39e69a0</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (title, owner, when, dur, mode, st) => ({
+      title: title || 'Untitled session', tiCls: title ? 'ti' : 'ti ti--none',
+      owner, hasOwner: !!owner, when, dur, mode,
+      done: st === 'done', failed: st === 'failed', fin: st === 'fin', off: st === 'off'
+    });
+    return {
+      theme: this.props.theme ?? 'dark',
+      rows: [
+        R('Garage sensor walkthrough', 'sam', 'Oct 14, 3:10 PM', '12 min', 'Solo', 'fin'),
+        R('Platform sync', '', 'Oct 13, 10:00 AM', '42 min', 'Meeting', 'done'),
+        R('', '', 'Oct 13, 8:12 AM', '<1 min', 'Solo', 'failed'),
+        R('Sleep pipeline backfill plan', '', 'Oct 12, 9:40 PM', '12 min', 'Solo', 'done'),
+        R('Offsite backup review', 'sam', 'Oct 12, 4:30 PM', '19 min', 'Meeting', 'done'),
+        R('Homelab power budget', 'sam', 'Oct 11, 2:15 PM', '28 min', 'Meeting', 'done'),
+        R('Kai voice latency notes', '', 'Oct 10, 7:05 AM', '6 min', 'Solo', 'done'),
+        R('', 'sam', 'Oct 9, 6:48 PM', '3 min', 'Solo', 'off'),
+        R('Pocket ID rollout check-in', 'sam', 'Oct 8, 1:00 PM', '33 min', 'Meeting', 'done')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

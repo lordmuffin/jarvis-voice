@@ -1,0 +1,22 @@
+# Managed by lordmuffin/instrument (scripts/propagate.sh). Do not edit: changes are overwritten.
+name: Instrument
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  vendored:
+    name: Vendored Instrument is untouched
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          scripts/sync-instrument.sh --check web/src/instrument
+          scripts/sync-instrument.sh --check macos/JarvisVoiceMac/Sources/Instrument
+          scripts/sync-instrument.sh --check android/app/src/instrument
+          scripts/sync-instrument.sh --check android/wear/src/instrument

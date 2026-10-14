@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Empty, error, loading and sign-in</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1900px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+  <div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 1900px;">
+    <div class="i-stack" style="gap: 4px;">
+      <span class="t-label">3 · Components · {{th.name}}</span>
+      <h1 class="t-title">Empty, error and loading states</h1>
+    </div>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">One template: glyph · title · one sentence · one action</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+        <sc-for list="{{states}}" as="s" hint-placeholder-count="4">
+          <div class="i-block" role="{{s.role}}" style="padding: 24px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-height: 176px; justify-content: center;">
+            <span aria-hidden="true" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: {{s.c}};">{{s.g}}</span>
+            <span style="font-size: 14px; font-weight: 700;">{{s.title}}</span>
+            <span class="t-caption t-2" style="max-width: 260px;">{{s.line}}</span>
+            <button type="button" class="{{s.btn}}">{{s.act}}</button>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Loading in place · no full-page spinners</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+        <div class="i-block" aria-busy="true" style="display: flex; flex-direction: column; gap: 10px; min-height: 140px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span class="t-label">Last 14 nights</span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--inst-text-2);"><span class="i-spin"></span>Loading</span></div>
+          <div style="flex: 1; display: flex; align-items: flex-end; gap: 4px; border-bottom: 1px solid var(--inst-control);">
+            <sc-for list="{{skel}}" as="h" hint-placeholder-count="14"><span style="flex: 1; height: {{h}}px; background: var(--inst-surface-2);"></span></sc-for>
+          </div>
+          <span class="t-micro t-2">First load: a skeleton the shape of the real content.</span>
+        </div>
+        <div class="i-block" aria-busy="true" style="display: flex; flex-direction: column; gap: 10px; min-height: 140px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;"><span class="t-label">Last 14 nights</span><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--inst-text-2);"><span class="i-spin"></span>Updating</span></div>
+          <div style="flex: 1; display: flex; align-items: flex-end; gap: 4px; border-bottom: 1px solid var(--inst-control); opacity: .5;">
+            <sc-for list="{{skel}}" as="h" hint-placeholder-count="14"><span style="flex: 1; height: {{h}}px; background: var(--inst-chart-1);"></span></sc-for>
+          </div>
+          <span class="t-micro t-2">Refresh: old content stays at 50% while the HTMX swap runs (.htmx-request).</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Sign-in pages · Pocket ID only, never a password form</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+        <sc-for list="{{signin}}" as="p" hint-placeholder-count="6">
+          <div style="background: var(--inst-bg); box-shadow: inset 0 0 0 1px var(--inst-line); padding: 28px 20px 16px; display: flex; flex-direction: column; gap: 14px; min-height: 270px;">
+            <div style="display: flex; align-items: center; gap: 8px;"><span class="t-display" style="font-size: 26px;">Sleep Dashboard</span><span class="i-badge i-badge--live">Live</span></div>
+            <div class="i-stack" style="gap: 4px;">
+              <span class="t-tag" style="color: {{p.c}};">{{p.tag}}</span>
+              <span style="font-size: 16px; font-weight: 700;">{{p.title}}</span>
+              <span class="t-caption t-2">{{p.line}}</span>
+            </div>
+            <div class="i-row">
+              <button type="button" class="{{p.btn}}">{{p.act}}</button>
+              <sc-if value="{{p.home}}" hint-placeholder-val="{{false}}"><a href="#" class="i-btn i-btn--quiet">Go to Home</a></sc-if>
+            </div>
+            <span class="t-mono t-micro t-2" style="margin-top: auto;">v0.9.0 · a41c0d2 · Private. Self-hosted.</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (g, c, title, line, act, btn, role) => ({ g, c, title, line, act, btn, role });
+    const P = (tag, c, title, line, act, btn, home) => ({ tag, c, title, line, act, btn, home });
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      skel: [60, 52, 66, 44, 70, 58, 50, 62, 72, 56, 64, 40, 58, 60],
+      states: [
+        S('—', 'var(--inst-text-2)', 'No sessions yet', 'Start Jarvis from the menu bar. Your first session appears here.', 'How to Start', 'i-btn i-btn--secondary i-btn--sm', 'region'),
+        S('—', 'var(--inst-text-2)', 'No people match “zed”', 'Check the spelling, or search by email.', 'Clear Search', 'i-btn i-btn--quiet i-btn--sm', 'region'),
+        S('✕', 'var(--inst-error)', 'Could not load nights', 'The query API did not answer within 2 s. Nothing was lost.', '↩ Try Again', 'i-btn i-btn--secondary i-btn--sm', 'alert'),
+        S('⚑', 'var(--inst-warning)', 'Context is read-only here', 'LAB: writes disabled. Open LIVE to add context.', 'Open LIVE ▶', 'i-btn i-btn--secondary i-btn--sm', 'region')
+      ],
+      signin: [
+        P('Signed out', 'var(--inst-text-2)', 'You are signed out.', 'Sign in with Pocket ID to see your data.', 'Sign In with Pocket ID', 'i-btn i-btn--primary', false),
+        P('Link expired', 'var(--inst-warning)', 'This sign-in link has expired.', 'Links last 10 minutes. Start again and it takes a few seconds.', 'Sign In Again', 'i-btn i-btn--primary', false),
+        P('Not allowed', 'var(--inst-error)', 'You do not have access to this app.', 'You are signed in as sam@home.example. Ask an admin to add you.', 'Sign Out', 'i-btn i-btn--secondary', true),
+        P('Provider unreachable', 'var(--inst-error)', 'Pocket ID is not answering.', 'Your data is safe. Try again in a minute.', '↩ Try Again', 'i-btn i-btn--primary', true),
+        P('Sign-in failed', 'var(--inst-error)', 'Sign-in did not finish.', 'Pocket ID sent back “access_denied”. Start again.', 'Sign In Again', 'i-btn i-btn--primary', false),
+        P('No account yet', 'var(--inst-warning)', 'You have no account here yet.', 'Your Pocket ID works, but this app has no account for you. An admin can add you.', 'Go to Home', 'i-btn i-btn--secondary', false)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
