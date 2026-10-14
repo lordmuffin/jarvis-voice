@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from jarvis_live.api import account, auth, publishing, sessions, stream, work_items
+from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
@@ -265,6 +266,7 @@ def create_app(
     environment = cfg.environment
     version = _version()
     commit = cfg.git_sha.strip()[:7]
+    app.state.family_apps = load_family_apps(cfg)  # cached for the life of the process
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:

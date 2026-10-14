@@ -54,6 +54,12 @@ def _me(principal: Principal, request: Request) -> MeOut:
     )
 
 
+@router.get("/apps")
+async def family_apps(_: PrincipalDep, request: Request) -> dict[str, list[dict[str, object]]]:
+    """The ▦ switcher's apps, links already on this server's channel. Empty: no switcher."""
+    return {"apps": request.app.state.family_apps}
+
+
 @router.get("/me")
 async def me(principal: PrincipalDep, request: Request) -> MeOut:
     return _me(principal, request)

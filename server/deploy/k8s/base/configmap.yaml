@@ -51,6 +51,9 @@ data:
   # images ignore it). Safe only at replicas: 1 -- there is no migration lock.
   JARVIS_LIVE_AUTO_MIGRATE: "true"
 
+  # The ▦ family switcher's apps list; see deployment.yaml (volume family-apps).
+  JARVIS_LIVE_APPS_LIST_PATH: "/config/family/apps.json"
+
   JARVIS_LIVE_DATA_DIR: "/data"
   JARVIS_LIVE_INDEX_DIR: "/index"
   # Finished notes. The owner's go to the outbox root, other users' to

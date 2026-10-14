@@ -140,6 +140,10 @@ spec:
             - name: github-token
               mountPath: /secrets/github
               readOnly: true
+            # The family's shared apps list behind the ▦ switcher (apps.json).
+            - name: family-apps
+              mountPath: /config/family
+              readOnly: true
             - name: scratch
               mountPath: /tmp
       volumes:
@@ -174,6 +178,12 @@ spec:
           secret:
             secretName: notes-vault-pat
             defaultMode: 0400
+        # ConfigMap `family-apps` (key apps.json) is provided by np-home-homelab: the list
+        # is shared by every app in the family. Absent: no switcher, nothing else changes.
+        - name: family-apps
+          configMap:
+            name: family-apps
+            optional: true
         - name: scratch
           emptyDir:
             sizeLimit: 256Mi

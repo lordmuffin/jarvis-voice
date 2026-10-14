@@ -2,6 +2,7 @@ import type {
   AdminUser,
   Health,
   Channel,
+  FamilyApp,
   Device,
   Me,
   NewDevice,
@@ -89,6 +90,10 @@ export function sessionsPath({ limit = 100, offset = 0, all, userId }: ListOptio
 }
 
 export const me = (f?: typeof fetch) => request<Me>("/v1/me", {}, f);
+
+/** The family's apps for the ▦ switcher; empty means no switcher. */
+export const familyApps = (f?: typeof fetch) =>
+  request<{ apps: FamilyApp[] }>("/v1/apps", {}, f).then((r) => r.apps);
 
 export const health = (f?: typeof fetch) => request<Health>("/healthz", {}, f);
 
