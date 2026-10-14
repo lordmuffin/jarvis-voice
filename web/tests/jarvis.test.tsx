@@ -232,9 +232,9 @@ describe("NowDock", () => {
 
   it("says the copilot is offline, or local only, when there is nothing to show", () => {
     render(<NowDock view={dockView(base)} copilotOffline onDismiss={noop} onUndo={noop} />, document.body);
-    expect(q(".hd")!.textContent).toContain("Copilot offline");
+    expect(q(".hd")!.textContent).toContain("Copilot degraded");
     render(<NowDock view={dockView(base)} localOnly onDismiss={noop} onUndo={noop} />, document.body);
-    expect(q(".hd")!.textContent).toContain("Local only");
+    expect(q(".hd")!.textContent).toContain("Local-only");
   });
 });
 
@@ -244,9 +244,9 @@ describe("ConnectionChip", () => {
 
   it("names each state in words", () => {
     for (const [c, t] of [
-      ["idle", "Idle"],
-      ["connecting", "Connecting…"],
-      ["open", "Connected"],
+      ["idle", "Offline"],
+      ["connecting", "Reconnecting…"],
+      ["open", "Live"],
       ["closed", "Reconnecting…"],
     ] as const) {
       render(<ConnectionChip connection={c} status={null} />, document.body);
@@ -266,10 +266,10 @@ describe("ConnectionChip", () => {
   it("shows tier and lag quietly, and the copilot being offline", () => {
     render(<ConnectionChip connection="open" status={status} copilotOffline />, document.body);
     expect(document.body.textContent).toContain("pve · lag 840 ms");
-    expect(document.body.textContent).toContain("copilot offline");
+    expect(document.body.textContent).toContain("copilot degraded");
     render(<ConnectionChip connection="open" status={{ ...status, stt_tier: null }} />, document.body);
-    expect(document.body.textContent).toContain("no STT · lag 840 ms");
-    expect(document.body.textContent).not.toContain("copilot offline");
+    expect(document.body.textContent).toContain("— · lag 840 ms");
+    expect(document.body.textContent).not.toContain("copilot degraded");
   });
 
   it("has the degraded and queued shells for fields the server doesn't send yet", () => {
@@ -296,7 +296,7 @@ describe("FeedFilter", () => {
       document.body,
     );
     const radios = qa("[role=radio]");
-    expect(radios.map((r) => r.textContent)).toEqual(["All", "Actions 2", "Decisions 1", "Notes 0", "Related 0", "Work 0"]);
+    expect(radios.map((r) => r.textContent)).toEqual(["All", "Actions 2", "Decisions 1", "Notes 0", "Related 0", "Work items 0"]);
     (radios[1] as HTMLElement).click();
     expect(onChange).toHaveBeenCalledWith("action");
   });
@@ -306,11 +306,11 @@ describe("JumpPill", () => {
   it("counts what is new, and jumps", () => {
     const onJump = vi.fn();
     render(<JumpPill count={3} onJump={onJump} />, document.body);
-    expect(q("button")!.textContent).toBe("↓ Jump to latest · 3 new");
+    expect(q("button")!.textContent).toBe("↓ Jump To Latest · 3 new");
     (q("button") as HTMLElement).click();
     expect(onJump).toHaveBeenCalled();
     render(<JumpPill count={0} onJump={onJump} />, document.body);
-    expect(q("button")!.textContent).toBe("↓ Jump to latest");
+    expect(q("button")!.textContent).toBe("↓ Jump To Latest");
   });
 });
 

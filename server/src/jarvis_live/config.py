@@ -204,7 +204,7 @@ class Settings(BaseSettings):
 
     @property
     def notify_title_prefix(self) -> str:
-        return "" if self.environment == "live" else f"[{self.environment}] "
+        return f"[{self.environment.upper()}] "
 
     @property
     def publish_enabled(self) -> bool:

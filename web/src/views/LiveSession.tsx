@@ -180,10 +180,14 @@ export function LiveSession({
           onClose={() => ending === "confirm" && setEnding("idle")}
           actions={
             <>
-              <Button disabled={ending === "busy"} onClick={() => setEnding("idle")}>
+              <Button disabled={ending === "busy"} title={ending === "busy" ? "Ending the session." : undefined} onClick={() => setEnding("idle")}>
                 Keep Recording
               </Button>
-              <Button variant="danger" disabled={ending === "busy"} onClick={() => void end()}>
+              <Button
+                variant="danger"
+                disabled={ending === "busy"}
+                title={ending === "busy" ? "Ending the session." : undefined}
+                onClick={() => void end()}>
                 {ending === "busy" ? "Ending…" : "End Session"}
               </Button>
             </>

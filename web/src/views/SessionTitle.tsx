@@ -73,12 +73,19 @@ export function SessionTitle({
         maxLength={200}
         value={draft}
         disabled={saving}
+        title={saving ? "Saving the title." : undefined}
         onInput={(e) => setDraft((e.target as HTMLInputElement).value)}
         onKeyDown={(e) => {
           if (e.key === "Escape") setEditing(false);
         }}
       />
-      <Button variant="primary" size="sm" type="submit" disabled={saving}>
+      <Button
+        variant="primary"
+        size="sm"
+        type="submit"
+        disabled={saving}
+        title={saving ? "Saving the title." : undefined}
+      >
         Save
       </Button>
       <Button variant="quiet" size="sm" onClick={() => setEditing(false)}>

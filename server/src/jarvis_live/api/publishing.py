@@ -69,14 +69,14 @@ async def regenerate(
     row, _ = await _visible(db, principal, session_id)
     orchestrator: Orchestrator | None = request.app.state.orchestrator
     if orchestrator is None:
-        raise HTTPException(503, "no LLM is configured")
+        raise HTTPException(503, "No LLM is configured.")
     if row.local_only:
-        raise HTTPException(409, "local-only sessions are never sent to an LLM")
+        raise HTTPException(409, "Local-only sessions are never sent to an LLM.")
     service = _service(request)
     async with service.lock(session_id):
         pub = await db.get(NotePublication, session_id, populate_existing=True)
         if pub is not None and pub.state in ("open", "publishing"):
-            raise HTTPException(409, "close the pull request first")
+            raise HTTPException(409, "Close the pull request first.")
         # A session stuck in ``finalizing`` with no run in flight (e.g. a restart beyond the
         # recovery window) may be regenerated too.
         allowed = ["done", "failed"]
@@ -88,7 +88,7 @@ async def regenerate(
             .values(status="finalizing")
         )
         if res.rowcount == 0:  # type: ignore[attr-defined]
-            raise HTTPException(409, "the session is not finished")
+            raise HTTPException(409, "The session is not finished.")
         await db.commit()
         note = await latest_final_note(db, session_id)
         orchestrator.regenerate(session_id, note[0] if note else None)
@@ -209,9 +209,9 @@ class QueueOut(BaseModel):
 def _publisher(principal: PrincipalDep, request: Request) -> PublishService:
     service = _service(request)
     if not service.enabled:
-        raise HTTPException(503, "publishing is not configured")
+        raise HTTPException(503, "Publishing is not configured.")
     if not service.can_publish(principal.user):
-        raise HTTPException(403, "only the owner and admins publish notes")
+        raise HTTPException(403, "Only the owner and admins publish notes.")
     return service
 
 

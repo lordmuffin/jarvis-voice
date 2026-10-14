@@ -57,8 +57,8 @@ def test_sections_in_order_and_empty_sections_omitted() -> None:
     full = [line for line in render_note(NOTE, META, LINES).splitlines() if line.startswith("## ")]
     assert full == [
         "## Summary",
-        "## Decisions",
         "## Actions",
+        "## Decisions",
         "## Open questions",
         "## Follow-ups",
         "## Related",

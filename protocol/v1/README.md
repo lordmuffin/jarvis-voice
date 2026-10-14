@@ -54,6 +54,7 @@ Senders MUST NOT send frames outside this range; receivers MUST reject them.
 - `ack` `{channel, seq}` — cumulative: all frames `<= seq` on `channel` are durable.
 - `segment` `{id, channel, speaker: "me"|"them", start_ms, end_ms, text, stt_tier}`
 - `copilot` `{version, notes[], actions[], decisions[], suggestions[], related[]}` — full snapshot; higher `version` wins.
+  - Key order in the JSON is not significant. Display order is client-defined; the canonical order is Suggestions, Actions, Decisions, Notes, Related, Final note.
   - `notes`/`decisions`: `{id, text}`; `actions`: `{id, text, owner?, due?}`
   - `suggestions`: `{id, kind: "question"|"gap"|"counterpoint"|"fact_check", text, expires_at_ms}`
   - `related`: `{path, title, snippet, uri}`

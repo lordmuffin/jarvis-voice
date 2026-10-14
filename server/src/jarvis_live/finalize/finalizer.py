@@ -99,13 +99,13 @@ class Finalizer:
             result = await self._finalize(session_id, replace=replace, notify=notify)
         except asyncio.CancelledError:
             raise  # shutdown: stays ``finalizing`` and is retried on the next start
-        except Exception as e:
+        except Exception:
             slog.exception("finalizer failed")
             await self._set_status(session_id, "failed")
             await self._notify_owner(
                 session_id,
                 "Jarvis: note failed",
-                f"Could not finalize session `{session_id}`: {e!r}",
+                f"Could not finalize session {session_id}. Try again from the sessions list.",
                 8,
                 self._session_url(session_id),
             )

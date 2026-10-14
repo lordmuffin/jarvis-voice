@@ -139,7 +139,7 @@ async def test_without_a_dispatcher_even_approved_items_get_503(
         await web.post(f"/v1/work-items/{item}/approve")
         r = await web.post(f"/v1/work-items/{item}/dispatch")
         assert r.status_code == 503
-    assert await refused(sm, item) == ["dispatch is not configured on this server"]
+    assert await refused(sm, item) == ["Dispatch is not configured on this server."]
 
 
 async def test_a_repo_off_the_dispatch_allowlist_is_refused(

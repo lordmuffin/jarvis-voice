@@ -172,14 +172,14 @@ async def _visible(
         )
     ).one_or_none()
     if found is None or (found[0].user_id != principal.user.id and not principal.is_admin):
-        raise HTTPException(404, "session not found")
+        raise HTTPException(404, "Session not found.")
     return found[0], found[1]
 
 
 async def _owned(db: AsyncSession, principal: Principal, session_id: uuid.UUID) -> SessionRow:
     row, _ = await _visible(db, principal, session_id)
     if row.user_id != principal.user.id:
-        raise HTTPException(404, "session not found")
+        raise HTTPException(404, "Session not found.")
     return row
 
 
@@ -189,7 +189,7 @@ async def create_session(
 ) -> SessionCreateResponse:
     device = principal.device
     if device is None:
-        raise HTTPException(403, "sessions are recorded from a device")
+        raise HTTPException(403, "Sessions are recorded from a device.")
     row = SessionRow(
         device_id=device.id,
         user_id=principal.user.id,
@@ -224,7 +224,7 @@ async def upload_recording(
     cfg = request.app.state.settings
     limit = cfg.upload_max_mb * 1024 * 1024
     if int(request.headers.get("content-length") or 0) > limit:
-        raise HTTPException(413, f"recordings are limited to {cfg.upload_max_mb} MB")
+        raise HTTPException(413, f"Recordings are limited to {cfg.upload_max_mb} MB.")
     uploads = cfg.data_dir / "uploads"
     await asyncio.to_thread(uploads.mkdir, parents=True, exist_ok=True)
     key = uuid.uuid4().hex
@@ -235,14 +235,14 @@ async def upload_recording(
             async for chunk in request.stream():
                 size += len(chunk)
                 if size > limit:
-                    raise HTTPException(413, f"recordings are limited to {cfg.upload_max_mb} MB")
+                    raise HTTPException(413, f"Recordings are limited to {cfg.upload_max_mb} MB.")
                 f.write(chunk)
         if size == 0:
-            raise HTTPException(422, "the upload is empty")
+            raise HTTPException(422, "The upload is empty.")
         try:
             await decode_to_pcm(src, pcm, ffmpeg=cfg.ffmpeg_path)
         except UndecodableAudio as e:
-            raise HTTPException(415, "no audio could be read from the file") from e
+            raise HTTPException(415, "No audio could be read from the file.") from e
     except BaseException:
         pcm.unlink(missing_ok=True)
         raise
@@ -276,7 +276,7 @@ async def list_sessions(
     """The caller's sessions, newest first. Admins may pass ``all=true`` for everyone's, or
     ``user_id`` for one user's."""
     if (all_users or user_id is not None) and not principal.is_admin:
-        raise HTTPException(403, "admin only")
+        raise HTTPException(403, "Admin only.")
     where = []
     if user_id is not None:
         where.append(SessionRow.user_id == user_id)
@@ -384,7 +384,7 @@ async def issue_ticket(
 ) -> TicketResponse:
     if body.role == "producer":
         if (await _owned(db, principal, session_id)).status != "live":
-            raise HTTPException(409, "session is not live")
+            raise HTTPException(409, "This session is not live.")
     else:
         await _visible(db, principal, session_id)
     ticket = request.app.state.tickets.issue(session_id, principal.user.id, body.role)
@@ -424,5 +424,5 @@ async def get_audio(
     """The session's recording of one channel as a WAV file. Supports ``Range``."""
     row, _ = await _visible(db, principal, session_id)
     if channel not in row.channels:
-        raise HTTPException(404, "no such channel")
+        raise HTTPException(404, "No such channel.")
     return await wav_response(request, request.app.state.settings.data_dir, row.id, channel)

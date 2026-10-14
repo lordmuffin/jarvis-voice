@@ -163,12 +163,12 @@ async def current_principal(
                 )
             ).one_or_none()
         if found is None or found[0].revoked_at is not None:
-            raise _unauthorized("invalid or revoked token")
+            raise _unauthorized("Invalid or revoked token.")
         return Principal(user=found[1], device=found[0])
 
     cookie = request.cookies.get(SESSION_COOKIE)
     if not cookie:
-        raise _unauthorized("not signed in")
+        raise _unauthorized("Not signed in.")
     now = datetime.now(UTC)
     async with request.app.state.sessionmaker() as db:
         found = (
@@ -179,7 +179,7 @@ async def current_principal(
             )
         ).one_or_none()
         if found is None or found[0].expires_at <= now:
-            raise _unauthorized("not signed in")
+            raise _unauthorized("Not signed in.")
         login, user = found
         # Sliding expiry: a dashboard used at least every few weeks stays signed in.
         settings = request.app.state.settings
@@ -193,7 +193,7 @@ async def current_principal(
             await db.commit()
             set_session_cookie(response, cookie, settings)
     if request.method in _UNSAFE_METHODS and not _same_origin(request):
-        raise HTTPException(403, "cross-origin request")
+        raise HTTPException(403, "Cross-origin request.")
     return Principal(user=user, device=None)
 
 
@@ -201,5 +201,5 @@ async def require_admin(
     principal: Annotated[Principal, Depends(current_principal)],
 ) -> Principal:
     if not principal.is_admin:
-        raise HTTPException(403, "admin only")
+        raise HTTPException(403, "Admin only.")
     return principal

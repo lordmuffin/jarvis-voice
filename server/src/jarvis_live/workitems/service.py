@@ -154,13 +154,13 @@ class WorkItemService:
 
     def require_enabled(self) -> None:
         if not self.enabled:
-            raise WorkItemError(503, "work items are off on this server")
+            raise WorkItemError(503, "Work items are off on this server.")
 
     async def edit(self, item_id: uuid.UUID, actor: Actor, fields: dict[str, Any]) -> WorkItem:
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             if item.state not in ("draft", "approved"):
-                raise WorkItemError(409, f"a {item.state} work item cannot be edited")
+                raise WorkItemError(409, f"A {item.state} work item cannot be edited.")
             changed = self._apply_edit(item, fields)
             if not changed:
                 return item
@@ -174,13 +174,13 @@ class WorkItemService:
 
     async def approve(self, item_id: uuid.UUID, actor: Actor) -> WorkItem:
         if actor.kind != "web":
-            raise WorkItemError(403, "approve from the dashboard sign-in, not a device token")
+            raise WorkItemError(403, "Approve from the dashboard sign-in, not a device token.")
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             if item.state != "draft":
-                raise WorkItemError(409, f"only drafts can be approved; this one is {item.state}")
+                raise WorkItemError(409, f"Only drafts can be approved. This one is {item.state}.")
             if problems := approval_problems(item, self.allowlist):
-                raise WorkItemError(409, "cannot approve yet: " + "; ".join(problems))
+                raise WorkItemError(409, "Cannot approve yet: " + "; ".join(problems) + ".")
             prompt = await self._render(db, item)
             item.state = "approved"
             item.prompt_md = prompt
@@ -201,7 +201,7 @@ class WorkItemService:
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             if item.state != "approved":
-                raise WorkItemError(409, "the work item is not approved")
+                raise WorkItemError(409, "The work item is not approved.")
             self._unfreeze(item)
             _touch(item)
             log_event(db, item.id, "unapproved", **self._who(actor))
@@ -211,7 +211,7 @@ class WorkItemService:
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             if item.state not in ("draft", "approved"):
-                raise WorkItemError(409, f"a {item.state} work item cannot be discarded")
+                raise WorkItemError(409, f"A {item.state} work item cannot be discarded.")
             self._unfreeze(item)
             item.state = "discarded"
             _touch(item)
@@ -222,7 +222,7 @@ class WorkItemService:
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             if item.state != "discarded":
-                raise WorkItemError(409, "only discarded work items can be restored")
+                raise WorkItemError(409, "Only discarded work items can be restored.")
             item.state = "draft"
             _touch(item)
             log_event(db, item.id, "restored", **self._who(actor))
@@ -235,7 +235,7 @@ class WorkItemService:
         appended. The others become ``merged`` and point at the result."""
         others = [i for i in dict.fromkeys(from_ids) if i != into_id]
         if not others:
-            raise WorkItemError(422, "name at least one other work item to merge")
+            raise WorkItemError(422, "Name at least one other work item to merge.")
         async with self._sm() as db, db.begin():
             ids = sorted([into_id, *others])  # a stable lock order
             rows = {
@@ -252,13 +252,13 @@ class WorkItemService:
                 .all()
             }
             if len(rows) != len(ids):
-                raise WorkItemError(404, "work item not found")
+                raise WorkItemError(404, "Work item not found.")
             into = rows[into_id]
             srcs = [rows[i] for i in others]
             if any(r.session_id != into.session_id for r in srcs):
-                raise WorkItemError(409, "only work items of the same session can be merged")
+                raise WorkItemError(409, "Only work items of the same session can be merged.")
             if any(r.state != "draft" for r in [into, *srcs]):
-                raise WorkItemError(409, "only drafts can be merged")
+                raise WorkItemError(409, "Only drafts can be merged.")
             seen = {s["segment_id"] for s in into.sources}
             sources = list(into.sources)
             for r in srcs:
@@ -307,15 +307,15 @@ class WorkItemService:
         if guidance is not None:
             guidance = guidance.strip()
             if not guidance:
-                raise WorkItemError(422, "the guidance is empty")
+                raise WorkItemError(422, "The guidance is empty.")
             if len(guidance) > MAX_GUIDANCE:
-                raise WorkItemError(422, f"the guidance is longer than {MAX_GUIDANCE} characters")
+                raise WorkItemError(422, f"The guidance is longer than {MAX_GUIDANCE} characters.")
         async with self._sm() as db, db.begin():
             item = await self._own(db, item_id, actor.user_id, lock=True)
             reason = refusal(item, actor, self.allowlist, self._cfg.dispatch_repo_allowlist)
             status = 409
             if reason is None and self._dispatcher is None:
-                reason, status = "dispatch is not configured on this server", 503
+                reason, status = "Dispatch is not configured on this server.", 503
             if reason is not None:
                 log_event(
                     db, item.id, "dispatch_refused", **self._who(actor), payload={"reason": reason}
@@ -370,12 +370,12 @@ class WorkItemService:
             q = q.with_for_update()
         item = (await db.execute(q)).scalar_one_or_none()
         if item is None or item.user_id != user_id:
-            raise WorkItemError(404, "work item not found")
+            raise WorkItemError(404, "Work item not found.")
         return item
 
     async def _render(self, db: AsyncSession, item: WorkItem) -> str:
         if self.template is None:
-            raise WorkItemError(503, "work items are off on this server")
+            raise WorkItemError(503, "Work items are off on this server.")
         session = await db.get(SessionRow, item.session_id)
         assert session is not None
         try:
@@ -405,11 +405,11 @@ class WorkItemService:
             if name == "title":
                 value = clip(value, MAX_TITLE)
                 if not value:
-                    raise WorkItemError(422, "the title cannot be empty")
+                    raise WorkItemError(422, "The title cannot be empty.")
             elif name == "repo":
                 value = (value or "").strip() or None
                 if value is not None and value not in self.allowlist:
-                    raise WorkItemError(422, f"{value} is not on the allowlist")
+                    raise WorkItemError(422, f"{value} is not on the allowlist.")
             elif name == "intent":
                 value = clip_block(value, MAX_INTENT)
             elif name == "acceptance_criteria":
@@ -417,7 +417,7 @@ class WorkItemService:
             elif name == "done_when":
                 value = clip(value, MAX_DONE_WHEN) or None
             else:
-                raise WorkItemError(422, f"{name} cannot be edited")
+                raise WorkItemError(422, f"{name} cannot be edited.")
             if getattr(item, name) != value:
                 setattr(item, name, value)
                 changed.append(name)

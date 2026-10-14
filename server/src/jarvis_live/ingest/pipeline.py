@@ -135,7 +135,7 @@ class SessionPipeline:
             self._log.error("no STT tier available, segment lost", extra={"channel": channel})
             self._bus.publish(
                 str(self.session_id),
-                Error(code="stt_unavailable", message="no STT tier could transcribe a segment"),
+                Error(code="stt_unavailable", message="No STT tier could transcribe a segment."),
             )
             return
         text = result.text.strip()

@@ -114,15 +114,15 @@ export function NowDock({
             {localOnly ? (
               <span class="i-chip">
                 <span class="i-sq" aria-hidden="true" />
-                Local only
+                Local-only
               </span>
             ) : (
-              copilotOffline && <span class="i-chip i-chip--progress">⚑ Copilot offline</span>
+              copilotOffline && <span class="i-chip i-chip--progress">⚑ Copilot degraded</span>
             )}
           </div>
           <p class="txt">
             {localOnly
-              ? "The copilot is off in Local only. The server writes the note after you upload."
+              ? "The copilot is off in local-only mode. The server writes the note after you upload."
               : copilotOffline
                 ? "The transcript keeps recording. Suggestions return when the copilot is back."
                 : "Nothing waiting. Suggestions show up here."}

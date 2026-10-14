@@ -36,6 +36,7 @@ import { Link } from "./Link";
 import { PublicationChip } from "../jarvis/PublicationChip";
 
 const POLL_MS = 2000;
+const BUSY_WHY = "Another action is running.";
 const SHOWN = 20; // rows per list until "Show all"
 
 /**
@@ -134,9 +135,10 @@ export function Publishing() {
           label="Auto-publish new notes"
           checked={q?.auto_publish ?? false}
           disabled={!q}
+          title={!q ? "Loading the publishing settings." : undefined}
           onChange={(e) => void toggleAuto((e.target as HTMLInputElement).checked)}
         />
-        <Button size="sm" disabled={busy !== null} onClick={() => void sync()}>
+        <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void sync()}>
           {busy === "sync" ? "Syncing…" : "Sync Now"}
         </Button>
       </Bar>
@@ -152,6 +154,7 @@ export function Publishing() {
                 variant="primary"
                 size="sm"
                 disabled={busy !== null || q.publishing_all}
+                title={q.publishing_all ? "Publishing all notes." : busy !== null ? BUSY_WHY : undefined}
                 onClick={() => void all()}
               >
                 {q.publishing_all ? "Publishing…" : "Publish All"}
@@ -167,6 +170,7 @@ export function Publishing() {
                 variant="primary"
                 size="sm"
                 disabled={busy !== null || q.publishing_all}
+                title={q.publishing_all ? "Publishing all notes." : busy !== null ? BUSY_WHY : undefined}
                 onClick={() => void act(it, "publish")}
               >
                 Publish
@@ -195,10 +199,10 @@ export function Publishing() {
                 )}
                 {it.publication?.state === "open" && (
                   <>
-                    <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void act(it, "merge")}>
+                    <Button variant="primary" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act(it, "merge")}>
                       Merge
                     </Button>
-                    <Button size="sm" disabled={busy !== null} onClick={() => void act(it, "close")}>
+                    <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act(it, "close")}>
                       Close
                     </Button>
                   </>
@@ -215,11 +219,11 @@ export function Publishing() {
             busy={busy}
             render={(it) =>
               it.publication?.state === "failed" ? (
-                <Button size="sm" disabled={busy !== null} onClick={() => void act(it, "publish")}>
+                <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act(it, "publish")}>
                   Retry
                 </Button>
               ) : it.publication?.state === "skipped" ? (
-                <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => void act(it, "unskip")}>
+                <Button variant="quiet" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act(it, "unskip")}>
                   Unskip
                 </Button>
               ) : null
@@ -310,7 +314,7 @@ function Items({
       {shown.length < items.length && (
         <div>
           <Button variant="quiet" size="sm" onClick={() => setAll(true)}>
-            Show all {items.length}
+            Show All {items.length}
           </Button>
         </div>
       )}

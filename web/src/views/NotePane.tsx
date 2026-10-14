@@ -27,6 +27,7 @@ import type { SessionDetail } from "../types";
 import { NoteView } from "./NoteView";
 import { PublicationChip } from "../jarvis/PublicationChip";
 
+const BUSY_WHY = "Another action is running.";
 const BUSY: Record<PublishAction | "save" | "regenerate", string> = {
   publish: "Opening a pull request…",
   merge: "Merging…",
@@ -116,18 +117,18 @@ export function NotePane({
           </Text>
         )}
         {detail.can_publish && pub?.changed && state !== "open" && (
-          <Reason>⚑ Edited since it was published</Reason>
+          <Reason>⚑ Edited since it was published.</Reason>
         )}
         <Spacer />
         {detail.can_publish && (
           <>
             {(state === null || state === "closed" || state === "failed" || state === "skipped") && (
-              <Button variant="primary" size="sm" disabled={disabled} onClick={() => void act("publish")}>
+              <Button variant="primary" size="sm" disabled={disabled} title={disabled ? BUSY_WHY : undefined} onClick={() => void act("publish")}>
                 Publish
               </Button>
             )}
             {state === "merged" && pub?.changed && (
-              <Button variant="primary" size="sm" disabled={disabled} onClick={() => void act("publish")}>
+              <Button variant="primary" size="sm" disabled={disabled} title={disabled ? BUSY_WHY : undefined} onClick={() => void act("publish")}>
                 Publish Changes
               </Button>
             )}
@@ -138,16 +139,16 @@ export function NotePane({
             )}
             {state === "open" && (
               <>
-                <Button variant="primary" size="sm" disabled={disabled} onClick={merge}>
+                <Button variant="primary" size="sm" disabled={disabled} title={disabled ? BUSY_WHY : undefined} onClick={merge}>
                   Merge
                 </Button>
-                <Button size="sm" disabled={disabled} onClick={() => void act("close")}>
+                <Button size="sm" disabled={disabled} title={disabled ? BUSY_WHY : undefined} onClick={() => void act("close")}>
                   Close PR
                 </Button>
               </>
             )}
             {state === "skipped" ? (
-              <Button variant="quiet" size="sm" disabled={disabled} onClick={() => void act("unskip")}>
+              <Button variant="quiet" size="sm" disabled={disabled} title={disabled ? BUSY_WHY : undefined} onClick={() => void act("unskip")}>
                 Unskip
               </Button>
             ) : (
@@ -156,7 +157,7 @@ export function NotePane({
                   variant="quiet"
                   size="sm"
                   disabled={disabled}
-                  title="Never publish this note"
+                  title={disabled ? BUSY_WHY : "Never publish this note"}
                   onClick={() => void act("skip")}
                 >
                   Skip
@@ -170,6 +171,7 @@ export function NotePane({
             variant="quiet"
             size="sm"
             disabled={disabled}
+            title={disabled ? BUSY_WHY : undefined}
             onClick={() => {
               setDraft(note.markdown ?? "");
               setError(null);
@@ -184,7 +186,13 @@ export function NotePane({
             variant="quiet"
             size="sm"
             disabled={disabled || prOpen}
-            title={prOpen ? undefined : "Write the note again from the transcript"}
+            title={
+              prOpen
+                ? "Close the pull request first."
+                : disabled
+                  ? BUSY_WHY
+                  : "Write the note again from the transcript"
+            }
             aria-describedby={prOpen ? "regenerate-why" : undefined}
             onClick={regenerate}
           >
@@ -192,7 +200,7 @@ export function NotePane({
           </Button>
         )}
         {detail.can_regenerate && !editing && prOpen && (
-          <Reason id="regenerate-why">⚑ Close the pull request first</Reason>
+          <Reason id="regenerate-why">⚑ Close the pull request first.</Reason>
         )}
       </Bar>
       </Block>
@@ -222,6 +230,7 @@ export function NotePane({
             spellcheck
             value={draft}
             disabled={busy === "save"}
+            title={busy === "save" ? BUSY_WHY : undefined}
             onInput={(e) => setDraft((e.target as HTMLTextAreaElement).value)}
           />
           <Text as="p" size="meta" tone="muted">
@@ -229,7 +238,7 @@ export function NotePane({
             {state === "open" && " Saving also updates the open pull request."}
           </Text>
           <Bar>
-            <Button variant="primary" size="sm" type="submit" disabled={disabled}>
+            <Button variant="primary" size="sm" type="submit" disabled={disabled} title={disabled ? BUSY_WHY : undefined}>
               Save
             </Button>
             <Button variant="quiet" size="sm" onClick={() => setEditing(false)}>

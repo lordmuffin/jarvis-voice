@@ -31,7 +31,7 @@ class GotifyNotifier:
         title_prefix: str = "",
     ) -> None:
         self._base = base_url.rstrip("/")
-        self._title_prefix = title_prefix  # e.g. "[lab] ", so a lab push never reads as live
+        self._title_prefix = title_prefix  # e.g. "[LAB] ", so a lab push never reads as live
         self._token_file = token_file
         self._client = client
         self._timeout = timeout_s

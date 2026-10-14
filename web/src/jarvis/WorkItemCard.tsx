@@ -45,6 +45,8 @@ import {
 } from "../workitems";
 import { Link } from "../views/Link";
 
+const BUSY_WHY = "Another action is running.";
+
 const errorText = (e: unknown, fallback: string) => (e instanceof ApiError ? e.message : fallback);
 
 const STATE_TONE: Record<WorkItem["state"], PillTone> = {
@@ -185,7 +187,7 @@ export function WorkItemCard({
         <>
           <dl>
             <dt>Repository</dt>
-            <dd class={item.repo ? "d-dl-mono" : "d-none"}>{item.repo ?? "no repository yet"}</dd>
+            <dd class={item.repo ? "d-dl-mono" : "d-none"}>{item.repo ?? "—"}</dd>
             {item.intent && (
               <>
                 <dt>Intent</dt>
@@ -260,22 +262,22 @@ export function WorkItemCard({
       {!editing && (
         <Bar>
           {dispatchEnabled && item.state === "approved" && !runActive(item) && (
-            <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void runIt()}>
+            <Button variant="primary" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void runIt()}>
               {busy === "run" ? "Starting…" : item.dispatch ? "▶ Run Again" : "▶ Run in Claude Code"}
             </Button>
           )}
           {canSteer && !steerOpen && (
-            <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => setSteer(true)}>
+            <Button variant="primary" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => setSteer(true)}>
               ↪ Steer Next Run
             </Button>
           )}
           {runActive(item) && (
-            <Button size="sm" disabled={busy !== null} onClick={() => void cancelRun()}>
+            <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void cancelRun()}>
               {busy === "cancel" ? "Cancelling…" : "■ Cancel Run"}
             </Button>
           )}
           {item.state === "approved" && (
-            <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void copy()}>
+            <Button variant="primary" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void copy()}>
               {copied ? "✓ Copied" : busy === "copy" ? "Copying…" : "⎘ Copy Prompt"}
             </Button>
           )}
@@ -284,7 +286,7 @@ export function WorkItemCard({
               variant="primary"
               size="sm"
               disabled={busy !== null || item.problems.length > 0}
-              title={item.problems.length ? item.problems.join("; ") : undefined}
+              title={item.problems.length ? item.problems.join("; ") : busy !== null ? BUSY_WHY : undefined}
               onClick={() => void act("approve")}
             >
               {busy === "approve" ? "Approving…" : "✓ Approve"}
@@ -292,26 +294,26 @@ export function WorkItemCard({
           )}
           {open && (
             <>
-              <Button size="sm" disabled={busy !== null} onClick={() => void togglePrompt()}>
+              <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void togglePrompt()}>
                 {prompt ? "Hide Prompt" : item.state === "approved" ? "Show Prompt" : "Preview Prompt"}
               </Button>
-              <Button size="sm" disabled={busy !== null} onClick={() => setEditing(true)}>
+              <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => setEditing(true)}>
                 Edit
               </Button>
             </>
           )}
           {item.state === "approved" && (
-            <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => void act("unapprove")}>
+            <Button variant="quiet" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act("unapprove")}>
               Unapprove
             </Button>
           )}
           {open && (
-            <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => void act("discard")}>
+            <Button variant="quiet" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act("discard")}>
               ✕ Discard
             </Button>
           )}
           {item.state === "discarded" && (
-            <Button size="sm" disabled={busy !== null} onClick={() => void act("restore")}>
+            <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act("restore")}>
               ↩ Restore
             </Button>
           )}
@@ -354,7 +356,7 @@ export function RunBlock({ run }: { run: NonNullable<WorkItem["dispatch"]> }) {
       </RunHead>
       {run.guidance && (
         <Text as="p" size="caption">
-          <Text tone="muted">You: </Text>
+          <Text tone="muted">Me: </Text>
           {run.guidance}
         </Text>
       )}
@@ -424,9 +426,14 @@ function SteerForm({
         {run.pr_number ? ` and draft PR #${run.pr_number}` : ""}, with your reply added to the approved prompt.
       </Text>
       <Bar>
-        <Button variant="primary" size="sm" type="submit" disabled={busy || !guidance}>
+        <Button variant="primary" size="sm" type="submit" disabled={busy || !guidance} title={busy ? BUSY_WHY : !guidance ? "Write a reply first." : undefined}>
           {busy ? "Starting…" : "↪ Continue"}
         </Button>
+        {!busy && !guidance && (
+          <Text size="caption" tone="muted">
+            Write a reply first.
+          </Text>
+        )}
         <Button variant="quiet" size="sm" onClick={onCancel}>
           Cancel
         </Button>
@@ -503,7 +510,7 @@ function WorkItemEditor({
         <Input id={id("done")} value={doneWhen} onInput={(e) => setDoneWhen((e.target as HTMLInputElement).value)} />
       </Field>
       <Bar>
-        <Button variant="primary" size="sm" type="submit" disabled={busy}>
+        <Button variant="primary" size="sm" type="submit" disabled={busy} title={busy ? BUSY_WHY : undefined}>
           {busy ? "Saving…" : "Save"}
         </Button>
         <Button variant="quiet" size="sm" onClick={onCancel}>

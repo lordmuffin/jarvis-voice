@@ -18,16 +18,16 @@ tags: [ai-output, jarvis-live, inbox]
 Agreed to renew Acme for 12 months.
 Pricing stays flat; SLA to be tightened.
 
-## Decisions
-
-- Renew for 12 months
-- Keep pricing flat
-
 ## Actions
 
 - [ ] Send revised quote (owner: Dana, due: 2026-10-16)
 - [ ] Review SLA draft (owner: me)
 - [ ] Book legal review
+
+## Decisions
+
+- Renew for 12 months
+- Keep pricing flat
 
 ## Open questions
 
