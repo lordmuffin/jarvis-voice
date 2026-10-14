@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_icon_record" translatable="false">🎙</string>
+    <string name="nav_icon_chat" translatable="false">💬</string>
+    <string name="nav_icon_history" translatable="false">📋</string>
+    <string name="nav_icon_settings" translatable="false">⚙️</string>
+    <string name="nav_icon_models" translatable="false">📦</string>
+    <string name="nav_icon_agent" translatable="false">🤖</string>
+    <string name="nav_label_record">Record</string>
+    <string name="nav_label_chat">Chat</string>
+    <string name="nav_label_history">History</string>
+    <string name="nav_label_settings">Settings</string>
+    <string name="nav_label_models">Models</string>
+    <string name="nav_label_agent">Agent</string>
+</resources>

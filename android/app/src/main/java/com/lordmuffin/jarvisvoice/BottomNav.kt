@@ -1,6 +1,9 @@
 package com.lordmuffin.jarvisvoice
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -13,24 +16,31 @@ object BottomNav {
     fun wire(activity: AppCompatActivity, active: Tab) {
         val root = activity.findViewById<LinearLayout>(R.id.bottom_nav_root) ?: return
 
-        val accent = activity.getColor(R.color.inst_accent)
+        val current = activity.getColor(R.color.inst_text)
         val dimmed = activity.getColor(R.color.inst_text_2)
+        val accent = activity.getColor(R.color.inst_accent)
 
-        data class TabDef(val tab: Tab, val tabId: Int, val iconId: Int, val labelId: Int)
+        data class TabDef(val tab: Tab, val tabId: Int, val iconId: Int, val labelId: Int, val indicatorId: Int)
 
         val tabs = listOf(
-            TabDef(Tab.RECORD,   R.id.nav_tab_record,   R.id.nav_icon_record,   R.id.nav_label_record),
-            TabDef(Tab.HISTORY,  R.id.nav_tab_history,  R.id.nav_icon_history,  R.id.nav_label_history),
-            TabDef(Tab.CHAT,     R.id.nav_tab_chat,     R.id.nav_icon_chat,     R.id.nav_label_chat),
-            TabDef(Tab.SETTINGS, R.id.nav_tab_settings, R.id.nav_icon_settings, R.id.nav_label_settings),
-            TabDef(Tab.MODELS,   R.id.nav_tab_models,   R.id.nav_icon_models,   R.id.nav_label_models),
-            TabDef(Tab.AGENT,    R.id.nav_tab_agent,    R.id.nav_icon_agent,    R.id.nav_label_agent),
+            TabDef(Tab.RECORD,   R.id.nav_tab_record,   R.id.nav_icon_record,   R.id.nav_label_record, R.id.nav_indicator_record),
+            TabDef(Tab.HISTORY,  R.id.nav_tab_history,  R.id.nav_icon_history,  R.id.nav_label_history, R.id.nav_indicator_history),
+            TabDef(Tab.CHAT,     R.id.nav_tab_chat,     R.id.nav_icon_chat,     R.id.nav_label_chat, R.id.nav_indicator_chat),
+            TabDef(Tab.SETTINGS, R.id.nav_tab_settings, R.id.nav_icon_settings, R.id.nav_label_settings, R.id.nav_indicator_settings),
+            TabDef(Tab.MODELS,   R.id.nav_tab_models,   R.id.nav_icon_models,   R.id.nav_label_models, R.id.nav_indicator_models),
+            TabDef(Tab.AGENT,    R.id.nav_tab_agent,    R.id.nav_icon_agent,    R.id.nav_label_agent, R.id.nav_indicator_agent),
         )
 
         for (t in tabs) {
-            val color = if (t.tab == active) accent else dimmed
+            // Emoji ignore tint, so the current tab is shown by its bold label and the accent bar above it.
+            val isActive = t.tab == active
+            val color = if (isActive) current else dimmed
             root.findViewById<TextView>(t.iconId)?.setTextColor(color)
-            root.findViewById<TextView>(t.labelId)?.setTextColor(color)
+            root.findViewById<TextView>(t.labelId)?.apply {
+                setTextColor(color)
+                setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
+            }
+            root.findViewById<View>(t.indicatorId)?.setBackgroundColor(if (isActive) accent else Color.TRANSPARENT)
 
             if (t.tab != active) {
                 root.findViewById<LinearLayout>(t.tabId)?.setOnClickListener {

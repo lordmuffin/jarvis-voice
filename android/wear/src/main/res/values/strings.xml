@@ -1,4 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Jarvis Wear</string>
+
+    <string name="wear_tap_to_capture">Tap to capture</string>
+    <string name="wear_clock_zero" translatable="false">0:00</string>
+    <string name="wear_gear" translatable="false">⚙</string>
+    <string name="wear_settings_title">Jarvis Wear</string>
+    <string name="wear_api_key">API Key</string>
+    <string name="wear_server_url">Server URL</string>
+    <string name="wear_hint_api_key" translatable="false">X-Jarvis-Key</string>
+    <string name="wear_hint_server_url" translatable="false">https://kai.apj.dev</string>
+    <string name="wear_save">Save</string>
+    <string name="wear_stop_glyph" translatable="false">⏹</string>
+    <string name="wear_mic_glyph" translatable="false">🎙</string>
+    <string name="wear_recording">Recording…</string>
+    <string name="wear_saved_will_sync">Saved — will sync on WiFi</string>
+    <string name="wear_pending">⏳ pending</string>
+    <string name="wear_captured">✓ Captured</string>
+    <string name="wear_synced">✓ synced</string>
+    <string name="wear_sync_failed">⚠ Sync failed — will retry</string>
+    <string name="wear_failed">✗ failed</string>
+    <string name="wear_mic_permission">Microphone permission required</string>
+    <string name="wear_saved">Saved</string>
+    <string name="wear_settings_label">Settings</string>
 </resources>

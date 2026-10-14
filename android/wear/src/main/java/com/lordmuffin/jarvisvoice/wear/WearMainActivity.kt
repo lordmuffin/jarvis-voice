@@ -87,8 +87,8 @@ class WearMainActivity : AppCompatActivity() {
         elapsedSeconds = 0
         tvTimer.visibility = View.VISIBLE
         handler.post(timerRunnable)
-        btnRecord.text = "⏹"
-        tvResponse.text = "Recording…"
+        btnRecord.setText(R.string.wear_stop_glyph)
+        tvResponse.setText(R.string.wear_recording)
         tvSyncStatus.text = ""
     }
 
@@ -96,7 +96,7 @@ class WearMainActivity : AppCompatActivity() {
         val file = rec.stopRecording()
         handler.removeCallbacks(timerRunnable)
         tvTimer.visibility = View.INVISIBLE
-        btnRecord.text = "🎙"
+        btnRecord.setText(R.string.wear_mic_glyph)
 
         if (file == null) return
 
@@ -104,8 +104,8 @@ class WearMainActivity : AppCompatActivity() {
             RecordingStore.get(applicationContext).insert(file.absolutePath, System.currentTimeMillis())
             enqueueUpload()
         }
-        tvResponse.text = "Saved — will sync on WiFi"
-        tvSyncStatus.text = "⏳ pending"
+        tvResponse.setText(R.string.wear_saved_will_sync)
+        tvSyncStatus.setText(R.string.wear_pending)
     }
 
     private fun enqueueUpload() {
@@ -123,22 +123,22 @@ class WearMainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             RecordingStore.get(this@WearMainActivity).latestFlow.collect { rec ->
                 if (rec == null) {
-                    tvResponse.text = "Tap to capture"
+                    tvResponse.setText(R.string.wear_tap_to_capture)
                     tvSyncStatus.text = ""
                     return@collect
                 }
                 when (rec.status) {
                     SyncStatus.PENDING -> {
-                        tvResponse.text = "Saved — will sync on WiFi"
-                        tvSyncStatus.text = "⏳ pending"
+                        tvResponse.setText(R.string.wear_saved_will_sync)
+                        tvSyncStatus.setText(R.string.wear_pending)
                     }
                     SyncStatus.SYNCED -> {
-                        tvResponse.text = rec.response?.takeIf { it.isNotBlank() } ?: "✓ Captured"
-                        tvSyncStatus.text = "✓ synced"
+                        tvResponse.text = rec.response?.takeIf { it.isNotBlank() } ?: getString(R.string.wear_captured)
+                        tvSyncStatus.setText(R.string.wear_synced)
                     }
                     SyncStatus.FAILED -> {
-                        tvResponse.text = "⚠ Sync failed — will retry"
-                        tvSyncStatus.text = "✗ failed"
+                        tvResponse.setText(R.string.wear_sync_failed)
+                        tvSyncStatus.setText(R.string.wear_failed)
                     }
                 }
             }
@@ -152,7 +152,7 @@ class WearMainActivity : AppCompatActivity() {
         if (requestCode == RC_AUDIO && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) {
             startCapture(recorder ?: return)
         } else {
-            Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.wear_mic_permission, Toast.LENGTH_SHORT).show()
         }
     }
 

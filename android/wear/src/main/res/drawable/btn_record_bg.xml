@@ -2,13 +2,13 @@
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="oval">
-            <solid android:color="#E5424D" />
+            <solid android:color="@color/inst_error" />
         </shape>
     </item>
     <item>
         <shape android:shape="oval">
-            <solid android:color="#1E2530" />
-            <stroke android:width="2dp" android:color="#3B82F6" />
+            <solid android:color="@color/inst_surface" />
+            <stroke android:width="@dimen/inst_border_focus" android:color="@color/inst_accent" />
         </shape>
     </item>
 </selector>

@@ -29,7 +29,7 @@
         <activity
             android:name=".WearSettingsActivity"
             android:exported="false"
-            android:label="Settings" />
+            android:label="@string/wear_settings_label" />
 
         <!-- WorkManager's SystemForegroundService for upload worker -->
         <service
