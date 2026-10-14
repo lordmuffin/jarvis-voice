@@ -122,7 +122,7 @@ describe("work item cards", () => {
     expect(button("✓ Approve").disabled).toBe(true);
     expect(root.textContent).toContain("no repository yet");
     // On a session's own page, a source is a hash link into its transcript.
-    expect(root.querySelector(".wi-source")?.getAttribute("href")).toBe("#t=21000");
+    expect(root.querySelector(".i-src")?.getAttribute("href")).toBe("#t=21000");
   });
 
   it("approves a draft", async () => {
@@ -207,7 +207,7 @@ describe("work item cards", () => {
   it("merges selected drafts of one session into the chosen one", async () => {
     serve(item({}));
     const changed = show([item({ id: "a", title: "First" }), item({ id: "b", title: "Second" })]);
-    const boxes = root.querySelectorAll<HTMLInputElement>(".wi-pick");
+    const boxes = root.querySelectorAll<HTMLInputElement>('[data-testid="work-item-pick"]');
     for (const b of boxes) {
       b.checked = true;
       b.dispatchEvent(new Event("change", { bubbles: true }));
@@ -225,7 +225,7 @@ describe("work item cards", () => {
 
   it("refuses to merge drafts from different sessions", async () => {
     show([item({ id: "a" }), item({ id: "b", session_id: "s2" })]);
-    for (const b of root.querySelectorAll<HTMLInputElement>(".wi-pick")) {
+    for (const b of root.querySelectorAll<HTMLInputElement>('[data-testid="work-item-pick"]')) {
       b.checked = true;
       b.dispatchEvent(new Event("change", { bubbles: true }));
       await settle();
@@ -254,7 +254,7 @@ describe("work item cards", () => {
   it("restores a discarded item and links sources across sessions", async () => {
     serve(item({}));
     const changed = show([item({ state: "discarded", session_title: "Friday" })], vi.fn(), true);
-    expect(root.querySelector(".wi-source")?.getAttribute("href")).toBe("/sessions/s1#t=21000");
+    expect(root.querySelector(".i-src")?.getAttribute("href")).toBe("/sessions/s1#t=21000");
     expect(root.textContent).toContain("Friday");
     button("↩ Restore").click();
     await settle();

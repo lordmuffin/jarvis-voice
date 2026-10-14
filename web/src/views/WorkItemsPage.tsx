@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
 import { ApiError, myWorkItems } from "../api";
+import { Banner, EmptyState, Loading, PageTitle, Section, Segmented, Text } from "../ds/components";
 import { currentUser } from "../store";
 import type { WorkItemPage, WorkItemState } from "../types";
 import { runActive } from "../workitems";
@@ -37,44 +38,36 @@ export function WorkItemsPage() {
 
   if (!allowed)
     return (
-      <section class="page">
-        <h1 class="h1">Work Items</h1>
-        <p class="muted">Work items are found in the owner's and admins' sessions only.</p>
-      </section>
+      <Section>
+        <PageTitle>Work Items</PageTitle>
+        <EmptyState>Work items are found in the owner's and admins' sessions only.</EmptyState>
+      </Section>
     );
 
   return (
-    <section class="page">
-      <h1 class="h1">Work Items</h1>
-      <p class="muted">
+    <Section>
+      <PageTitle>Work Items</PageTitle>
+      <Text as="p" tone="muted" prose>
         Ideas from your sessions, as Claude Code prompts. Edit and approve one to freeze its
         prompt, then copy it into Claude Code.
-      </p>
-      <div class="toolbar" role="tablist">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            role="tab"
-            aria-selected={v.id === view.id}
-            class={`btn btn-sm${v.id === view.id ? " btn-accent" : ""}`}
-            onClick={() => setView(v)}
-          >
-            {v.label}
-          </button>
-        ))}
+      </Text>
+      <div>
+        <Segmented
+          role="tablist"
+          label="Work item views"
+          value={view.id}
+          options={VIEWS}
+          onChange={(id) => setView(VIEWS.find((v) => v.id === id)!)}
+        />
       </div>
-      {error && (
-        <p class="error" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Banner variant="error">{error}</Banner>}
       {page === null ? (
-        <p class="muted">Loading…</p>
+        <Loading />
       ) : page.items.length === 0 ? (
-        <p class="muted">{view.id === "open" ? "Nothing to review." : "Nothing discarded."}</p>
+        <EmptyState>{view.id === "open" ? "Nothing to review." : "Nothing discarded."}</EmptyState>
       ) : (
         <WorkItemList page={page} onChanged={() => setReloads((n) => n + 1)} showSession />
       )}
-    </section>
+    </Section>
   );
 }

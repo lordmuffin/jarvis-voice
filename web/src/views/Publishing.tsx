@@ -8,6 +8,25 @@ import {
   syncPublishing,
   type PublishAction,
 } from "../api";
+import {
+  Actions,
+  Banner,
+  Bar,
+  Button,
+  ButtonLink,
+  Choice,
+  Code,
+  EmptyState,
+  Head,
+  ItemMain,
+  List,
+  ListItem,
+  Loading,
+  PageTitle,
+  SectionLabel,
+  Section,
+  Text,
+} from "../ds/components";
 import { when } from "../format";
 import { currentUser, me } from "../store";
 import type { PublishingItem, PublishingQueue } from "../types";
@@ -92,70 +111,65 @@ export function Publishing() {
 
   if (!allowed)
     return (
-      <section class="page">
-        <h1 class="h1">Publishing</h1>
-        <p class="muted">Only the owner and admins publish notes.</p>
-      </section>
+      <Section>
+        <PageTitle>Publishing</PageTitle>
+        <EmptyState>Only the owner and admins publish notes.</EmptyState>
+      </Section>
     );
 
   return (
-    <section class="page">
-      <h1 class="h1">Publishing</h1>
-      <p class="muted">
-        Each note goes to {q ? <code>{q.repo}</code> : "the vault repo"} as its own pull request
-        against <code>{q?.base_branch ?? "main"}</code>. Review and merge here or on GitHub.
-      </p>
-      <div class="toolbar">
-        <label class="toggle">
-          <input
-            type="checkbox"
-            checked={q?.auto_publish ?? false}
-            disabled={!q}
-            onChange={(e) => void toggleAuto((e.target as HTMLInputElement).checked)}
-          />
-          Auto-publish new notes
-        </label>
-        <button class="btn btn-sm" disabled={busy !== null} onClick={() => void sync()}>
+    <Section>
+      <PageTitle>Publishing</PageTitle>
+      <Text as="p" tone="muted" prose>
+        Each note goes to {q ? <Code>{q.repo}</Code> : "the vault repo"} as its own pull request
+        against <Code>{q?.base_branch ?? "main"}</Code>. Review and merge here or on GitHub.
+      </Text>
+      <Bar>
+        <Choice
+          label="Auto-publish new notes"
+          checked={q?.auto_publish ?? false}
+          disabled={!q}
+          onChange={(e) => void toggleAuto((e.target as HTMLInputElement).checked)}
+        />
+        <Button size="sm" disabled={busy !== null} onClick={() => void sync()}>
           {busy === "sync" ? "Syncing…" : "Sync Now"}
-        </button>
-      </div>
-      {error && (
-        <p class="error" role="alert">
-          {error}
-        </p>
-      )}
-      {!q && !error && <p class="muted">Loading…</p>}
+        </Button>
+      </Bar>
+      {error && <Banner variant="error">{error}</Banner>}
+      {!q && !error && <Loading />}
       {q && (
         <>
-          <div class="section-head">
-            <h2 class="label">Ready to publish ({q.ready.length})</h2>
+          <Head>
+            <SectionLabel>Ready to publish ({q.ready.length})</SectionLabel>
             {q.ready.length > 0 && (
-              <button
-                class="btn btn-sm btn-accent"
+              <Button
+                variant="primary"
+                size="sm"
                 disabled={busy !== null || q.publishing_all}
                 onClick={() => void all()}
               >
                 {q.publishing_all ? "Publishing…" : "Publish All"}
-              </button>
+              </Button>
             )}
-          </div>
+          </Head>
           <Items
             items={q.ready}
             empty="Nothing waiting. New notes show up here when a session ends."
             testid="ready"
             render={(it) => (
-              <button
-                class="btn btn-sm btn-accent"
+              <Button
+                variant="primary"
+                size="sm"
                 disabled={busy !== null || q.publishing_all}
                 onClick={() => void act(it, "publish")}
               >
                 Publish
-              </button>
+              </Button>
             )}
             busy={busy}
           />
 
-          <h2 class="label section-head">Pull requests waiting to merge ({q.open.length})</h2>
+          <SectionLabel>Pull requests waiting to merge ({q.open.length})</SectionLabel>
           <Items
             items={q.open}
             empty="No open pull requests."
@@ -164,34 +178,30 @@ export function Publishing() {
             render={(it) => (
               <>
                 {it.publication?.pr_url && (
-                  <a
-                    class="btn btn-sm btn-link"
+                  <ButtonLink
+                    size="sm"
                     href={`${it.publication.pr_url}/files`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
                     Review
-                  </a>
+                  </ButtonLink>
                 )}
                 {it.publication?.state === "open" && (
                   <>
-                    <button
-                      class="btn btn-sm btn-accent"
-                      disabled={busy !== null}
-                      onClick={() => void act(it, "merge")}
-                    >
+                    <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void act(it, "merge")}>
                       Merge
-                    </button>
-                    <button class="btn btn-sm" disabled={busy !== null} onClick={() => void act(it, "close")}>
+                    </Button>
+                    <Button size="sm" disabled={busy !== null} onClick={() => void act(it, "close")}>
                       Close
-                    </button>
+                    </Button>
                   </>
                 )}
               </>
             )}
           />
 
-          <h2 class="label section-head">Recent</h2>
+          <SectionLabel>Recent</SectionLabel>
           <Items
             items={q.recent}
             empty="Nothing yet."
@@ -199,19 +209,19 @@ export function Publishing() {
             busy={busy}
             render={(it) =>
               it.publication?.state === "failed" ? (
-                <button class="btn btn-sm" disabled={busy !== null} onClick={() => void act(it, "publish")}>
+                <Button size="sm" disabled={busy !== null} onClick={() => void act(it, "publish")}>
                   Retry
-                </button>
+                </Button>
               ) : it.publication?.state === "skipped" ? (
-                <button class="btn btn-sm btn-quiet" disabled={busy !== null} onClick={() => void act(it, "unskip")}>
+                <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => void act(it, "unskip")}>
                   Unskip
-                </button>
+                </Button>
               ) : null
             }
           />
         </>
       )}
-    </section>
+    </Section>
   );
 }
 
@@ -229,18 +239,23 @@ function Items({
   render: (it: PublishingItem) => preact.ComponentChildren;
 }) {
   const [all, setAll] = useState(false);
-  if (items.length === 0) return <p class="muted small">{empty}</p>;
+  if (items.length === 0)
+    return (
+      <Text size="caption" tone="muted">
+        {empty}
+      </Text>
+    );
   const shown = all ? items : items.slice(0, SHOWN);
   return (
     <>
-      <ul class="rows" data-testid={`publishing-${testid}`}>
+      <List data-testid={`publishing-${testid}`}>
         {shown.map((it) => (
-          <li class="row row-static" key={it.session_id} data-testid="publishing-item">
-            <div class="row-main">
-              <Link class="row-title" href={`/sessions/${encodeURIComponent(it.session_id)}`}>
-                {it.title}
+          <ListItem withActions key={it.session_id} data-testid="publishing-item">
+            <ItemMain>
+              <Link href={`/sessions/${encodeURIComponent(it.session_id)}`}>
+                <Text strong>{it.title}</Text>
               </Link>
-              <span class="meta">
+              <Text size="meta" tone="muted">
                 {when(it.started_at)} · {it.owner}
                 {it.publication?.pr_url && (
                   <>
@@ -250,22 +265,32 @@ function Items({
                     </a>
                   </>
                 )}
-              </span>
+              </Text>
               {it.publication?.state === "failed" && it.publication.last_error && (
-                <span class="error small">{it.publication.last_error}</span>
+                <Text size="caption" tone="error">
+                  {it.publication.last_error}
+                </Text>
               )}
-            </div>
-            <div class="row-actions">
+            </ItemMain>
+            <Actions>
               {it.publication && <PublicationChip publication={it.publication} />}
-              {busy === it.session_id ? <span class="meta">Working…</span> : render(it)}
-            </div>
-          </li>
+              {busy === it.session_id ? (
+                <Text size="meta" tone="muted">
+                  Working…
+                </Text>
+              ) : (
+                render(it)
+              )}
+            </Actions>
+          </ListItem>
         ))}
-      </ul>
+      </List>
       {shown.length < items.length && (
-        <button class="btn btn-sm btn-quiet" onClick={() => setAll(true)}>
-          Show all {items.length}
-        </button>
+        <div>
+          <Button variant="quiet" size="sm" onClick={() => setAll(true)}>
+            Show all {items.length}
+          </Button>
+        </div>
       )}
     </>
   );

@@ -1,5 +1,6 @@
 import { useRef, useState } from "preact/hooks";
 import { ApiError, uploadRecording } from "../api";
+import { Banner, Button, Field, FilePick, InlineForm, Input, Select, Text } from "../ds/components";
 import { navigate } from "../store";
 
 // What phones and recorders save; the server decodes anything ffmpeg reads.
@@ -49,8 +50,7 @@ export function UploadRecording({
 
   return (
     <>
-      <label class="btn upload-pick">
-        Upload recording
+      <FilePick label="Upload recording">
         <input
           ref={input}
           type="file"
@@ -62,36 +62,29 @@ export function UploadRecording({
             setError(null);
           }}
         />
-      </label>
+      </FilePick>
       {file && (
-        <form class="upload-form" data-testid="upload-form" onSubmit={submit}>
-          <span class="meta upload-file">{file.name}</span>
-          <input
-            class="field"
-            name="title"
-            placeholder={stem(file.name)}
-            aria-label="Title"
-          />
-          <select
-            class="field"
-            name="mode"
-            aria-label="Mode"
-          >
-            <option value="solo">Solo</option>
-            <option value="meeting">Meeting</option>
-          </select>
-          <button class="btn" type="submit" disabled={busy}>
+        <InlineForm data-testid="upload-form" onSubmit={submit}>
+          <Text size="meta" tone="muted" wrap>
+            {file.name}
+          </Text>
+          <Field label="Title" hideLabel htmlFor="upload-title">
+            <Input id="upload-title" name="title" placeholder={stem(file.name)} aria-label="Title" />
+          </Field>
+          <Field label="Mode" hideLabel htmlFor="upload-mode">
+            <Select id="upload-mode" name="mode" aria-label="Mode">
+              <option value="solo">Solo</option>
+              <option value="meeting">Meeting</option>
+            </Select>
+          </Field>
+          <Button variant="primary" type="submit" disabled={busy}>
             {busy ? "Uploading…" : "Upload"}
-          </button>
-          <button class="btn btn-quiet" type="button" data-testid="upload-cancel" onClick={reset}>
+          </Button>
+          <Button variant="quiet" data-testid="upload-cancel" onClick={reset}>
             Cancel
-          </button>
-          {error && (
-            <p class="error" role="alert">
-              {error}
-            </p>
-          )}
-        </form>
+          </Button>
+          {error && <Banner variant="error">{error}</Banner>}
+        </InlineForm>
       )}
     </>
   );

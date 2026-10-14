@@ -12,8 +12,36 @@ import {
   workItemPrompt,
   type WorkItemAction,
 } from "../api";
+import {
+  Actions,
+  Banner,
+  Bar,
+  Block,
+  Bullets,
+  Button,
+  Choice,
+  Code,
+  CodeBlock,
+  EmptyState,
+  Field,
+  Form,
+  Input,
+  Pill,
+  type PillTone,
+  Quote,
+  RunBox,
+  RunHead,
+  Section,
+  SectionLabel,
+  Select,
+  SourceLink,
+  Stack,
+  Text,
+  Textarea,
+  WorkCard,
+} from "../ds/components";
 import { clock } from "../format";
-import { currentUser } from "../store";
+import { currentUser, navigate } from "../store";
 import type { WorkItem, WorkItemEdit, WorkItemPage, WorkItemPrompt, WorkRepo } from "../types";
 import {
   DISPATCH_LABEL,
@@ -84,16 +112,16 @@ export function SessionWorkItems({
   if (!mine || !page?.enabled) return null;
   if (!live && page.items.length === 0) return null;
   return (
-    <section class="work-items" aria-label="Work items" data-testid="work-items">
-      <h3 class="label">Work items</h3>
+    <Section aria-label="Work items" data-testid="work-items">
+      <SectionLabel as="h3">Work items</SectionLabel>
       {page.items.length === 0 ? (
-        <p class="muted small">
+        <Text as="p" size="caption" tone="muted">
           Ideas you talk through become draft Claude Code prompts here.
-        </p>
+        </Text>
       ) : (
         <WorkItemList page={page} onChanged={() => setReloads((n) => n + 1)} />
       )}
-    </section>
+    </Section>
   );
 }
 
@@ -132,31 +160,31 @@ export function WorkItemList({
   }
 
   return (
-    <div class="wi-list">
+    <Stack>
       {pickedItems.length >= 2 && (
-        <div class="wi-mergebar" data-testid="merge-bar">
-          {sameSession ? (
-            <>
-              <span class="small">Merge {pickedItems.length} drafts into</span>
-              {pickedItems.map((i) => (
-                <button key={i.id} class="btn btn-sm" onClick={() => void merge(i.id)}>
-                  {i.title}
-                </button>
-              ))}
-            </>
-          ) : (
-            <span class="small muted">Only drafts from the same session can be merged.</span>
-          )}
-          <button class="btn btn-sm btn-quiet" onClick={() => setPicked([])}>
-            Cancel
-          </button>
-        </div>
+        <Block data-testid="merge-bar">
+          <Bar>
+            {sameSession ? (
+              <>
+                <Text size="caption">Merge {pickedItems.length} drafts into</Text>
+                {pickedItems.map((i) => (
+                  <Button key={i.id} size="sm" onClick={() => void merge(i.id)}>
+                    {i.title}
+                  </Button>
+                ))}
+              </>
+            ) : (
+              <Text size="caption" tone="muted">
+                Only drafts from the same session can be merged.
+              </Text>
+            )}
+            <Button variant="quiet" size="sm" onClick={() => setPicked([])}>
+              Cancel
+            </Button>
+          </Bar>
+        </Block>
       )}
-      {error && (
-        <p class="error small" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Banner variant="error">{error}</Banner>}
       {items.map((item) => (
         <WorkItemCard
           key={item.id}
@@ -169,9 +197,16 @@ export function WorkItemList({
           onChanged={onChanged}
         />
       ))}
-    </div>
+    </Stack>
   );
 }
+
+const STATE_TONE: Record<WorkItem["state"], PillTone> = {
+  draft: "neutral",
+  approved: "live",
+  discarded: "neutral",
+  merged: "done",
+};
 
 type Busy = WorkItemAction | "save" | "copy" | "prompt" | "run" | "cancel" | "steer" | null;
 
@@ -264,22 +299,24 @@ export function WorkItemCard({
   const steerOpen = canSteer && (chosen ?? item.dispatch?.state === "needs_input");
   const setSteer = (open: boolean) => item.dispatch && setSteering({ run: item.dispatch.id, open });
   return (
-    <article class={`wi wi-${item.state}`} data-testid="work-item" data-state={item.state}>
-      <header class="wi-head">
+    <WorkCard state={item.state} data-testid="work-item" data-state={item.state}>
+      <Bar>
         {onPick && (
-          <input
-            type="checkbox"
-            class="wi-pick"
+          <Choice
+            data-testid="work-item-pick"
             checked={picked}
             aria-label={`Select “${item.title}” to merge`}
+            label=""
             onChange={(e) => onPick((e.target as HTMLInputElement).checked)}
           />
         )}
-        <div class="wi-title">
-          <strong data-testid="work-item-title">{item.title}</strong>
-          <div class="meta">
-            <span class={`chip chip-wi-${item.state}`}>{STATE_LABEL[item.state]}</span>{" "}
-            {item.repo ? <code>{item.repo}</code> : <span>no repository yet</span>}
+        <Stack grow>
+          <Text strong data-testid="work-item-title">
+            {item.title}
+          </Text>
+          <Text size="meta" tone="muted">
+            <Pill tone={STATE_TONE[item.state]}>{STATE_LABEL[item.state]}</Pill>{" "}
+            {item.repo ? <Code>{item.repo}</Code> : <span>no repository yet</span>}
             {showSession && (
               <>
                 {" · "}
@@ -288,9 +325,9 @@ export function WorkItemCard({
                 </Link>
               </>
             )}
-          </div>
-        </div>
-      </header>
+          </Text>
+        </Stack>
+      </Bar>
 
       {editing ? (
         <WorkItemEditor
@@ -308,40 +345,52 @@ export function WorkItemCard({
         />
       ) : (
         <>
-          {item.intent && <p class="wi-intent">{item.intent}</p>}
+          {item.intent && (
+            <Text as="p" pre>
+              {item.intent}
+            </Text>
+          )}
           {item.acceptance_criteria.length > 0 && (
-            <ul class="wi-criteria">
+            <Bullets data-testid="work-item-criteria">
               {item.acceptance_criteria.map((c) => (
                 <li key={c}>{c}</li>
               ))}
-            </ul>
+            </Bullets>
           )}
-          {item.done_when && <p class="small muted">Done when: {item.done_when}</p>}
+          {item.done_when && (
+            <Text as="p" size="caption" tone="muted">
+              Done when: {item.done_when}
+            </Text>
+          )}
           {item.sources.length > 0 && (
-            <div class="wi-sources" aria-label="Where it was said">
+            <Bar aria-label="Where it was said" data-testid="work-item-sources">
               {item.sources.map((s) =>
                 showSession ? (
-                  <Link
+                  <SourceLink
                     key={s.segment_id}
-                    class="wi-source"
                     href={transcriptHref(item.session_id, s.start_ms)}
                     title={s.text}
+                    onClick={(e) => {
+                      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                      e.preventDefault();
+                      navigate(transcriptHref(item.session_id, s.start_ms));
+                    }}
                   >
                     ▶ {clock(s.start_ms)}
-                  </Link>
+                  </SourceLink>
                 ) : (
                   // On the session's own page: a hash change scrolls its transcript there.
-                  <a key={s.segment_id} class="wi-source" href={`#t=${s.start_ms}`} title={s.text}>
+                  <SourceLink key={s.segment_id} href={`#t=${s.start_ms}`} title={s.text}>
                     ▶ {clock(s.start_ms)}
-                  </a>
+                  </SourceLink>
                 ),
               )}
-            </div>
+            </Bar>
           )}
           {item.state === "draft" && item.problems.length > 0 && (
-            <p class="small muted" data-testid="work-item-problems">
+            <Text as="p" size="caption" tone="muted" data-testid="work-item-problems">
               To approve: {item.problems.join("; ")}.
-            </p>
+            </Text>
           )}
         </>
       )}
@@ -357,81 +406,78 @@ export function WorkItemCard({
       )}
 
       {!editing && (
-        <div class="wi-actions">
+        <Bar>
           {dispatchEnabled && item.state === "approved" && !runActive(item) && (
-            <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => void runIt()}>
+            <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void runIt()}>
               {busy === "run" ? "Starting…" : item.dispatch ? "▶ Run Again" : "▶ Run in Claude Code"}
-            </button>
+            </Button>
           )}
           {canSteer && !steerOpen && (
-            <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => setSteer(true)}>
+            <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => setSteer(true)}>
               ↪ Steer Next Run
-            </button>
+            </Button>
           )}
           {runActive(item) && (
-            <button class="btn btn-sm" disabled={busy !== null} onClick={() => void cancelRun()}>
+            <Button size="sm" disabled={busy !== null} onClick={() => void cancelRun()}>
               {busy === "cancel" ? "Cancelling…" : "■ Cancel Run"}
-            </button>
+            </Button>
           )}
           {item.state === "approved" && (
-            <button class="btn btn-sm btn-accent" disabled={busy !== null} onClick={() => void copy()}>
+            <Button variant="primary" size="sm" disabled={busy !== null} onClick={() => void copy()}>
               {copied ? "✓ Copied" : busy === "copy" ? "Copying…" : "⎘ Copy Prompt"}
-            </button>
+            </Button>
           )}
           {item.state === "draft" && (
-            <button
-              class="btn btn-sm btn-accent"
+            <Button
+              variant="primary"
+              size="sm"
               disabled={busy !== null || item.problems.length > 0}
               title={item.problems.length ? item.problems.join("; ") : undefined}
               onClick={() => void act("approve")}
             >
               {busy === "approve" ? "Approving…" : "✓ Approve"}
-            </button>
+            </Button>
           )}
           {open && (
             <>
-              <button class="btn btn-sm" disabled={busy !== null} onClick={() => void togglePrompt()}>
+              <Button size="sm" disabled={busy !== null} onClick={() => void togglePrompt()}>
                 {prompt ? "Hide Prompt" : item.state === "approved" ? "Show Prompt" : "Preview Prompt"}
-              </button>
-              <button class="btn btn-sm" disabled={busy !== null} onClick={() => setEditing(true)}>
+              </Button>
+              <Button size="sm" disabled={busy !== null} onClick={() => setEditing(true)}>
                 Edit
-              </button>
+              </Button>
             </>
           )}
           {item.state === "approved" && (
-            <button class="btn btn-sm btn-quiet" disabled={busy !== null} onClick={() => void act("unapprove")}>
+            <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => void act("unapprove")}>
               Unapprove
-            </button>
+            </Button>
           )}
           {open && (
-            <button class="btn btn-sm btn-quiet" disabled={busy !== null} onClick={() => void act("discard")}>
+            <Button variant="quiet" size="sm" disabled={busy !== null} onClick={() => void act("discard")}>
               ✕ Discard
-            </button>
+            </Button>
           )}
           {item.state === "discarded" && (
-            <button class="btn btn-sm" disabled={busy !== null} onClick={() => void act("restore")}>
+            <Button size="sm" disabled={busy !== null} onClick={() => void act("restore")}>
               ↩ Restore
-            </button>
+            </Button>
           )}
-        </div>
+        </Bar>
       )}
 
-      {error && (
-        <p class="error small" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Banner variant="error">{error}</Banner>}
       {prompt && (
-        <div class="wi-prompt">
-          <p class="meta">
+        <Stack>
+          <Text size="meta" tone="muted">
             {prompt.frozen
               ? `Approved prompt · sha256 ${prompt.sha256?.slice(0, 12)}`
               : "Preview. Approving freezes the prompt exactly as shown."}
-          </p>
-          <pre data-testid="work-item-prompt">{prompt.markdown}</pre>
-        </div>
+          </Text>
+          <CodeBlock data-testid="work-item-prompt">{prompt.markdown}</CodeBlock>
+        </Stack>
       )}
-    </article>
+    </WorkCard>
   );
 }
 
@@ -439,34 +485,48 @@ export function WorkItemCard({
 function DispatchStatus({ run }: { run: NonNullable<WorkItem["dispatch"]> }) {
   const bad = ["failed", "timed_out", "rate_limited"].includes(run.state);
   return (
-    <div class={`wi-run wi-run-${run.state}`} data-testid="dispatch">
-      <span class="meta">
-        Claude Code{run.attempt > 1 ? ` · attempt ${run.attempt}` : ""} ·{" "}
-        <strong>{DISPATCH_LABEL[run.state]}</strong>
-        {run.pr_url && (
-          <>
-            {" · "}
-            <a href={run.pr_url} target="_blank" rel="noreferrer">
-              Draft PR #{run.pr_number}
-            </a>
-          </>
-        )}
-      </span>
+    <RunBox data-testid="dispatch">
+      <RunHead>
+        <span>
+          Claude Code{run.attempt > 1 ? ` · attempt ${run.attempt}` : ""} ·{" "}
+          <strong>{DISPATCH_LABEL[run.state]}</strong>
+          {run.pr_url && (
+            <>
+              {" · "}
+              <a href={run.pr_url} target="_blank" rel="noreferrer">
+                Draft PR #{run.pr_number}
+              </a>
+            </>
+          )}
+        </span>
+      </RunHead>
       {run.guidance && (
-        <p class="small wi-run-guidance">
-          <span class="muted">You: </span>
+        <Text as="p" size="caption">
+          <Text tone="muted">You: </Text>
           {run.guidance}
-        </p>
+        </Text>
       )}
-      {run.summary && <p class="small">{run.summary}</p>}
+      {run.summary && (
+        <Text as="p" size="caption">
+          {run.summary}
+        </Text>
+      )}
       {run.questions && (
-        <div class="wi-run-questions" data-testid="dispatch-questions">
-          <span class="meta">Claude asks</span>
-          <p class="small">{run.questions}</p>
-        </div>
+        <Quote data-testid="dispatch-questions">
+          <Text size="meta" tone="muted">
+            Claude asks
+          </Text>
+          <Text as="p" size="caption">
+            {run.questions}
+          </Text>
+        </Quote>
       )}
-      {bad && run.error && <p class="small error">{run.error}</p>}
-    </div>
+      {bad && run.error && (
+        <Text as="p" size="caption" tone="error">
+          {run.error}
+        </Text>
+      )}
+    </RunBox>
   );
 }
 
@@ -486,43 +546,40 @@ function SteerForm({
   const guidance = text.trim();
   const id = `steer-${run.id}`;
   return (
-    <form
-      class="wi-form wi-steer"
+    <Form
       data-testid="steer"
       onSubmit={(e) => {
         e.preventDefault();
         if (guidance) onSend(guidance);
       }}
     >
-      <label class="label" for={id}>
-        {run.state === "needs_input" ? "Answer Claude" : "Steer the next run"}
-      </label>
-      <textarea
-        id={id}
-        class="field wi-textarea"
-        rows={3}
-        maxLength={4000}
-        placeholder={
-          run.state === "needs_input"
-            ? "Answer its questions, or tell it what to do instead…"
-            : "What should it fix, try or leave alone next time?"
-        }
-        value={text}
-        onInput={(e) => setText(e.currentTarget.value)}
-      />
-      <p class="small muted">
-        A follow-up run continues on <code>{run.branch}</code>
+      <Field label={run.state === "needs_input" ? "Answer Claude" : "Steer the next run"} htmlFor={id}>
+        <Textarea
+          id={id}
+          rows={3}
+          maxLength={4000}
+          placeholder={
+            run.state === "needs_input"
+              ? "Answer its questions, or tell it what to do instead…"
+              : "What should it fix, try or leave alone next time?"
+          }
+          value={text}
+          onInput={(e) => setText((e.target as HTMLTextAreaElement).value)}
+        />
+      </Field>
+      <Text as="p" size="caption" tone="muted">
+        A follow-up run continues on <Code>{run.branch}</Code>
         {run.pr_number ? ` and draft PR #${run.pr_number}` : ""}, with your reply added to the approved prompt.
-      </p>
-      <div class="wi-actions">
-        <button class="btn btn-sm btn-accent" type="submit" disabled={busy || !guidance}>
+      </Text>
+      <Bar>
+        <Button variant="primary" size="sm" type="submit" disabled={busy || !guidance}>
           {busy ? "Starting…" : "↪ Continue"}
-        </button>
-        <button class="btn btn-sm btn-quiet" type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="quiet" size="sm" onClick={onCancel}>
           Cancel
-        </button>
-      </div>
-    </form>
+        </Button>
+      </Bar>
+    </Form>
   );
 }
 
@@ -560,57 +617,52 @@ function WorkItemEditor({
 
   const id = (f: string) => `wi-${item.id}-${f}`;
   return (
-    <form class="wi-form" onSubmit={save}>
-      <label class="label" for={id("title")}>
-        Title
-      </label>
-      <input id={id("title")} class="field" value={title} onInput={(e) => setTitle(e.currentTarget.value)} />
-      <label class="label" for={id("repo")}>
-        Repository
-      </label>
-      <select id={id("repo")} class="field" value={repo} onChange={(e) => setRepo(e.currentTarget.value)}>
-        <option value="">Choose a repository…</option>
-        {repos.map((r) => (
-          <option key={r.name} value={r.name}>
-            {r.name}
-          </option>
-        ))}
-      </select>
-      <label class="label" for={id("intent")}>
-        Intent
-      </label>
-      <textarea
-        id={id("intent")}
-        class="field wi-textarea"
-        rows={4}
-        value={intent}
-        onInput={(e) => setIntent(e.currentTarget.value)}
-      />
-      <label class="label" for={id("criteria")}>
-        Acceptance criteria (one per line)
-      </label>
-      <textarea
-        id={id("criteria")}
-        class="field wi-textarea"
-        rows={4}
-        value={criteria}
-        onInput={(e) => setCriteria(e.currentTarget.value)}
-      />
-      <label class="label" for={id("done")}>
-        Done when
-      </label>
-      <input id={id("done")} class="field" value={doneWhen} onInput={(e) => setDoneWhen(e.currentTarget.value)} />
-      <div class="wi-actions">
-        <button class="btn btn-sm btn-accent" type="submit" disabled={busy}>
+    <Form onSubmit={save}>
+      <Field label="Title" htmlFor={id("title")}>
+        <Input id={id("title")} value={title} onInput={(e) => setTitle((e.target as HTMLInputElement).value)} />
+      </Field>
+      <Field label="Repository" htmlFor={id("repo")}>
+        <Select id={id("repo")} value={repo} onChange={(e) => setRepo((e.target as HTMLSelectElement).value)}>
+          <option value="">Choose a repository…</option>
+          {repos.map((r) => (
+            <option key={r.name} value={r.name}>
+              {r.name}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Intent" htmlFor={id("intent")}>
+        <Textarea
+          id={id("intent")}
+          rows={4}
+          value={intent}
+          onInput={(e) => setIntent((e.target as HTMLTextAreaElement).value)}
+        />
+      </Field>
+      <Field label="Acceptance criteria (one per line)" htmlFor={id("criteria")}>
+        <Textarea
+          id={id("criteria")}
+          rows={4}
+          value={criteria}
+          onInput={(e) => setCriteria((e.target as HTMLTextAreaElement).value)}
+        />
+      </Field>
+      <Field label="Done when" htmlFor={id("done")}>
+        <Input id={id("done")} value={doneWhen} onInput={(e) => setDoneWhen((e.target as HTMLInputElement).value)} />
+      </Field>
+      <Bar>
+        <Button variant="primary" size="sm" type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save"}
-        </button>
-        <button class="btn btn-sm btn-quiet" type="button" onClick={onCancel}>
+        </Button>
+        <Button variant="quiet" size="sm" onClick={onCancel}>
           Cancel
-        </button>
-      </div>
+        </Button>
+      </Bar>
       {item.state === "approved" && (
-        <p class="small muted">Saving puts it back to draft: approve it again to freeze the new prompt.</p>
+        <Text as="p" size="caption" tone="muted">
+          Saving puts it back to draft: approve it again to freeze the new prompt.
+        </Text>
       )}
-    </form>
+    </Form>
   );
 }

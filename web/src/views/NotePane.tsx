@@ -8,6 +8,18 @@ import {
   regenerateNote,
   type PublishAction,
 } from "../api";
+import {
+  Banner,
+  Bar,
+  Button,
+  ButtonLink,
+  Code,
+  Form,
+  Section,
+  Spacer,
+  Text,
+  Textarea,
+} from "../ds/components";
 import type { SessionDetail } from "../types";
 import { NoteView } from "./NoteView";
 import { PublicationChip } from "./PublicationChip";
@@ -94,66 +106,72 @@ export function NotePane({
   const disabled = busy !== null;
 
   return (
-    <div class="note-pane">
-      <div class="note-toolbar" role="toolbar" aria-label="Note">
+    <Section>
+      <Bar role="toolbar" aria-label="Note">
         {detail.can_publish && <PublicationChip publication={pub} />}
         {pub?.pr_url && (
-          <a class="meta" href={pub.pr_url} target="_blank" rel="noopener noreferrer">
-            PR #{pub.pr_number}
-          </a>
+          <Text size="meta">
+            <a href={pub.pr_url} target="_blank" rel="noopener noreferrer">
+              PR #{pub.pr_number}
+            </a>
+          </Text>
         )}
         {detail.can_publish && pub?.changed && state !== "open" && (
-          <span class="meta warning-text">Edited since it was published</span>
+          <Text size="meta" tone="warning">
+            Edited since it was published
+          </Text>
         )}
-        <span class="spacer" />
+        <Spacer />
         {detail.can_publish && (
           <>
             {(state === null || state === "closed" || state === "failed" || state === "skipped") && (
-              <button class="btn btn-sm btn-accent" disabled={disabled} onClick={() => void act("publish")}>
+              <Button variant="primary" size="sm" disabled={disabled} onClick={() => void act("publish")}>
                 Publish
-              </button>
+              </Button>
             )}
             {state === "merged" && pub?.changed && (
-              <button class="btn btn-sm btn-accent" disabled={disabled} onClick={() => void act("publish")}>
+              <Button variant="primary" size="sm" disabled={disabled} onClick={() => void act("publish")}>
                 Publish Changes
-              </button>
+              </Button>
             )}
             {state === "open" && pub?.pr_url && (
-              <a class="btn btn-sm btn-link" href={`${pub.pr_url}/files`} target="_blank" rel="noopener noreferrer">
+              <ButtonLink size="sm" href={`${pub.pr_url}/files`} target="_blank" rel="noopener noreferrer">
                 Review
-              </a>
+              </ButtonLink>
             )}
             {state === "open" && (
               <>
-                <button class="btn btn-sm btn-accent" disabled={disabled} onClick={merge}>
+                <Button variant="primary" size="sm" disabled={disabled} onClick={merge}>
                   Merge
-                </button>
-                <button class="btn btn-sm" disabled={disabled} onClick={() => void act("close")}>
+                </Button>
+                <Button size="sm" disabled={disabled} onClick={() => void act("close")}>
                   Close PR
-                </button>
+                </Button>
               </>
             )}
             {state === "skipped" ? (
-              <button class="btn btn-sm btn-quiet" disabled={disabled} onClick={() => void act("unskip")}>
+              <Button variant="quiet" size="sm" disabled={disabled} onClick={() => void act("unskip")}>
                 Unskip
-              </button>
+              </Button>
             ) : (
               state !== "merged" && (
-                <button
-                  class="btn btn-sm btn-quiet"
+                <Button
+                  variant="quiet"
+                  size="sm"
                   disabled={disabled}
                   title="Never publish this note"
                   onClick={() => void act("skip")}
                 >
                   Skip
-                </button>
+                </Button>
               )
             )}
           </>
         )}
         {note.markdown !== null && !editing && (
-          <button
-            class="btn btn-sm btn-quiet"
+          <Button
+            variant="quiet"
+            size="sm"
             disabled={disabled}
             onClick={() => {
               setDraft(note.markdown ?? "");
@@ -162,71 +180,68 @@ export function NotePane({
             }}
           >
             Edit
-          </button>
+          </Button>
         )}
         {detail.can_regenerate && !editing && (
-          <button
-            class="btn btn-sm btn-quiet"
+          <Button
+            variant="quiet"
+            size="sm"
             disabled={disabled || prOpen}
             title={prOpen ? "Close the pull request first" : "Write the note again from the transcript"}
             onClick={regenerate}
           >
             Regenerate
-          </button>
+          </Button>
         )}
-      </div>
+      </Bar>
       {busy && (
-        <p class="meta" role="status">
+        <Text as="p" size="meta" tone="muted" role="status">
           {BUSY[busy]}
-        </p>
+        </Text>
       )}
-      {error && (
-        <p class="error small" role="alert">
-          {error}
-        </p>
-      )}
+      {error && <Banner variant="error">{error}</Banner>}
       {detail.can_publish && state === "failed" && pub?.last_error && !error && (
-        <p class="error small" role="alert">
-          Publishing failed: {pub.last_error}
-        </p>
+        <Banner variant="error">Publishing failed: {pub.last_error}</Banner>
       )}
       {detail.status === "failed" && (
-        <p class="error small">Writing a new note failed. This is the previous one.</p>
+        <Banner variant="warning">Writing a new note failed. This is the previous one.</Banner>
       )}
       {editing ? (
-        <form
-          class="note-editor"
+        <Form
           onSubmit={(e) => {
             e.preventDefault();
             void save();
           }}
         >
-          <textarea
-            class="field note-editor-field"
+          <Textarea
+            tall
+            mono
             aria-label="Note Markdown"
             spellcheck
             value={draft}
             disabled={busy === "save"}
             onInput={(e) => setDraft((e.target as HTMLTextAreaElement).value)}
           />
-          <p class="meta">
-            Keep the <code>session_id</code> line in the frontmatter.
+          <Text as="p" size="meta" tone="muted">
+            Keep the <Code>session_id</Code> line in the frontmatter.
             {state === "open" && " Saving also updates the open pull request."}
-          </p>
-          <div class="inline-row">
-            <button class="btn btn-sm btn-accent" type="submit" disabled={disabled}>
+          </Text>
+          <Bar>
+            <Button variant="primary" size="sm" type="submit" disabled={disabled}>
               Save
-            </button>
-            <button class="btn btn-sm btn-quiet" type="button" onClick={() => setEditing(false)}>
+            </Button>
+            <Button variant="quiet" size="sm" onClick={() => setEditing(false)}>
               Cancel
-            </button>
-          </div>
-        </form>
+            </Button>
+          </Bar>
+        </Form>
       ) : note.markdown !== null ? (
         <NoteView markdown={note.markdown} />
       ) : (
-        <p class="muted">The note “{note.title}” is no longer available on the server.</p>
+        <Text as="p" tone="muted">
+          The note “{note.title}” is no longer available on the server.
+        </Text>
       )}
-    </div>
+    </Section>
   );
 }
