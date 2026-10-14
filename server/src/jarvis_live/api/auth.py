@@ -14,7 +14,7 @@ from typing import Annotated, Literal
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, update
 
@@ -25,6 +25,7 @@ from jarvis_live.auth import (
     hash_token,
     set_session_cookie,
 )
+from jarvis_live.auth_pages import Kind, render_auth_page
 from jarvis_live.db.models import DeviceCode, LoginSession, OidcFlow
 from jarvis_live.oidc import OIDCClient, OIDCError, new_secret, s256
 from jarvis_live.users import Claims, SignInDenied, sign_in
@@ -96,6 +97,29 @@ async def login(
     return RedirectResponse(url, status_code=303)
 
 
+APP_NAME = "Jarvis Live"
+
+# The page is self-contained (inline CSS, no scripts, no external requests); say so to the browser.
+_PAGE_HEADERS = {
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "no-referrer",
+    "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'",
+}
+
+
+def _auth_page(request: Request, kind: Kind, status: int, **values: str) -> HTMLResponse:
+    """A sign-in outcome as a design-system page, with the status the plain text had."""
+    settings = request.app.state.settings
+    host = request.url.hostname or ""
+    version, commit = request.app.state.build
+    build = " · ".join(p for p in (host, f"server-v{version}", commit) if p)
+    html = render_auth_page(
+        kind, app_name=APP_NAME, channel=settings.environment, footer=build, **values
+    )
+    return HTMLResponse(html, status_code=status, headers=_PAGE_HEADERS)
+
+
 def _android_error(error: str, **extra: str) -> RedirectResponse:
     query = urlencode({"error": error, **extra})
     return RedirectResponse(f"{ANDROID_REDIRECT}?{query}", status_code=303)
@@ -124,13 +148,13 @@ async def callback(
         ).scalar_one_or_none()
         await db.commit()
     if flow is None or flow.expires_at <= datetime.now(UTC):
-        return PlainTextResponse("This sign-in link has expired. Please try again.", 400)
+        return _auth_page(request, "expired", 400)
     android = flow.client == "android"
     if error or not code:
         log.info("sign-in cancelled at the identity provider: %s", error or "no code")
         if android:
             return _android_error(_idp_error(error))
-        return PlainTextResponse(f"Sign-in failed: {error or 'no code'}", 400)
+        return _auth_page(request, "failed", 400, detail=error or "no code")
     try:
         claims = await oidc.exchange(
             code=code,
@@ -143,14 +167,12 @@ async def callback(
         log.info("sign-in denied: %s", e)
         if android:
             return _android_error("access_denied", account=e.account)
-        return PlainTextResponse(
-            f"Your account ({e.account}) is not allowed to use Jarvis Live.", 403
-        )
+        return _auth_page(request, "denied", 403, account=e.account)
     except (OIDCError, KeyError) as e:
         log.warning("sign-in failed: %s", e)
         if android:
             return _android_error("server_error")
-        return PlainTextResponse("Sign-in failed. Please try again.", 400)
+        return _auth_page(request, "failed", 400)
     log.info("signed in", extra={"user": str(user.id), "client": flow.client})
 
     if android:
@@ -178,7 +200,7 @@ async def callback(
     return response
 
 
-@router.post("/auth/logout", status_code=204, include_in_schema=False)
+@router.post("/auth/logout", status_code=204, response_model=None, include_in_schema=False)
 async def logout(request: Request) -> Response:
     cookie = request.cookies.get(SESSION_COOKIE)
     if cookie:
@@ -187,7 +209,13 @@ async def logout(request: Request) -> Response:
                 delete(LoginSession).where(LoginSession.token_hash == hash_token(cookie))
             )
             await db.commit()
-    response = Response(status_code=204)
+    # A form post from a sign-in page (the browser asks for HTML) goes home; the dashboard's own
+    # fetch gets no content.
+    response: Response
+    if "text/html" in request.headers.get("accept", ""):
+        response = RedirectResponse("/", status_code=303)
+    else:
+        response = Response(status_code=204)
     response.delete_cookie(SESSION_COOKIE, path="/")
     return response
 

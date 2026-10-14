@@ -379,3 +379,103 @@ async def test_migration_gives_existing_devices_and_sessions_to_the_owner(
     finally:
         await admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
         await admin.close()
+
+
+# --- sign-in error pages ------------------------------------------------------------------------
+
+
+def assert_auth_page(r: httpx.Response, status: int) -> str:
+    assert r.status_code == status
+    assert r.headers["content-type"].startswith("text/html")
+    assert r.headers["cache-control"] == "no-store"
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["referrer-policy"] == "no-referrer"
+    assert "default-src 'none'" in r.headers["content-security-policy"]
+    assert "set-cookie" not in r.headers
+    return r.text
+
+
+async def test_an_expired_link_is_a_page_with_the_same_status(
+    oidc_server: Callable[..., ServerHandle],
+) -> None:
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        html = assert_auth_page(
+            await c.get("/auth/callback", params={"state": "nope", "code": "x"}), 400
+        )
+    assert "This sign-in link has expired." in html and "Please try again." in html
+    assert 'href="/auth/login"' in html and "Sign In Again" in html
+    assert "Jarvis Live" in html and "server-v" in html  # wordmark and the build footer
+
+
+async def test_an_identity_provider_error_is_a_failed_page(
+    oidc_server: Callable[..., ServerHandle], issuer: FakeIssuer
+) -> None:
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        html = assert_auth_page(await login(c, "deny"), 400)
+    assert "Sign-in failed." in html and "access_denied" in html and 'role="alert"' in html
+    assert issuer.token_requests == 0
+
+
+async def test_a_missing_code_is_a_failed_page(oidc_server: Callable[..., ServerHandle]) -> None:
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        r = await c.get("/auth/login")
+        state = parse_qs(urlsplit(r.headers["location"]).query)["state"][0]
+        html = assert_auth_page(await c.get("/auth/callback", params={"state": state}), 400)
+    assert "Sign-in failed." in html and "no code" in html
+
+
+async def test_a_denied_account_is_a_page_that_names_it(
+    oidc_server: Callable[..., ServerHandle],
+) -> None:
+    server = oidc_server(oidc_allowed_groups="family,jarvis-admins")
+    async with httpx.AsyncClient(base_url=server.url) as c:
+        html = assert_auth_page(await login(c, "mallory"), 403)
+        assert (await c.get("/v1/me")).status_code == 401
+    assert "Your account (mallory@example.com) is not allowed to use Jarvis Live." in html
+    assert "Ask an admin to add you." in html
+    assert "Sign Out" in html and "Go to Home" in html
+
+
+async def test_a_failed_code_exchange_is_a_failed_page(
+    oidc_server: Callable[..., ServerHandle], issuer: FakeIssuer
+) -> None:
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        r = await c.get("/auth/login")
+        state = parse_qs(urlsplit(r.headers["location"]).query)["state"][0]
+        html = assert_auth_page(
+            await c.get("/auth/callback", params={"state": state, "code": "bogus"}), 400
+        )
+    assert "Sign-in failed." in html and "Please try again." in html
+    assert issuer.token_requests == 1
+
+
+async def test_the_channel_badge_follows_the_environment(
+    oidc_server: Callable[..., ServerHandle],
+) -> None:
+    async with httpx.AsyncClient(base_url=oidc_server(environment="lab").url) as c:
+        html = (await c.get("/auth/callback", params={"state": "nope"})).text
+    assert 'class="i-badge i-badge--lab">Lab<' in html
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        html = (await c.get("/auth/callback", params={"state": "nope"})).text
+    assert 'class="i-badge i-badge--live">Live<' in html
+
+
+async def test_android_still_gets_a_redirect_not_a_page(
+    oidc_server: Callable[..., ServerHandle],
+) -> None:
+    _, challenge = pkce()
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        r = await login(c, "deny", client="android", challenge=challenge)
+    assert r.status_code == 303
+    assert r.headers["location"].startswith(ANDROID_REDIRECT + "?error=")
+
+
+async def test_sign_out_from_the_page_goes_home(oidc_server: Callable[..., ServerHandle]) -> None:
+    async with httpx.AsyncClient(base_url=oidc_server().url) as c:
+        await login(c, "alice")
+        form = {"Accept": "text/html,application/xhtml+xml,*/*;q=0.8"}
+        r = await c.post("/auth/logout", headers=form)
+        assert r.status_code == 303 and r.headers["location"] == "/"
+        assert (await c.get("/v1/me")).status_code == 401
+        # the dashboard's own call still gets no content
+        assert (await c.post("/auth/logout")).status_code == 204

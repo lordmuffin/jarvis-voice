@@ -265,6 +265,7 @@ def create_app(
     environment = cfg.environment
     version = _version()
     commit = cfg.git_sha.strip()[:7]
+    app.state.build = (version, commit)
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
