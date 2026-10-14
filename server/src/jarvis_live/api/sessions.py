@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from jarvis_live.api import session_list as sl
 from jarvis_live.api.audio import audio_available, wav_response
 from jarvis_live.auth import Principal, current_principal
 from jarvis_live.db.models import CopilotItem, MarkerRow, NotePublication, SegmentRow, User
@@ -43,6 +44,14 @@ class OwnerOut(BaseModel):
     display_name: str
 
 
+class MatchOut(BaseModel):
+    """Where a transcript search hit: the line's start, and its text with the match marked
+    between U+E000 and U+E001."""
+
+    start_ms: int
+    snippet: str
+
+
 class SessionOut(BaseModel):
     id: uuid.UUID
     title: str | None
@@ -56,6 +65,8 @@ class SessionOut(BaseModel):
     # reconnect, so viewers use this to tell "live" from "live but nothing streaming".
     streaming: bool
     owner: OwnerOut
+    # Only on a transcript search.
+    match: MatchOut | None = None
 
     @classmethod
     def of(cls, s: SessionRow, owner: User, request: Request) -> "SessionOut":
@@ -88,6 +99,8 @@ class SessionPage(BaseModel):
     total: int
     limit: int
     offset: int
+    # Sessions per status under every filter *except* status, for the filter's own counts.
+    counts: dict[str, int]
 
 
 class SegmentOut(BaseModel):
@@ -272,35 +285,57 @@ async def list_sessions(
     offset: Annotated[int, Query(ge=0)] = 0,
     all_users: Annotated[bool, Query(alias="all")] = False,
     user_id: uuid.UUID | None = None,
+    status: sl.Status | None = None,
+    mode: sl.Mode | None = None,
+    since: Annotated[datetime | None, Query(description="Started at or after this time.")] = None,
+    sort: sl.Sort = "newest",
+    q: Annotated[str | None, Query(max_length=sl.MAX_QUERY)] = None,
+    q_in: Annotated[sl.SearchIn, Query(description="Search titles or transcripts.")] = "titles",
 ) -> SessionPage:
-    """The caller's sessions, newest first. Admins may pass ``all=true`` for everyone's, or
-    ``user_id`` for one user's."""
+    """The caller's sessions, newest first by default. Admins may pass ``all=true`` for
+    everyone's, or ``user_id`` for one user's; the scope applies before any filter or search.
+
+    Filter by ``status``, ``mode`` and ``since``; ``sort`` is ``newest``, ``oldest`` or
+    ``longest``. ``q`` searches titles, or with ``q_in=transcripts`` the final transcript
+    lines (each hit then carries ``match``). ``counts`` is per status without the status
+    filter."""
     if (all_users or user_id is not None) and not principal.is_admin:
         raise HTTPException(403, "admin only")
-    where = []
+    scope = []
     if user_id is not None:
-        where.append(SessionRow.user_id == user_id)
+        scope.append(SessionRow.user_id == user_id)
     elif not all_users:
-        where.append(SessionRow.user_id == principal.user.id)
+        scope.append(SessionRow.user_id == principal.user.id)
+    term = sl.blank_to_none(q)
+    narrowed = [*scope, *sl.filters(mode=mode, since=since, q=term, search_in=q_in)]
+    where = [*narrowed, *([SessionRow.status == status] if status else [])]
+
     total = (
         await db.execute(select(func.count()).select_from(SessionRow).where(*where))
     ).scalar_one()
-    rows = (
-        await db.execute(
-            select(SessionRow, User)
-            .join(User, User.id == SessionRow.user_id)
-            .where(*where)
-            .order_by(SessionRow.started_at.desc(), SessionRow.id.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-    ).all()
-    return SessionPage(
-        items=[SessionOut.of(r, u, request) for r, u in rows],
-        total=total,
-        limit=limit,
-        offset=offset,
+    status_rows = await db.execute(
+        select(SessionRow.status, func.count()).where(*narrowed).group_by(SessionRow.status)
     )
+    by_status = {st: n for st, n in status_rows.all()}
+    counts = {st: by_status.get(st, 0) for st in sl.STATUSES}
+
+    stmt = (
+        select(SessionRow, User)
+        .join(User, User.id == SessionRow.user_id)
+        .where(*where)
+        .order_by(*sl.order_by(sort))
+        .limit(limit)
+        .offset(offset)
+    )
+    items: list[SessionOut] = []
+    if term and q_in == "transcripts":
+        for row, owner, start_ms, snippet in (await db.execute(sl.with_match(stmt, term))).all():
+            out = SessionOut.of(row, owner, request)
+            out.match = MatchOut(start_ms=start_ms, snippet=snippet)
+            items.append(out)
+    else:
+        items = [SessionOut.of(r, u, request) for r, u in (await db.execute(stmt)).all()]
+    return SessionPage(items=items, total=total, limit=limit, offset=offset, counts=counts)
 
 
 @router.get("/{session_id}")
