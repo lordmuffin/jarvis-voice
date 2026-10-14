@@ -8,8 +8,8 @@
     <string name="history_empty">No sessions yet. Sessions you stream to Jarvis Live show up here.</string>
     <string name="history_error">Couldn\'t load sessions: %1$s</string>
     <string name="history_retry">Try Again</string>
-    <string name="history_sign_in">Sign in</string>
-    <string name="history_load_more">Load more</string>
+    <string name="history_sign_in">Sign In</string>
+    <string name="history_load_more">Load More</string>
     <string name="history_loading_more">Loading…</string>
     <string name="history_load_more_failed">Couldn\'t load more. Tap to retry.</string>
     <string name="history_untitled">Untitled</string>

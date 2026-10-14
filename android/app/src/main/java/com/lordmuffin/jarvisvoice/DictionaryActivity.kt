@@ -54,6 +54,7 @@ class DictionaryActivity : AppCompatActivity() {
             etFrom.setText(existing.first)
             etTo.setText(existing.second)
             etFrom.isEnabled = false
+            view.findViewById<View>(R.id.tv_word_from_locked).visibility = View.VISIBLE
         }
         AlertDialog.Builder(this)
             .setTitle(getString(if (existing == null) R.string.chat_dict_dialog_add else R.string.chat_dict_dialog_edit))

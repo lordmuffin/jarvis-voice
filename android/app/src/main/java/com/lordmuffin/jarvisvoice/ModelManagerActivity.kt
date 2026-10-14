@@ -283,6 +283,10 @@ class ModelManagerActivity : AppCompatActivity() {
                     }
                     else          -> getString(R.string.models_status_not_installed_llm, config.fileSizeMb, config.minRamGb)
                 }
+                // Why the radio is greyed out.
+                if (!isInstalled && !isDownloading) {
+                    tvStatus.text = getString(R.string.models_hint_join, tvStatus.text, getString(R.string.models_hint_download_first))
+                }
 
                 val progress = workInfo?.progress?.getInt(ModelDownloadWorker.KEY_PROGRESS, -1) ?: -1
                 val speedBps = workInfo?.progress?.getLong(ModelDownloadWorker.KEY_SPEED_BPS, 0L) ?: 0L

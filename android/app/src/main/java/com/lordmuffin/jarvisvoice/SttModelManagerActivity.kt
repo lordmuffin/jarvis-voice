@@ -221,6 +221,16 @@ class SttModelManagerActivity : AppCompatActivity() {
                     }
                     else          -> getString(R.string.models_status_not_installed_stt, config.fileSizeMb)
                 }
+                // Why the radio and the action are greyed out.
+                val disabledHint = when {
+                    !isInstalled && !isDownloading && !isExtracting && downloadingId != null -> R.string.models_hint_other_download
+                    !isInstalled && !isDownloading && !isExtracting -> R.string.models_hint_download_first
+                    isInstalled && downloadingId != null -> R.string.models_hint_other_download
+                    else -> null
+                }
+                if (disabledHint != null) {
+                    tvStatus.text = getString(R.string.models_hint_join, tvStatus.text, getString(disabledHint))
+                }
 
                 val busy = isDownloading || isExtracting
                 progressBar.visibility = if (busy) View.VISIBLE else View.GONE

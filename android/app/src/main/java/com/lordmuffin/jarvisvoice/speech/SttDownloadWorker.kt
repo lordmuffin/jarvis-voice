@@ -189,7 +189,7 @@ class SttDownloadWorker(ctx: Context, params: WorkerParameters) : CoroutineWorke
             DebugLog.i("SttDL", "${config.id} complete")
             Result.success()
         } else {
-            Result.failure(workDataOf(KEY_ERROR to "Extraction incomplete — retry"))
+            Result.failure(workDataOf(KEY_ERROR to "Extraction incomplete. Try again."))
         }
     }
 

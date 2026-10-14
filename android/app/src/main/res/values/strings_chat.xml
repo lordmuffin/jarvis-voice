@@ -41,19 +41,19 @@
     <string name="chat_agent_title">Agent Tasks</string>
     <string name="chat_agent_empty_glyph" translatable="false">🤖</string>
     <string name="chat_agent_empty_title">No agent tasks yet</string>
-    <string name="chat_agent_empty_hint">Type a prompt below and tap Run</string>
+    <string name="chat_agent_empty_hint">Type a prompt below and tap Run.</string>
     <string name="chat_agent_model_label">Model:</string>
     <string name="chat_agent_name_hint">Name (optional)</string>
     <string name="chat_agent_prompt_hint">What should Kai work on?</string>
     <string name="chat_agent_run">▶ Run</string>
-    <string name="chat_agent_prompt_required">Enter a prompt</string>
+    <string name="chat_agent_prompt_required">Enter a prompt.</string>
     <string name="chat_agent_remove_title">Remove task?</string>
     <string name="chat_agent_remove_message">\"%1$s\" will be cancelled and removed.</string>
     <string name="chat_agent_remove_confirm">Remove</string>
     <string name="chat_agent_cancel">Cancel</string>
     <string name="chat_agent_delete_glyph" translatable="false">✕</string>
-    <string name="chat_agent_show_output">Show output ▼</string>
-    <string name="chat_agent_hide_output">Hide output ▲</string>
+    <string name="chat_agent_show_output">Show Output ▼</string>
+    <string name="chat_agent_hide_output">Hide Output ▲</string>
     <string name="chat_agent_copy">⎘ Copy</string>
     <string name="chat_agent_reply">↩ Reply</string>
     <string name="chat_agent_copied">Copied</string>
@@ -95,18 +95,19 @@
     <string name="chat_dict_when_i_say">When I say:</string>
     <string name="chat_dict_from_hint">e.g. jarvis</string>
     <string name="chat_dict_replace_with">Replace with:</string>
+    <string name="chat_dict_locked">The spoken word can\'t be changed. Delete the entry to use another.</string>
     <string name="chat_dict_to_hint">e.g. Jarvis AI</string>
     <string name="chat_dict_dialog_add">Add substitution</string>
     <string name="chat_dict_dialog_edit">Edit substitution</string>
     <string name="chat_dict_save">Save</string>
     <string name="chat_dict_cancel">Cancel</string>
-    <string name="chat_dict_both_required">Both fields required</string>
+    <string name="chat_dict_both_required">Both fields are required.</string>
 
     <!-- Debug log -->
     <string name="chat_debug_title">Debug Log</string>
-    <string name="chat_debug_copy_all">Copy all</string>
+    <string name="chat_debug_copy_all">Copy All</string>
     <string name="chat_debug_clear">Clear</string>
-    <string name="chat_debug_empty">(log is empty)</string>
+    <string name="chat_debug_empty">—</string>
     <string name="chat_debug_copied">Log copied</string>
-    <string name="chat_debug_cleared">(cleared)</string>
+    <string name="chat_debug_cleared">—</string>
 </resources>

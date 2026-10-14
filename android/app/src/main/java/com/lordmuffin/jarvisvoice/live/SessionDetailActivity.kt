@@ -31,6 +31,7 @@ import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.live.protocol.Speaker
 import com.lordmuffin.jarvisvoice.ui.InstToast
 import com.lordmuffin.jarvisvoice.ui.bindSpeaker
+import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
 import java.io.File
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -65,6 +66,7 @@ class SessionDetailActivity : AppCompatActivity() {
     private var tab = Tab.SUMMARY
     private var detail: RemoteSessionDetail? = null
     private var loadJob: Job? = null
+    private var channel: ServerChannel? = null
     /** One client (and OkHttp connection pool) for this screen. */
     private val client: LiveApiClient by lazy { settings.apiClient() }
 
@@ -151,6 +153,11 @@ class SessionDetailActivity : AppCompatActivity() {
             try {
                 detail = client.getSession(sessionId)
                 render()
+                // The server's channel tag beside the meta line, once /healthz answers.
+                if (channel == null) {
+                    channel = client.channel()
+                    if (channel != null) render()
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -181,7 +188,7 @@ class SessionDetailActivity : AppCompatActivity() {
         tvTitle.text = s.title ?: getString(R.string.history_untitled)
         SessionLabels.bindStatus(tvStatus, s.status, s.streaming)
         tvStatus.visibility = View.VISIBLE
-        tvMeta.text = SessionLabels.meta(this, s)
+        tvMeta.setTextWithChannel(SessionLabels.meta(this, s), channel)
 
         groupNotice.visibility = if (s.isInProgress) View.VISIBLE else View.GONE
         tvNotice.text = getString(

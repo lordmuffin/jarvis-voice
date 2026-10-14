@@ -5,19 +5,14 @@
     <string name="livesess_empty_glyph" translatable="false">🎙</string>
     <string name="livesess_server">Server: %1$s</string>
     <string name="livesess_starting">Starting…</string>
-    <string name="livesess_finishing">Finishing — sending the rest of the audio…</string>
+    <string name="livesess_finishing">Finishing. Sending the rest of the audio.</string>
     <string name="livesess_saved_to">Saved to %1$s</string>
     <string name="livesess_drafts_on">on-device drafts on</string>
     <string name="livesess_model_loading">loading on-device model…</string>
-    <string name="livesess_model_missing">no on-device model (Settings → STT Model)</string>
+    <string name="livesess_model_missing">No on-device model. Set one in Settings → STT Model.</string>
     <string name="livesess_marker_one">1 marker</string>
     <string name="livesess_markers">%1$d markers</string>
-    <string name="livesess_rec_local">● Recording locally</string>
-    <string name="livesess_conn_live">● Live</string>
-    <string name="livesess_conn_connecting">Connecting…</string>
-    <string name="livesess_conn_retrying">Offline — retrying (%1$d)</string>
-    <string name="livesess_conn_ended">Ended</string>
-    <string name="livesess_conn_failed">Failed: %1$s</string>
+    <string name="livesess_rec_local">▫ Local-only</string>
     <string name="livesess_stt_tier">STT %1$s</string>
     <string name="livesess_lag">lag %1$d ms</string>
     <string name="livesess_queued">%1$.1f s queued</string>

@@ -3,10 +3,13 @@
     <!-- Model managers -->
     <string name="models_llm_model">LLM Model</string>
     <string name="models_stt_model">STT Model</string>
-    <string name="models_llm_intro">Selected model enhances transcription quality after dictation. Leave unset to use raw output.</string>
+    <string name="models_llm_intro">The selected model enhances transcription quality after dictation. Leave it unset to use raw output.</string>
     <string name="models_stt_intro">Larger models are more accurate but slower and use more storage. Keep the screen open while downloading.</string>
     <string name="models_default_badge">" DEFAULT"</string>
     <string name="models_download">Download</string>
+    <string name="models_hint_join">%1$s · %2$s</string>
+    <string name="models_hint_download_first">Download it to select it.</string>
+    <string name="models_hint_other_download">Another download is running.</string>
     <string name="models_cancel">Cancel</string>
     <string name="models_delete">Delete</string>
     <string name="models_remove">Remove</string>
@@ -19,8 +22,8 @@
     <string name="models_toast_selected">%1$s selected</string>
     <string name="models_toast_ready">%1$s ready</string>
     <string name="models_toast_llm_disabled">LLM enhancement disabled</string>
-    <string name="models_toast_download_start_failed">Could not start download — try again.</string>
-    <string name="models_toast_gemini_ready">Gemini Nano ready!</string>
+    <string name="models_toast_download_start_failed">Could not start the download. Try again.</string>
+    <string name="models_toast_gemini_ready">Gemini Nano ready.</string>
     <string name="models_toast_download_failed">Download failed: %1$s</string>
     <string name="models_toast_download_error">Download error: %1$s</string>
     <string name="models_delete_title">Delete %1$s?</string>
@@ -42,11 +45,11 @@
     <string name="models_aicore_backend_suffix">  [aicore]</string>
     <string name="models_aicore_unavailable">Not available on this device</string>
     <string name="models_aicore_checking">Checking availability…</string>
-    <string name="models_aicore_download_required">Download required · tap Download to install Gemini Nano</string>
+    <string name="models_aicore_download_required">Download required. Tap Download to install Gemini Nano.</string>
 
     <!-- Overlay service toasts -->
-    <string name="models_overlay_gemini_unavailable">Gemini Nano not available — open device AI settings to check AI Core status.</string>
-    <string name="models_overlay_npu_required">%1$s requires NPU — not available on this device/OS. Switch to AI Core or a CPU model in Settings → LLM Model.</string>
+    <string name="models_overlay_gemini_unavailable">Gemini Nano is not available. Open device AI settings to check AI Core status.</string>
+    <string name="models_overlay_npu_required">%1$s requires an NPU, which is not available on this device or OS. Switch to AI Core or a CPU model in Settings → LLM Model.</string>
     <string name="models_overlay_load_failed">%1$s failed to load. Switch to another model in Settings → LLM Model.</string>
     <string name="models_overlay_copied_stats">Copied · %1$d words · %2$s wpm%3$s</string>
     <string name="models_overlay_stats">%1$d words · %2$s wpm%3$s</string>
@@ -91,6 +94,6 @@
     <string name="models_onb_check" translatable="false">✓</string>
     <string name="models_onb_all_set">You\'re all set</string>
     <string name="models_onb_all_set_desc">The pill appears whenever your keyboard is open. Tap it to start dictating.</string>
-    <string name="models_onb_start_dictating">Start dictating</string>
+    <string name="models_onb_start_dictating">Start Dictating</string>
     <string name="models_onb_open_settings">Open Settings</string>
 </resources>

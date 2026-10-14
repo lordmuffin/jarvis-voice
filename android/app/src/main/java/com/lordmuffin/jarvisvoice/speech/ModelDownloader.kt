@@ -83,7 +83,7 @@ class ModelDownloader(private val context: Context) {
                     mainHandler.post { listener.onComplete() }
                 } else {
                     DebugLog.e("ModelDownloader", "extraction finished but some files missing")
-                    mainHandler.post { listener.onError("Extraction incomplete — retry") }
+                    mainHandler.post { listener.onError("Extraction incomplete. Try again.") }
                 }
 
             } catch (e: Exception) {

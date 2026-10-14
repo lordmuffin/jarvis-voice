@@ -26,7 +26,7 @@
     <!-- Speech recognition / LLM -->
     <string name="settings_stt_header">Speech Recognition</string>
     <string name="settings_stt_model">STT Model</string>
-    <string name="settings_stt_none">No model downloaded</string>
+    <string name="settings_stt_none">—</string>
     <string name="settings_stt_active">Active: %1$s</string>
     <string name="settings_llm_header">LLM Enhancement</string>
     <string name="settings_llm_model">LLM Model</string>
@@ -35,19 +35,19 @@
     <string name="settings_llm_active_backend">Enhancement: %1$s [%2$s]</string>
     <string name="settings_hf_label">HuggingFace Token</string>
     <string name="settings_hf_hint" translatable="false">hf_xxxxxxxxxxxxxxxx</string>
-    <string name="settings_hf_help">Only needed when using HuggingFace (no custom URL set below).</string>
+    <string name="settings_hf_help">Only needed when using HuggingFace with no custom URL set below.</string>
 
     <!-- Jarvis Live status lines -->
-    <string name="settings_live_url_scheme">Server URL must start with https://</string>
-    <string name="settings_live_invalid_url">✗ Invalid server URL</string>
+    <string name="settings_live_url_scheme">Server URL must start with https://.</string>
+    <string name="settings_live_invalid_url">Invalid server URL.</string>
     <string name="settings_live_saved">Saved.</string>
     <string name="settings_live_saved_need_token">Saved. Sign in or add a device token to stream.</string>
     <string name="settings_live_need_token">Sign in or enter a device token first.</string>
     <string name="settings_live_testing">Testing…</string>
-    <string name="settings_live_connected">✓ Connected to %1$s</string>
-    <string name="settings_live_token_rejected">✗ Token rejected (401)</string>
-    <string name="settings_live_http_error">✗ HTTP %1$d</string>
-    <string name="settings_live_error">✗ %1$s</string>
+    <string name="settings_live_connected">Live: %1$s</string>
+    <string name="settings_live_token_rejected">Offline. Token rejected.</string>
+    <string name="settings_live_http_error">Offline. HTTP %1$d.</string>
+    <string name="settings_live_error">Offline. %1$s</string>
     <string name="settings_http_status">HTTP %1$d</string>
 
     <!-- Custom model server -->
@@ -83,17 +83,17 @@
     <!-- Notifications / backend -->
     <string name="settings_notifications_header">Notifications</string>
     <string name="settings_clipboard_title">Clipboard notification</string>
-    <string name="settings_clipboard_desc">Show in tray when dictation is copied to clipboard</string>
+    <string name="settings_clipboard_desc">Show in the tray when dictation is copied to the clipboard.</string>
     <string name="settings_backend_header">STT Backend</string>
     <string name="settings_offline_title">On-device STT (Offline)</string>
-    <string name="settings_offline_desc">Uses local Whisper model, no internet required</string>
+    <string name="settings_offline_desc">Uses a local Whisper model. No internet is required.</string>
 
     <!-- Vault folder -->
     <string name="settings_vault_header">Vault Folder</string>
     <string name="settings_vault_pick">Pick Vault Folder</string>
-    <string name="settings_vault_help">Pick any local folder — Record session notes are saved inside it. Works great pointed at a Syncthing-synced vault folder.</string>
+    <string name="settings_vault_help">Pick any local folder. Record session notes are saved inside it. It works well with a Syncthing-synced vault folder.</string>
     <string name="settings_vault_folder">Folder: %1$s</string>
-    <string name="settings_vault_none">No folder selected</string>
+    <string name="settings_vault_none">—</string>
 
     <!-- Audio input -->
     <string name="settings_audio_header">Audio Input</string>
