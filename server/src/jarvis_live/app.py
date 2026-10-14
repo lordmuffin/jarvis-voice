@@ -266,12 +266,20 @@ def create_app(
     version = _version()
     commit = cfg.git_sha.strip()[:7]
     app.state.build = (version, commit)
+    retention_days = cfg.audio_retention_days
 
     @app.get("/healthz")
-    async def healthz() -> dict[str, str]:
+    async def healthz() -> dict[str, str | int]:
         """Liveness: the process is up. Also says which release channel, version and commit
-        this is, so lab and live can be told apart (and checked after a deploy)."""
-        return {"status": "ok", "environment": environment, "version": version, "commit": commit}
+        this is, so lab and live can be told apart (and checked after a deploy), and how long
+        audio is kept (the dashboard says so in its footer)."""
+        return {
+            "status": "ok",
+            "environment": environment,
+            "version": version,
+            "commit": commit,
+            "audio_retention_days": retention_days,
+        }
 
     @app.get("/readyz")
     async def readyz() -> dict[str, str]:
