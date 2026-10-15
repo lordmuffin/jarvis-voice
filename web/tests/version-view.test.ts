@@ -39,12 +39,21 @@ describe("server version", () => {
     expect(serverBuild.value).toBeNull();
   });
 
-  it("shows the version, with the commit on hover", () => {
+  // The family footer line, as Home and Sleep Dashboard print it: app, version and short commit.
+  it("names the app, the version and the commit, in mono", () => {
     serverBuild.value = { version: "0.16.0", commit: "abc1234" };
     render(h(ServerVersion, {}), document.body);
     const el = document.querySelector("[data-testid=server-version]")!;
-    expect(el.textContent).toBe("v0.16.0");
-    expect(el.getAttribute("title")).toBe("Server version 0.16.0 (commit abc1234)");
+    expect(el.textContent).toBe("jarvis-live v0.16.0 · abc1234");
+    expect(el.classList.contains("t-mono")).toBe(true);
+  });
+
+  it("leaves the commit out when the server does not know it", () => {
+    serverBuild.value = { version: "0.16.0", commit: "" };
+    render(h(ServerVersion, {}), document.body);
+    expect(document.querySelector("[data-testid=server-version]")!.textContent).toBe(
+      "jarvis-live v0.16.0",
+    );
   });
 
   it("shows nothing while the version is unknown", () => {
