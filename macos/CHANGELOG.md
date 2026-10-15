@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.14.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.13.1...macos-v0.14.0) (2026-10-15)
+
+
+### Features
+
+* design-system guardrails (web, Android, Swift) with CI ([8151724](https://github.com/lordmuffin/jarvis-voice/commit/8151724d4f3bb2988bf6ee6b154082c3c61d1d68))
+* design-system guardrails (web, Android, Swift) with CI ([7236e56](https://github.com/lordmuffin/jarvis-voice/commit/7236e566d2a33d15554b4d4b4675356b5135ec2e))
+
 ## [0.13.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.13.0...macos-v0.13.1) (2026-10-14)
 
 

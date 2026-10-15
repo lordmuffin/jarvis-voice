@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.18.1...server-v0.19.0) (2026-10-15)
+
+
+### Features
+
+* **server,web:** add the Instrument family switcher ([087e48d](https://github.com/lordmuffin/jarvis-voice/commit/087e48d414e7a6b88d903bf686634364cab89a3d))
+* **server,web:** add the Instrument family switcher ([2ce862e](https://github.com/lordmuffin/jarvis-voice/commit/2ce862e7cd3d2d2fdfc7acf1c6a0a7798bee769e))
+
 ## [0.18.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.18.0...server-v0.18.1) (2026-10-14)
 
 
