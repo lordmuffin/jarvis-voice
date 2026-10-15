@@ -1,13 +1,16 @@
 """The family apps list behind the dashboard's ▦ switcher.
 
 One shared JSON file lists the apps in the family (name, LIVE URL, LAB URL, optional glance
-endpoint). It is read once at startup. Links stay on this server's release channel: LIVE
-links to each app's LIVE URL, LAB to its LAB URL. Anything wrong with the file (unset,
-missing, unreadable, malformed) or a channel that is neither means no switcher.
+endpoint): np-home-homelab's `family-apps` ConfigMap, a bare list in Home's shape. The older
+`{"apps": [...]}` wrapper still reads. An entry without an `id` is known by its name, slugged
+("Jarvis Live" is `jarvis-live`). It is read once at startup. Links stay on this server's
+release channel: LIVE links to each app's LIVE URL, LAB to its LAB URL. Anything wrong with
+the file (unset, missing, unreadable, malformed) or a channel that is neither means no switcher.
 """
 
 import json
 import logging
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -28,6 +31,10 @@ def _http_url(value: object) -> str | None:
     return value if parts.scheme in ("http", "https") and parts.netloc else None
 
 
+def _slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.casefold()).strip("-")
+
+
 def _read(settings: Settings) -> list[Any]:
     path = settings.apps_list_path
     if path is None:
@@ -37,7 +44,7 @@ def _read(settings: Settings) -> list[Any]:
     except (OSError, ValueError) as e:
         log.warning("apps list %s unreadable, no family switcher: %s", path, e)
         return []
-    apps = doc.get("apps") if isinstance(doc, dict) else None
+    apps = doc.get("apps") if isinstance(doc, dict) else doc
     if not isinstance(apps, list) or not all(isinstance(a, dict) for a in apps):
         log.warning("apps list %s is malformed, no family switcher", path)
         return []
@@ -51,8 +58,11 @@ def load_family_apps(settings: Settings) -> list[dict[str, object]]:
         return []
     out: list[dict[str, object]] = []
     for a in _read(settings):
-        app_id, name = a.get("id"), a.get("name")
-        if not isinstance(app_id, str) or not isinstance(name, str) or not name:
+        name = a.get("name")
+        if not isinstance(name, str) or not name:
+            continue
+        app_id = a.get("id", _slug(name))
+        if not isinstance(app_id, str):
             continue
         url = _http_url(a.get(f"{channel}_url"))
         out.append(
