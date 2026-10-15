@@ -41,7 +41,7 @@ The server asks for the scopes `openid email profile groups`. The Android app ne
 | `JARVIS_LIVE_OIDC_CLIENT_SECRET_FILE` | A file holding the client secret, e.g. a mounted Kubernetes Secret. The server re-reads it on every sign-in, so you can rotate the secret without a restart. |
 | `JARVIS_LIVE_OIDC_ADMIN_GROUP` | Members of this Pocket-ID group are admins. If unset, manage admins with `jarvis-live set-admin <email>`. |
 | `JARVIS_LIVE_OIDC_ALLOWED_GROUPS` | Comma-separated, e.g. `admins,family`. If set, only members of one of these groups may sign in. |
-| `JARVIS_LIVE_APPS_LIST_PATH` | JSON file listing the family's apps (`{"apps": [{"id", "name", "live_url", "lab_url", "glance_url"?}]}`) behind the dashboard's ▦ switcher. Read once at startup; unset or unreadable means no switcher. Links use the `live_url` on LIVE and the `lab_url` on LAB. |
+| `JARVIS_LIVE_APPS_LIST_PATH` | JSON file listing the family's apps behind the dashboard's ▦ switcher: np-home-homelab's shared `family-apps` list, `[{"id"?, "name", "live_url"?, "lab_url"?}]` (the older `{"apps": [...]}` wrapper still reads; a missing `id` is the slugged name). Read once at startup; unset or unreadable means no switcher. Links use the `live_url` on LIVE and the `lab_url` on LAB. |
 | `JARVIS_LIVE_OWNER_EMAIL` | Your own (verified) email. Your first sign-in claims the owner account; see below. |
 | `JARVIS_LIVE_LOGIN_SESSION_DAYS` | How long the web sign-in lasts. Default 30; each visit extends it. |
 | `JARVIS_LIVE_ENVIRONMENT` | Release channel: `live` (default) or `lab`. Anything but `live` shows in `/healthz`, as a badge in the dashboard header and as a `[lab]` prefix on Gotify titles. See `deploy/README.md`. |

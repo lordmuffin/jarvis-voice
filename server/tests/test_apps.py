@@ -96,6 +96,27 @@ def test_the_current_app_is_marked(tmp_path: Path) -> None:
     assert [a["current"] for a in apps] == [False, True]
 
 
+def test_the_shared_bare_list_reads_the_same(tmp_path: Path) -> None:
+    # np-home-homelab's family-apps ConfigMap (docs/family-apps.md) is Home's shape: a bare list.
+    apps = load(write(tmp_path, [ZED, JARVIS, HOME]))
+    assert [(a["id"], a["current"]) for a in apps] == [
+        ("home", False),
+        ("jarvis-live", True),
+        ("zed", False),
+    ]
+
+
+def test_an_entry_without_an_id_is_known_by_its_name(tmp_path: Path) -> None:
+    # Home's own copy of the list has no ids: the name stands in, so Home and this app still match.
+    bare = [{k: v for k, v in a.items() if k != "id"} for a in (SLEEP, JARVIS, HOME)]
+    apps = load(write(tmp_path, bare))
+    assert [(a["id"], a["current"]) for a in apps] == [
+        ("home", False),
+        ("jarvis-live", True),
+        ("sleep-dashboard", False),
+    ]
+
+
 @pytest.fixture
 def aserver(make_server: Callable[..., ServerHandle], tmp_path: Path) -> ServerHandle:
     return make_server(apps_list_path=write(tmp_path, {"apps": [HOME, JARVIS]}), environment="lab")

@@ -15,6 +15,10 @@ metadata:
   name: jarvis-live
   labels:
     app: jarvis-live
+  annotations:
+    # The app reads the family apps list once at startup: restart when it changes or first
+    # appears. Only that ConfigMap, never `auto`: a restart drops open sessions.
+    configmap.reloader.stakater.com/reload: "family-apps"
 spec:
   replicas: 1
   strategy:
@@ -178,8 +182,9 @@ spec:
           secret:
             secretName: notes-vault-pat
             defaultMode: 0400
-        # ConfigMap `family-apps` (key apps.json) is provided by np-home-homelab: the list
-        # is shared by every app in the family. Absent: no switcher, nothing else changes.
+        # ConfigMap `family-apps` (key apps.json) is provided by np-home-homelab
+        # (apps/services/family-apps, docs/family-apps.md): the list is shared by every app
+        # in the family. Absent: no switcher, nothing else changes.
         - name: family-apps
           configMap:
             name: family-apps
