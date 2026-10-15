@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.19.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.19.0...server-v0.19.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **server:** read the family's shared apps list so the ▦ switcher shows ([d877e09](https://github.com/lordmuffin/jarvis-voice/commit/d877e09a2e2c34fac84552bee13e28a8c00b6fc7))
+* **server:** read the family's shared apps list so the ▦ switcher shows ([f1a4bbd](https://github.com/lordmuffin/jarvis-voice/commit/f1a4bbde9f7b8fe793aac63f5ef00c96e449d6b8))
+
 ## [0.19.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.18.1...server-v0.19.0) (2026-10-15)
 
 
