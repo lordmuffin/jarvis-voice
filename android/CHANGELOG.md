@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.15.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.1...android-v1.15.0) (2026-10-15)
+
+
+### Features
+
+* design-system guardrails (web, Android, Swift) with CI ([8151724](https://github.com/lordmuffin/jarvis-voice/commit/8151724d4f3bb2988bf6ee6b154082c3c61d1d68))
+* design-system guardrails (web, Android, Swift) with CI ([7236e56](https://github.com/lordmuffin/jarvis-voice/commit/7236e566d2a33d15554b4d4b4675356b5135ec2e))
+
 ## [1.14.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.0...android-v1.14.1) (2026-10-14)
 
 
