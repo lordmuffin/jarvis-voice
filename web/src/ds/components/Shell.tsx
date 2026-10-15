@@ -1,8 +1,9 @@
 import type { ComponentChildren } from "preact";
 
 /**
- * The app frame: header (brand, tabs, who you are), an optional banner under it, then the page.
- * Put `class="inst"` here so every Instrument rule applies below it.
+ * The app frame: header (brand, tabs, who you are), an optional banner under it, the page, then
+ * the footer every family app shares (the family line, then `footer`, the version). Put
+ * `class="inst"` here so every Instrument rule applies below it.
  */
 export function Shell({
   brand,
@@ -10,6 +11,7 @@ export function Shell({
   bottom,
   tools,
   banner,
+  footer,
   children,
 }: {
   brand: ComponentChildren;
@@ -18,6 +20,8 @@ export function Shell({
   bottom?: ComponentChildren;
   tools: ComponentChildren;
   banner?: ComponentChildren;
+  /** The right side of the footer: the app, its version and commit. */
+  footer?: ComponentChildren;
   children: ComponentChildren;
 }) {
   return (
@@ -33,6 +37,10 @@ export function Shell({
       </header>
       {banner}
       <main class="i-page">{children}</main>
+      <footer class="i-footer">
+        <span>Private. Self-hosted. Open source.</span>
+        {footer}
+      </footer>
       {bottom && (
         <nav class="i-bottombar d-bottombar" aria-label="Main">
           {bottom}

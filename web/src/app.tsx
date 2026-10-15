@@ -89,7 +89,6 @@ export function App() {
       }
       tools={
         <>
-          <ServerVersion />
           <span data-testid="user-name" title={user.email ?? undefined}>
             {user.display_name}
           </span>
@@ -100,6 +99,7 @@ export function App() {
         </>
       }
       banner={<ViewingBanner />}
+      footer={<ServerVersion />}
     >
       {page(r)}
     </Shell>

@@ -8,6 +8,7 @@ import {
   ChannelBadge,
   Dialog,
   Segmented,
+  Shell,
   ShowOnceCard,
   StatusChip,
 } from "../src/ds/components";
@@ -24,6 +25,21 @@ afterEach(() => {
 });
 
 const q = (sel: string) => document.querySelector(sel);
+
+describe("Shell", () => {
+  it("puts the footer after the page and before the bottom bar, like every family app", () => {
+    render(
+      <Shell brand="B" nav="N" tools="T" bottom="Tabs" footer={<span>v1</span>}>
+        page
+      </Shell>,
+      document.body,
+    );
+    const app = q(".d-app")!;
+    const kids = [...app.children].map((el) => el.tagName.toLowerCase() + "." + el.classList[0]);
+    expect(kids).toEqual(["header.i-header", "main.i-page", "footer.i-footer", "nav.i-bottombar"]);
+    expect(q("footer.i-footer")!.textContent).toBe("Private. Self-hosted. Open source.v1");
+  });
+});
 
 describe("Button", () => {
   it("is a secondary type=button by default, so it never submits a form by accident", () => {
