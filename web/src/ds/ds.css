@@ -481,7 +481,7 @@ body {
   align-items: center;
   padding: 8px 12px;
   border-top: 1px solid var(--inst-line);
-  font-size: 13px;
+  font-size: var(--inst-type-body-size);
   font-weight: 700;
   color: var(--inst-text);
   text-decoration: none;
@@ -498,7 +498,7 @@ body {
   color: var(--inst-text-2);
 }
 .d-switcher-mark {
-  font-size: 12px;
+  font-size: var(--inst-type-caption-size);
   font-weight: 700;
   color: var(--inst-accent);
 }
