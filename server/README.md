@@ -92,7 +92,7 @@ A recording made somewhere else (a phone voice memo, a meeting recorded in anoth
 
 | Variable | |
 |---|---|
-| `JARVIS_LIVE_UPLOAD_MAX_MB` | Largest upload accepted. Default 500. |
+| `JARVIS_LIVE_UPLOAD_MAX_MB` | Largest upload accepted. Default 500. The dashboard uploads only the audio track of an MP4/MOV video, so long videos fit. |
 | `JARVIS_LIVE_FFMPEG_PATH` | Default `ffmpeg`. |
 
 ## Notes: edit, regenerate, publish to the vault
