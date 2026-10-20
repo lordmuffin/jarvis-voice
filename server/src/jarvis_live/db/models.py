@@ -23,6 +23,11 @@ class Base(DeclarativeBase):
     pass
 
 
+# The deployment owner. Migration 0002 creates this user and gives it every device and session
+# that existed before there were users; the owner claims it at their first Pocket-ID login.
+OWNER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
 def _uuid_pk() -> Mapped[uuid.UUID]:
     return mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -31,10 +36,68 @@ def _now() -> Mapped[datetime]:
     return mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    # OIDC subject from Pocket-ID. NULL only for the owner before they first sign in.
+    oidc_sub: Mapped[str | None] = mapped_column(Text, unique=True)
+    email: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str] = mapped_column(Text)
+    is_admin: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # Final notes go to ``<outbox>/<notes_subdir>/``; NULL writes to the outbox root.
+    notes_subdir: Mapped[str | None] = mapped_column(Text, unique=True)
+    # Open a PR for each new note automatically (owner and admins only; see publish/).
+    auto_publish: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    created_at: Mapped[datetime] = _now()
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class LoginSession(Base):
+    """A web dashboard sign-in, carried by the ``jarvis_live_session`` cookie."""
+
+    __tablename__ = "login_sessions"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    created_at: Mapped[datetime] = _now()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class OidcFlow(Base):
+    """An authorization request in flight, keyed by its ``state``."""
+
+    __tablename__ = "oidc_flows"
+
+    state: Mapped[str] = mapped_column(String(64), primary_key=True)
+    nonce: Mapped[str] = mapped_column(String(64))
+    pkce_verifier: Mapped[str] = mapped_column(String(128))
+    client: Mapped[str] = mapped_column(String(16))  # 'web' | 'android'
+    app_challenge: Mapped[str | None] = mapped_column(String(128))
+    return_to: Mapped[str] = mapped_column(Text, default="/")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DeviceCode(Base):
+    """One-time code handed to the Android app after sign-in, redeemed for a device token."""
+
+    __tablename__ = "device_codes"
+
+    code_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    app_challenge: Mapped[str] = mapped_column(String(128))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Device(Base):
     __tablename__ = "devices"
 
     id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
     name: Mapped[str] = mapped_column(String(200))
     token_hash: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = _now()
@@ -49,10 +112,14 @@ class Session(Base):
         ),
         CheckConstraint("mode IN ('meeting','solo')", name="ck_sessions_mode"),
         Index("ix_sessions_device_started", "device_id", text("started_at DESC")),
+        Index("ix_sessions_user_started", "user_id", text("started_at DESC")),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
-    device_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("devices.id"))
+    # NULL for a recording uploaded from the web dashboard, which has no device.
+    device_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("devices.id"))
+    # Copied from the device at creation, so a session stays its owner's if the device goes.
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str | None] = mapped_column(Text)
     mode: Mapped[str] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(16), default="live", server_default="live")
@@ -127,3 +194,172 @@ class CopilotItem(Base):
     kind: Mapped[str] = mapped_column(String(32))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = _now()
+
+
+PUBLICATION_STATES = ("publishing", "open", "merged", "closed", "skipped", "failed")
+
+
+class NotePublication(Base):
+    """A session's note on its way to the vault repo: one branch and PR per session.
+
+    ``repo_path`` is fixed by the first publish, so a republish after a merge updates the same
+    file. ``skipped`` keeps the note out of publishing (and out of auto-publish)."""
+
+    __tablename__ = "note_publications"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in PUBLICATION_STATES) + ")",
+            name="ck_note_publications_state",
+        ),
+        Index("ix_note_publications_state", "state"),
+    )
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), primary_key=True
+    )
+    state: Mapped[str] = mapped_column(String(16))
+    repo_path: Mapped[str | None] = mapped_column(Text)
+    branch: Mapped[str | None] = mapped_column(Text)
+    pr_number: Mapped[int | None] = mapped_column(Integer)
+    pr_url: Mapped[str | None] = mapped_column(Text)
+    head_sha: Mapped[str | None] = mapped_column(String(64))
+    # sha256 of the note as last pushed, so the dashboard can tell an edit since then.
+    content_sha256: Mapped[str | None] = mapped_column(String(64))
+    last_error: Mapped[str | None] = mapped_column(Text)
+    published_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+WORK_ITEM_STATES = ("draft", "approved", "discarded", "merged")
+
+
+class WorkItem(Base):
+    """A candidate piece of work the copilot heard in a session: a draft Claude Code prompt.
+
+    The LLM proposes and refines drafts; the session's owner edits, approves, merges or
+    discards them (``workitems/``). ``locked_fields`` are fields the owner edited, which the
+    LLM no longer changes. Approval freezes the rendered prompt: ``prompt_md`` is exactly what
+    is copied or dispatched, and ``prompt_sha256`` proves it has not changed since."""
+
+    __tablename__ = "work_items"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in WORK_ITEM_STATES) + ")",
+            name="ck_work_items_state",
+        ),
+        UniqueConstraint("session_id", "ref", name="uq_work_items_session_ref"),
+        Index("ix_work_items_user_state", "user_id", "state"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("sessions.id", ondelete="CASCADE"), index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    ref: Mapped[str] = mapped_column(String(16))  # "w1", "w2"…: the id the LLM sees
+    state: Mapped[str] = mapped_column(String(16), default="draft", server_default="draft")
+    title: Mapped[str] = mapped_column(Text)
+    repo: Mapped[str | None] = mapped_column(Text)  # "owner/name" from the allowlist
+    intent: Mapped[str] = mapped_column(Text, default="", server_default="")
+    acceptance_criteria: Mapped[list[str]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    done_when: Mapped[str | None] = mapped_column(Text)
+    # [{segment_id, start_ms, end_ms, text}], in transcript order.
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    locked_fields: Mapped[list[str]] = mapped_column(
+        ARRAY(String(32)), default=list, server_default=text("'{}'")
+    )
+    merged_into: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("work_items.id"))
+    prompt_md: Mapped[str | None] = mapped_column(Text)
+    prompt_sha256: Mapped[str | None] = mapped_column(String(64))
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class WorkItemEvent(Base):
+    """Append-only audit log of everything that happens to a work item: who (``actor_user_id``
+    NULL is the system/LLM), how (``web`` sign-in, ``device`` token, ``system``), what, and the
+    details (an approval carries the prompt and its sha256; a refused dispatch, the reason)."""
+
+    __tablename__ = "work_item_events"
+    __table_args__ = (Index("ix_work_item_events_item_at", "work_item_id", "at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    work_item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("work_items.id", ondelete="CASCADE"))
+    at: Mapped[datetime] = _now()
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    actor_kind: Mapped[str] = mapped_column(String(16))
+    event: Mapped[str] = mapped_column(String(32))
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+
+
+DISPATCH_STATES = (
+    "queued",
+    "running",
+    "pr_opened",
+    "no_changes",
+    "failed",
+    "rate_limited",
+    "timed_out",
+    "cancelled",
+    "needs_input",
+)
+
+
+class WorkItemDispatch(Base):
+    """One run of an approved work item as headless Claude Code: a Kubernetes Job with its own
+    git worktree (``dispatch/``). ``prompt_sha256`` is the approved prompt it was queued with;
+    a run whose item no longer carries that prompt never starts.
+
+    A follow-up run ``continues`` an earlier one on its branch, with the owner's ``guidance``
+    appended to the approved prompt; ``questions`` are what a run asked the owner (it ended
+    ``needs_input``)."""
+
+    __tablename__ = "work_item_dispatches"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in DISPATCH_STATES) + ")",
+            name="ck_work_item_dispatches_state",
+        ),
+        UniqueConstraint("work_item_id", "attempt", name="uq_work_item_dispatches_attempt"),
+        Index("ix_work_item_dispatches_state", "state"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    work_item_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("work_items.id", ondelete="CASCADE"), index=True
+    )
+    attempt: Mapped[int] = mapped_column(Integer)
+    state: Mapped[str] = mapped_column(String(16), default="queued", server_default="queued")
+    repo: Mapped[str] = mapped_column(Text)
+    branch: Mapped[str] = mapped_column(Text)
+    prompt_sha256: Mapped[str] = mapped_column(String(64))
+    requested_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    job_name: Mapped[str | None] = mapped_column(Text)
+    pr_url: Mapped[str | None] = mapped_column(Text)
+    pr_number: Mapped[int | None] = mapped_column(Integer)
+    summary: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    token_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    questions: Mapped[str | None] = mapped_column(Text)
+    guidance: Mapped[str | None] = mapped_column(Text)
+    continues: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("work_item_dispatches.id", ondelete="SET NULL")
+    )

@@ -1,5 +1,16 @@
 import type { ComponentChildren } from "preact";
 import { useState } from "preact/hooks";
+import {
+  Button,
+  Bullets,
+  EmptyState,
+  Item,
+  Related,
+  Section,
+  SectionLabel,
+  Stack,
+  Text,
+} from "../ds/components";
 import type { Copilot, FinalNoteRef, SuggestionKind } from "../types";
 
 const KIND: Record<SuggestionKind, string> = {
@@ -9,12 +20,12 @@ const KIND: Record<SuggestionKind, string> = {
   fact_check: "Fact check",
 };
 
-function Section({ title, children }: { title: string; children: ComponentChildren }) {
+function CopilotSection({ title, children }: { title: string; children: ComponentChildren }) {
   return (
-    <section class="cp-section">
-      <h3 class="label">{title}</h3>
+    <Stack>
+      <SectionLabel as="h3">{title}</SectionLabel>
       {children}
-    </section>
+    </Stack>
   );
 }
 
@@ -48,98 +59,88 @@ export function CopilotPanel({
     !finalNote;
 
   return (
-    <div class="copilot" data-testid="copilot">
-      {empty && <p class="muted">Nothing yet.</p>}
+    <Section data-testid="copilot">
+      {empty && <EmptyState>Nothing yet.</EmptyState>}
 
       {suggestions.length > 0 && (
-        <Section title="Suggestions">
+        <CopilotSection title="Suggestions">
           {suggestions.map((s) => (
-            <div class="suggestion" key={s.id} data-testid="suggestion">
+            <Item key={s.id} data-testid="suggestion">
               <div>
-                <div class="kind">{KIND[s.kind]}</div>
+                <Text size="label" tone="warning">
+                  {KIND[s.kind]}
+                </Text>
                 <div>{s.text}</div>
               </div>
-              <button
-                class="btn btn-quiet"
+              <Button
+                variant="quiet"
+                size="sm"
                 aria-label="Dismiss suggestion"
                 onClick={() => setDismissed(new Set(dismissed).add(s.id))}
               >
                 ✕
-              </button>
-            </div>
+              </Button>
+            </Item>
           ))}
-        </Section>
-      )}
-
-      {copilot.notes.length > 0 && (
-        <Section title="Notes">
-          <ul class="bullets">
-            {copilot.notes.map((n) => (
-              <li key={n.id} data-testid="copilot-note">
-                {n.text}
-              </li>
-            ))}
-          </ul>
-        </Section>
+        </CopilotSection>
       )}
 
       {copilot.actions.length > 0 && (
-        <Section title="Actions">
-          <ul class="bullets">
+        <CopilotSection title="Actions">
+          <Bullets>
             {copilot.actions.map((a) => (
               <li key={a.id} data-testid="copilot-action">
                 {a.text}
                 {(a.owner || a.due) && (
-                  <div class="meta">{[a.owner, a.due].filter(Boolean).join(" · ")}</div>
+                  <Text as="div" size="meta" tone="muted">
+                    {[a.owner, a.due].filter(Boolean).join(" · ")}
+                  </Text>
                 )}
               </li>
             ))}
-          </ul>
-        </Section>
+          </Bullets>
+        </CopilotSection>
       )}
 
       {copilot.decisions.length > 0 && (
-        <Section title="Decisions">
-          <ul class="bullets">
+        <CopilotSection title="Decisions">
+          <Bullets>
             {copilot.decisions.map((d) => (
               <li key={d.id} data-testid="copilot-decision">
                 {d.text}
               </li>
             ))}
-          </ul>
-        </Section>
+          </Bullets>
+        </CopilotSection>
+      )}
+
+      {copilot.notes.length > 0 && (
+        <CopilotSection title="Notes">
+          <Bullets>
+            {copilot.notes.map((n) => (
+              <li key={n.id} data-testid="copilot-note">
+                {n.text}
+              </li>
+            ))}
+          </Bullets>
+        </CopilotSection>
       )}
 
       {copilot.related.length > 0 && (
-        <Section title="Related">
-          {copilot.related.map((r) => {
-            const href = safeUri(r.uri);
-            const body = (
-              <>
-                <span class="accent">{r.title}</span>
-                <span class="meta clamp">{r.snippet}</span>
-              </>
-            );
-            return href ? (
-              <a class="related" key={r.path} href={href}>
-                {body}
-              </a>
-            ) : (
-              <div class="related" key={r.path}>
-                {body}
-              </div>
-            );
-          })}
-        </Section>
+        <CopilotSection title="Related">
+          {copilot.related.map((r) => (
+            <Related key={r.path} href={safeUri(r.uri)} title={r.title} snippet={r.snippet} />
+          ))}
+        </CopilotSection>
       )}
 
       {finalNote && (
-        <Section title="Final note">
-          <span class="accent" data-testid="final-note">
+        <CopilotSection title="Final note">
+          <Text tone="accent" data-testid="final-note">
             {finalNote.title}
-          </span>
-        </Section>
+          </Text>
+        </CopilotSection>
       )}
-    </div>
+    </Section>
   );
 }

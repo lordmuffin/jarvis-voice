@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Badges, chips, banners, toasts, live pill</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1700px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+  <div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 1700px;">
+    <div class="i-stack" style="gap: 4px;">
+      <span class="t-label">3 · Components · {{th.name}}</span>
+      <h1 class="t-title">Status and feedback</h1>
+    </div>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Release-channel badge</h2>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 16px;">
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span class="i-wordmark">Jarvis Live</span><span class="i-badge i-badge--live">Live</span></span>
+        <span style="display: inline-flex; align-items: center; gap: 8px;"><span class="i-wordmark">Jarvis Live</span><span class="i-badge i-badge--lab">Lab</span></span>
+        <span class="i-badge">Dev</span>
+        <span class="i-badge">PR 214</span>
+      </div>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px;">
+        <span class="t-micro t-2" style="width: 100%;">Monochrome (macOS menu bar, Wear complications): LAB filled, LIVE outlined</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; background: var(--inst-surface-2); color: var(--inst-text); font-size: 12px;">
+          <span style="display: inline-flex; align-items: center; height: 14px; padding: 0 5px; border-radius: 24px; background: var(--inst-text); color: var(--inst-surface-2); font-size: 8px; font-weight: 700; letter-spacing: .1em;">LAB</span>Jarvis
+        </span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; background: var(--inst-surface-2); color: var(--inst-text); font-size: 12px;">
+          <span style="display: inline-flex; align-items: center; height: 14px; padding: 0 5px; border-radius: 24px; border: 1.25px solid var(--inst-text); font-size: 8px; font-weight: 700; letter-spacing: .1em;">LIVE</span>Jarvis
+        </span>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Status chips</h2>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 16px;">
+        <span class="i-chip i-chip--live"><span class="i-dot i-breathe"></span>Live</span>
+        <span class="i-chip"><span class="i-dot i-dot--hollow"></span>Offline</span>
+        <span class="i-chip i-chip--progress"><span class="i-spin" style="width: 8px; height: 8px; border-width: 1.5px; border-top-color: currentColor;"></span>In progress</span>
+        <span class="i-chip i-chip--done">✓ Done</span>
+        <span class="i-chip i-chip--failed">✕ Failed</span>
+        <span class="i-chip">Queued</span>
+        <span class="t-caption t-2" style="flex-basis: 100%;">Square, uppercase and tracked, on surface-2. The colour is never the only signal: each chip has a word, a glyph or a dot.</span>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Banners</h2>
+      <div class="i-banner"><b>ⓘ Info</b><span>Nights before 1 Sep come from the old pipeline.</span></div>
+      <div class="i-banner i-banner--success"><b>✓ Saved</b><span>Your correction is in. Trends update within a minute.</span></div>
+      <div class="i-banner i-banner--warning"><b>⚑ LAB</b><span>Writes are disabled in this copy.</span><a href="#" class="i-banner-act" style="font-size: 12px;">Open LIVE ▶</a></div>
+      <div class="i-banner i-banner--error"><b>✕ Not saved</b><span>The query API did not answer.</span><button type="button" class="i-btn i-btn--secondary i-btn--sm i-banner-act">↩ Try Again</button></div>
+      <div class="i-banner i-banner--viewing"><b>Viewing Sam.</b><a href="#">Back to your own</a></div>
+      <span class="t-micro t-2" style="padding: 8px 0 0;">Freshness / health, by age of the newest data</span>
+      <div class="i-banner i-banner--success"><b>✓ Fresh</b><span>Synced 41 min ago.</span><span class="i-banner-act t-mono t-meta t-2">&lt; 6 h</span></div>
+      <div class="i-banner i-banner--warning"><b>⚑ Getting stale</b><span>Synced 9 h ago. The watch may be off its charger.</span><span class="i-banner-act t-mono t-meta t-2">6–24 h</span></div>
+      <div class="i-banner i-banner--error"><b>✕ Stale</b><span>Last sync 3 days ago. Open the phone app to resume.</span><span class="i-banner-act t-mono t-meta t-2">&gt; 24 h</span></div>
+      <span class="t-caption t-2" style="padding-top: 4px;">Banners sit under the header, full width, in this order: Viewing, channel, freshness, page message. Each app sets its own age thresholds; the colours and words stay the same.</span>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Toasts</h2>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px;">
+        <span class="i-toast" role="status"><b>✓</b>Copied</span>
+        <span class="i-toast" role="status"><b>✓</b>Saved</span>
+        <span class="i-toast" role="status"><b>✓</b>Invite sent to riley@home.example</span>
+        <span class="t-caption t-2" style="flex-basis: 100%;">Toasts confirm short successes only: one at a time, 4 s, bottom right (bottom centre when narrow), role="status". Failures go inline beside the thing that failed, never in a toast.</span>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Live pill · states</h2>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px;">
+        <span class="i-live" style="border-color: var(--inst-control);"><span class="i-dot i-breathe"></span><span class="lbl">READY</span></span>
+        <span class="i-live" role="status" aria-label="Recording 23 minutes 41 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">23:41</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+        <span class="i-live" style="border-color: var(--inst-control);"><span class="i-spin"></span><span class="lbl" style="color: var(--inst-text-2);">PROCESSING</span></span>
+        <span class="i-live" style="border-color: var(--inst-control); border-style: dashed;"><span class="i-dot i-dot--hollow" style="background: none; color: var(--inst-text-2);"></span><span class="lbl" style="color: var(--inst-text-2);">OFFLINE</span></span>
+      </div>
+      <h2 class="t-label" style="padding: 12px 0 4px;">Live pill · one object, every size</h2>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 20px; padding: 16px;">
+        <div class="i-stack" style="align-items: center; gap: 8px;">
+          <span aria-hidden="true" style="display: inline-flex; align-items: center; gap: 3px; height: 14px; padding: 0 5px; border-radius: 24px; border: 1.25px solid var(--inst-text);"><span style="width: 5px; height: 5px; border-radius: 50%; background: var(--inst-text);"></span><span style="font: 700 8px var(--inst-mono);">23:41</span></span>
+          <span class="t-micro t-2">Menu bar · 14</span>
+        </div>
+        <div class="i-stack" style="align-items: center; gap: 8px;">
+          <span class="i-chip i-chip--live" style="border-radius: 24px; padding: 0 8px;"><span class="i-dot i-breathe"></span>Rec 23:41</span>
+          <span class="t-micro t-2">Inline · 18</span>
+        </div>
+        <div class="i-stack" style="align-items: center; gap: 8px;">
+          <span class="i-live"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">23:41</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <span class="t-micro t-2">Page · 36</span>
+        </div>
+        <div class="i-stack" style="align-items: center; gap: 8px;">
+          <span class="i-live" style="height: 52px; padding: 0 8px 0 20px; gap: 14px; box-shadow: var(--inst-shadow-2);"><span class="i-dot i-breathe" style="width: 10px; height: 10px;"></span><span class="lbl" style="font-size: 10px;">REC</span><span class="time" style="font-size: 16px;">23:41</span><span class="i-meter" style="height: 18px;"><span></span><span></span><span></span></span><button type="button" class="i-btn i-btn--secondary" aria-label="Stop recording" style="width: 36px; padding: 0;">■</button></span>
+          <span class="t-micro t-2">Floating HUD · 52</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }] };
+  }
+}
+</script>
+</body>
+</html>

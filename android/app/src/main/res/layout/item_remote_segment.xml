@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Utterance row: surface block, 3dp left rule (Me = accent, Them = violet; set by SessionDetailActivity). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    style="@style/LiveSess.Utt"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/inst_space_4">
+
+    <TextView
+        android:id="@+id/tv_seg_time"
+        style="@style/Inst.Text.Meta"
+        android:layout_width="@dimen/app_time_column"
+        android:layout_height="wrap_content"
+        android:fontFamily="monospace" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/inst_space_8"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_seg_speaker"
+            style="@style/Widget.Inst.SpeakerTag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/tv_seg_text"
+            style="@style/Inst.Text.Chat"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/inst_space_4"
+            android:textIsSelectable="true" />
+    </LinearLayout>
+</LinearLayout>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Connection chip: the words shared with web and macOS (Comp-Status). -->
+    <string name="conn_idle">—</string>
+    <string name="conn_connecting">Reconnecting</string>
+    <string name="conn_connected">● Live</string>
+    <string name="conn_reconnecting">Reconnecting</string>
+    <string name="conn_local_only">▫ Local-only</string>
+    <string name="conn_degraded">⚑ Degraded</string>
+    <string name="conn_offline">○ Offline</string>
+    <string name="conn_failed">○ Offline</string>
+    <string name="conn_copilot_offline">⚑ Copilot offline</string>
+    <string name="conn_offline_hint">No audio is streaming. The session resumes if the recorder reconnects, or ends on its own after a while.</string>
+    <string name="conn_attempt">attempt %1$d</string>
+    <string name="conn_failed_reason">Offline. %1$s</string>
+
+    <!-- Copilot sections, in the order the design fixes for every surface. -->
+    <string name="copilot_section_suggestions">Suggestions</string>
+    <string name="copilot_section_actions">Actions</string>
+    <string name="copilot_section_decisions">Decisions</string>
+    <string name="copilot_section_notes">Notes</string>
+    <string name="copilot_section_related">Related</string>
+    <string name="copilot_section_final_note">Final note</string>
+    <string name="copilot_kind_question">Question</string>
+    <string name="copilot_kind_gap">Gap</string>
+    <string name="copilot_kind_counterpoint">Counterpoint</string>
+    <string name="copilot_kind_fact_check">Fact check</string>
+
+    <!-- Record, idle home: the dictation overlay row. -->
+    <string name="home_dictation_title">Dictation overlay</string>
+    <string name="home_dictation_running">● Running</string>
+    <string name="home_dictation_stopped">○ Not running</string>
+    <string name="home_dictation_last">Last: %1$d words · %2$s wpm%3$s · %4$s</string>
+    <string name="home_dictation_none">—</string>
+    <string name="home_dictation_enhanced"> · Enhanced</string>
+    <string name="home_dictation_open" translatable="false">▶</string>
+</resources>

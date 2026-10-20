@@ -1,0 +1,3 @@
+# Waivers for the baseline policies (TDD.md §7 Phase 2). Each entry needs a reason and a
+# TODO(tdd) tag. `rule` is the policy name, `kind`/`name` the rendered object it applies to.
+exceptions: []

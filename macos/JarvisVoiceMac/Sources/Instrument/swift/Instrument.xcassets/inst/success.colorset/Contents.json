@@ -1,0 +1,38 @@
+{
+  "colors": [
+    {
+      "idiom": "universal",
+      "color": {
+        "color-space": "srgb",
+        "components": {
+          "alpha": "1.000",
+          "red": "0x1A",
+          "green": "0x7F",
+          "blue": "0x37"
+        }
+      }
+    },
+    {
+      "idiom": "universal",
+      "appearances": [
+        {
+          "appearance": "luminosity",
+          "value": "dark"
+        }
+      ],
+      "color": {
+        "color-space": "srgb",
+        "components": {
+          "alpha": "1.000",
+          "red": "0x3F",
+          "green": "0xB9",
+          "blue": "0x50"
+        }
+      }
+    }
+  ],
+  "info": {
+    "author": "instrument",
+    "version": 1
+  }
+}

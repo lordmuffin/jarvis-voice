@@ -1,0 +1,21 @@
+# Raw session audio and app state. Postgres holds the database; nothing here is
+# SQLite (NFS advisory locking is unreliable -- same reason as gotify/pocket-id).
+# freenas-nfs-csi is reclaimPolicy: Delete: a Flux prune of this PVC destroys the
+# audio. AUDIO_RETENTION_DAYS bounds its growth.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jarvis-live-data
+  annotations:
+    # Never pruned by Flux: freenas-nfs-csi is reclaimPolicy Delete, so removing
+    # this object (a moved path, a deleted file) would destroy its data.
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    app: jarvis-live
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: freenas-nfs-csi
+  resources:
+    requests:
+      storage: 50Gi

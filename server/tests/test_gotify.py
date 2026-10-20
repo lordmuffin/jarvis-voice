@@ -72,3 +72,22 @@ async def test_unconfigured_is_a_noop() -> None:
     await GotifyNotifier("", None, c).notify("T", "m", 5)
     await GotifyNotifier("http://x", None, c).notify("T", "m", 5)
     assert not called
+
+
+async def test_title_prefix_marks_the_channel(tmp_path: Path) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(200)
+
+    f = tmp_path / "token"
+    f.write_text("tok")
+    n = GotifyNotifier(
+        "http://gotify.local",
+        f,
+        httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        title_prefix="[LAB] ",
+    )
+    await n.notify("Session finished", "m", 5)
+    assert json.loads(seen[0].content)["title"] == "[LAB] Session finished"

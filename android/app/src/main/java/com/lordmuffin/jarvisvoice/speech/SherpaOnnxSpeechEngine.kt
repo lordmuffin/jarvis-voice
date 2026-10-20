@@ -11,22 +11,15 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import com.lordmuffin.jarvisvoice.AudioDeviceRouter
-import com.k2fsa.sherpa.onnx.FeatureConfig
-import com.k2fsa.sherpa.onnx.OfflineModelConfig
-import com.k2fsa.sherpa.onnx.OfflineRecognizer
-import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
-import com.k2fsa.sherpa.onnx.OfflineWhisperModelConfig
 import com.lordmuffin.jarvisvoice.DebugLog
-import com.lordmuffin.jarvisvoice.PersistentStorage
 import java.io.File
 import java.util.concurrent.Executors
 
 class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
-    var activeProvider: String = "cpu"
-        private set
+    val activeProvider: String get() = whisper?.activeProvider ?: "cpu"
 
-    private var recognizer: OfflineRecognizer? = null
+    @Volatile private var whisper: WhisperRecognizer? = null
     private var audioRecord: AudioRecord? = null
     private var aec: AcousticEchoCanceler? = null
     private var noiseSuppressor: NoiseSuppressor? = null
@@ -80,41 +73,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     }
 
     private fun initRecognizer() {
-        val config = SttModelManager(context).getActiveConfig()
-        if (config == null) {
-            DebugLog.e("STT", "No STT model available — recognizer not initialized")
-            return
-        }
-        val dir = PersistentStorage.sttModelDir(context, config.subdir).absolutePath
-        val whisper = OfflineWhisperModelConfig(
-            encoder = "$dir/${config.encoderFile}",
-            decoder = "$dir/${config.decoderFile}",
-            language = "en",
-            task = "transcribe"
-        )
-        fun cfg(provider: String) = OfflineRecognizerConfig(
-            featConfig  = FeatureConfig(sampleRate = sampleRate, featureDim = 80),
-            modelConfig = OfflineModelConfig(
-                whisper    = whisper,
-                tokens     = "$dir/${config.tokensFile}",
-                numThreads = 2,
-                provider   = provider,
-                modelType  = "whisper"
-            )
-        )
-        val nnapiResult = runCatching { OfflineRecognizer(config = cfg("nnapi")) }
-        if (nnapiResult.isSuccess) {
-            recognizer     = nnapiResult.getOrThrow()
-            activeProvider = "nnapi"
-        } else {
-            DebugLog.e("STT", "nnapi backend failed", nnapiResult.exceptionOrNull())
-            val cpuResult = runCatching { OfflineRecognizer(config = cfg("cpu")) }
-            recognizer     = cpuResult.getOrNull()
-            activeProvider = "cpu"
-            if (cpuResult.isFailure) DebugLog.e("STT", "cpu backend also failed", cpuResult.exceptionOrNull())
-        }
-
-        DebugLog.i("STT", "Recognizer init: ${if (recognizer != null) "OK" else "FAILED"} provider=$activeProvider model=${config.id}")
+        whisper = WhisperRecognizer.create(context)
     }
 
     override fun startListening(
@@ -123,7 +82,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         onError:   (Int)    -> Unit,
         holdMode:  Boolean
     ) {
-        if (recognizer == null) {
+        if (whisper?.isReady != true) {
             DebugLog.e("STT", "startListening called but recognizer is null")
             onError(-1)
             return
@@ -334,7 +293,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         // Null recognizer first so any in-flight transcribe() exits early via the null guard.
         // Submit the actual native release to the executor so it runs after any in-progress
         // transcription finishes, then shut down.
-        val rec = recognizer; recognizer = null
+        val rec = whisper; whisper = null
         transcribeExecutor.submit { rec?.release() }
         transcribeExecutor.shutdown()
     }
@@ -350,21 +309,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         if (scoStarted) { deviceRouter.stopBluetoothSco(); scoStarted = false }
     }
 
-    private fun transcribe(samples: ShortArray): String {
-        val rec = recognizer ?: return ""
-        return try {
-            val floats = FloatArray(samples.size) { samples[it] / 32768.0f }
-            val stream = rec.createStream()
-            stream.acceptWaveform(floats, sampleRate)
-            rec.decode(stream)
-            val text = rec.getResult(stream).text.trim()
-            stream.release()
-            text
-        } catch (e: Exception) {
-            DebugLog.e("STT", "transcribe error", e)
-            ""
-        }
-    }
+    private fun transcribe(samples: ShortArray): String = whisper?.transcribe(samples) ?: ""
 
     private fun rms(samples: ShortArray): Double {
         if (samples.isEmpty()) return 0.0

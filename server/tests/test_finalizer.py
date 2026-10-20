@@ -8,17 +8,18 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from jarvis_live.auth import create_device
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.prompts import FINAL_SYSTEM, MAP_SYSTEM, REDUCE_SYSTEM
 from jarvis_live.copilot.schema import FinalAction, FinalNote
-from jarvis_live.db.models import CopilotItem
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.finalizer import Finalizer, split_windows, write_atomic
+from jarvis_live.finalize.render import _yaml
 from jarvis_live.llm.client import LLMError
 from jarvis_live.protocol import FinalNote as FinalNoteMsg
-from tests.fakes import FakeLLM, FakeNotifier, add_segments, make_session
+from jarvis_live.users import create_user
+from tests.fakes import FakeLLM, FakeNotifier, add_segments, make_session, new_device
 from tests.test_copilot_loop import FakeVault
 
 SM = async_sessionmaker  # type: ignore[type-arg]
@@ -52,7 +53,11 @@ class Rig:
         self.fin = Finalizer(self.settings, sm, self.bus, llm, Vault(), self.notifier)
 
     async def session(self, **kw: Any) -> uuid.UUID:
-        device_id, _ = await create_device(self.sm, f"Andrew's Mac {uuid.uuid4().hex[:6]}")
+        device_id, _ = await new_device(
+            self.sm,
+            f"Andrew's Mac {uuid.uuid4().hex[:6]}",
+            user_id=kw.pop("user_id", OWNER_USER_ID),
+        )
         kw.setdefault("status", "finalizing")
         kw.setdefault("ended_at", datetime(2026, 10, 9, 15, 12, tzinfo=UTC))
         return await make_session(self.sm, device_id, **kw)
@@ -96,9 +101,9 @@ async def test_writes_note_sets_done_publishes_and_notifies(mk: Any) -> None:
 
     assert result is not None and result.title == "Vendor call"
     (f,) = rig.files()
-    assert f.name == "2026-10-09 0930 - Vendor call.md"  # 14:30Z in America/Chicago
+    assert f.name == "2026-10-09 - Vendor call.md"  # 14:30Z in America/Chicago
     text = f.read_text()
-    assert f"session_id: {sid}" in text and "type: live-session" in text
+    assert f"session_id: {sid}" in text and "type: ai-output" in text
     assert "duration_minutes: 42" in text
     assert "- [ ] Send quote (owner: Dana)" in text
     assert "[00:00:05] **Me:** Send the quote." in text
@@ -125,6 +130,22 @@ async def test_writes_note_sets_done_publishes_and_notifies(mk: Any) -> None:
         )
     assert "final_note" in kinds
     assert await rig.fin.run(sid) is None  # already done: idempotent
+
+
+async def test_untitled_session_takes_the_note_title(mk: Any) -> None:
+    rig: Rig = mk()
+    untitled, titled = await rig.session(), await rig.session()
+    async with rig.sm() as db:
+        row = await db.get(SessionRow, titled)
+        assert row is not None
+        row.title = "Named by me"
+        await db.commit()
+    for sid in (untitled, titled):
+        await add_segments(rig.sm, sid, [(1000, 4000, "them", "Hello.")])
+        await rig.fin.run(sid)
+    async with rig.sm() as db:
+        assert (await db.get(SessionRow, untitled)).title == "Vendor call"  # type: ignore[union-attr]
+        assert (await db.get(SessionRow, titled)).title == "Named by me"  # type: ignore[union-attr]
 
 
 async def test_map_reduce_over_20_minute_windows(mk: Any) -> None:
@@ -232,3 +253,66 @@ def test_write_atomic_collisions_and_idempotence(tmp_path: Path) -> None:
     assert write_atomic(out, "n.md", "session_id: A\nthree", "A") == "n.md"  # same session
     assert (out / "n.md").read_text().endswith("three")
     assert sorted(p.name for p in out.iterdir()) == ["n (2).md", "n.md"]  # no tmp left behind
+
+
+async def test_other_users_notes_go_to_their_folder_without_vault_or_gotify(
+    mk: Any, sm: SM
+) -> None:
+    rig: Rig = mk()
+    user = await create_user(
+        sm, f"Dana {uuid.uuid4().hex[:6]}", email=f"d{uuid.uuid4().hex[:6]}@x.io"
+    )
+    sid = await rig.session(user_id=user.id)
+    await add_segments(rig.sm, sid, [(1000, 4000, "me", "Hello.")])
+
+    result = await rig.fin.run(sid)
+
+    assert result is not None and user.notes_subdir
+    assert result.path == f"{user.notes_subdir}/2026-10-09 - Vendor call.md"
+    text = (rig.settings.outbox_dir / result.path).read_text()  # type: ignore[operator]
+    assert f"user: {_yaml(user.display_name)}" in text
+    assert "Acme Renewal" not in text  # the owner's vault is not theirs
+    assert rig.files() == []  # nothing in the owner's outbox root
+    assert rig.notifier.sent == []  # Gotify is the owner's phone
+    assert await rig.status(sid) == "done"
+
+
+async def test_regeneration_replaces_its_old_note_and_can_stay_quiet(mk: Any) -> None:
+    rig: Rig = mk()
+    sid = await rig.session()
+    await add_segments(rig.sm, sid, [(1000, 4000, "me", "Hello.")])
+    outbox = rig.settings.outbox_dir
+    assert outbox is not None
+    outbox.mkdir(parents=True)
+    (outbox / "old.md").write_text(f"---\nsession_id: {sid}\n---\n")
+    (outbox / "theirs.md").write_text("---\nsession_id: someone-else\n---\n")
+
+    result = await rig.fin.run(sid, replace="old.md", notify=False)
+    assert result is not None
+    assert not (outbox / "old.md").exists()
+    assert result.path == "2026-10-09 - Vendor call.md"
+    assert rig.notifier.sent == []
+
+    # Another session's file is never removed, whatever ``replace`` says.
+    rig.llm.queue("FinalNote", NOTE)
+    async with rig.sm() as db:
+        row = await db.get(SessionRow, sid)
+        assert row is not None
+        row.status = "finalizing"
+        await db.commit()
+    await rig.fin.run(sid, replace="theirs.md")
+    assert (outbox / "theirs.md").exists()
+
+
+def test_overwrite_atomic_replaces_in_place(tmp_path: Path) -> None:
+    from jarvis_live.finalize.outbox import note_file, overwrite_atomic
+
+    target = tmp_path / "sub" / "n.md"
+    overwrite_atomic(target, "one")
+    overwrite_atomic(target, "two")
+    assert target.read_text() == "two"
+    assert [p.name for p in target.parent.iterdir()] == ["n.md"]  # no temp files left
+    assert note_file(tmp_path, "../x.md") is None
+    assert note_file(tmp_path, "/etc/x.md") is None
+    assert note_file(tmp_path, "a/b/c.md") is None
+    assert note_file(tmp_path, "a/n.md") == tmp_path / "a" / "n.md"

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dialogs and show-once secret</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1500px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+  <div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 1500px;">
+    <div class="i-stack" style="gap: 4px;">
+      <span class="t-label">3 · Components · {{th.name}}</span>
+      <h1 class="t-title">Dialogs and show-once secrets</h1>
+    </div>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Confirm</h2>
+      <div style="background: var(--inst-scrim); padding: 32px; display: flex; justify-content: center;">
+        <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="c1-{{th.id}}" aria-describedby="c1d-{{th.id}}">
+          <div class="i-dialog-hd"><h2 id="c1-{{th.id}}">Stop recording?</h2></div>
+          <div class="i-dialog-bd"><p id="c1d-{{th.id}}" class="t-2">The transcript is saved. Notes publish as a pull request in about a minute.</p></div>
+          <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary">Keep Recording</button><button type="button" class="i-btn i-btn--primary is-focus">■ Stop</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Type the name to confirm · destructive</h2>
+      <div style="background: var(--inst-scrim); padding: 32px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start;">
+        <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="c2-{{th.id}}">
+          <div class="i-dialog-hd"><span class="t-tag" style="color: var(--inst-error);">✕ Cannot be undone</span><h2 id="c2-{{th.id}}">Remove Sam?</h2></div>
+          <div class="i-dialog-bd">
+            <p class="t-2" style="font-size: 13px;">Sam is signed out of every app now. Their sleep data stays until you delete it.</p>
+            <div class="i-field"><label class="i-label" for="c2i-{{th.id}}">Type <b class="t-mono">Sam</b> to confirm</label><input id="c2i-{{th.id}}" class="i-input t-mono is-focus" value="Sa"></div>
+          </div>
+          <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary">Cancel</button><button type="button" class="i-btn i-btn--danger" disabled aria-describedby="c2r-{{th.id}}">Remove Sam</button><span id="c2r-{{th.id}}" class="i-reason" style="flex-basis: 100%; justify-content: flex-end;">⚑ Type the name to enable.</span></div>
+        </div>
+        <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="c3-{{th.id}}">
+          <div class="i-dialog-hd"><span class="t-tag" style="color: var(--inst-error);">✕ Cannot be undone</span><h2 id="c3-{{th.id}}">Remove Sam?</h2></div>
+          <div class="i-dialog-bd">
+            <p class="t-2" style="font-size: 13px;">Sam is signed out of every app now. Their sleep data stays until you delete it.</p>
+            <div class="i-field"><label class="i-label" for="c3i-{{th.id}}">Type <b class="t-mono">Sam</b> to confirm</label><input id="c3i-{{th.id}}" class="i-input t-mono" value="Sam"><span class="i-msg-ok">✓ Matches.</span></div>
+          </div>
+          <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary">Cancel</button><button type="button" class="i-btn i-btn--danger is-focus">Remove Sam</button></div>
+        </div>
+      </div>
+      <span class="t-caption t-2">Esc and Cancel close. Focus starts in the field (the safe button in a plain confirm) and stays inside the dialog. The destructive button repeats the verb and the name.</span>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Show-once secret</h2>
+      <div class="i-block" style="padding: 16px; display: flex; flex-wrap: wrap; gap: 16px;">
+        <div style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
+          <div class="i-stack" style="gap: 2px;"><span class="t-label">Ingest key</span><span style="font-size: 16px; font-weight: 700;">Sam’s Pixel Watch</span></div>
+          <div class="i-banner i-banner--warning"><b>⚑ It is shown only once.</b><span>Copy it now. You can make a new one later.</span></div>
+          <div class="i-field">
+            <label class="i-label" for="s1-{{th.id}}">Key</label>
+            <div style="display: flex; gap: 8px;">
+              <input id="s1-{{th.id}}" class="i-input i-input--mono" readonly value="sk_ingest_7Hq2…[shown in full once]">
+              <button type="button" class="i-btn i-btn--secondary">⎘ Copy</button>
+            </div>
+          </div>
+          <div class="i-field">
+            <label class="i-label" for="s2-{{th.id}}">Webhook URL</label>
+            <div style="display: flex; gap: 8px;">
+              <input id="s2-{{th.id}}" class="i-input i-input--mono" readonly value="https://ingest.apj.dev/v1/hook/[token]">
+              <button type="button" class="i-btn i-btn--secondary" aria-live="polite" style="color: var(--inst-success);">✓ Copied</button>
+            </div>
+          </div>
+          <div class="i-row"><button type="button" class="i-btn i-btn--primary">I Have Copied It</button><span class="t-caption t-2">The key is never logged.</span></div>
+        </div>
+        <div style="width: 152px; display: flex; flex-direction: column; gap: 6px; align-items: center;">
+          <div role="img" aria-label="QR code of the webhook URL" style="width: 144px; height: 144px; background: #FFFFFF; padding: 10px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 0;">
+            <sc-for list="{{qr}}" as="q" hint-placeholder-count="144"><span style="background: {{q}};"></span></sc-for>
+          </div>
+          <span class="t-micro t-2" style="text-align: center;">Optional QR, always on a white plate. Placeholder shown.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const qr = [];
+    const finder = (r, c) => {
+      const inF = (r0, c0) => r >= r0 && r < r0 + 4 && c >= c0 && c < c0 + 4;
+      if (inF(0, 0) || inF(0, 8) || inF(8, 0)) {
+        const rr = r % 8 === r ? r : r - 8; const cc = c >= 8 ? c - 8 : c;
+        return (rr === 0 || rr === 3 || cc === 0 || cc === 3 || (rr > 0 && rr < 3 && cc > 0 && cc < 3 && (rr + cc) % 2 === 0)) ? 1 : 0;
+      }
+      return ((r * 7 + c * 13 + r * c) % 5 < 2) ? 1 : 0;
+    };
+    for (let r = 0; r < 12; r++) for (let c = 0; c < 12; c++) qr.push(finder(r, c) ? '#0D1117' : '#FFFFFF');
+    return { themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }], qr };
+  }
+}
+</script>
+</body>
+</html>

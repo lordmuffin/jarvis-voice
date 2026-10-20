@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Publishing states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.pr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 12px}
+.pr .ti{display:flex;flex-direction:column;gap:2px;flex:1 1 260px;min-width:0}
+.inst .pr .ti a{color:var(--inst-text);font-weight:600}
+.sh{color:var(--inst-text);font-weight:700}
+.frame{background:var(--inst-bg);box-shadow:inset 0 0 0 1px var(--inst-line);display:flex;flex-direction:column}
+.empty{padding:16px 12px}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 1440px; min-height: 1560px; padding: 40px 32px; display: flex; flex-direction: column; gap: 28px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · Web · Publishing</span>
+    <h1 class="t-title">Publishing: states</h1>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 32px; align-items: start;">
+
+    <section aria-label="Empty lists" class="i-stack" style="gap: 8px;">
+      <span class="t-micro t-2">Empty · all three lists</span>
+      <div class="i-stack">
+        <div class="j-sec"><h2 class="t-label sh">Ready to publish <span class="t-mono t-2">(0)</span></h2><button type="button" class="i-btn i-btn--primary i-btn--sm" style="margin-left: auto;" disabled aria-describedby="e-none">Publish All</button></div>
+        <p id="e-none" class="i-block empty t-caption t-2">Nothing waiting. New notes show up here when a session ends.</p>
+      </div>
+      <div class="i-stack">
+        <div class="j-sec"><h2 class="t-label sh">Pull requests waiting to merge <span class="t-mono t-2">(0)</span></h2></div>
+        <p class="i-block empty t-caption t-2">No open pull requests.</p>
+      </div>
+      <div class="i-stack">
+        <div class="j-sec"><h2 class="t-label sh">Recent</h2></div>
+        <p class="i-block empty t-caption t-2">Nothing yet.</p>
+      </div>
+    </section>
+
+    <div class="i-stack" style="gap: 28px;">
+      <section aria-label="Syncing" class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Sync Now · running</span>
+        <div class="i-block j-toolbar" style="padding: 8px 12px;">
+          <label class="i-choice"><input type="checkbox" checked><span>Auto-publish new notes</span></label>
+          <span class="t-meta t-2" style="margin-left: auto;">Last synced <span class="t-mono">3:12 PM</span></span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" disabled aria-busy="true"><span class="i-spin" style="width: 10px; height: 10px;"></span>Syncing…</button>
+        </div>
+        <div class="i-block pr" style="opacity: .5;">
+          <div class="ti"><a href="#">Sleep pipeline backfill plan</a><span class="t-meta t-2">Oct 12 · Andrew · PR #212</span></div>
+          <span class="i-chip i-chip--live">PR open</span>
+        </div>
+        <span class="t-micro t-2">Rows stay in place at 50% until the sync returns.</span>
+      </section>
+
+      <section aria-label="Publish All confirm" class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Publish All · confirm</span>
+        <div style="background: var(--inst-scrim); padding: 32px; display: flex; justify-content: center;">
+          <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="pa-h" aria-describedby="pa-d">
+            <div class="i-dialog-hd"><h2 id="pa-h">Publish 3 notes?</h2></div>
+            <div class="i-dialog-bd">
+              <p id="pa-d" class="t-2">Each note opens its own pull request against <span class="t-mono">main</span> in <span class="t-mono">lordmuffin/obsidian-vault</span>. You can close any of them later.</p>
+              <ul class="t-caption" style="margin: 0; padding-left: 18px;">
+                <li>ARC runner migration vendor call</li>
+                <li>Kai voice latency notes</li>
+                <li>Homelab power budget</li>
+              </ul>
+            </div>
+            <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary is-focus">Cancel</button><button type="button" class="i-btn i-btn--primary">Publish 3 Notes</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section aria-label="Not a publisher" class="i-stack" style="gap: 8px;">
+      <span class="t-micro t-2">Signed in as a member · /publishing</span>
+      <div class="frame">
+        <header class="i-header">
+          <div class="i-header-in">
+            <div class="i-brand">
+              <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+              <a href="#" class="i-wordmark">Jarvis Live</a>
+              <span class="i-badge i-badge--live">Live</span>
+            </div>
+            <nav class="i-nav" aria-label="Main"><a href="#">Sessions</a><a href="#">Devices</a><a href="#">Work Items</a></nav>
+            <div class="i-user"><span>Riley</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+          </div>
+        </header>
+        <div style="padding: 24px 16px;">
+          <div class="i-block" role="region" aria-label="Publishing" style="padding: 24px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-height: 176px; justify-content: center;">
+            <span aria-hidden="true" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-text-2);">—</span>
+            <span style="font-size: 14px; font-weight: 700;">Only the owner and admins publish notes.</span>
+            <span class="t-caption t-2" style="max-width: 300px;">Your notes stay with each session. Ask an admin to publish one.</span>
+            <a href="#" class="i-btn i-btn--secondary i-btn--sm">Go to Sessions</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="Publish failed row" class="i-stack" style="gap: 8px;">
+      <span class="t-micro t-2">Row states · publication chip</span>
+      <div class="i-stack">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+          <div class="i-block pr">
+            <div class="ti"><a href="#">{{r.title}}</a><span class="t-meta t-2">{{r.meta}}</span></div>
+            <span class="{{r.chip}}"><sc-if value="{{r.spin}}" hint-placeholder-val="{{false}}"><span class="i-spin i-chip-spin"></span></sc-if>{{r.state}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-label="LAB" class="i-stack" style="gap: 8px; grid-column: 1 / -1;">
+      <span class="t-micro t-2">LAB · live.lab.apj.dev · no publishing credentials</span>
+      <div class="frame">
+        <header class="i-header">
+          <div class="i-header-in">
+            <div class="i-brand">
+              <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+              <a href="#" class="i-wordmark">Jarvis Live</a>
+              <span class="i-badge i-badge--lab">Lab</span>
+            </div>
+            <nav class="i-nav" aria-label="Main"><a href="#">Sessions</a><a href="#">Devices</a><a href="#">Work Items</a><a href="#" aria-current="page">Publishing</a><a href="#">Admin</a></nav>
+            <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+          </div>
+        </header>
+        <div class="i-banner i-banner--warning"><b>⚑ LAB: publishing is off in this copy.</b><span>This copy has no publishing credentials.</span></div>
+        <div class="i-page" style="width: 100%; max-width: 960px;">
+          <div class="i-block j-toolbar" style="padding: 8px 12px;">
+            <label class="i-choice"><input type="checkbox" disabled aria-describedby="lab-r1"><span>Auto-publish new notes</span></label>
+            <span id="lab-r1" class="i-reason">⚑ LAB: publishing is off in this copy.</span>
+            <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;" disabled aria-describedby="lab-r1">Sync Now</button>
+          </div>
+          <div class="i-stack">
+            <div class="j-sec" style="align-items: center;"><h2 class="t-label sh">Ready to publish <span class="t-mono t-2">(2)</span></h2><button type="button" class="i-btn i-btn--primary i-btn--sm" style="margin-left: auto;" disabled aria-describedby="lab-r1">Publish All</button></div>
+            <div class="i-block pr">
+              <div class="ti"><a href="#">Kai wake-word test</a><span class="t-meta t-2">Oct 14 · Andrew</span></div>
+              <span class="i-chip">Not published</span>
+              <div class="j-acts"><button type="button" class="i-btn i-btn--secondary i-btn--sm" disabled aria-describedby="lab-r2">Publish</button><span id="lab-r2" class="i-reason">⚑ LAB: publishing is off in this copy.</span></div>
+            </div>
+            <div class="i-block pr">
+              <div class="ti"><a href="#">Speaker split check</a><span class="t-meta t-2">Oct 13 · Andrew</span></div>
+              <span class="i-chip">Not published</span>
+              <div class="j-acts"><button type="button" class="i-btn i-btn--secondary i-btn--sm" disabled aria-describedby="lab-r1">Publish</button></div>
+            </div>
+          </div>
+          <div class="i-stack">
+            <div class="j-sec"><h2 class="t-label sh">Pull requests waiting to merge <span class="t-mono t-2">(1)</span></h2></div>
+            <div class="i-block pr">
+              <div class="ti"><a href="#">Lab transcript fixture</a><span class="t-meta t-2">Oct 2 · Andrew · PR #188</span></div>
+              <span class="i-chip i-chip--live">PR open</span>
+              <div class="j-acts"><a href="#" class="i-btn i-btn--quiet i-btn--sm">Review</a><button type="button" class="i-btn i-btn--secondary i-btn--sm" disabled aria-describedby="lab-r1">Merge</button><button type="button" class="i-btn i-btn--danger-quiet i-btn--sm" disabled aria-describedby="lab-r1">Close</button></div>
+            </div>
+          </div>
+        </div>
+        <footer class="i-footer" style="max-width: 960px; width: 100%;"><span>live.lab.apj.dev</span><span class="t-mono">main · 7d41b2e</span></footer>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (title, meta, state, chip) => ({ title, meta, state, chip: 'i-chip ' + (chip || ''), spin: chip === 'i-chip--progress' });
+    return {
+      theme: this.props.theme ?? 'dark',
+      rows: [
+        R('ARC runner migration vendor call', 'Oct 14 · Andrew', 'Not published', ''),
+        R('Kai voice latency notes', 'Oct 10 · Andrew', 'Publishing', 'i-chip--progress'),
+        R('Sleep pipeline backfill plan', 'Oct 12 · Andrew · PR #212', 'PR open', 'i-chip--live'),
+        R('GPU node profile swap', 'Oct 9 · Andrew · PR #207', '✓ Merged', 'i-chip--done'),
+        R('Weekly homelab review', 'Oct 8 · Sam · PR #205', 'PR closed', ''),
+        R('Untitled session', 'Oct 13 · Andrew', 'Skipped', ''),
+        R('Platform sync', 'Oct 13 · Andrew', '✕ Publish failed', 'i-chip--failed')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

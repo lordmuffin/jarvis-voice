@@ -50,9 +50,9 @@ object PersistentStorage {
         val extRoot = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
         val actualPath = if (extRoot != null) File(extRoot, DIR_NAME).absolutePath else ""
         return if (isOnExternalStorage(context)) {
-            "$actualPath — survives reinstalls"
+            "$actualPath. Survives reinstalls."
         } else {
-            "Internal app storage — deleted on uninstall\n" +
+            "Internal app storage. Deleted on uninstall.\n" +
             "Grant All Files Access to store data at:\n$actualPath"
         }
     }

@@ -1,5 +1,203 @@
 # Changelog
 
+## [0.19.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.19.0...server-v0.19.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* **server:** read the family's shared apps list so the ▦ switcher shows ([d877e09](https://github.com/lordmuffin/jarvis-voice/commit/d877e09a2e2c34fac84552bee13e28a8c00b6fc7))
+* **server:** read the family's shared apps list so the ▦ switcher shows ([f1a4bbd](https://github.com/lordmuffin/jarvis-voice/commit/f1a4bbde9f7b8fe793aac63f5ef00c96e449d6b8))
+
+## [0.19.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.18.1...server-v0.19.0) (2026-10-15)
+
+
+### Features
+
+* **server,web:** add the Instrument family switcher ([087e48d](https://github.com/lordmuffin/jarvis-voice/commit/087e48d414e7a6b88d903bf686634364cab89a3d))
+* **server,web:** add the Instrument family switcher ([2ce862e](https://github.com/lordmuffin/jarvis-voice/commit/2ce862e7cd3d2d2fdfc7acf1c6a0a7798bee769e))
+
+## [0.18.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.18.0...server-v0.18.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* align copy and vocabulary with the Instrument design system ([492b090](https://github.com/lordmuffin/jarvis-voice/commit/492b0906ddf2fae45a3e25d340fb9e36637a1dcb))
+* **web,server:** align copy with Instrument vocabulary ([1c44e92](https://github.com/lordmuffin/jarvis-voice/commit/1c44e921e4953f508900dd17b9e62731c4bb6f5d))
+
+## [0.18.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.17.0...server-v0.18.0) (2026-10-14)
+
+
+### Features
+
+* **server:** upload recorded files and process them like live sessions ([7c58ea5](https://github.com/lordmuffin/jarvis-voice/commit/7c58ea588e8397e4d418bb1b4598e64bb3b06dcd))
+* upload recordings and process them like live sessions ([7872130](https://github.com/lordmuffin/jarvis-voice/commit/787213077af68e00111566f7ae1e05746584f04e))
+
+
+### Bug Fixes
+
+* **server:** don't fail when the producer being replaced is already gone ([bffff7e](https://github.com/lordmuffin/jarvis-voice/commit/bffff7ea1616c6b4ce0ce769d11af9f1d61072d6))
+
+## [0.17.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.16.0...server-v0.17.0) (2026-10-12)
+
+
+### Features
+
+* **web:** show the server's version next to the user name ([e93f949](https://github.com/lordmuffin/jarvis-voice/commit/e93f94930d2d9f60cc8d037a08959a98f9c4eff3))
+* **web:** show the server's version next to the user name ([ec485fd](https://github.com/lordmuffin/jarvis-voice/commit/ec485fdcf26567ed244d53a3f687e9eee4ddb13d))
+
+## [0.16.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.15.0...server-v0.16.0) (2026-10-12)
+
+
+### Features
+
+* **server:** publish notes to the vault's AI Output inbox using its template ([99ddd11](https://github.com/lordmuffin/jarvis-voice/commit/99ddd1144abb937094f7b6bee3766a2397efa372))
+* **server:** publish notes to the vault's AI Output inbox using its template ([72cc8fe](https://github.com/lordmuffin/jarvis-voice/commit/72cc8fe720340277f758023c812191fc0c2752f9))
+* **server:** unattended dispatch runs that ask instead of stalling, and steerable follow-ups ([1cce02d](https://github.com/lordmuffin/jarvis-voice/commit/1cce02d234d4d5880917157b804516798010dd12))
+* **server:** unattended dispatch runs that ask instead of stalling, and steerable follow-ups ([d298550](https://github.com/lordmuffin/jarvis-voice/commit/d2985502a579ffe4691f04cd95b80c63f9b49969))
+
+
+### Bug Fixes
+
+* **server:** let lab dispatch reach its sandbox repo ([b0bdd3c](https://github.com/lordmuffin/jarvis-voice/commit/b0bdd3cb6dc408699fabeeeb21b5084eabdfc129))
+* **server:** let lab dispatch reach its sandbox repo ([1811bd4](https://github.com/lordmuffin/jarvis-voice/commit/1811bd4866a3a6b5cd4b39a5f7281c6cc0f4b100))
+* **server:** only an upper-case NEEDS INPUT marker with questions asks the owner ([b7cd976](https://github.com/lordmuffin/jarvis-voice/commit/b7cd976fd7a4e1447bc87a82e74bb6b5453f5973))
+
+
+### Documentation
+
+* unattended dispatch runs and follow-up runs ([6bba3b8](https://github.com/lordmuffin/jarvis-voice/commit/6bba3b80d3a72ffdb2796d49b77e2bc35bd6cf8b))
+
+## [0.15.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.14.0...server-v0.15.0) (2026-10-12)
+
+
+### Features
+
+* **deploy:** fence, RBAC and mirrors for dispatch; lab dispatches to its sandbox ([5c464bf](https://github.com/lordmuffin/jarvis-voice/commit/5c464bf94fc89b0522e2b3916654eafb68305f83))
+* dispatch approved work items as headless Claude Code (phase b) ([66df8e8](https://github.com/lordmuffin/jarvis-voice/commit/66df8e87de7456196766d6a421b7c90cc69f6292))
+* **server:** dispatch API, status on work items, and startup wiring ([412571a](https://github.com/lordmuffin/jarvis-voice/commit/412571a79d329a422b23366c29687af672a56fa6))
+* **server:** Kubernetes calls for dispatch and reading a run's outcome ([944edd0](https://github.com/lordmuffin/jarvis-voice/commit/944edd045d90233af26dec415831261e24cdb9ad))
+* **server:** mint per-run GitHub App tokens for one repo ([44df7e1](https://github.com/lordmuffin/jarvis-voice/commit/44df7e1e311c00159e8f51a8339f23f7d094dcdc))
+* **server:** queue, run and track dispatches of approved work items ([d40e8e7](https://github.com/lordmuffin/jarvis-voice/commit/d40e8e7dd525187d75a659c2282ca658a203e0ae))
+* **server:** the dispatch runner image: prepare, claude, push ([5d011d1](https://github.com/lordmuffin/jarvis-voice/commit/5d011d10065cf3005ae1ed82083462e4a323907b))
+* **server:** the Job and Secret a dispatch runs as ([01ceda3](https://github.com/lordmuffin/jarvis-voice/commit/01ceda3ecac67219490dcc1ae07f6b2f5e8f8cd8))
+* **web:** run approved work items in Claude Code and follow the run ([47c64aa](https://github.com/lordmuffin/jarvis-voice/commit/47c64aa8f4738d99421afdf84aa6c411b11db18c))
+
+
+### Bug Fixes
+
+* **server:** a misconfigured dispatch stays off instead of crashing ([04b5d44](https://github.com/lordmuffin/jarvis-voice/commit/04b5d442760a0349241f23672aca52870ce6e059))
+
+
+### Documentation
+
+* dispatch as built, settings, the lab fence and one-time setup ([188e711](https://github.com/lordmuffin/jarvis-voice/commit/188e7110b741a28cf2bf8960b62646f631bc51cd))
+
+## [0.14.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.13.0...server-v0.14.0) (2026-10-12)
+
+
+### Features
+
+* copilot work items as reviewable Claude Code prompts (phase a) ([8cb7c71](https://github.com/lordmuffin/jarvis-voice/commit/8cb7c71555668b5fc502c5c12ee256b8b1a2be5a))
+* **server:** turn spoken ideas into reviewable Claude Code prompts ([3fe9c88](https://github.com/lordmuffin/jarvis-voice/commit/3fe9c88ab76872b9e2a5ffbaa37bb89c496e0137))
+* **web:** work item review queue with copy-to-clipboard ([a70b7c6](https://github.com/lordmuffin/jarvis-voice/commit/a70b7c6feb486b6d4f9463107f436e8fc44ce00c))
+
+## [0.13.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.12.0...server-v0.13.0) (2026-10-11)
+
+
+### Features
+
+* **server:** move the lab channel to live.lab.apj.dev ([c8ec639](https://github.com/lordmuffin/jarvis-voice/commit/c8ec63963b2ff728504ec23b3fffaad2a3aeb294))
+* **server:** move the lab channel to live.lab.apj.dev ([2e1cd18](https://github.com/lordmuffin/jarvis-voice/commit/2e1cd181255caedfe7af78064808beb61c4859b4))
+
+## [0.12.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.11.0...server-v0.12.0) (2026-10-11)
+
+
+### Features
+
+* **server:** promote live channel to live.apj.dev ([7b61b02](https://github.com/lordmuffin/jarvis-voice/commit/7b61b02a7f68c625cfe431ebca9530cb24edb0ef))
+* **server:** promote live channel to live.apj.dev ([122483a](https://github.com/lordmuffin/jarvis-voice/commit/122483a8f88f570dcfe99554fb83a5d67eb60de5))
+
+## [0.11.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.10.1...server-v0.11.0) (2026-10-11)
+
+
+### Features
+
+* **server:** lab release channel ahead of live ([66853a6](https://github.com/lordmuffin/jarvis-voice/commit/66853a6eb72cfe9d0d8ea74fa2622dac6fe59057))
+* **server:** lab release channel ahead of live ([58b7c91](https://github.com/lordmuffin/jarvis-voice/commit/58b7c91eaeda4a70765155479c19a9d1d98009a4))
+
+## [0.10.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.10.0...server-v0.10.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **server,android:** fix Pocket-ID admin group name and say which account sign-in refused ([e813152](https://github.com/lordmuffin/jarvis-voice/commit/e813152c72f42dfe75fe5d7b0f9df1a22e576c69))
+* **server,android:** say which account Jarvis Live refused at sign-in ([dc74a90](https://github.com/lordmuffin/jarvis-voice/commit/dc74a90676414ce798b9e54f017b1b91233bfa63))
+* **server:** log the groups a refused sign-in actually had ([25e3839](https://github.com/lordmuffin/jarvis-voice/commit/25e3839a2b24abf04c302e9d57e0c82ecdce9ac7))
+* **server:** use the Pocket-ID group "admins", not "homelab-admins" ([7c1be50](https://github.com/lordmuffin/jarvis-voice/commit/7c1be50468927c056504198c4654324452355edd))
+
+## [0.10.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.9.0...server-v0.10.0) (2026-10-11)
+
+
+### Features
+
+* **server:** deploy jarvis-live from this repo via Flux ([8fe9dcd](https://github.com/lordmuffin/jarvis-voice/commit/8fe9dcddcf3fc73d58c46780dd49aeb77adb1d40))
+* **server:** deploy jarvis-live from this repo via Flux ([66ed2ef](https://github.com/lordmuffin/jarvis-voice/commit/66ed2ef697eb73c3bbc1f3fbf9f641c8f333d683))
+
+## [0.9.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.8.0...server-v0.9.0) (2026-10-11)
+
+
+### Features
+
+* publish, merge and manage Jarvis Live notes in git (capture parity) ([8bb86f0](https://github.com/lordmuffin/jarvis-voice/commit/8bb86f04d5eab973822e1d949d47b5e5d6f632b1))
+* **server:** allow several Pocket-ID groups to sign in ([8533608](https://github.com/lordmuffin/jarvis-voice/commit/85336087adbe26a491ce530a2e7c07b09a805cc3))
+* **server:** allow several Pocket-ID groups to sign in ([f8cb28b](https://github.com/lordmuffin/jarvis-voice/commit/f8cb28b00979c44a1b2ba14f686daf66d1f0f22f))
+* **server:** publish notes to the vault repo, edit and regenerate them ([0e70d62](https://github.com/lordmuffin/jarvis-voice/commit/0e70d6220ae0355ce290875c31f95e352e88cc92))
+
+## [0.8.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.2...server-v0.8.0) (2026-10-11)
+
+
+### Features
+
+* multiple users with Pocket-ID sign-in ([23fbd10](https://github.com/lordmuffin/jarvis-voice/commit/23fbd10e48aa1bd06524d57aae47cc337e103ef7))
+* **server:** users, Pocket-ID sign-in and per-user sessions ([43e7ab5](https://github.com/lordmuffin/jarvis-voice/commit/43e7ab53500ea8f01aac5c2069c8d859f8d28b8d))
+
+
+### Documentation
+
+* **server:** Pocket-ID setup, users and the owner account ([a8427de](https://github.com/lordmuffin/jarvis-voice/commit/a8427de51c028c4a9b80adb84ef49ee4b3be74d5))
+
+## [0.7.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.1...server-v0.7.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* Live tab crash on Android and phone sessions missing from the web dashboard ([9e79195](https://github.com/lordmuffin/jarvis-voice/commit/9e791957999a8ede809497bb25c976cba30fcacf))
+* **server:** let every device view every session ([93c2ad9](https://github.com/lordmuffin/jarvis-voice/commit/93c2ad9b022661d6cf8d1a60a5f496734b531428))
+
+## [0.7.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.7.0...server-v0.7.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **server:** never issue device tokens that start with "-" ([00829ca](https://github.com/lordmuffin/jarvis-voice/commit/00829ca06caea9f3f3bfa82c8521e5bf082622a9))
+* **server:** never issue device tokens that start with "-" ([90c6297](https://github.com/lordmuffin/jarvis-voice/commit/90c62973c13f06522508e08670e207d559923ed2))
+
+## [0.7.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.6.0...server-v0.7.0) (2026-10-10)
+
+
+### Features
+
+* **server:** session rename, copilot auto-naming, live/offline status ([9c889bd](https://github.com/lordmuffin/jarvis-voice/commit/9c889bd77404389e50006becca25d5da13ab17a0))
+* **server:** session rename, copilot auto-naming, live/offline status ([7cb72ea](https://github.com/lordmuffin/jarvis-voice/commit/7cb72eaa2b9986fc71bf4ecaa23a5f2fb633de7b))
+
+## [0.6.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.5.0...server-v0.6.0) (2026-10-10)
+
+
+### Features
+
+* **server:** optional startup migrations; accept plain postgresql:// URLs ([2495ada](https://github.com/lordmuffin/jarvis-voice/commit/2495adace236a4adfc10aa913e717bf3d8027fa8))
+* **server:** optional startup migrations; accept plain postgresql:// URLs ([acb278c](https://github.com/lordmuffin/jarvis-voice/commit/acb278ca31f1551ce888c25d79e0194f3d3e01ff))
+
 ## [0.5.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.4.0...server-v0.5.0) (2026-10-10)
 
 

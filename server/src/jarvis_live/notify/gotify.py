@@ -28,8 +28,10 @@ class GotifyNotifier:
         client: httpx.AsyncClient,
         *,
         timeout_s: float = 10.0,
+        title_prefix: str = "",
     ) -> None:
         self._base = base_url.rstrip("/")
+        self._title_prefix = title_prefix  # e.g. "[LAB] ", so a lab push never reads as live
         self._token_file = token_file
         self._client = client
         self._timeout = timeout_s
@@ -51,7 +53,12 @@ class GotifyNotifier:
                 extras["client::notification"] = {"click": {"url": url}}
             r = await self._client.post(
                 f"{self._base}/message",
-                json={"title": title, "message": message, "priority": priority, "extras": extras},
+                json={
+                    "title": self._title_prefix + title,
+                    "message": message,
+                    "priority": priority,
+                    "extras": extras,
+                },
                 headers={"X-Gotify-Key": token},
                 timeout=self._timeout,
             )

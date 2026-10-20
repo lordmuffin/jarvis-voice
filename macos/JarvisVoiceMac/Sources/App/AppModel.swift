@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import Foundation
 import JarvisLiveKit
+import Network
 import Observation
 
 /// A local-only session file waiting to be (or already) uploaded.
@@ -10,6 +11,11 @@ struct LocalSession: Identifiable, Equatable {
     var url: URL
     var id: String { header.sessionId }
     var isUploaded: Bool { header.uploadedAs != nil }
+}
+
+/// A message ending in exactly one full stop, whatever the underlying error text ends with.
+private func sentence(_ text: String) -> String {
+    text.hasSuffix(".") ? text : text + "."
 }
 
 enum AppError: LocalizedError {
@@ -23,7 +29,7 @@ enum AppError: LocalizedError {
         case .micDenied:
             "Microphone access is off. Enable it in System Settings \u{203A} Privacy & Security \u{203A} Microphone."
         case .noCredentials:
-            "Set the server URL and device token in Settings, or turn on Local only."
+            "Set the server URL and device token in Settings, or turn on Local-only."
         case .speechUnavailable(let why):
             "On-device transcription is unavailable: \(why)"
         case .audioMissing:
@@ -48,7 +54,11 @@ final class AppModel {
 
     private(set) var phase: Phase = .idle
     var mode: Mode = .meeting
-    var localOnly = false
+    /// Follows the network (on when away from home and off NetBird) until the user flips it.
+    var localOnly: Bool {
+        get { settings.awayMode.localOnly }
+        set { settings.awayMode = settings.awayMode.withManual(newValue) }
+    }
     private(set) var store = SessionStore()
     private(set) var assetProgress: Double?
     private(set) var systemState: SystemCapture.State = .idle
@@ -59,14 +69,27 @@ final class AppModel {
     private(set) var uploadingSessionId: String?
     private(set) var sessionClock: SessionClock?
     private(set) var sessionIsLocalOnly = false
+    /// What the server at `serverInfoURL` said about itself in `/healthz`.
+    private var serverInfo: ServerInfo?
+    private var serverInfoURL: URL?
     var dismissedSuggestionIDs: Set<String> = []
+    /// Whole seconds into the recording, refreshed once a second; drives the menu-bar and panel clocks.
+    private(set) var elapsedSeconds = 0
 
-    let settings = SettingsModel()
+    let settings: SettingsModel
+    let dictation: DictationController
     @ObservationIgnored private(set) lazy var panel = PanelController(model: self)
     @ObservationIgnored private let hotkeys = HotKeys()
     @ObservationIgnored private var run: Run?
+    @ObservationIgnored private let pathMonitor = NWPathMonitor()
+    @ObservationIgnored private var networkCheck: Task<Void, Never>?
+    @ObservationIgnored private var serverInfoCheck: Task<Void, Never>?
+    @ObservationIgnored private var elapsedTicker: Task<Void, Never>?
 
     init() {
+        let settings = SettingsModel()
+        self.settings = settings
+        dictation = DictationController(settings: settings)
         refreshLocalSessions()
         // The test host launches the app; global hotkeys have no place there.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
@@ -77,6 +100,13 @@ final class AppModel {
             case .marker: self.addMarker()
             }
         }
+        dictation.startMonitoring()
+        dictation.requestAccessibilityIfNeeded()
+        // Wi-Fi joined or lost, a VPN up or down: work out home / NetBird / away again.
+        pathMonitor.pathUpdateHandler = { [weak self] _ in
+            Task { @MainActor in self?.recheckNetwork() }
+        }
+        pathMonitor.start(queue: .main)
     }
 
     // MARK: Derived
@@ -96,15 +126,60 @@ final class AppModel {
     }
 
     var menuBarImage: NSImage {
-        let name = isRecording ? "record.circle.fill" : "waveform"
-        let image = NSImage(systemSymbolName: name, accessibilityDescription: "Jarvis Voice")
-        guard isRecording, let image else {
-            image?.isTemplate = true
-            return image ?? NSImage()
+        // A recording session wins over dictation.
+        MenuBarIcon.image(MenuBarIconSpec.make(
+            isRecording: isRecording,
+            isDictating: dictation.isActive,
+            elapsedSeconds: elapsedSeconds,
+            channel: serverChannel
+        ))
+    }
+
+    /// The server's own word once it has answered at the current address, else a guess from the
+    /// address; nil without a valid one.
+    var serverChannel: ServerChannel? {
+        guard let base = settings.serverBaseURL else { return nil }
+        return reportedServer(at: base)?.channel ?? ServerChannel(guessingFrom: base)
+    }
+
+    /// The server's release version, once it has said.
+    var serverVersion: String? {
+        settings.serverBaseURL.flatMap { reportedServer(at: $0)?.version }
+    }
+
+    private func reportedServer(at base: URL) -> ServerInfo? {
+        serverInfoURL == base ? serverInfo : nil
+    }
+
+    // MARK: Network
+
+    /// Checks where the Mac is, once path updates settle; a newer change cancels a check still
+    /// waiting on the server.
+    func recheckNetwork() {
+        refreshServerInfo()
+        networkCheck?.cancel()
+        networkCheck = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(750))
+            guard !Task.isCancelled, let self else { return }
+            guard settings.awayMode.enabled, settings.hasCredentials, let base = settings.serverBaseURL else { return }
+            let place = await NetworkPlaceDetector.detect(baseURL: base)
+            guard !Task.isCancelled else { return }
+            settings.awayMode = settings.awayMode.withPlace(place)
         }
-        let configured = image.withSymbolConfiguration(.init(paletteColors: [.systemRed]))
-        configured?.isTemplate = false
-        return configured ?? image
+    }
+
+    /// Asks the server which channel and version it is. Keeps the last answer while the server
+    /// can't be reached, so the tag doesn't flicker back to a guess away from home.
+    private func refreshServerInfo() {
+        serverInfoCheck?.cancel()
+        serverInfoCheck = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(750))
+            guard !Task.isCancelled, let self, let base = settings.serverBaseURL else { return }
+            guard let info = await ServerInfo.fetch(baseURL: base),
+                  !Task.isCancelled, settings.serverBaseURL == base else { return }
+            serverInfoURL = base
+            serverInfo = info
+        }
     }
 
     // MARK: Session control
@@ -138,6 +213,7 @@ final class AppModel {
             sessionClock = run.clock
             sessionIsLocalOnly = localOnly
             phase = .recording
+            startElapsedTicker()
             panel.show()
         } catch {
             if let built { await tearDown(built, writeFile: false) }
@@ -150,10 +226,24 @@ final class AppModel {
     func stop() async {
         guard phase == .recording, let run else { return }
         phase = .stopping
+        elapsedTicker?.cancel()
         await tearDown(run, writeFile: run.localOnly)
         self.run = nil
         phase = .idle
+        elapsedSeconds = 0
         refreshLocalSessions()
+    }
+
+    private func startElapsedTicker() {
+        elapsedTicker?.cancel()
+        elapsedSeconds = 0
+        elapsedTicker = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.isRecording else { return }
+                self.elapsedSeconds = (self.sessionClock?.elapsedMs() ?? 0) / 1000
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
     }
 
     func addMarker() {
@@ -216,7 +306,7 @@ final class AppModel {
             assetProgress = nil
             sttAvailable = false
             if run.localOnly { throw AppError.speechUnavailable(error.localizedDescription) }
-            notice = "On-device drafts are off: \(error.localizedDescription) The server still transcribes."
+            notice = "On-device drafts are off: \(sentence(error.localizedDescription)) The server still transcribes."
         }
 
         let onError: @Sendable (String) -> Void = { [weak self] message in
@@ -247,7 +337,7 @@ final class AppModel {
                         _ = try await outbox.append(channel: frame.channel, payload: frame.payload, tMs: frame.tMs)
                     }
                 } catch {
-                    onError("Could not store audio: \(error.localizedDescription)")
+                    onError("Could not store audio: \(sentence(error.localizedDescription))")
                 }
             }
         }
@@ -326,7 +416,7 @@ final class AppModel {
             try text.write(to: url, atomically: true, encoding: .utf8)
             notice = "Saved \(url.lastPathComponent) to Documents/Jarvis Live."
         } catch {
-            notice = "Could not save the local transcript: \(error.localizedDescription)"
+            notice = "Could not save the local transcript: \(sentence(error.localizedDescription))"
         }
     }
 
@@ -382,7 +472,7 @@ final class AppModel {
                 .write(to: session.url, atomically: true, encoding: .utf8)
             notice = "Uploaded \(session.url.lastPathComponent) for full processing."
         } catch {
-            notice = "Upload failed: \(error.localizedDescription)"
+            notice = "Upload failed: \(sentence(error.localizedDescription))"
         }
         refreshLocalSessions()
     }

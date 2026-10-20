@@ -1,6 +1,6 @@
 # Jarvis Live wire protocol — v1
 
-Shared by `server/`, the macOS app, and the web dashboard. JSON Schemas (draft 2020-12) in
+Shared by `server/`, the macOS app, the Android app, and the web dashboard. JSON Schemas (draft 2020-12) in
 `schemas/` are the machine-readable source of truth; this file is the human spec.
 Fixtures in `fixtures/` are the conformance suite every implementation must pass.
 
@@ -54,6 +54,7 @@ Senders MUST NOT send frames outside this range; receivers MUST reject them.
 - `ack` `{channel, seq}` — cumulative: all frames `<= seq` on `channel` are durable.
 - `segment` `{id, channel, speaker: "me"|"them", start_ms, end_ms, text, stt_tier}`
 - `copilot` `{version, notes[], actions[], decisions[], suggestions[], related[]}` — full snapshot; higher `version` wins.
+  - Key order in the JSON is not significant. Display order is client-defined; the canonical order is Suggestions, Actions, Decisions, Notes, Related, Final note.
   - `notes`/`decisions`: `{id, text}`; `actions`: `{id, text, owner?, due?}`
   - `suggestions`: `{id, kind: "question"|"gap"|"counterpoint"|"fact_check", text, expires_at_ms}`
   - `related`: `{path, title, snippet, uri}`

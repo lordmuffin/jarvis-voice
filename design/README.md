@@ -1,5 +1,9 @@
 # Jarvis Voice design system
 
+> **Source of truth: [lordmuffin/instrument](https://github.com/lordmuffin/instrument).** Instrument is the design system for every self-hosted app (Jarvis Voice, Sleep Dashboard, Home). Its `tokens/instrument.tokens.json` holds the tokens in light and dark; this repo vendors a pinned release through the Instrument sync PR into `web/src/instrument/`, `macos/JarvisVoiceMac/Sources/Instrument/` and the Android module, plus the design artboards in `docs/design/instrument/`. Those vendored folders are managed: never edit them, change Instrument instead. The macOS app and the web dashboard build on Instrument (`Color.inst.*`, `--inst-*`). New work reads Instrument, not this file.
+>
+> What follows is the original dark-only extraction from the Android app, kept for the Android resources that still use the `jv_*` names. Where it disagrees with Instrument, Instrument wins.
+
 Tokens and usage rules for every Jarvis Voice UI. Extracted from the Android app (`android/app/src/main/res`); `tokens.json` holds the values, this file says how to use them. The browsable version, with live component previews, is the [Jarvis Voice design system artifact](https://claude.ai/artifact/WvwABBJrY2E6VgqVC8wX1F).
 
 Token names match the Android resources (`jv_bg` is `@color/jv_bg`). Lengths are dp/sp on Android and px on the web.
@@ -12,7 +16,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 - **Talk to the person as “you”; call the product “Jarvis”.** “Jarvis needs these to show up when you need it.” The background agent is named Kai in prompts (“What should Kai work on?”).
 - **Say why, in their terms.** Permission reasons and setting descriptions name the benefit: “Required to capture your voice”, “Show in tray when dictation is copied to clipboard”.
 - **Casing.** Buttons and screen titles are Title Case (“Get Started”, “Start Talking”, “Pick Vault Folder”). Primary and row buttons render ALL CAPS (AppCompat); compact buttons stay as written (“Chats”, “New”). Section labels are uppercase via style, written normally (“Notifications”). Helper text is sentence case with a full stop.
-- **Status lines are terse and specific.** “Saved to today's note.” “Nothing to save.” “Recording failed. Try again.” Errors say what failed: “Failed: <reason>”.
+- **Status lines are terse and specific.** “Copied · 42 words · 138 wpm” “Marker added” “● Recording locally” Errors say what failed: “Failed: <reason>”.
 - **Glyphs over words where the meaning is universal.** ▼ / ▾ for expand and menus, ✓ for done, ✕ for delete, ↩ Reply, ⎘ Copy, ▶ Run. Emoji appear only as icons: the bottom nav and the mode pills (🎙 Voice, ⌨️ Type). Never decorate prose with emoji.
 - **Numbers.** Empty stats show “—”. Token counts are abbreviated “842 tkns”, “12.4k tkns”. Rates are “wpm”, lowercase.
 
@@ -24,6 +28,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 - `jv_accent` (teal) is the only brand hue. Use it for the one primary action, the user's chat bubble, selection outlines, progress, live values (wpm), links, and the idle dot. Text on teal is `jv_on_accent` or `jv_bg`, never white.
 - `jv_waveform` is reserved for the recording bars, so listening reads differently from idle.
 - State colors mean state only: `jv_success` (overlay running, permission granted, note saved), `jv_warning` (task running, context getting full), `jv_error` (failed, stopped, full). Always pair them with a word or glyph.
+- The release-channel tag (the server's `environment` from `GET /healthz`, shown beside the wordmark or server name) is a filled pill with `jv_bg` text: `jv_error` for **LIVE**, `jv_warning` for **LAB**, `jv_text2` for any other channel. Every UI that talks to a Jarvis Live server uses these, so production never looks like lab. A monochrome surface (the macOS menu-bar icon) tells them apart by shape instead: LAB filled, LIVE outlined.
 - Glass: the floating pill and chat pills use `jv_glass_bg` with a `jv_glass_border` hairline so they sit over other apps.
 - `jv_violet` is defined but unused. Do not introduce it without a reason.
 
@@ -75,7 +80,7 @@ Jarvis Voice is a private, on-device voice assistant: a floating pill that turns
 ## Platforms
 
 - **Android** is the source of every value here (`android/app/src/main/res`).
-- **macOS** (Jarvis Live) has no UI yet. Start it from these tokens and components.
+- **macOS** (Jarvis Live, `macos/JarvisVoiceMac`) is a working menu-bar app: live-session recorder, Copilot panel, dictation HUD and settings window. It uses Instrument directly (`Color.inst.*`, `InstType`, light and dark from the system appearance) and no longer mirrors these tokens.
 - The legacy web capture page (`src/jarvis_voice/static/capture.html`) uses its own red/green palette. It is bugfix-only; do not copy its colors.
 
 ## Gaps

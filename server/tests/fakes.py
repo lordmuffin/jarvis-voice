@@ -9,9 +9,11 @@ from typing import Any, TypeVar
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from jarvis_live.db.models import SegmentRow
+from jarvis_live.auth import create_device
+from jarvis_live.db.models import Device, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLMError
+from jarvis_live.users import create_user
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -105,6 +107,18 @@ class FakeNotifier:
         self.sent.append(Sent(title, message, priority, url))
 
 
+async def new_device(
+    sm: "async_sessionmaker[AsyncSession]",
+    name: str = "test-device",
+    *,
+    user_id: uuid.UUID | None = None,
+) -> tuple[uuid.UUID, str]:
+    """A device token for ``user_id``, or for a new user of its own."""
+    if user_id is None:
+        user_id = (await create_user(sm, f"user {uuid.uuid4().hex[:8]}")).id
+    return await create_device(sm, name, user_id)
+
+
 async def make_session(
     sm: "async_sessionmaker[AsyncSession]",
     device_id: uuid.UUID,
@@ -116,8 +130,11 @@ async def make_session(
     ended_at: datetime | None = None,
 ) -> uuid.UUID:
     async with sm() as db:
+        device = await db.get(Device, device_id)
+        assert device is not None
         row = SessionRow(
             device_id=device_id,
+            user_id=device.user_id,
             title=None,
             mode=mode,
             status=status,

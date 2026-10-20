@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android Onboarding</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.dv{width:412px;height:892px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-1);display:flex;flex-direction:column;overflow:hidden;padding:56px 24px 24px;gap:16px}
+.dots{flex:none;display:flex;justify-content:center;gap:8px;padding-top:8px}
+.dots .i-dot{width:8px;height:8px}
+.i-block.perm{display:flex;align-items:center;gap:12px;min-height:72px;padding:8px 8px 8px 16px}
+.kb{background:var(--inst-surface);border-top:1px solid var(--inst-line);padding:8px 6px;display:flex;flex-direction:column;gap:6px}
+.kr{display:flex;gap:6px;height:30px}
+.k{background:var(--inst-surface-2);border-radius:var(--inst-radius-tail)}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1440px; height: 1000px; padding: 40px 78px; display: flex; gap: 24px; align-items: flex-start; background: var(--inst-bg);">
+
+  <!-- Step 1 -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Onboarding · 1 of 3 · Welcome</span>
+    <section class="inst dv" aria-label="Welcome">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px;">
+        <div style="width: 300px; height: 300px; border-radius: var(--inst-radius-full); border: 1px solid var(--inst-line); display: flex; align-items: center; justify-content: center;">
+          <div style="width: 264px; height: 264px; border-radius: var(--inst-radius-full); border: 1.5px solid var(--inst-accent); background: var(--inst-surface-2); box-shadow: var(--inst-shadow-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;">
+            <span class="i-dot i-breathe" aria-hidden="true" style="width: 12px; height: 12px; background: var(--inst-accent);"></span>
+            <h1 class="t-display">Jarvis Voice</h1>
+            <span class="i-meter" aria-hidden="true" style="color: var(--inst-accent);"><span></span><span></span><span></span></span>
+          </div>
+        </div>
+        <p class="t-body-lg t-2" style="text-align: center;">Dictate anywhere. No cloud required.</p>
+      </div>
+      <button type="button" class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">Get Started</button>
+      <div class="dots" role="img" aria-label="Step 1 of 3"><span class="i-dot" style="color: var(--inst-accent);"></span><span class="i-dot i-dot--hollow" style="color: var(--inst-control);"></span><span class="i-dot i-dot--hollow" style="color: var(--inst-control);"></span></div>
+    </section>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Onboarding · 2 of 3 · Permissions</span>
+    <section class="inst dv" aria-label="Permissions">
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-label">Permissions</span>
+        <h1 class="t-title">Jarvis needs these to show up when you need it.</h1>
+      </div>
+      <div class="i-stack" style="padding-top: 8px;">
+        <div class="i-block perm">
+          <div class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="t-body t-strong">Microphone</span><span class="t-caption t-2">Required to capture your voice.</span></div>
+          <span class="i-msg-ok" role="status" style="font-size: 12px; padding-right: 8px;">✓ Granted</span>
+        </div>
+        <div class="i-block perm">
+          <div class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="t-body t-strong">Accessibility</span><span class="t-caption t-2">Detects focused text fields.</span></div>
+          <span class="i-msg-ok" role="status" style="font-size: 12px; padding-right: 8px;">✓ Granted</span>
+        </div>
+        <div class="i-block perm">
+          <div class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="t-body t-strong">Draw over apps <span class="t-tag t-2">Optional</span></span><span class="t-caption t-2">Shows the pill over your keyboard.</span></div>
+          <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Grant</button>
+        </div>
+        <div class="i-block perm">
+          <div class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="t-body t-strong">All Files Access <span class="t-tag t-2">Optional</span></span><span class="t-caption t-2">Keeps your history after a reinstall.</span></div>
+          <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Grant</button>
+        </div>
+      </div>
+      <p class="t-caption t-2">Optional ones can wait. You can grant them later in Settings.</p>
+      <div style="flex: 1;"></div>
+      <button type="button" class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">Continue</button>
+      <button type="button" class="i-btn i-btn--quiet" style="height: 48px; align-self: center; margin-top: -8px;">↩ Back</button>
+      <div class="dots" role="img" aria-label="Step 2 of 3"><span class="i-dot i-dot--hollow" style="color: var(--inst-control);"></span><span class="i-dot" style="color: var(--inst-accent);"></span><span class="i-dot i-dot--hollow" style="color: var(--inst-control);"></span></div>
+    </section>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Onboarding · 3 of 3 · Done</span>
+    <section class="inst dv" aria-label="You're all set">
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-label">Ready</span>
+        <h1 class="t-title">You're all set</h1>
+        <p class="t-body-lg t-2">The pill appears whenever your keyboard is open. Tap it to start dictating.</p>
+      </div>
+      <div role="img" aria-label="The idle pill sitting just above a keyboard" style="margin-top: 16px; background: var(--inst-bg); border: 1px solid var(--inst-line); display: flex; flex-direction: column;">
+        <div style="height: 96px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 10px;">
+          <span class="i-live" style="height: 48px; width: 72px; justify-content: center; border-color: var(--inst-control); box-shadow: var(--inst-shadow-2);"><span class="i-dot i-breathe"></span></span>
+        </div>
+        <div class="kb">
+          <sc-for list="{{kb}}" as="row" hint-placeholder-count="4">
+            <div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex: 1;"></div>
+      <button type="button" class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">Start Dictating</button>
+      <button type="button" class="i-btn i-btn--secondary i-btn--lg" style="width: 100%;">Open Settings</button>
+      <div class="dots" role="img" aria-label="Step 3 of 3"><span class="i-dot i-dot--hollow" style="color: var(--inst-control);"></span><span class="i-dot i-dot--hollow" style="color: var(--inst-control);"></span><span class="i-dot" style="color: var(--inst-accent);"></span></div>
+    </section>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const n = (c, f) => Array.from({ length: c }, () => f || 1);
+    return {
+      kb: [
+        { pad: '0', keys: n(10) },
+        { pad: '0 18px', keys: n(9) },
+        { pad: '0', keys: [1.5, ...n(7), 1.5] },
+        { pad: '0', keys: [1.5, 1, 5, 1, 1.5] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

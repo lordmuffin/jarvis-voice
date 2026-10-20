@@ -1,3 +1,4 @@
+import { Bullets, Code, NoteBody, Text } from "../ds/components";
 import { parseMarkdown, type Inline } from "../markdown";
 
 function Inlines({ items }: { items: Inline[] }) {
@@ -8,12 +9,12 @@ function Inlines({ items }: { items: Inline[] }) {
           case "bold":
             return <strong key={i}>{it.v}</strong>;
           case "code":
-            return <code key={i}>{it.v}</code>;
+            return <Code key={i}>{it.v}</Code>;
           case "wiki":
             return (
-              <span class="wiki" key={i}>
+              <Text key={i} tone="accent">
                 {it.v}
-              </span>
+              </Text>
             );
           case "link":
             return (
@@ -33,7 +34,7 @@ function Inlines({ items }: { items: Inline[] }) {
 export function NoteView({ markdown }: { markdown: string }) {
   const blocks = parseMarkdown(markdown, { dropSections: ["Transcript"] });
   return (
-    <article class="note" data-testid="note">
+    <NoteBody data-testid="note">
       {blocks.map((b, i) => {
         if (b.t === "h") {
           const H = (`h${b.level + 1}` as "h2" | "h3" | "h4");
@@ -45,7 +46,7 @@ export function NoteView({ markdown }: { markdown: string }) {
         }
         if (b.t === "ul") {
           return (
-            <ul key={i} class="bullets">
+            <Bullets key={i}>
               {b.items.map((li, j) => (
                 <li key={j}>
                   {li.checked !== null && (
@@ -54,7 +55,7 @@ export function NoteView({ markdown }: { markdown: string }) {
                   <Inlines items={li.inline} />
                 </li>
               ))}
-            </ul>
+            </Bullets>
           );
         }
         return (
@@ -63,6 +64,6 @@ export function NoteView({ markdown }: { markdown: string }) {
           </p>
         );
       })}
-    </article>
+    </NoteBody>
   );
 }

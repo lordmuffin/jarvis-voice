@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Live session states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0;background:#0D1117}</style></helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 1440px; min-height: 1780px; padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · Web · Live session</span>
+    <h1 class="t-title">Live session: connection, title, ownership and feed states</h1>
+  </div>
+
+  <section aria-label="Connection states" class="i-stack" style="gap: 8px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Session header · connection</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px;">
+      <sc-for list="{{conn}}" as="c" hint-placeholder-count="6">
+        <div class="i-stack" style="gap: 8px;">
+          <span class="t-micro t-2">{{c.cap}}</span>
+          <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 12px 16px;">
+            <div class="i-stack" style="flex: 1 1 220px; min-width: 0;">
+              <span class="t-label">Meeting · Oct 14, 3:05 PM</span>
+              <div class="i-row" style="gap: 4px 8px;"><h3 class="t-body-lg t-strong">ARC runner migration vendor call</h3><button type="button" class="i-btn i-btn--quiet i-btn--sm">Rename</button></div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start;">
+              <div class="i-stack" style="gap: 4px;"><span class="t-label">Status</span><span class="i-chip i-chip--live" style="align-self: flex-start;"><span class="i-dot i-breathe"></span>Live</span></div>
+              <div class="i-stack" style="gap: 0;"><span class="t-label">Elapsed</span><span class="t-stat">18:42</span></div>
+              <div class="i-stack" style="gap: 4px; min-width: 180px;">
+                <span class="t-label">Link</span>
+                <span class="{{c.chip}}" role="status" style="align-self: flex-start;"><sc-if value="{{c.dot}}" hint-placeholder-val="{{true}}"><span class="i-dot"></span></sc-if><sc-if value="{{c.spin}}" hint-placeholder-val="{{false}}"><span class="i-spin i-chip-spin"></span></sc-if>{{c.label}}</span>
+                <span class="t-meta t-2"><span class="t-mono">{{c.meta}}</span><sc-if value="{{c.copilot}}" hint-placeholder-val="{{false}}"><span style="color: var(--inst-warning); font-weight: 600;"> · copilot offline</span></sc-if></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <section aria-label="Title states" class="i-stack" style="gap: 16px;">
+      <div class="i-stack" style="gap: 8px;">
+        <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Untitled · suggested title</h2>
+        <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; padding: 12px 16px;">
+          <div class="i-stack" style="flex: 1 1 300px; min-width: 0; gap: 6px;">
+            <span class="t-label">Meeting · Oct 14, 3:05 PM</span>
+            <div class="i-row" style="gap: 4px 8px;"><h3 class="t-body-lg" style="font-style: italic; color: var(--inst-text-2); font-weight: 400;">Untitled session</h3><button type="button" class="i-btn i-btn--quiet i-btn--sm">Rename</button></div>
+            <div class="i-row i-fresh" role="status" style="gap: 4px 10px; padding: 4px 4px 4px 10px;">
+              <span class="t-tag" style="color: var(--inst-accent);">Suggested title</span>
+              <span class="t-body" style="flex: 1 1 160px; min-width: 0;">ARC runner migration vendor call</span>
+              <button type="button" class="i-btn i-btn--secondary i-btn--sm">Use Title</button>
+              <button type="button" class="i-x" aria-label="Dismiss suggested title">✕</button>
+            </div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start;">
+            <div class="i-stack" style="gap: 4px;"><span class="t-label">Status</span><span class="i-chip i-chip--live" style="align-self: flex-start;"><span class="i-dot i-breathe"></span>Live</span></div>
+            <div class="i-stack" style="gap: 0;"><span class="t-label">Elapsed</span><span class="t-stat">6:12</span></div>
+          </div>
+        </div>
+        <span class="t-caption t-2">Shown only while the session is untitled. A title you set is never replaced.</span>
+      </div>
+
+      <div class="i-stack" style="gap: 8px;">
+        <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Rename · inline</h2>
+        <div class="i-block" style="padding: 12px 16px; display: flex; flex-direction: column; gap: 6px;">
+          <span class="t-label">Meeting · Oct 14, 3:05 PM</span>
+          <form style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+            <label class="i-sr" for="rn">Session title</label>
+            <input id="rn" class="i-input is-focus" value="ARC runner migration vendor call" style="flex: 1 1 260px; min-width: 0; font-weight: 700; font-size: 16px;">
+            <div class="j-acts"><button type="submit" class="i-btn i-btn--primary i-btn--sm">Save</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Cancel</button></div>
+          </form>
+          <span class="i-help">Enter saves. Esc cancels.</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="Someone else's session" class="i-stack" style="gap: 8px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Not yours · admin viewing Sam</h2>
+      <div style="background: var(--inst-bg); border: 1px solid var(--inst-line);">
+        <header class="i-header">
+          <div class="i-header-in">
+            <div class="i-brand">
+              <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+              <a href="#" class="i-wordmark">Jarvis Live</a>
+              <span class="i-badge i-badge--live">Live</span>
+            </div>
+            <nav class="i-nav" aria-label="Main"><a href="#" aria-current="page">Sessions</a><a href="#">Devices</a><a href="#">Work Items</a><a href="#">Publishing</a><a href="#">Admin</a></nav>
+            <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+          </div>
+        </header>
+        <div class="i-banner i-banner--viewing"><b>Viewing Sam's sessions.</b><a href="#">Back to your own</a></div>
+        <div style="padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 12px 16px;">
+            <div class="i-stack" style="flex: 1 1 200px; min-width: 0;">
+              <span class="t-label">Solo · Oct 14, 3:12 PM</span>
+              <h3 class="t-body-lg t-strong">UPS battery swap plan</h3>
+              <span class="t-caption t-2" style="font-weight: 600;">Sam's session</span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start;">
+              <div class="i-stack" style="gap: 4px;"><span class="t-label">Status</span><span class="i-chip i-chip--live" style="align-self: flex-start;"><span class="i-dot i-breathe"></span>Live</span></div>
+              <div class="i-stack" style="gap: 0;"><span class="t-label">Elapsed</span><span class="t-stat">9:26</span></div>
+              <div class="i-stack" style="gap: 4px;"><span class="t-label">Link</span><span class="i-chip i-chip--live" style="align-self: flex-start;"><span class="i-dot"></span>Connected</span><span class="t-mono t-meta t-2">pve · lag 910 ms</span></div>
+            </div>
+          </div>
+          <div class="i-utt"><span class="t">8:40</span><span class="i-spk i-spk--me">Me</span><span class="x">The second UPS is at 61 percent battery health.</span></div>
+          <div class="i-utt"><span class="t">9:02</span><span class="i-spk i-spk--me">Me</span><span class="x">Swap both packs in November, before the storms.</span></div>
+          <div class="i-event"><span class="t">9:10</span><span class="i-chip k">Action</span><span class="t-body"><span class="g">☐</span>Order two replacement battery packs. <span class="m">Me · —</span></span><a href="#" class="i-src" title="“Swap both packs in November, before the storms.”">▶ 9:02</a></div>
+          <span class="t-caption t-2">“Me” is the owner, Sam. No End Session and no work items on someone else's session.</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <section aria-label="Follow paused" class="i-stack" style="gap: 8px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Follow paused · scrolled up</h2>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+        <div class="i-seg" role="radiogroup" aria-label="Show">
+          <button type="button" role="radio" aria-checked="true">All</button>
+          <button type="button" role="radio" aria-checked="false">Actions <span class="t-mono">2</span></button>
+          <button type="button" role="radio" aria-checked="false">Decisions <span class="t-mono">1</span></button>
+          <button type="button" role="radio" aria-checked="false">Notes <span class="t-mono">2</span></button>
+          <button type="button" role="radio" aria-checked="false">Related <span class="t-mono">1</span></button>
+          <button type="button" role="radio" aria-checked="false">Work <span class="t-mono">1</span></button>
+        </div>
+        <span class="t-meta t-2" style="margin-left: auto;">Follow paused</span>
+      </div>
+      <div style="position: relative;">
+        <div role="log" aria-label="Transcript and copilot" style="height: 300px; overflow: hidden; display: flex; flex-direction: column; gap: 4px;">
+          <div class="i-utt i-utt--them"><span class="t">13:58</span><span class="i-spk i-spk--them">Them</span><span class="x">We run the controller in its own namespace. Scale sets register per repository or per org.</span></div>
+          <div class="i-utt"><span class="t">14:20</span><span class="i-spk i-spk--me">Me</span><span class="x">Org level works for us. Four repos need runners.</span></div>
+          <div class="i-utt"><span class="t">14:32</span><span class="i-spk i-spk--me">Me</span><span class="x">What's the timeline for the ARM images?</span></div>
+          <div class="i-utt i-utt--them"><span class="t">14:51</span><span class="i-spk i-spk--them">Them</span><span class="x">ARM is in preview. I can't commit to a date on this call.</span></div>
+          <div class="i-event"><span class="t">14:55</span><span class="i-chip k">Work</span><span class="t-body"><span class="g">▶</span>Add ARM runner scale set to k3s2 <span class="m">Draft</span></span><a href="#" class="i-src" title="“What's the timeline for the ARM images?”">▶ 14:32</a></div>
+          <div class="i-event"><span class="t">15:00</span><span class="i-chip k">Note</span><span class="t-body"><span class="g">•</span>No date yet for the ARM images.</span><a href="#" class="i-src" title="“ARM is in preview. I can't commit to a date on this call.”">▶ 14:51</a></div>
+          <div class="i-utt i-utt--them"><span class="t">15:40</span><span class="i-spk i-spk--them">Them</span><span class="x">We can support ARC scale sets, but GPU runners are a separate SKU.</span></div>
+        </div>
+        <div style="position: absolute; left: 0; right: 0; bottom: 12px; display: flex; justify-content: center;">
+          <button type="button" class="i-btn i-btn--secondary i-jump">↓ Jump to Latest · 3 new</button>
+        </div>
+      </div>
+      <div class="i-dock" role="region" aria-label="Now" style="margin-top: 4px;">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+        <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+      </div>
+      <span class="t-caption t-2">Scrolling up pauses follow. The pill counts what arrived since. Jump to Latest scrolls down and resumes follow.</span>
+    </section>
+
+    <section aria-label="Empty feed" class="i-stack" style="gap: 8px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Just started · nothing yet</h2>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+        <div class="i-seg" role="radiogroup" aria-label="Show">
+          <button type="button" role="radio" aria-checked="true">All</button>
+          <button type="button" role="radio" aria-checked="false">Actions</button>
+          <button type="button" role="radio" aria-checked="false">Decisions</button>
+          <button type="button" role="radio" aria-checked="false">Notes</button>
+          <button type="button" role="radio" aria-checked="false">Related</button>
+          <button type="button" role="radio" aria-checked="false">Work</button>
+        </div>
+        <span class="t-meta" style="margin-left: auto; color: var(--inst-accent);">↓ Following live</span>
+      </div>
+      <div role="log" aria-label="Transcript and copilot" style="height: 300px; display: flex; align-items: center; justify-content: center; border: 1px dashed var(--inst-line);">
+        <span class="t-caption t-2">Nothing yet.</span>
+      </div>
+      <div class="i-dock i-dock--quiet" role="region" aria-label="Now" style="margin-top: 4px;">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span></div>
+        <p class="txt">Nothing waiting. Suggestions show up here.</p>
+      </div>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <section aria-label="Copilot offline" class="i-stack" style="gap: 8px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Now dock · copilot offline</h2>
+      <div class="i-utt i-utt--them"><span class="t">18:05</span><span class="i-spk i-spk--them">Them</span><span class="x">That works. We'd want read access to the cluster metrics during the pilot.</span></div>
+      <div class="i-utt i-utt--draft"><span class="t">18:31</span><span class="i-spk i-spk--me">Me</span><span class="x">Metrics are fine, but nothing with write access to the</span></div>
+      <div class="i-dock i-dock--quiet" role="region" aria-label="Now" style="margin-top: 4px;">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="i-chip i-chip--progress">⚑ Copilot offline</span><span class="t-mono t-meta t-2" style="margin-left: auto;">since 17:58</span></div>
+        <p class="txt">The transcript keeps recording. Suggestions return when the copilot is back.</p>
+        <div class="more"><span class="t-tag t-2">Question</span><span class="t-caption t-2" style="flex: 1; min-width: 0;">Ask whether ARM images are on the public roadmap.</span><span class="t-mono t-meta t-2">4:44</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+      </div>
+    </section>
+
+    <section aria-label="End session confirm" class="i-stack" style="gap: 8px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">End Session · owner only, confirm first</h2>
+      <div style="background: var(--inst-scrim); padding: 28px; display: flex; justify-content: center;">
+        <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="es-h" aria-describedby="es-d">
+          <div class="i-dialog-hd"><h2 id="es-h">End this session?</h2></div>
+          <div class="i-dialog-bd"><p id="es-d" class="t-2">Recording stops on the Mac. Jarvis writes the note from the transcript.</p></div>
+          <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary is-focus">Keep Recording</button><button type="button" class="i-btn i-btn--danger">End Session</button></div>
+        </div>
+      </div>
+      <span class="t-caption t-2">End Session sits in the header as a quiet danger action. It always asks first, and focus starts on Keep Recording.</span>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1780}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = (cap, chip, glyph, label, meta, copilot) => ({ cap, chip, dot: glyph === 'dot', spin: glyph === 'spin', label, meta, copilot: !!copilot });
+    return {
+      theme: this.props.theme ?? 'dark',
+      conn: [
+        C('Idle · not listening yet', 'i-chip', '', 'Idle', '—'),
+        C('Connecting', 'i-chip', 'spin', 'Connecting…', '—'),
+        C('Connected', 'i-chip i-chip--live', 'dot', 'Connected', 'pve · lag 840 ms'),
+        C('Reconnecting · still recording, nothing lost', 'i-chip i-chip--progress', 'spin', 'Reconnecting… · 3.2 s queued', 'pve · lag —'),
+        C('Degraded · fell back to another tier', 'i-chip i-chip--progress', '', '⚑ Degraded · gamingpc', 'gamingpc · lag 2140 ms'),
+        C('Connected · copilot offline', 'i-chip i-chip--live', 'dot', 'Connected', 'pve · lag 840 ms', true)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

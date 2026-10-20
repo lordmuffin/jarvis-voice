@@ -36,6 +36,11 @@ jobs:
       - name: Download sherpa-onnx bindings and native libs (no model)
         run: bash download-models.sh --no-model
 
+      - name: Run unit tests
+        run: |
+          cd android
+          ./gradlew testDebugUnitTest --no-daemon
+
       - name: Build debug APK
         run: |
           cd android

@@ -1,0 +1,15 @@
+# A solo diary session. Ideas recur and interleave; one names no repo, one is retracted,
+# one is a chore. Line numbers (L1..) follow file order, comments and blanks skipped.
+[00:05] me: Okay, end of the week, let me just talk through what's on my mind.
+[00:21] me: The Gotify pushes from jarvis live sometimes just vanish when Gotify restarts.
+[00:34] me: The server should retry a failed notification a few times with backoff instead of dropping it.
+[01:10] me: Also I need to pick up groceries before six, don't forget the coffee.
+[02:02] me: On the homelab side, I keep getting surprised by TrueNAS NFS saturation.
+[02:15] me: I'd like an alert when the nfsd threads are all busy for more than five minutes.
+[03:40] me: Oh, and a dark mode toggle for the dashboard. Actually scratch that, the dashboard already follows the system theme.
+[05:12] me: Another thing: a little command line tool that exports a session transcript as SRT subtitles.
+[05:30] me: That would make it easy to caption the videos I record.
+[12:48] me: Back to the TrueNAS alert, it should go to the infra alerts ntfy topic like everything else.
+[21:03] me: Coming back to the Gotify retries: cap it at three attempts, and log when it finally gives up.
+[21:20] me: And there should be a test where Gotify is down for the first two tries.
+[22:45] me: Okay, that's it for today.

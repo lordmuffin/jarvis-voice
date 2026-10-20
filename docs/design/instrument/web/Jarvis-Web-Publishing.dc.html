@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Publishing</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.pr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;padding:10px 12px}
+.pr .ti{display:flex;flex-direction:column;gap:2px;flex:1 1 300px;min-width:0}
+.inst .pr .ti a{color:var(--inst-text);font-weight:600}
+.inst .pr .ti a:hover{color:var(--inst-accent)}
+.pr .err{flex-basis:100%;overflow-wrap:anywhere}
+.sh{color:var(--inst-text);font-weight:700}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="min-height: 1100px; display: flex; flex-direction: column;">
+
+<header class="i-header">
+  <div class="i-header-in">
+    <div class="i-brand">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <a href="#" class="i-wordmark">Jarvis Live</a>
+      <span class="i-badge i-badge--live">Live</span>
+    </div>
+    <nav class="i-nav" aria-label="Main">
+      <a href="#">Sessions</a>
+      <a href="#">Devices</a>
+      <a href="#">Work Items</a>
+      <a href="#" aria-current="page">Publishing</a>
+      <a href="#">Admin</a>
+    </nav>
+    <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+  </div>
+</header>
+
+<main class="i-page" style="width: 100%; max-width: 960px; flex: 1;">
+  <div class="i-stack" style="gap: 6px; padding-top: 8px;">
+    <h1 class="t-title">Publishing</h1>
+    <p class="t-body t-2" style="max-width: 640px;">Each note goes to <span class="t-mono" style="color: var(--inst-text);">lordmuffin/obsidian-vault</span> as its own pull request against <span class="t-mono" style="color: var(--inst-text);">main</span>. Review and merge here or on GitHub.</p>
+  </div>
+
+  <div class="i-block j-toolbar" style="padding: 8px 12px;">
+    <label class="i-choice"><input type="checkbox" checked><span>Auto-publish new notes</span></label>
+    <span class="t-meta t-2" style="margin-left: auto;">Last synced <span class="t-mono">3:12 PM</span></span>
+    <button type="button" class="i-btn i-btn--secondary i-btn--sm">Sync Now</button>
+  </div>
+
+  <section aria-labelledby="h-ready" class="i-stack">
+    <div class="j-sec" style="align-items: center;">
+      <h2 id="h-ready" class="t-label sh">Ready to publish <span class="t-mono t-2">(3)</span></h2>
+      <button type="button" class="i-btn i-btn--primary i-btn--sm" style="margin-left: auto;">Publish All</button>
+    </div>
+    <sc-for list="{{ready}}" as="r" hint-placeholder-count="3">
+      <div class="i-block pr">
+        <div class="ti"><a href="#">{{r.title}}</a><span class="t-meta t-2">{{r.meta}}</span></div>
+        <span class="{{r.chip}}"><sc-if value="{{r.spin}}" hint-placeholder-val="{{false}}"><span class="i-spin i-chip-spin"></span></sc-if>{{r.state}}</span>
+        <div class="j-acts">
+          <sc-for list="{{r.acts}}" as="a" hint-placeholder-count="1">
+            <sc-if value="{{a.link}}" hint-placeholder-val="{{false}}"><a href="#" class="{{a.cls}}">{{a.label}}</a></sc-if>
+            <sc-if value="{{a.btn}}" hint-placeholder-val="{{true}}"><button type="button" class="{{a.cls}}" disabled="{{a.dis}}" aria-busy="{{a.busy}}">{{a.label}}</button></sc-if>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section aria-labelledby="h-prs" class="i-stack">
+    <div class="j-sec"><h2 id="h-prs" class="t-label sh">Pull requests waiting to merge <span class="t-mono t-2">(2)</span></h2></div>
+    <sc-for list="{{prs}}" as="r" hint-placeholder-count="2">
+      <div class="i-block pr">
+        <div class="ti"><a href="#">{{r.title}}</a><span class="t-meta t-2">{{r.meta}}</span></div>
+        <span class="{{r.chip}}">{{r.state}}</span>
+        <div class="j-acts">
+          <sc-for list="{{r.acts}}" as="a" hint-placeholder-count="3">
+            <sc-if value="{{a.link}}" hint-placeholder-val="{{false}}"><a href="#" class="{{a.cls}}">{{a.label}}</a></sc-if>
+            <sc-if value="{{a.btn}}" hint-placeholder-val="{{true}}"><button type="button" class="{{a.cls}}" disabled="{{a.dis}}" aria-busy="{{a.busy}}">{{a.label}}</button></sc-if>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </section>
+
+  <section aria-labelledby="h-recent" class="i-stack">
+    <div class="j-sec"><h2 id="h-recent" class="t-label sh">Recent</h2><span class="t-meta t-2">Merged, closed, failed and skipped</span></div>
+    <sc-for list="{{recent}}" as="r" hint-placeholder-count="6">
+      <div class="i-block pr">
+        <div class="ti"><a href="#">{{r.title}}</a><span class="t-meta t-2">{{r.meta}}</span></div>
+        <span class="{{r.chip}}">{{r.state}}</span>
+        <div class="j-acts">
+          <sc-for list="{{r.acts}}" as="a" hint-placeholder-count="1">
+            <button type="button" class="{{a.cls}}">{{a.label}}</button>
+          </sc-for>
+        </div>
+        <sc-if value="{{r.hasErr}}" hint-placeholder-val="{{false}}">
+          <span class="i-msg-error err" role="alert">{{r.err}}</span>
+        </sc-if>
+      </div>
+    </sc-for>
+    <a href="#" class="t-caption" style="align-self: flex-start; padding: 8px 0;">Show all 47</a>
+  </section>
+</main>
+
+<footer class="i-footer" style="max-width: 960px; width: 100%;">
+  <span>Notes publish as a pull request when a session ends.</span>
+  <span class="t-mono">server-v0.18.0 · 39e69a0</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const B = (label, cls, o) => Object.assign({ label, cls: 'i-btn i-btn--sm ' + cls, dis: false, busy: 'false', link: false, btn: true }, o || {});
+    const L = (label, cls) => B(label, cls, { link: true, btn: false });
+    const R = (title, meta, state, chip, acts, err) => ({ title, meta, state, chip: 'i-chip ' + (chip || ''), acts, err: err || '', hasErr: !!err, spin: chip === 'i-chip--progress' });
+    return {
+      theme: this.props.theme ?? 'dark',
+      ready: [
+        R('ARC runner migration vendor call', 'Oct 14 · Andrew', 'Not published', '', [B('Publish', 'i-btn--secondary')]),
+        R('Kai voice latency notes', 'Oct 10 · Andrew', 'Publishing', 'i-chip--progress', [B('Publishing…', 'i-btn--secondary', { dis: true, busy: 'true' })]),
+        R('Homelab power budget', 'Oct 11 · Sam', 'Not published', '', [B('Publish', 'i-btn--secondary')])
+      ],
+      prs: [
+        R('Sleep pipeline backfill plan', 'Oct 12 · Andrew · PR #212', 'PR open', 'i-chip--live', [L('Review', 'i-btn--quiet'), B('Merge', 'i-btn--secondary'), B('Close', 'i-btn--danger-quiet')]),
+        R('DGX Spark capacity check', 'Oct 9 · Sam · PR #209', 'PR open', 'i-chip--live', [L('Review', 'i-btn--quiet'), B('Merge', 'i-btn--secondary'), B('Close', 'i-btn--danger-quiet')])
+      ],
+      recent: [
+        R('Platform sync', 'Oct 13 · Andrew', '✕ Publish failed', 'i-chip--failed', [B('Retry', 'i-btn--secondary')], '✕ Publishing failed: GitHub returned 422: a pull request for branch jarvis/2026-10-13-platform-sync already exists.'),
+        R('Untitled session', 'Oct 13 · Andrew', 'Skipped', '', [B('Unskip', 'i-btn--quiet')]),
+        R('GPU node profile swap', 'Oct 9 · Andrew · PR #207', '✓ Merged', 'i-chip--done', []),
+        R('Weekly homelab review', 'Oct 8 · Sam · PR #205', 'PR closed', '', [B('Retry', 'i-btn--quiet')]),
+        R('Velero restore drill', 'Oct 7 · Andrew · PR #203', '✓ Merged', 'i-chip--done', []),
+        R('Harbor cache rollout', 'Oct 6 · Andrew · PR #201', '✓ Merged', 'i-chip--done', [])
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

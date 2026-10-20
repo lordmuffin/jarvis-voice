@@ -3,12 +3,12 @@ package com.lordmuffin.jarvisvoice.ui
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.LinearInterpolator
+import com.lordmuffin.jarvisvoice.R
 
 class AudioWaveformView @JvmOverloads constructor(
     context: Context,
@@ -16,11 +16,11 @@ class AudioWaveformView @JvmOverloads constructor(
     defStyle: Int = 0
 ) : View(context, attrs, defStyle) {
 
-    var barColor: Int = Color.parseColor("#00B4D8")
+    var barColor: Int = context.getColor(R.color.inst_accent)
         set(value) { field = value; paint.color = value; invalidate() }
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#00B4D8")
+        color = context.getColor(R.color.inst_accent)
         style = Paint.Style.FILL
     }
 
@@ -29,8 +29,8 @@ class AudioWaveformView @JvmOverloads constructor(
     private val animators = Array(barCount) { ValueAnimator() }
     private val amplitudes = FloatArray(barCount) { 0.3f }
 
-    private val barWidthDp = 4f
-    private val barGapDp = 6f
+    var barWidthDp = 4f
+    var barGapDp = 6f
     private val barCornerDp = 2f
 
     fun startAnimation() {

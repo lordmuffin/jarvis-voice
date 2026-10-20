@@ -15,6 +15,9 @@ items (reuse the id exactly as given). Never repeat an item that is already in t
 fact_check. ttl_s is how long it stays useful in seconds (default 120). Skip if nothing is worth \
 saying.
 - topics: up to 5 short search phrases naming the subjects being discussed.
+- title: only when SESSION TITLE says the session is untitled. A short, specific name for the \
+conversation (3-8 words, no date, no quotes), as soon as the subject is clear. Null while it is \
+not clear yet, and always null once the session has a title.
 
 Rules:
 - Only record what was actually said. Do not invent owners or due dates: set owner only if a \
@@ -60,9 +63,15 @@ deduplicate items, and drop decisions, actions or questions that a later window 
 )
 
 
-def copilot_user(*, today: str, state_json: str, related: str, transcript: str) -> str:
+UNTITLED = "(untitled: propose one)"
+
+
+def copilot_user(
+    *, today: str, title: str | None, state_json: str, related: str, transcript: str
+) -> str:
     return (
         f"Today: {today}\n\n"
+        f"SESSION TITLE\n{title or UNTITLED}\n\n"
         f"CURRENT STATE\n{state_json}\n\n"
         f"RELATED VAULT NOTES\n{related or '(none)'}\n\n"
         f"TRANSCRIPT\n{transcript}"

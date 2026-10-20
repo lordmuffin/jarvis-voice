@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true">
+        <inset android:inset="3dp">
+            <shape android:shape="oval">
+                <size android:width="@dimen/inst_switch_knob" android:height="@dimen/inst_switch_knob" />
+                <solid android:color="@color/inst_on_accent" />
+            </shape>
+        </inset>
+    </item>
+    <item>
+        <inset android:inset="3dp">
+            <shape android:shape="oval">
+                <size android:width="@dimen/inst_switch_knob" android:height="@dimen/inst_switch_knob" />
+                <solid android:color="@color/inst_text_2" />
+            </shape>
+        </inset>
+    </item>
+</selector>

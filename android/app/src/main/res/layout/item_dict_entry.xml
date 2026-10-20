@@ -4,34 +4,32 @@
     android:layout_height="wrap_content"
     android:orientation="horizontal"
     android:gravity="center_vertical"
-    android:padding="12dp"
-    android:background="@color/jv_surface"
-    android:layout_marginBottom="4dp">
+    android:padding="@dimen/inst_space_12"
+    android:background="@drawable/inst_row_surface"
+    android:layout_marginBottom="@dimen/inst_space_4">
 
     <TextView
         android:id="@+id/tv_word_from"
+        style="@style/Inst.Text.BodyLg"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textColor="@color/jv_text"
-        android:textSize="15sp" />
+        android:layout_weight="1" />
 
     <TextView
         android:id="@+id/tv_word_to"
+        style="@style/Inst.Text.BodyLg"
+        android:textColor="@color/inst_accent"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textColor="@color/jv_accent"
-        android:textSize="15sp" />
+        android:layout_weight="1" />
 
     <Button
         android:id="@+id/btn_delete_entry"
+        style="@style/Widget.Inst.Button.Danger.Sm"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="✕"
-        android:backgroundTint="@color/jv_surface2"
-        android:textColor="@color/jv_error"
-        android:minWidth="0dp"
-        android:paddingHorizontal="12dp" />
+        android:minWidth="@dimen/inst_touch_target_android"
+        android:minHeight="@dimen/inst_touch_target_android"
+        android:text="@string/chat_dict_delete_glyph" />
 
 </LinearLayout>

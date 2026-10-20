@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.lordmuffin.jarvisvoice.live.LiveActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -21,12 +22,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val prefs = getSharedPreferences(VoiceOverlayService.PREF_FILE, MODE_PRIVATE)
-        if (!prefs.getBoolean("onboarding_done", false)) {
-            startActivity(Intent(this, OnboardingActivity::class.java))
-            finish()
-            return
-        }
         checkAndProceed()
     }
 
@@ -38,13 +33,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndProceed() {
-        when {
-            !Settings.canDrawOverlays(this) -> promptOverlay()
-            ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED -> requestAudio.launch(Manifest.permission.RECORD_AUDIO)
-            !isAccessibilityEnabled() -> promptAccessibility()
-            else -> {
+        val prefs = getSharedPreferences(VoiceOverlayService.PREF_FILE, MODE_PRIVATE)
+        val step = LauncherRoute.next(
+            onboardingDone = prefs.getBoolean("onboarding_done", false),
+            overlayOk = Settings.canDrawOverlays(this),
+            micOk = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED,
+            accessibilityOk = isAccessibilityEnabled(),
+        )
+        when (step) {
+            LauncherRoute.Step.ONBOARDING -> {
+                startActivity(Intent(this, OnboardingActivity::class.java))
+                finish()
+            }
+            LauncherRoute.Step.GRANT_OVERLAY -> promptOverlay()
+            LauncherRoute.Step.GRANT_MIC -> requestAudio.launch(Manifest.permission.RECORD_AUDIO)
+            LauncherRoute.Step.GRANT_ACCESSIBILITY -> promptAccessibility()
+            LauncherRoute.Step.RECORD -> {
                 startForegroundService(Intent(this, VoiceOverlayService::class.java))
-                startActivity(Intent(this, SettingsActivity::class.java))
+                // Record is home: the icon lands here once set up (it used to land on Settings, or nowhere).
+                startActivity(Intent(this, LiveActivity::class.java))
                 finish()
             }
         }
@@ -52,9 +59,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun promptOverlay() {
         AlertDialog.Builder(this)
-            .setTitle("Overlay Permission Required")
-            .setMessage("Jarvis Voice needs permission to draw over other apps to show the dictation pill.")
-            .setPositiveButton("Grant") { _, _ ->
+            .setTitle(R.string.models_main_overlay_title)
+            .setMessage(R.string.models_main_overlay_message)
+            .setPositiveButton(R.string.models_main_grant) { _, _ ->
                 startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
             }
             .setCancelable(false)
@@ -63,9 +70,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun promptAccessibility() {
         AlertDialog.Builder(this)
-            .setTitle("Accessibility Service Required")
-            .setMessage("Enable 'Jarvis Voice' in Accessibility Settings so the overlay knows when text fields are focused.")
-            .setPositiveButton("Open Settings") { _, _ ->
+            .setTitle(R.string.models_main_a11y_title)
+            .setMessage(R.string.models_main_a11y_message)
+            .setPositiveButton(R.string.models_main_open_settings) { _, _ ->
                 startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             }
             .setCancelable(false)

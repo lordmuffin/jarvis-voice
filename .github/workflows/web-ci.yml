@@ -37,14 +37,18 @@ jobs:
         working-directory: server
       - name: Pull Postgres test image
         run: |
-          for i in 1 2 3 4 5; do
-            docker pull "$JARVIS_LIVE_TEST_POSTGRES_IMAGE" && exit 0
-            echo "pull attempt $i failed; retrying" >&2
-            sleep $((i * 15))
-          done
-          exit 1
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
       - run: npx playwright install --with-deps chromium
+      # The upload e2e: the server decodes uploaded recordings with ffmpeg.
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
       - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-screenshots
+          path: web/screenshots
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

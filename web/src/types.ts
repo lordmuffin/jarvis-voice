@@ -117,6 +117,11 @@ export type ServerEvent =
 
 // --- REST ---
 
+export interface Owner {
+  id: string;
+  display_name: string;
+}
+
 export interface SessionSummary {
   id: string;
   title: string | null;
@@ -126,6 +131,9 @@ export interface SessionSummary {
   started_at: string;
   ended_at: string | null;
   local_only: boolean;
+  /** Audio is arriving now. A `live` session that is not streaming lost its recorder. */
+  streaming: boolean;
+  owner: Owner;
 }
 
 export interface SessionPage {
@@ -144,4 +152,204 @@ export interface SessionDetail extends SessionSummary {
   copilot: Copilot;
   markers: Marker[];
   final_note: FinalNoteDoc | null;
+  /** Per channel of the session: whether its recording can be played. */
+  audio: Partial<Record<Channel, boolean>>;
+  /** The note's way to the vault repo; null until it is published or skipped. */
+  publication: Publication | null;
+  /** The caller may publish this session's note (owner/admin, own notes, configured). */
+  can_publish: boolean;
+  /** The note can be written again from the transcript (an LLM is configured). */
+  can_regenerate: boolean;
+}
+
+export type PublicationState = "publishing" | "open" | "merged" | "closed" | "skipped" | "failed";
+
+/** A note's branch and pull request in the vault repo (one per session). */
+export interface Publication {
+  state: PublicationState;
+  repo_path: string | null;
+  branch: string | null;
+  pr_number: number | null;
+  pr_url: string | null;
+  last_error: string | null;
+  updated_at: string;
+  merged_at: string | null;
+  /** The note was edited since it was last pushed; null when unknown. */
+  changed: boolean | null;
+}
+
+export interface PublishingItem {
+  session_id: string;
+  title: string;
+  started_at: string;
+  owner: string;
+  note_path: string;
+  publication: Publication | null;
+}
+
+/** `GET /v1/publishing`: what is waiting to be proposed, under review, and done. */
+export interface PublishingQueue {
+  repo: string;
+  base_branch: string;
+  auto_publish: boolean;
+  publishing_all: boolean;
+  ready: PublishingItem[];
+  open: PublishingItem[];
+  recent: PublishingItem[];
+}
+
+/** The signed-in user (`GET /v1/me`). `device_id` is null for a browser. */
+/** GET /healthz: which release channel ("live", or e.g. "lab"), version and commit this
+ * server is. `commit` is the short sha the image was built from; "" outside an image. */
+export interface Health {
+  status: string;
+  environment?: string;
+  version?: string;
+  commit?: string;
+}
+
+export interface Me {
+  id: string;
+  email: string | null;
+  display_name: string;
+  is_admin: boolean;
+  device_id: string | null;
+  /** May publish notes to the vault repo. */
+  can_publish: boolean;
+  /** New notes open their pull request without asking. */
+  auto_publish: boolean;
+  /** The copilot finds work items in this user's sessions. */
+  work_items: boolean;
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  created_at: string;
+  revoked_at: string | null;
+  /** The device making the request; never true from the web. */
+  current: boolean;
+}
+
+/** `POST /v1/devices`: the token is returned this once only. */
+export interface NewDevice extends Device {
+  token: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string | null;
+  display_name: string;
+  is_admin: boolean;
+  created_at: string;
+  last_login_at: string | null;
+  sessions: number;
+}
+
+// --- Work items: the copilot's draft Claude Code prompts ---
+
+export type WorkItemState = "draft" | "approved" | "discarded" | "merged";
+
+export interface WorkItemSource {
+  segment_id: string;
+  start_ms: number;
+  end_ms: number;
+  text: string;
+}
+
+export type DispatchState =
+  | "queued"
+  | "running"
+  | "pr_opened"
+  | "no_changes"
+  | "failed"
+  | "rate_limited"
+  | "timed_out"
+  | "cancelled"
+  | "needs_input";
+
+/** An item's latest run as headless Claude Code. */
+export interface Dispatch {
+  id: string;
+  attempt: number;
+  state: DispatchState;
+  repo: string;
+  branch: string;
+  pr_url: string | null;
+  pr_number: number | null;
+  summary: string | null;
+  error: string | null;
+  /** What the run asked the owner (`needs_input`). */
+  questions: string | null;
+  /** The owner's reply this follow-up run was given. */
+  guidance: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export interface WorkItem {
+  id: string;
+  session_id: string;
+  ref: string;
+  state: WorkItemState;
+  title: string;
+  repo: string | null;
+  intent: string;
+  acceptance_criteria: string[];
+  done_when: string | null;
+  sources: WorkItemSource[];
+  /** Fields the owner edited; the copilot no longer changes them. */
+  locked_fields: string[];
+  merged_into: string | null;
+  branch: string;
+  prompt_sha256: string | null;
+  approved_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  /** What stands between a draft and approval; empty when it can be approved. */
+  problems: string[];
+  /** Set on the cross-session list. */
+  session_title?: string | null;
+  session_started_at?: string | null;
+  dispatch?: Dispatch | null;
+}
+
+export interface WorkRepo {
+  name: string;
+  description: string;
+}
+
+export interface WorkItemPage {
+  enabled: boolean;
+  dispatch_enabled: boolean;
+  repos: WorkRepo[];
+  items: WorkItem[];
+}
+
+export interface WorkItemPrompt {
+  markdown: string;
+  /** Approved: exactly what is copied (and later dispatched). */
+  frozen: boolean;
+  sha256: string | null;
+}
+
+export interface WorkItemEdit {
+  title?: string;
+  repo?: string | null;
+  intent?: string;
+  acceptance_criteria?: string[];
+  done_when?: string | null;
+}
+
+/** One entry of the ▦ family switcher (`GET /v1/apps`). `url` is already on this server's
+ * release channel; null (`available: false`) means the app has no copy there. */
+export interface FamilyApp {
+  id: string;
+  name: string;
+  url: string | null;
+  available: boolean;
+  current: boolean;
+  glance_url: string | null;
 }

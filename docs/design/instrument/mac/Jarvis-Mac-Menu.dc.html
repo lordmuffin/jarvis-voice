@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mac menu-bar menu</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.mb{height:24px;flex:none;display:flex;align-items:center;justify-content:flex-end;gap:2px;padding:0 8px;background:var(--inst-surface-2);color:var(--inst-text);border-bottom:1px solid var(--inst-line)}
+.mb-it{height:22px;display:inline-flex;align-items:center;gap:5px;padding:0 6px;border:0;border-radius:var(--inst-radius-tail);background:none;color:var(--inst-text);cursor:default}
+.mb-it[aria-expanded="true"]{background:color-mix(in srgb,var(--inst-text) 16%,transparent)}
+.mb-clock{font-size:13px;padding:0 6px;white-space:nowrap}
+.mb-ch{display:inline-flex;align-items:center;height:14px;padding:0 5px;border-radius:24px;font-size:8px;font-weight:700;letter-spacing:.1em}
+.mb-ch--lab{background:var(--inst-text);color:var(--inst-surface-2)}
+.mb-ch--live{border:1.25px solid var(--inst-text)}
+.mb-rec{display:inline-flex;align-items:center;gap:3px;height:14px;padding:0 5px;border-radius:24px;border:1.25px solid var(--inst-text)}
+.mb-rec i{width:5px;height:5px;border-radius:50%;background:var(--inst-text)}
+.mb-rec b{font:700 8px var(--inst-mono)}
+.mb-dict{display:inline-flex;align-items:center;height:14px;padding:0 6px;border-radius:24px;background:var(--inst-text);color:var(--inst-surface-2)}
+.col{display:flex;flex-direction:column;gap:8px}
+.scr{display:flex;flex-direction:column}
+.mn{width:300px;padding:4px 0;font-size:13px;display:flex;flex-direction:column}
+.mhd{padding:4px 12px 6px 30px;display:flex;flex-direction:column;gap:3px}
+.msv{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--inst-text-2)}
+.mst{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-top:2px}
+.mi{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:6px;align-items:center;min-height:26px;width:100%;padding:0 12px 0 8px;border:0;background:none;color:var(--inst-text);text-align:left;font-size:13px;cursor:default}
+.mi:hover,.mi.is-hl{background:var(--inst-surface-2);box-shadow:inset 2px 0 0 var(--inst-accent)}
+.mi .ck{font-size:12px;text-align:center}
+.mi .kb{font-family:var(--inst-mono);font-size:12px;color:var(--inst-text-2)}
+.mi .ar{font-size:8px;color:var(--inst-text-2)}
+.mi[disabled]{color:var(--inst-text-disabled)}
+.mi[disabled] .kb{color:var(--inst-text-disabled)}
+.mi--2{align-items:start;padding-top:4px;padding-bottom:4px}
+.mi--2 .ck{line-height:1.45}
+.mi .sub{display:block;font-size:11px;color:var(--inst-text-2)}
+.mi .w{color:var(--inst-warning)}
+.ms{height:1px;background:var(--inst-line);margin:4px 0}
+.mh{padding:2px 12px 2px 30px;font-size:11px;color:var(--inst-text-2)}
+.mx{padding:0 12px 4px 30px;font-size:11px;color:var(--inst-text-2)}
+.mx .i-reason{font-size:11px}
+.mprog{padding:4px 12px 6px 30px;display:flex;flex-direction:column;gap:4px}
+.sub-wrap{position:relative}
+.smn{position:absolute;right:100%;top:-5px;width:270px;padding:4px 0;display:flex;flex-direction:column}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1440px; height: 1100px; padding: 32px; display: flex; flex-direction: column; gap: 40px;">
+
+  <section aria-label="Menu-bar item states" style="display: flex; gap: 24px;">
+    <div class="col" style="width: 320px;">
+      <span class="t-micro t-2">Idle · LIVE · waveform, outlined badge</span>
+      <div class="mb">
+        <button type="button" class="mb-it" aria-label="Jarvis, idle, LIVE" aria-haspopup="menu" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M4 6.5v3M8 3.5v9M12 5.5v5"></path></svg><span class="mb-ch mb-ch--live">LIVE</span></button>
+        <span class="mb-clock">Wed 15:23</span>
+      </div>
+    </div>
+    <div class="col" style="width: 320px;">
+      <span class="t-micro t-2">Idle · LAB · waveform, filled badge</span>
+      <div class="mb">
+        <button type="button" class="mb-it" aria-label="Jarvis, idle, LAB" aria-haspopup="menu" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M4 6.5v3M8 3.5v9M12 5.5v5"></path></svg><span class="mb-ch mb-ch--lab">LAB</span></button>
+        <span class="mb-clock">Wed 15:23</span>
+      </div>
+    </div>
+    <div class="col" style="width: 320px;">
+      <span class="t-micro t-2">Recording · LIVE · outlined pill with elapsed</span>
+      <div class="mb">
+        <button type="button" class="mb-it" aria-label="Jarvis, recording 18 minutes 42 seconds, LIVE" aria-haspopup="menu" aria-expanded="false"><span class="mb-rec" aria-hidden="true"><i></i><b>18:42</b></span><span class="mb-ch mb-ch--live">LIVE</span></button>
+        <span class="mb-clock">Wed 15:23</span>
+      </div>
+    </div>
+    <div class="col" style="width: 320px;">
+      <span class="t-micro t-2">Dictating · LAB · filled capsule with mic</span>
+      <div class="mb">
+        <button type="button" class="mb-it" aria-label="Jarvis, dictating, LAB" aria-haspopup="menu" aria-expanded="false"><span class="mb-dict" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="square"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"></rect><path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2"></path></svg></span><span class="mb-ch mb-ch--lab">LAB</span></button>
+        <span class="mb-clock">Wed 15:23</span>
+      </div>
+    </div>
+  </section>
+
+  <div style="display: flex; gap: 56px; align-items: flex-start;">
+
+    <!-- Idle menu -->
+    <section class="col" aria-label="Menu open while idle" style="width: 300px;">
+      <span class="t-micro t-2">Menu · idle · LIVE</span>
+      <div class="scr">
+        <div class="mb">
+          <button type="button" class="mb-it" aria-label="Jarvis, idle, LIVE" aria-haspopup="menu" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M4 6.5v3M8 3.5v9M12 5.5v5"></path></svg><span class="mb-ch mb-ch--live">LIVE</span></button>
+          <span class="mb-clock">Wed 15:23</span>
+        </div>
+        <div class="i-popover mn" role="menu" aria-label="Jarvis">
+          <div class="mhd">
+            <span class="t-strong">Jarvis Voice 0.12.0</span>
+            <span class="msv">Server: <span class="i-badge i-badge--live">Live</span>· <span class="t-mono">live.apj.dev</span><span class="t-mono">(0.18.0)</span></span>
+            <span class="mst"><span class="i-chip">Idle</span><span class="t-mono t-meta t-2">STT: server pve</span></span>
+          </div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Start Session</span><span class="kb">⌃⌥J</span></button>
+          <div class="ms" role="separator"></div>
+          <div class="mh">Mode</div>
+          <button type="button" role="menuitemradio" aria-checked="true" class="mi"><span class="ck">✓</span><span>Solo (mic only)</span><span></span></button>
+          <button type="button" role="menuitemradio" aria-checked="false" class="mi"><span class="ck"></span><span>Meeting (mic + system)</span><span></span></button>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitemcheckbox" aria-checked="false" class="mi"><span class="ck"></span><span>Local only (no network)</span><span></span></button>
+          <div class="mx">Home network · streaming to Jarvis Live</div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi" disabled title="Available during a session."><span class="ck"></span><span>Add Marker</span><span class="kb">⌃⌥M</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Show Copilot Panel</span><span></span></button>
+          <button type="button" role="menuitem" class="mi" aria-haspopup="menu" aria-expanded="false"><span class="ck"></span><span>Upload for full processing</span><span class="ar">▶</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Open Local Transcripts</span><span></span></button>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Settings…</span><span class="kb">⌘,</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Quit</span><span class="kb">⌘Q</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recording menu with submenu -->
+    <section class="col" aria-label="Menu open while recording" style="width: 570px;">
+      <span class="t-micro t-2">Menu · recording · reconnecting · upload submenu open</span>
+      <div class="scr">
+        <div class="mb">
+          <button type="button" class="mb-it" aria-label="Jarvis, recording 18 minutes 42 seconds, LIVE" aria-haspopup="menu" aria-expanded="true"><span class="mb-rec" aria-hidden="true"><i></i><b>18:42</b></span><span class="mb-ch mb-ch--live">LIVE</span></button>
+          <span class="mb-clock">Wed 15:23</span>
+        </div>
+        <div class="i-popover mn" role="menu" aria-label="Jarvis" style="align-self: flex-end;">
+          <div class="mhd">
+            <span class="t-strong">Jarvis Voice 0.12.0</span>
+            <span class="msv">Server: <span class="i-badge i-badge--live">Live</span>· <span class="t-mono">live.apj.dev</span><span class="t-mono">(0.18.0)</span></span>
+            <span class="mst">
+              <span class="i-chip i-chip--live" style="border-radius: 24px; padding: 0 8px;"><span class="i-dot i-breathe"></span>Rec 18:42</span>
+              <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Reconnecting · 3.2 s queued</span>
+            </span>
+            <span class="t-meta t-2">Still recording. Nothing is lost. <span class="t-mono">STT: server pve</span></span>
+          </div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck">■</span><span>Stop Session</span><span class="kb">⌃⌥J</span></button>
+          <div class="ms" role="separator"></div>
+          <div class="mh">Mode</div>
+          <button type="button" role="menuitemradio" aria-checked="false" class="mi" disabled aria-describedby="lockr"><span class="ck"></span><span>Solo (mic only)</span><span></span></button>
+          <button type="button" role="menuitemradio" aria-checked="true" class="mi" disabled aria-describedby="lockr"><span class="ck">✓</span><span>Meeting (mic + system)</span><span></span></button>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitemcheckbox" aria-checked="false" class="mi" disabled aria-describedby="lockr"><span class="ck"></span><span>Local only (no network)</span><span></span></button>
+          <div class="mx">Home network · reconnecting to <span class="t-mono">live.apj.dev</span></div>
+          <div class="mx"><span id="lockr" class="i-reason">⚑ Change these after you stop.</span></div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck">⚑</span><span>Add Marker</span><span class="kb">⌃⌥M</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Show Copilot Panel</span><span></span></button>
+          <div class="sub-wrap">
+            <button type="button" role="menuitem" class="mi is-hl" aria-haspopup="menu" aria-expanded="true"><span class="ck"></span><span>Upload for full processing</span><span class="ar">▶</span></button>
+            <div class="i-popover smn" role="menu" aria-label="Upload for full processing">
+              <div class="mh" style="padding-left: 12px;">On this Mac, not on the server yet</div>
+              <button type="button" role="menuitem" class="mi mi--2" style="grid-template-columns: minmax(0, 1fr) auto; padding-left: 12px;"><span>Untitled session<span class="sub t-mono">Oct 13, 8:12 AM · &lt;1 min · Solo</span></span><span class="kb">0.4 MB</span></button>
+              <button type="button" role="menuitem" class="mi mi--2" style="grid-template-columns: minmax(0, 1fr) auto; padding-left: 12px;"><span>Kai voice latency notes<span class="sub t-mono">Oct 10, 7:05 AM · 6 min · Solo</span></span><span class="kb">5.8 MB</span></button>
+              <div class="ms" role="separator"></div>
+              <div class="mx" style="padding-left: 12px;">The server transcribes it again and writes the note.</div>
+            </div>
+          </div>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Open Local Transcripts</span><span></span></button>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Settings…</span><span class="kb">⌘,</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Quit</span><span class="kb">⌘Q</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Warnings menu -->
+    <section class="col" aria-label="Menu with warnings" style="width: 300px;">
+      <span class="t-micro t-2">Menu · idle · LAB · warnings</span>
+      <div class="scr">
+        <div class="mb">
+          <button type="button" class="mb-it" aria-label="Jarvis, idle, LAB, 3 warnings" aria-haspopup="menu" aria-expanded="true"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><path d="M4 6.5v3M8 3.5v9M12 5.5v5"></path></svg><span class="mb-ch mb-ch--lab">LAB</span></button>
+          <span class="mb-clock">Wed 15:23</span>
+        </div>
+        <div class="i-popover mn" role="menu" aria-label="Jarvis">
+          <div class="mhd">
+            <span class="t-strong">Jarvis Voice 0.12.0</span>
+            <span class="msv">Server: <span class="i-badge i-badge--lab">Lab</span>· <span class="t-mono">live.lab.apj.dev</span><span class="t-mono">(0.18.0)</span></span>
+            <span class="mst"><span class="i-chip">Idle</span><span class="t-mono t-meta t-2">STT: server pve</span></span>
+          </div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi mi--2"><span class="ck w">⚑</span><span>No system audio<span class="sub">Meeting records your mic only. Allow System Audio Recording…</span></span><span></span></button>
+          <button type="button" role="menuitem" class="mi mi--2"><span class="ck w">⚑</span><span>Echo cancellation unavailable<span class="sub">Use headphones so Them stays out of Me.</span></span><span></span></button>
+          <button type="button" role="menuitem" class="mi mi--2"><span class="ck w">⚑</span><span>Dictation needs Accessibility<span class="sub">Open System Settings… to allow it.</span></span><span></span></button>
+          <div class="mprog">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;"><span class="t-caption">Installing speech model</span><span class="t-mono t-meta t-2">64%</span></div>
+            <div class="i-progress" role="progressbar" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100" aria-label="Installing speech model"><span style="width: 64%;"></span></div>
+            <span class="t-meta t-2">The on-device draft starts when it finishes.</span>
+          </div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Start Session</span><span class="kb">⌃⌥J</span></button>
+          <div class="ms" role="separator"></div>
+          <div class="mh">Mode</div>
+          <button type="button" role="menuitemradio" aria-checked="false" class="mi"><span class="ck"></span><span>Solo (mic only)</span><span></span></button>
+          <button type="button" role="menuitemradio" aria-checked="true" class="mi"><span class="ck">✓</span><span>Meeting (mic + system)</span><span></span></button>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitemcheckbox" aria-checked="false" class="mi"><span class="ck"></span><span>Local only (no network)</span><span></span></button>
+          <div class="mx">Away from home · streaming over the public address</div>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi" disabled title="Available during a session."><span class="ck"></span><span>Add Marker</span><span class="kb">⌃⌥M</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Show Copilot Panel</span><span></span></button>
+          <button type="button" role="menuitem" class="mi" aria-haspopup="menu" aria-expanded="false"><span class="ck"></span><span>Upload for full processing</span><span class="ar">▶</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Open Local Transcripts</span><span></span></button>
+          <div class="ms" role="separator"></div>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Settings…</span><span class="kb">⌘,</span></button>
+          <button type="button" role="menuitem" class="mi"><span class="ck"></span><span>Quit</span><span class="kb">⌘Q</span></button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

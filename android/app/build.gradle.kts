@@ -8,6 +8,14 @@ val gitCommit: String = runCatching {
         .standardOutput.asText.get().trim()
 }.getOrDefault("unknown")
 
+// release-please bumps android/version.txt on every Android release; the APK's
+// versionName and versionCode follow it so the installed app reports its release.
+val appVersion: String = providers
+    .fileContents(rootProject.layout.projectDirectory.file("version.txt"))
+    .asText.get().trim()
+val appVersionCode: Int = appVersion.split(".").map(String::toInt)
+    .let { (major, minor, patch) -> major * 10_000 + minor * 100 + patch }
+
 android {
     namespace = "com.lordmuffin.jarvisvoice"
     compileSdk = 34
@@ -16,8 +24,8 @@ android {
         applicationId = "com.lordmuffin.jarvisvoice"
         minSdk = 26
         targetSdk = 34
-        versionCode = 73
-        versionName = "1.5.1"
+        versionCode = appVersionCode
+        versionName = appVersion
         buildConfigField("String", "GIT_COMMIT", "\"$gitCommit\"")
     }
 
@@ -43,8 +51,15 @@ android {
             }
         }
     }
+    // Instrument design-system resources, vendored (managed, never edit) by the Instrument sync PR.
+    sourceSets["main"].res.srcDir("src/instrument/android/res")
+
     buildFeatures {
         buildConfig = true
+    }
+    testOptions {
+        // android.jar stubs (Log, etc.) return defaults instead of throwing in JVM unit tests.
+        unitTests.isReturnDefaultValues = true
     }
     // Don't attempt to compress ONNX model files — they're already binary
     // and compression wastes build memory on large model assets.
@@ -66,6 +81,7 @@ android {
 dependencies {
     implementation(libs.commons.compress)
     implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.browser)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.constraintlayout)
@@ -79,4 +95,11 @@ dependencies {
     implementation(libs.mlkit.genai.prompt)
     implementation(libs.androidx.car.app)
     implementation(libs.androidx.media3.common)
+    implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.junit)
+    // Android's org.json is a stub in JVM tests; use the real one.
+    testImplementation(libs.org.json)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.okhttp.mockwebserver)
 }

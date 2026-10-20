@@ -1,0 +1,80 @@
+package com.lordmuffin.jarvisvoice.ui
+
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ReplacementSpan
+import android.widget.TextView
+import androidx.annotation.ColorInt
+import com.lordmuffin.jarvisvoice.R
+import com.lordmuffin.jarvisvoice.live.ServerChannel
+import kotlin.math.roundToInt
+
+/** [text], then [channel]'s tag ([ChannelTagSpan]); just [text] while the channel is unknown. */
+fun TextView.setTextWithChannel(text: CharSequence, channel: ServerChannel?) {
+    if (channel == null) {
+        this.text = text
+        return
+    }
+    val out = SpannableStringBuilder(text)
+    if (text.isNotEmpty()) out.append(' ')
+    val start = out.length
+    out.append(channel.tag)
+    val span = ChannelTagSpan(context.getColor(channel.color), context.getColor(R.color.inst_on_channel), resources.displayMetrics.density, resources.configuration.fontScale)
+    out.setSpan(span, start, out.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    this.text = out
+}
+
+/**
+ * The server's release channel as an 18dp full-pill badge inside a line of text, like the dashboard's
+ * wordmark tag and the Mac app's `ChannelTag`: bold, tracked, `inst_on_channel` on [fill]. Inline, so it can
+ * sit beside the server's address wherever a screen names it, and wraps as one piece.
+ */
+class ChannelTagSpan(
+    @param:ColorInt private val fill: Int,
+    @param:ColorInt private val textColor: Int,
+    private val density: Float,
+    private val fontScale: Float = 1f,
+) : ReplacementSpan() {
+    private val rect = RectF()
+
+    override fun getSize(paint: Paint, text: CharSequence, start: Int, end: Int, fm: Paint.FontMetricsInt?): Int =
+        (tagPaint(paint).measureText(text, start, end) + 2 * PAD_H_DP * density).roundToInt()
+
+    override fun draw(
+        canvas: Canvas, text: CharSequence, start: Int, end: Int,
+        x: Float, top: Int, y: Int, bottom: Int, paint: Paint,
+    ) {
+        val tag = tagPaint(paint)
+        val line = paint.fontMetrics
+        val own = tag.fontMetrics
+        // Centred on the surrounding text rather than its baseline, since the tag is smaller.
+        val centre = y + (line.ascent + line.descent) / 2
+        val half = HEIGHT_DP * density / 2
+        rect.set(x, centre - half, x + getSize(paint, text, start, end, null), centre + half)
+        tag.color = fill
+        // Full pill: corner radius is half the 18dp (inst_badge) height.
+        canvas.drawRoundRect(rect, half, half, tag)
+        tag.color = textColor
+        canvas.drawText(text, start, end, x + PAD_H_DP * density, centre - (own.ascent + own.descent) / 2, tag)
+    }
+
+    private fun tagPaint(base: Paint) = Paint(base).apply {
+        typeface = Typeface.create(base.typeface, Typeface.BOLD)
+        textSize = TEXT_SP * density * fontScale
+        letterSpacing = TRACKING
+    }
+
+    private companion object {
+        /** `inst_type_tag`: 9sp bold. */
+        const val TEXT_SP = 9f
+        /** `inst_badge`. */
+        const val HEIGHT_DP = 18f
+        /** `design/README.md`, Type: uppercase gets tracking; `tag` is 0.1em. */
+        const val TRACKING = 0.1f
+        const val PAD_H_DP = 8f
+    }
+}

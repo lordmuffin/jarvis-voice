@@ -1,591 +1,126 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Root is FrameLayout so the FAB floats over the ScrollView at all scroll positions -->
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/jv_bg">
+    android:background="@color/inst_bg">
 
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="64dp">
+        android:layout_marginBottom="@dimen/inst_bottombar">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp"
-            android:paddingBottom="16dp">
+            android:paddingStart="@dimen/inst_space_16"
+            android:paddingEnd="@dimen/inst_space_16"
+            android:paddingTop="@dimen/inst_space_24"
+            android:paddingBottom="@dimen/inst_space_24">
 
-            <!-- ── Version ─────────────────────────────────────────────── -->
+            <!-- Jarvis Live -->
             <TextView
-                android:id="@+id/tv_version"
+                style="@style/Settings.Group"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Jarvis Voice"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Overlay Status ─────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Overlay"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/live_settings_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:background="@color/jv_surface"
-                android:padding="12dp"
-                android:layout_marginBottom="12dp">
+                android:layout_marginBottom="@dimen/inst_space_8">
 
-                <TextView
-                    android:id="@+id/tv_overlay_status"
+                <EditText
+                    android:id="@+id/et_live_server_url"
+                    style="@style/Widget.Inst.EditText.Mono"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Checking…"
-                    android:textColor="@color/jv_text2"
-                    android:textSize="14sp" />
+                    android:minHeight="@dimen/inst_space_48"
+                    android:hint="@string/live_settings_url_hint"
+                    android:inputType="textUri"
+                    android:importantForAutofill="no"/>
+
+                <!-- The saved server's release channel (GET /healthz); gone until it answers. -->
+                <TextView
+                    android:id="@+id/tv_live_channel"
+                    style="@style/Inst.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/inst_space_8"
+                    android:visibility="gone"/>
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btn_live_sign_in"
+                style="@style/Widget.Inst.Button.Primary.Lg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/live_signin_button"/>
+
+            <TextView
+                android:id="@+id/tv_live_account"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/live_signin_desc"
+                android:layout_marginTop="@dimen/inst_space_4"
+                android:layout_marginBottom="@dimen/inst_space_12"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/live_signin_token_label"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_live_device_token"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/live_settings_token_hint"
+                android:inputType="textPassword"
+                android:importantForAutofill="no"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="@dimen/inst_space_8">
 
                 <Button
-                    android:id="@+id/btn_restart_overlay"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="Restart"
-                    android:backgroundTint="@color/jv_surface2"
-                    android:textColor="@color/jv_accent"
-                    android:textSize="13sp"
-                    android:paddingHorizontal="16dp" />
+                    android:id="@+id/btn_live_save"
+                    style="@style/Widget.Inst.Button.Secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/live_settings_save"/>
 
+                <Button
+                    android:id="@+id/btn_live_test"
+                    style="@style/Widget.Inst.Button.Secondary"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="@dimen/inst_space_8"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/live_settings_test"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Metro Stats ──────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Metro"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="@color/jv_surface"
-                android:padding="12dp">
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_last_words"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="@color/jv_text"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="last words"
-                        android:textColor="@color/jv_text2"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_last_wpm"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="@color/jv_accent"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="last wpm"
-                        android:textColor="@color/jv_text2"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_total_words"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/jv_text"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="total words"
-                        android:textColor="@color/jv_text2"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center">
-                    <TextView
-                        android:id="@+id/tv_stat_avg_wpm"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/jv_accent"
-                        android:textSize="22sp"
-                        android:textStyle="bold" />
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="avg wpm"
-                        android:textColor="@color/jv_text2"
-                        android:textSize="10sp" />
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── STT Model ─────────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Speech Recognition"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_open_stt_model_manager"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="STT Model"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:id="@+id/tv_active_stt_model"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="No model downloaded"
-                android:textColor="@color/jv_text2"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="12dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── LLM Model ────────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="LLM Enhancement"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_open_model_manager"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="LLM Model"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:id="@+id/tv_active_llm_model"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Enhancement: Off"
-                android:textColor="@color/jv_text2"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="HuggingFace Token"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/et_hf_token"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="hf_xxxxxxxxxxxxxxxx"
-                android:inputType="textPassword"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Only needed when using HuggingFace (no custom URL set below)."
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginBottom="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Custom Model Server ─────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Custom Model Server"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="LLM Models URL"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/et_llm_base_url"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="https://your-bucket/models/llm/"
-                android:inputType="textUri"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="STT Models URL"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/et_stt_base_url"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="https://your-bucket/models/stt/"
-                android:inputType="textUri"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="12dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Auth Token (optional)"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/et_server_token"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Bearer abc123..."
-                android:inputType="textPassword"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Sent as the Authorization header. Leave blank for public buckets. LLM bucket expects: gemma4-12b.litertlm, gemma4-2b.litertlm, gemma3-1b.litertlm. STT bucket expects: sherpa-onnx-whisper-{tiny,base,small,medium}.en.tar.bz2"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
-
-            <!-- ── Vault API (note read/write tool calls) ─────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Capture key"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/et_vault_api_key"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Capture key (JARVIS_CAPTURE_KEY on the server)"
-                android:inputType="textPassword"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Key from /home/lordmuffin/.jarvis-capture.env on GamingPC. Required for vault note tools (read, search, write)."
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
-
-            <!-- ── Voice TTS ──────────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Voice (TTS)"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="4dp" />
-
-            <EditText
-                android:id="@+id/et_tts_url"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="http://192.168.1.43:8880"
-                android:inputType="textUri"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="6dp" />
-
-            <EditText
-                android:id="@+id/et_tts_voice"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="af_sky"
-                android:inputType="text"
-                android:textColor="@color/jv_text"
-                android:textColorHint="@color/jv_text2"
-                android:background="@drawable/permission_card_bg"
-                android:padding="12dp"
-                android:textSize="13sp"
-                android:fontFamily="monospace"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Kokoro TTS server URL + voice name. Leave URL blank to use Android TTS. Kokoro voices: af_sky, af_heart, am_michael, etc."
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Features ─────────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Features"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_open_history"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Dictation History"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_open_dictionary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Custom Dictionary"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_open_debug_log"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Debug Log"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Data Storage ─────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Data Storage"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:id="@+id/tv_storage_location"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/jv_text2"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="8dp" />
-
-            <Button
-                android:id="@+id/btn_grant_storage"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Grant All Files Access"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_accent"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp"
-                android:visibility="gone" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Grant once to store history and logs in /sdcard/Documents/JarvisVoice/. Existing data migrates automatically."
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginBottom="20dp" />
-
-            <!-- ── Notifications ────────────────────────────────────────── -->
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Notifications"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -594,54 +129,227 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Clipboard notification"
-                        android:textColor="@color/jv_text"
-                        android:textSize="16sp" />
+                        android:text="@string/live_away_setting"/>
 
                     <TextView
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Show in tray when dictation is copied to clipboard"
-                        android:textColor="@color/jv_text2"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
-
+                        android:text="@string/live_away_setting_desc"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
                 </LinearLayout>
 
                 <androidx.appcompat.widget.SwitchCompat
-                    android:id="@+id/switch_clipboard_notify"
+                    android:id="@+id/switch_live_away"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
 
+            <TextView
+                android:id="@+id/tv_live_settings_status"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/live_settings_desc"
+                android:layout_marginTop="@dimen/inst_space_8"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_dictation"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_overlay_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_overlay_status"
+                    style="@style/Inst.Text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textStyle="bold"
+                    android:text="@string/settings_overlay_checking"
+                    android:textColor="@color/inst_text_2"/>
+
+                <Button
+                    android:id="@+id/btn_restart_overlay"
+                    style="@style/Widget.Inst.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_overlay_restart"/>
             </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="20dp" />
+                android:layout_height="@dimen/inst_space_16"/>
 
-            <!-- ── STT Backend ──────────────────────────────────────────── -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="STT Backend"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_metro_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_last_words"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_none"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_last_words"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_last_wpm"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_none"
+                        android:textColor="@color/inst_accent"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_last_wpm"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_total_words"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_zero"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_total_words"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:gravity="center">
+
+                    <TextView
+                        android:id="@+id/tv_stat_avg_wpm"
+                        style="@style/Settings.StatValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_zero"
+                        android:textColor="@color/inst_accent"/>
+
+                    <TextView
+                        style="@style/Settings.StatCaption"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_stat_avg_wpm"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_open_stt_model_manager"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_model"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                android:id="@+id/tv_active_stt_model"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_none"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_backend_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -650,93 +358,334 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="On-device STT (Offline)"
-                        android:textColor="@color/jv_text"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_offline_title"/>
 
                     <TextView
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Uses local Whisper model, no internet required"
-                        android:textColor="@color/jv_text2"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
-
+                        android:text="@string/settings_offline_desc"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
                 </LinearLayout>
 
                 <androidx.appcompat.widget.SwitchCompat
                     android:id="@+id/switch_offline_stt"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-
+                    android:layout_height="wrap_content"/>
             </LinearLayout>
 
             <View
                 android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:background="@color/jv_surface2"
-                android:layout_marginTop="16dp"
-                android:layout_marginBottom="20dp" />
+                android:layout_height="@dimen/inst_space_16"/>
 
-            <!-- ── Vault Folder ───────────────────────────────────────────── -->
             <TextView
+                style="@style/Settings.Heading"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Vault Capture"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_features_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_open_history"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_history"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <Button
+                android:id="@+id/btn_open_dictionary"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_dictionary"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_models"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_open_model_manager"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_model"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                android:id="@+id/tv_active_llm_model"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_off"
+                android:layout_marginTop="@dimen/inst_space_4"
+                android:layout_marginBottom="@dimen/inst_space_12"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_hf_label"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_hf_token"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_hf_hint"
+                android:inputType="textPassword"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_hf_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_server_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_llm_url_label"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_llm_base_url"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_llm_url_hint"
+                android:inputType="textUri"
+                android:layout_marginBottom="@dimen/inst_space_12"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_stt_url_label"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_stt_base_url"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_stt_url_hint"
+                android:inputType="textUri"
+                android:layout_marginBottom="@dimen/inst_space_12"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_server_token_label"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_server_token"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_server_token_hint"
+                android:inputType="textPassword"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_server_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_kai"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.FieldLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_capture_label"
+                android:layout_marginTop="@dimen/inst_space_12"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <EditText
+                android:id="@+id/et_vault_api_key"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_capture_hint"
+                android:inputType="textPassword"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_capture_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_tts_header"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <EditText
+                android:id="@+id/et_tts_url"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_tts_url_hint"
+                android:inputType="textUri"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <EditText
+                android:id="@+id/et_tts_voice"
+                style="@style/Widget.Inst.EditText.Mono"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:hint="@string/settings_tts_voice_hint"
+                android:inputType="text"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_tts_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_vault_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <TextView
                 android:id="@+id/tv_vault_folder"
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="8dp" />
+                android:textSize="@dimen/inst_type_caption"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <Button
                 android:id="@+id/btn_pick_vault_folder"
-                android:layout_width="match_parent"
-                android:layout_height="44dp"
-                android:text="Pick Vault Folder"
-                android:backgroundTint="@color/jv_surface2"
-                android:textColor="@color/jv_text2"
-                android:gravity="start|center_vertical"
-                android:paddingHorizontal="16dp"
-                android:layout_marginBottom="4dp" />
-
-            <TextView
+                style="@style/Settings.RowButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Pick any local folder — captures go to YYYY-MM-DD.md inside it. Works great pointed at a Syncthing-synced vault folder."
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp"
-                android:layout_marginBottom="16dp" />
+                android:text="@string/settings_vault_pick"
+                android:textColor="@color/inst_text"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
 
-            <!-- ── Audio Input ───────────────────────────────────────────── -->
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Audio Input"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:textAllCaps="true"
-                android:letterSpacing="0.08"
-                android:layout_marginBottom="8dp" />
+                android:text="@string/settings_vault_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_device"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_audio_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
 
             <LinearLayout
+                style="@style/Settings.Panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingTop="8dp"
-                android:paddingBottom="8dp">
+                android:orientation="horizontal">
 
                 <LinearLayout
                     android:layout_width="0dp"
@@ -745,43 +694,200 @@
                     android:orientation="vertical">
 
                     <TextView
+                        style="@style/Settings.RowTitle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Microphone"
-                        android:textColor="@color/jv_text"
-                        android:textSize="16sp" />
+                        android:text="@string/settings_mic_title"/>
 
                     <TextView
                         android:id="@+id/tv_input_device"
+                        style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="System Default"
-                        android:textColor="@color/jv_accent"
-                        android:textSize="12sp"
-                        android:layout_marginTop="2dp" />
-
+                        android:text="@string/settings_mic_default"
+                        android:textColor="@color/inst_accent"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
                 </LinearLayout>
 
                 <Button
                     android:id="@+id/btn_pick_input_device"
+                    style="@style/Widget.Inst.Button.Secondary"
                     android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="Change"
-                    android:backgroundTint="@color/jv_surface2"
-                    android:textColor="@color/jv_text2"
-                    android:textSize="13sp"
-                    android:paddingHorizontal="16dp" />
-
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_mic_change"/>
             </LinearLayout>
 
             <TextView
+                style="@style/Settings.Help"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Select your earbud or headset mic. Bluetooth devices must be connected before tapping Change."
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:paddingHorizontal="4dp" />
+                android:text="@string/settings_mic_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_storage_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <TextView
+                android:id="@+id/tv_storage_location"
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="@dimen/inst_type_caption"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <Button
+                android:id="@+id/btn_grant_storage"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_storage_grant"
+                android:textColor="@color/inst_accent"
+                android:visibility="gone"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_storage_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_notifications_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="@dimen/inst_space_48"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Settings.RowTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_clipboard_title"/>
+
+                    <TextView
+                        style="@style/Settings.RowDesc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_clipboard_desc"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_clipboard_notify"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <TextView
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_appearance_header"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_appearance_caption"
+                android:layout_marginBottom="@dimen/inst_space_8"/>
+
+            <RadioGroup
+                android:id="@+id/rg_theme_mode"
+                style="@style/Widget.Inst.Seg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <RadioButton
+                    android:id="@+id/rb_theme_system"
+                    style="@style/Widget.Inst.Seg.Item"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/inst_space_48"
+                    android:layout_weight="1"
+                    android:text="@string/settings_theme_system"/>
+
+                <RadioButton
+                    android:id="@+id/rb_theme_light"
+                    style="@style/Widget.Inst.Seg.Item"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/inst_space_48"
+                    android:layout_weight="1"
+                    android:text="@string/settings_theme_light"/>
+
+                <RadioButton
+                    android:id="@+id/rb_theme_dark"
+                    style="@style/Widget.Inst.Seg.Item"
+                    android:layout_width="0dp"
+                    android:layout_height="@dimen/inst_space_48"
+                    android:layout_weight="1"
+                    android:text="@string/settings_theme_dark"/>
+            </RadioGroup>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_space_16"/>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_border_hairline"
+                android:layout_marginTop="@dimen/inst_space_24"
+                android:layout_marginBottom="@dimen/inst_space_24"
+                android:background="@color/inst_line"/>
+
+            <TextView
+                style="@style/Settings.Group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_group_about"
+                android:layout_marginBottom="@dimen/inst_space_16"/>
+
+            <TextView
+                android:id="@+id/tv_version"
+                style="@style/Settings.Heading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_version_default"
+                android:layout_marginBottom="@dimen/inst_space_24"/>
+
+            <Button
+                android:id="@+id/btn_open_debug_log"
+                style="@style/Settings.RowButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_features_debug_log"
+                android:textColor="@color/inst_text_2"
+                android:layout_marginBottom="@dimen/inst_space_4"/>
         </LinearLayout>
     </ScrollView>
 
@@ -789,6 +895,5 @@
         layout="@layout/bottom_nav"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom" />
-
+        android:layout_gravity="bottom"/>
 </FrameLayout>

@@ -23,3 +23,8 @@ server/.venv/
 .ruff_cache/
 .pytest_cache/
 __pycache__/
+.tools/
+coverage.json
+.coverage
+web/coverage/
+server/coverage.json

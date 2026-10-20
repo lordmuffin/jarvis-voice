@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/tv_sessions_footer"
+    style="@style/Inst.Text.Caption"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center"
+    android:minHeight="@dimen/inst_touch_target_android"
+    android:padding="@dimen/inst_space_16"
+    android:textColor="@color/inst_accent" />

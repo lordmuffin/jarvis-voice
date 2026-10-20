@@ -7,6 +7,7 @@ import type {
   Segment,
   ServerEvent,
   SessionDetail,
+  SessionSummary,
   Status,
 } from "./types";
 
@@ -35,12 +36,20 @@ export interface LiveState {
   connection: ConnectionState;
   /** Furthest stream time seen (ms); the clock suggestions expire against. */
   streamMs: number;
+  /** The session row (title, status, streaming) as of the latest REST snapshot or rename. */
+  session: SessionSummary | null;
+  /**
+   * A final segment that replaced a draft keeps the draft's row: its render key and the time it
+   * sorts by. Keyed by segment id; a segment with no draft is not listed (it is its own row).
+   */
+  slots: Record<string, { key: string; sortMs: number }>;
 }
 
 /** Events the reducer folds: every server message plus local lifecycle/bootstrap events. */
 export type Event =
   | ServerEvent
   | { type: "snapshot"; detail: SessionDetail }
+  | { type: "session"; session: SessionSummary }
   | { type: "connection"; state: ConnectionState };
 
 export const EMPTY_COPILOT: Copilot = {
@@ -63,6 +72,8 @@ export const initialState: LiveState = {
   acked: { mic: null, system: null },
   connection: "idle",
   streamMs: 0,
+  session: null,
+  slots: {},
 };
 
 const overlaps = (a: { start_ms: number; end_ms: number }, b: { start_ms: number; end_ms: number }) =>
@@ -96,16 +107,24 @@ function applyDraft(drafts: Draft[], msg: DraftSegmentMsg): Draft[] {
   return [...kept, incoming].sort(byStart);
 }
 
+export const draftKey = (d: Pick<Draft, "channel" | "start_ms">) => `draft-${d.channel}-${d.start_ms}`;
+
 function mergeSegments(state: LiveState, incoming: Segment[]): LiveState {
   let segments = state.segments;
   for (const s of incoming) segments = upsertSegment(segments, s);
   if (segments === state.segments) return state;
-  // Final segments replace drafts they overlap on the same channel.
+  // Final segments replace drafts they overlap on the same channel, and take over their row.
+  const slots = { ...state.slots };
+  for (const s of incoming) {
+    if (slots[s.id]) continue;
+    const replaced = state.drafts.find((d) => d.channel === s.channel && overlaps(s, d));
+    if (replaced) slots[s.id] = { key: draftKey(replaced), sortMs: replaced.start_ms };
+  }
   const drafts = state.drafts.filter(
     (d) => !incoming.some((s) => s.channel === d.channel && overlaps(s, d)),
   );
   const streamMs = Math.max(state.streamMs, ...incoming.map((s) => s.end_ms));
-  return { ...state, segments, drafts, streamMs };
+  return { ...state, segments, drafts, streamMs, slots };
 }
 
 function applyCopilot(state: LiveState, c: Copilot): LiveState {
@@ -118,6 +137,11 @@ function applyCopilot(state: LiveState, c: Copilot): LiveState {
 function addMarker(markers: Marker[], m: Marker): Marker[] {
   if (markers.some((x) => x.t_ms === m.t_ms && x.label === m.label)) return markers;
   return [...markers, { t_ms: m.t_ms, label: m.label }].sort((a, b) => a.t_ms - b.t_ms);
+}
+
+function summaryOf(s: SessionSummary): SessionSummary {
+  const { id, title, mode, status, channels, started_at, ended_at, local_only, streaming, owner } = s;
+  return { id, title, mode, status, channels, started_at, ended_at, local_only, streaming, owner };
 }
 
 /** Pure: `(state, event) => state`. Unknown events return the state unchanged. */
@@ -154,6 +178,8 @@ export function reduce(state: LiveState, event: Event): LiveState {
       return { ...state, error: { code: event.code, message: event.message } };
     case "connection":
       return { ...state, connection: event.state };
+    case "session":
+      return { ...state, session: summaryOf(event.session) };
     case "snapshot": {
       const d = event.detail;
       let next = mergeSegments(state, d.segments);
@@ -163,22 +189,35 @@ export function reduce(state: LiveState, event: Event): LiveState {
       const finalNote = d.final_note
         ? { path: d.final_note.path, title: d.final_note.title }
         : next.finalNote;
-      return { ...next, markers, finalNote };
+      return { ...next, markers, finalNote, session: summaryOf(d) };
     }
     default:
       return state;
   }
 }
 
-/** Transcript lines for display: authoritative segments plus the drafts not yet replaced. */
-export type Line =
-  | { kind: "segment"; start_ms: number; end_ms: number; speaker: "me" | "them"; text: string; id: string }
-  | { kind: "draft"; start_ms: number; end_ms: number; speaker: "me" | "them"; text: string; id: string };
+/**
+ * Transcript lines for display: authoritative segments plus the drafts not yet replaced. `key`
+ * is the row's identity (a final reuses its draft's), `sortMs` where it sits in the order.
+ */
+export type Line = {
+  kind: "segment" | "draft";
+  key: string;
+  sortMs: number;
+  start_ms: number;
+  end_ms: number;
+  speaker: "me" | "them";
+  text: string;
+  id: string;
+};
 
-export function transcriptLines(state: Pick<LiveState, "segments" | "drafts">): Line[] {
+export function transcriptLines(state: Pick<LiveState, "segments" | "drafts"> & Partial<Pick<LiveState, "slots">>): Line[] {
+  const slots = state.slots ?? {};
   const lines: Line[] = state.segments.map((s) => ({
     kind: "segment",
     id: s.id,
+    key: slots[s.id]?.key ?? s.id,
+    sortMs: slots[s.id]?.sortMs ?? s.start_ms,
     start_ms: s.start_ms,
     end_ms: s.end_ms,
     speaker: s.speaker,
@@ -187,7 +226,9 @@ export function transcriptLines(state: Pick<LiveState, "segments" | "drafts">): 
   for (const d of state.drafts) {
     lines.push({
       kind: "draft",
-      id: `draft-${d.channel}-${d.start_ms}`,
+      id: draftKey(d),
+      key: draftKey(d),
+      sortMs: d.start_ms,
       start_ms: d.start_ms,
       end_ms: d.end_ms,
       // The mic channel is the local speaker; system audio is everyone else.
@@ -195,5 +236,5 @@ export function transcriptLines(state: Pick<LiveState, "segments" | "drafts">): 
       text: d.text,
     });
   }
-  return lines.sort(byStart);
+  return lines.sort((a, b) => a.sortMs - b.sortMs);
 }

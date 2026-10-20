@@ -3,37 +3,45 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="20dp">
+    android:padding="@dimen/inst_space_24">
 
     <TextView
+        style="@style/Inst.Text.Label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="When I say:"
-        android:textColor="@color/jv_text2"
-        android:textSize="12sp"
-        android:layout_marginBottom="4dp" />
+        android:text="@string/chat_dict_when_i_say"
+        android:layout_marginBottom="@dimen/inst_space_4" />
 
     <EditText
         android:id="@+id/et_word_from"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="e.g. jarvis"
+        android:hint="@string/chat_dict_from_hint"
         android:inputType="text"
-        android:layout_marginBottom="16dp" />
+        android:layout_marginBottom="@dimen/inst_space_4" />
+
+    <!-- Shown only when editing: why the spoken word is greyed out. -->
+    <TextView
+        android:id="@+id/tv_word_from_locked"
+        style="@style/Inst.Text.Meta"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/chat_dict_locked"
+        android:layout_marginBottom="@dimen/inst_space_16"
+        android:visibility="gone" />
 
     <TextView
+        style="@style/Inst.Text.Label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Replace with:"
-        android:textColor="@color/jv_text2"
-        android:textSize="12sp"
-        android:layout_marginBottom="4dp" />
+        android:text="@string/chat_dict_replace_with"
+        android:layout_marginBottom="@dimen/inst_space_4" />
 
     <EditText
         android:id="@+id/et_word_to"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="e.g. Jarvis AI"
+        android:hint="@string/chat_dict_to_hint"
         android:inputType="text" />
 
 </LinearLayout>

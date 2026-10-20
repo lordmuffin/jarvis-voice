@@ -8,7 +8,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Protocol
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.bus import Bus
@@ -18,6 +18,7 @@ from jarvis_live.copilot.schema import CopilotDelta
 from jarvis_live.copilot.state import CopilotState
 from jarvis_live.copilot.transcript import load_lines, render_lines
 from jarvis_live.db.models import CopilotItem, SegmentRow
+from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import Copilot
@@ -115,8 +116,12 @@ class CopilotLoop:
             lines = await load_lines(
                 db, self.session_id, max(0, now_ms - int(self._cfg.copilot_window_s * 1000))
             )
+            title = (
+                await db.execute(select(SessionRow.title).where(SessionRow.id == self.session_id))
+            ).scalar_one_or_none()
         user = copilot_user(
             today=datetime.now(UTC).date().isoformat(),
+            title=title,
             state_json=self.state.prompt_json(),
             related="\n".join(f"- {r.title}: {r.snippet}" for r in self.state.related),
             transcript=render_lines(lines),
@@ -135,6 +140,8 @@ class CopilotLoop:
             return
         self._mark_llm(True)
 
+        if title is None and delta.title:
+            await self._name_session(delta.title)
         changed = self.state.apply(delta, now_ms, self._cfg.suggestion_default_ttl_s)
         if delta.topics:
             hits = await self._vault.search(
@@ -145,6 +152,19 @@ class CopilotLoop:
                 changed = self.state.set_related(hits) or changed
         if changed:
             await self._publish()
+
+    async def _name_session(self, title: str) -> None:
+        """Auto-name an untitled session. Never overwrites a title, including one the user set
+        while this cycle was in flight."""
+        async with self._sm() as db:
+            result = await db.execute(
+                update(SessionRow)
+                .where(SessionRow.id == self.session_id, SessionRow.title.is_(None))
+                .values(title=title)
+            )
+            await db.commit()
+        if result.rowcount:  # type: ignore[attr-defined]
+            self._log.info("session auto-named")
 
     def _mark_llm(self, ok: bool) -> None:
         if ok != self._llm_ok:

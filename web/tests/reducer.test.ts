@@ -26,10 +26,16 @@ const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   started_at: "2026-10-09T14:30:00Z",
   ended_at: null,
   local_only: false,
+  streaming: true,
   segments: [],
   copilot: { version: 0, notes: [], actions: [], decisions: [], suggestions: [], related: [] },
   markers: [],
   final_note: null,
+  owner: { id: "0b6f4a52-7c1d-4e8b-9f3a-5d2e1c0b9a87", display_name: "Alice Example" },
+  audio: { mic: true, system: false },
+  publication: null,
+  can_publish: false,
+  can_regenerate: false,
   ...over,
 });
 
@@ -230,6 +236,28 @@ describe("snapshot bootstrap (REST) merged with the live stream", () => {
     expect(s.finalNote).toEqual({ path: "n.md", title: "T" });
   });
 
+  it("tracks the session row: title, status and streaming follow each poll", () => {
+    let s = reduce(initialState, { type: "snapshot", detail: detail({ title: null }) });
+    expect(s.session).toMatchObject({ title: null, status: "live", streaming: true });
+    expect(s.session).not.toHaveProperty("segments");
+    s = reduce(s, {
+      type: "snapshot",
+      detail: detail({ title: "Budget review", streaming: false }),
+    });
+    expect(s.session).toMatchObject({ title: "Budget review", status: "live", streaming: false });
+    s = reduce(s, { type: "snapshot", detail: detail({ status: "finalizing", streaming: false }) });
+    expect(s.session?.status).toBe("finalizing");
+  });
+
+  it("applies a rename immediately", () => {
+    const s0 = reduce(initialState, { type: "snapshot", detail: detail() });
+    const { segments: _s, copilot: _c, markers: _m, final_note: _f, audio: _a, ...row } = detail();
+    const s = reduce(s0, { type: "session", session: { ...row, title: "Renamed" } });
+    expect(s.session?.title).toBe("Renamed");
+    expect(s.session?.owner.display_name).toBe("Alice Example");
+    expect(s.segments).toBe(s0.segments);
+  });
+
   it("does not mutate the previous state", () => {
     const before = JSON.stringify(initialState);
     fold([segment, draft, copilot, fixture<ServerEvent>("marker")]);
@@ -244,5 +272,46 @@ describe("connection", () => {
       { type: "connection", state: "open" },
     ]);
     expect(s.connection).toBe("open");
+  });
+});
+
+describe("a final replaces its draft in place", () => {
+  const mic = (id: string, start: number, end: number, text: string) =>
+    ({ ...(segment as object), type: "segment", id, channel: "mic", speaker: "me", start_ms: start, end_ms: end, text }) as ServerEvent;
+  const them = (id: string, start: number, end: number, text: string) =>
+    ({ ...(segment as object), type: "segment", id, channel: "system", speaker: "them", start_ms: start, end_ms: end, text }) as ServerEvent;
+  const mdraft = (start: number, end: number, text: string) =>
+    ({ ...(draft as object), type: "draft_segment", channel: "mic", start_ms: start, end_ms: end, text, final: false }) as ServerEvent;
+
+  it("gives the final the draft's key, so the row is reused", () => {
+    let s = fold([mdraft(1000, 2000, "let's pilot on the")]);
+    const [before] = transcriptLines(s);
+    s = reduce(s, mic("seg_a", 1000, 2600, "Let's pilot on the k3s2 cluster."));
+    const [after] = transcriptLines(s);
+    expect(before!.key).toMatch(/^draft-/);
+    expect(after!.kind).toBe("segment");
+    expect(after!.key).toBe(before!.key);
+    expect(after!.text).toBe("Let's pilot on the k3s2 cluster.");
+  });
+
+  it("keeps the draft's place in the order when the final starts a little later", () => {
+    // Them speaks at 1500 while Me's draft started at 1000; the final starts at 1600 but still overlaps it.
+    let s = fold([them("seg_t", 1500, 1700, "Sure."), mdraft(1000, 1800, "send me the")]);
+    expect(transcriptLines(s).map((l) => l.text)).toEqual(["send me the", "Sure."]);
+    s = reduce(s, mic("seg_m", 1600, 2400, "Send me the pricing."));
+    expect(transcriptLines(s).map((l) => l.text)).toEqual(["Send me the pricing.", "Sure."]);
+  });
+
+  it("uses the segment id as the key when there was no draft", () => {
+    const s = fold([mic("seg_x", 500, 900, "hello")]);
+    expect(transcriptLines(s)[0]!.key).toBe("seg_x");
+  });
+
+  it("keeps the slot across a repeated snapshot of the same final", () => {
+    let s = fold([mdraft(1000, 2000, "let's")]);
+    s = reduce(s, mic("seg_a", 1000, 2600, "Let's go."));
+    const key = transcriptLines(s)[0]!.key;
+    s = reduce(s, mic("seg_a", 1000, 2600, "Let's go, team."));
+    expect(transcriptLines(s)[0]!.key).toBe(key);
   });
 });

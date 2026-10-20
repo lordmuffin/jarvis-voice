@@ -36,6 +36,8 @@ import com.lordmuffin.jarvisvoice.chat.SessionMeta
 import com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
+import com.lordmuffin.jarvisvoice.ui.InstButtonKind
+import com.lordmuffin.jarvisvoice.ui.setInstKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -87,7 +89,7 @@ class VoiceChatActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_voice_chat)
-        supportActionBar?.title = "Kai Chat"
+        supportActionBar?.title = getString(R.string.chat_title)
         BottomNav.wire(this, BottomNav.Tab.CHAT)
 
         rvMessages   = findViewById(R.id.rv_messages)
@@ -296,18 +298,14 @@ class VoiceChatActivity : AppCompatActivity() {
 
     private fun applyModeUi() {
         if (voiceMode) {
-            btnModeVoice.setBackgroundResource(R.drawable.pill_background_accent)
-            btnModeVoice.setTextColor(getColor(R.color.jv_text))
-            btnModeType.setBackgroundResource(R.drawable.pill_background_dim)
-            btnModeType.setTextColor(getColor(R.color.jv_text2))
+            btnModeVoice.setInstKind(InstButtonKind.PRIMARY)
+            btnModeType.setInstKind(InstButtonKind.SECONDARY)
             btnTalk.visibility     = View.VISIBLE
             llTypeInput.visibility = View.GONE
             dismissKeyboard()
         } else {
-            btnModeType.setBackgroundResource(R.drawable.pill_background_accent)
-            btnModeType.setTextColor(getColor(R.color.jv_text))
-            btnModeVoice.setBackgroundResource(R.drawable.pill_background_dim)
-            btnModeVoice.setTextColor(getColor(R.color.jv_text2))
+            btnModeType.setInstKind(InstButtonKind.PRIMARY)
+            btnModeVoice.setInstKind(InstButtonKind.SECONDARY)
             btnTalk.visibility     = View.GONE
             llTypeInput.visibility = View.VISIBLE
         }
@@ -339,7 +337,7 @@ class VoiceChatActivity : AppCompatActivity() {
 
     private fun updateModelButton(model: String) {
         val label = if (model.length > 14) model.take(13) + "…" else model
-        btnModel.text = "$label ▾"
+        btnModel.text = getString(R.string.chat_model_label, label)
     }
 
     // ── Observe ───────────────────────────────────────────────────────────────
@@ -366,10 +364,10 @@ class VoiceChatActivity : AppCompatActivity() {
             viewModel.status.collect { status ->
                 tvStatus.text = when (status) {
                     ChatStatus.IDLE      -> ""
-                    ChatStatus.LISTENING -> "Listening…"
-                    ChatStatus.THINKING  -> "Thinking…"
+                    ChatStatus.LISTENING -> getString(R.string.chat_status_listening)
+                    ChatStatus.THINKING  -> getString(R.string.chat_status_thinking)
                     ChatStatus.TOOL_CALL -> tvStatus.text  // toolStatusText flow owns this
-                    ChatStatus.SPEAKING  -> "Speaking…"
+                    ChatStatus.SPEAKING  -> getString(R.string.chat_status_speaking)
                 }
 
                 if (conversationActive) updateTalkButton(status)
@@ -411,14 +409,14 @@ class VoiceChatActivity : AppCompatActivity() {
             viewModel.contextTokens.collect { tokens ->
                 pbContext.progress = tokens.coerceAtMost(pbContext.max)
                 tvContextTokens.text = when {
-                    tokens >= 1000 -> "${"%.1f".format(tokens / 1000.0)}k tkns"
-                    else           -> "$tokens tkns"
+                    tokens >= 1000 -> getString(R.string.chat_tokens_k, "%.1f".format(tokens / 1000.0))
+                    else           -> getString(R.string.chat_tokens, tokens)
                 }
                 // Colour the bar: green → yellow → red as context fills
                 val tint = when {
-                    tokens < 16_000 -> getColor(R.color.jv_accent)
-                    tokens < 28_000 -> getColor(R.color.jv_warning)
-                    else            -> getColor(R.color.jv_error)
+                    tokens < 16_000 -> getColor(R.color.inst_accent)
+                    tokens < 28_000 -> getColor(R.color.inst_warning)
+                    else            -> getColor(R.color.inst_error)
                 }
                 pbContext.progressTintList =
                     android.content.res.ColorStateList.valueOf(tint)
@@ -429,16 +427,16 @@ class VoiceChatActivity : AppCompatActivity() {
     private fun updateTalkButton(currentStatus: ChatStatus = viewModel.status.value) {
         when {
             !conversationActive -> {
-                btnTalk.setBackgroundResource(R.drawable.pill_background_accent)
-                btnTalk.text  = "🎙  Talk to Kai"
+                btnTalk.setInstKind(InstButtonKind.PRIMARY)
+                btnTalk.text  = getString(R.string.chat_talk_to_kai)
             }
             currentStatus == ChatStatus.SPEAKING -> {
-                btnTalk.setBackgroundResource(R.drawable.pill_background_stop)
-                btnTalk.text  = "🎙  Interrupt Kai"
+                btnTalk.setInstKind(InstButtonKind.DANGER)
+                btnTalk.text  = getString(R.string.chat_talk_interrupt)
             }
             else -> {
-                btnTalk.setBackgroundResource(R.drawable.pill_background_stop)
-                btnTalk.text  = "⏹  End Conversation"
+                btnTalk.setInstKind(InstButtonKind.DANGER)
+                btnTalk.text  = getString(R.string.chat_talk_end)
             }
         }
         btnTalk.alpha     = 1.0f
@@ -499,11 +497,11 @@ class VoiceChatActivity : AppCompatActivity() {
             if (msg.role == "user") {
                 lp.gravity = Gravity.END
                 tvMsg.setBackgroundResource(R.drawable.chat_bubble_user)
-                tvMsg.setTextColor(getColor(R.color.jv_bg))
+                tvMsg.setTextColor(getColor(R.color.inst_on_accent))
             } else {
                 lp.gravity = Gravity.START
                 tvMsg.setBackgroundResource(R.drawable.chat_bubble_ai)
-                tvMsg.setTextColor(getColor(R.color.jv_text))
+                tvMsg.setTextColor(getColor(R.color.inst_text))
             }
             tvMsg.layoutParams = lp
         }
@@ -558,19 +556,24 @@ class VoiceChatActivity : AppCompatActivity() {
     }
 
     private fun showRenameDialog(id: String, current: String) {
-        val et = EditText(this).apply {
+        val et = androidx.appcompat.widget.AppCompatEditText(this).apply {
             setText(current)
             selectAll()
-            setPadding(48, 32, 48, 8)
+            setPadding(
+                resources.getDimensionPixelSize(R.dimen.app_chat_dialog_pad_h),
+                resources.getDimensionPixelSize(R.dimen.app_chat_dialog_pad_top),
+                resources.getDimensionPixelSize(R.dimen.app_chat_dialog_pad_h),
+                resources.getDimensionPixelSize(R.dimen.app_chat_dialog_pad_bottom),
+            )
         }
         AlertDialog.Builder(this)
-            .setTitle("Rename conversation")
+            .setTitle(R.string.chat_rename_title)
             .setView(et)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.chat_rename_save) { _, _ ->
                 val name = et.text.toString().trim()
                 if (name.isNotEmpty()) viewModel.renameSession(id, name)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.chat_cancel, null)
             .show()
     }
 
@@ -601,10 +604,10 @@ class VoiceChatActivity : AppCompatActivity() {
             val s = sessions[pos]
             val isActive = s.id == activeId
             h.tvName.text    = s.name
-            h.tvCount.text   = "${s.messageCount} msgs"
-            h.tvPreview.text = s.preview.ifBlank { "No messages yet" }
+            h.tvCount.text   = getString(R.string.chat_session_msgs, s.messageCount)
+            h.tvPreview.text = s.preview.ifBlank { getString(R.string.chat_session_no_messages) }
             h.tvName.setTextColor(
-                getColor(if (isActive) R.color.jv_accent else R.color.jv_text)
+                getColor(if (isActive) R.color.inst_accent else R.color.inst_text)
             )
             h.itemView.setOnClickListener { onSwitch(s.id) }
             h.itemView.setOnLongClickListener {
@@ -615,16 +618,16 @@ class VoiceChatActivity : AppCompatActivity() {
 
         private fun showSessionActionMenu(s: SessionMeta, anchor: View) {
             val popup = PopupMenu(this@VoiceChatActivity, anchor)
-            popup.menu.add(0, 0, 0, "Rename")
-            popup.menu.add(0, 1, 1, "Delete")
+            popup.menu.add(0, 0, 0, getString(R.string.chat_menu_rename))
+            popup.menu.add(0, 1, 1, getString(R.string.chat_menu_delete))
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     0 -> onRename(s.id, s.name)
                     1 -> AlertDialog.Builder(this@VoiceChatActivity)
-                            .setTitle("Delete conversation?")
-                            .setMessage("\"${s.name}\" will be permanently removed.")
-                            .setPositiveButton("Delete") { _, _ -> onDelete(s.id) }
-                            .setNegativeButton("Cancel", null)
+                            .setTitle(R.string.chat_delete_title)
+                            .setMessage(getString(R.string.chat_delete_message, s.name))
+                            .setPositiveButton(R.string.chat_delete_confirm) { _, _ -> onDelete(s.id) }
+                            .setNegativeButton(R.string.chat_cancel, null)
                             .show()
                 }
                 true

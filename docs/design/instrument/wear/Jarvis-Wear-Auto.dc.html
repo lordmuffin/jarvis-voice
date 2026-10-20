@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wear OS and Android Auto</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.w{width:240px;height:240px;border-radius:50%;background:var(--inst-bg);border:1px solid var(--inst-line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:28px;overflow:hidden}
+.wb{width:72px;height:72px;border-radius:50%;border:0;display:inline-flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer}
+.wb--go{background:var(--inst-accent);color:var(--inst-on-accent)}
+.wb--stop{background:var(--inst-surface-2);border:1.5px solid var(--inst-accent);color:var(--inst-text)}
+.wl{font-size:14px;line-height:1.3}
+.car{width:800px;height:480px;background:var(--inst-bg);border:1px solid var(--inst-line);display:flex;flex-direction:column}
+.car-hd{height:64px;display:flex;align-items:center;gap:12px;padding:0 24px;background:var(--inst-surface)}
+.car-bd{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:24px}
+.car-ft{display:flex;gap:16px;justify-content:center;padding:0 24px 28px}
+.car-ft .i-btn{min-width:160px;height:64px;font-size:18px}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1840px; height: 1240px; padding: 40px; display: flex; flex-direction: column; gap: 40px;">
+
+  <section aria-label="Wear OS" class="i-stack" style="gap: 12px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Wear OS · 240 round</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 32px;">
+      <div class="i-stack" style="gap: 8px; align-items: center;"><span class="t-micro t-2">Ready</span>
+        <div class="w"><span class="i-badge i-badge--live">Live</span><button type="button" class="wb wb--go" aria-label="Start capture">🎙</button><span class="wl">Tap to capture</span></div></div>
+      <div class="i-stack" style="gap: 8px; align-items: center;"><span class="t-micro t-2">Recording</span>
+        <div class="w" style="box-shadow: inset 0 0 0 2px var(--inst-accent);"><span class="t-mono" style="font-size: 22px; font-weight: 700;">0:42</span><button type="button" class="wb wb--stop" aria-label="Stop capture">⏹</button><span class="wl" style="display: inline-flex; align-items: center; gap: 6px;"><span class="i-dot i-breathe" style="width: 8px; height: 8px; background: var(--inst-accent);"></span>Recording…</span></div></div>
+      <div class="i-stack" style="gap: 8px; align-items: center;"><span class="t-micro t-2">Saved, waiting for Wi‑Fi</span>
+        <div class="w"><span class="i-sq" style="width: 12px; height: 12px; color: var(--inst-text);"></span><span class="wl">Saved. It syncs on Wi‑Fi.</span><span class="t-mono t-meta t-2">0:42 · 1 waiting</span></div></div>
+      <div class="i-stack" style="gap: 8px; align-items: center;"><span class="t-micro t-2">Synced</span>
+        <div class="w"><span style="font-size: 32px; color: var(--inst-success);">✓</span><span class="wl">Captured</span><span class="t-meta t-2">Sent to Jarvis.</span></div></div>
+      <div class="i-stack" style="gap: 8px; align-items: center;"><span class="t-micro t-2">Sync failed</span>
+        <div class="w"><span style="font-size: 32px; color: var(--inst-warning);">⚑</span><span class="wl">Sync failed.</span><span class="t-meta t-2">Jarvis retries on Wi‑Fi.</span></div></div>
+      <div class="i-stack" style="gap: 8px; align-items: center;"><span class="t-micro t-2">⚙ Settings</span>
+        <div class="w" style="justify-content: flex-start; padding-top: 36px; gap: 6px;">
+          <span class="t-label">Settings</span>
+          <button type="button" class="i-btn i-btn--secondary" style="width: 170px; height: 48px; flex-direction: column; gap: 0; border-radius: 24px;"><span class="t-meta t-2" style="font-weight: 400;">Server URL</span><span class="t-mono" style="font-size: 11px;">live.apj.dev</span></button>
+          <button type="button" class="i-btn i-btn--secondary" style="width: 170px; height: 48px; flex-direction: column; gap: 0; border-radius: 24px;"><span class="t-meta t-2" style="font-weight: 400;">API key</span><span class="t-mono" style="font-size: 11px;">••••3f9c</span></button>
+        </div></div>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px; padding-top: 8px;">
+      <span class="t-micro t-2">Complication · monochrome</span>
+      <span style="display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: 24px; border: 1.25px solid var(--inst-text); font: 700 10px var(--inst-mono);"><span style="width: 6px; height: 6px; border-radius: 50%; background: var(--inst-text);"></span>0:42</span>
+      <span style="display: inline-flex; align-items: center; height: 14px; padding: 0 5px; border-radius: 24px; border: 1.25px solid var(--inst-text); font-size: 8px; font-weight: 700; letter-spacing: .1em;">LIVE</span>
+      <span style="display: inline-flex; align-items: center; height: 14px; padding: 0 5px; border-radius: 24px; background: var(--inst-text); color: var(--inst-bg); font-size: 8px; font-weight: 700; letter-spacing: .1em;">LAB</span>
+      <span class="t-caption t-2">Recording uses the menu-bar pill. In monochrome the channel is told by shape: LAB filled, LIVE outlined.</span>
+    </div>
+  </section>
+
+  <section aria-label="Android Auto" class="i-stack" style="gap: 12px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Android Auto · message template, 800 × 480</h2>
+    <div style="display: flex; flex-wrap: wrap; gap: 32px;">
+      <div class="i-stack" style="gap: 8px;"><span class="t-micro t-2">Ready</span>
+        <div class="car">
+          <div class="car-hd"><span style="font-size: 20px; font-weight: 700;">Jarvis</span><span class="i-badge i-badge--live">Live</span></div>
+          <div class="car-bd"><span style="font-size: 24px;">🎙</span><p style="font-size: 22px;">Tap Record to speak to Jarvis.</p></div>
+          <div class="car-ft"><button type="button" class="i-btn i-btn--primary">Record</button></div>
+        </div></div>
+      <div class="i-stack" style="gap: 8px;"><span class="t-micro t-2">Listening</span>
+        <div class="car">
+          <div class="car-hd"><span style="font-size: 20px; font-weight: 700;">Jarvis</span><span class="i-badge i-badge--live">Live</span></div>
+          <div class="car-bd"><span class="i-live" style="height: 52px; padding: 0 20px; gap: 14px;"><span class="i-dot i-breathe" style="width: 10px; height: 10px;"></span><span class="lbl" style="font-size: 10px;">LISTENING</span><span class="i-meter" style="height: 18px;"><span></span><span></span><span></span></span></span><p style="font-size: 22px;">Listening…</p></div>
+          <div class="car-ft"><button type="button" class="i-btn i-btn--secondary">Mute</button><button type="button" class="i-btn i-btn--secondary">■ Stop</button></div>
+        </div></div>
+      <div class="i-stack" style="gap: 8px;"><span class="t-micro t-2">Processing</span>
+        <div class="car">
+          <div class="car-hd"><span style="font-size: 20px; font-weight: 700;">Jarvis</span><span class="i-badge i-badge--lab">Lab</span></div>
+          <div class="car-bd"><span class="i-spin" style="width: 24px; height: 24px; border-width: 3px;"></span><p style="font-size: 22px;">Processing…</p></div>
+          <div class="car-ft"><button type="button" class="i-btn i-btn--secondary">■ Stop</button></div>
+        </div></div>
+    </div>
+    <span class="t-caption t-2">The car host draws the template. Jarvis supplies only the title, badge text, message, icon and up to three actions, so the type sizes here are the host's.</span>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1840,"height":1240}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

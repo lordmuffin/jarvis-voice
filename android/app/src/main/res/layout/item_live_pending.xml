@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/inst_space_4"
+    android:background="@drawable/inst_row_surface"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="@dimen/inst_space_12">
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tv_pending_title"
+            style="@style/Inst.Text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_pending_state"
+            style="@style/Inst.Text.Meta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/inst_space_4" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btn_pending_upload"
+        style="@style/Widget.Inst.Button.Secondary.Sm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:minHeight="@dimen/inst_touch_target_android"
+        android:text="@string/live_upload" />
+
+    <Button
+        android:id="@+id/btn_pending_delete"
+        style="@style/Widget.Inst.Button.Danger.Sm"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/inst_space_4"
+        android:minHeight="@dimen/inst_touch_target_android"
+        android:text="@string/live_delete" />
+</LinearLayout>

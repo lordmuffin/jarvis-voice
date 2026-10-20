@@ -1,4 +1,6 @@
 import asyncio
+import importlib.metadata
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -7,19 +9,38 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import sessions, stream
+from jarvis_live.api import account, auth, publishing, sessions, stream, work_items
+from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
-from jarvis_live.db.session import make_engine, make_sessionmaker
+from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
+from jarvis_live.dispatch.githubapp import AppTokens
+from jarvis_live.dispatch.kube import KubeClient
+from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
 from jarvis_live.ingest.hub import IngestHub
+from jarvis_live.ingest.upload import Uploads
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
+from jarvis_live.oidc import OIDCClient
 from jarvis_live.orchestrator import Orchestrator
+from jarvis_live.publish.github import GitHubClient
+from jarvis_live.publish.service import PublishService
 from jarvis_live.retention import run_retention_loop
 from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
+from jarvis_live.workitems.dispatch import Dispatcher
+from jarvis_live.workitems.service import WorkItemService
+
+log = logging.getLogger(__name__)
+
+
+def _version() -> str:
+    try:
+        return importlib.metadata.version("jarvis-live")
+    except importlib.metadata.PackageNotFoundError:
+        return "unknown"
 
 
 def find_web_dist(cfg: Settings) -> Path | None:
@@ -40,7 +61,11 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
 
     @app.get("/{path:path}", include_in_schema=False)
     async def web(path: str) -> FileResponse:
-        if path == "v1" or path.startswith("v1/") or path in {"healthz", "readyz"}:
+        if (
+            path in {"v1", "auth"}
+            or path.startswith(("v1/", "auth/"))
+            or path in {"healthz", "readyz"}
+        ):
             raise HTTPException(404)
         candidate = (dist / path).resolve()
         if path and candidate.is_file() and candidate.is_relative_to(dist):
@@ -62,13 +87,23 @@ def create_app(
     stt: STTBackend | None = None,
     llm: LLM | None = None,
     notifier: Notifier | None = None,
+    github: GitHubClient | None = None,
+    dispatcher: Dispatcher | None = None,
+    kube: Kube | None = None,
+    app_tokens: Tokens | None = None,
 ) -> FastAPI:
-    """``stt``, ``llm`` and ``notifier`` override what is built from settings (tests). The
-    copilot and finalizer run only if an LLM is configured or injected."""
+    """``stt``, ``llm``, ``notifier``, ``github`` and ``dispatcher`` override what is built
+    from settings (tests). The copilot and finalizer run only if an LLM is configured or
+    injected; notes are published only if ``publish_repo`` and ``github_token_file`` are set.
+    Work items are found only with ``work_items_enabled`` and an LLM. With
+    ``dispatch_enabled``, approved items run as Kubernetes Jobs (``kube`` and ``app_tokens``
+    stand in for the cluster and the GitHub App in tests)."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         cfg = settings or get_settings()
+        if cfg.auto_migrate:
+            await asyncio.to_thread(run_migrations, cfg.database_url)  # env.py owns a loop
         engine = make_engine(cfg.database_url)
         sm = make_sessionmaker(engine)
         bus = Bus()
@@ -85,6 +120,51 @@ def create_app(
             )
             backend = WhisperBackend(pool)
             tasks.append(asyncio.create_task(pool.run_probe_loop()))
+        gh = github
+        if gh is None and cfg.publish_enabled:
+            if client is None:
+                client = httpx.AsyncClient()
+            assert cfg.github_token_file is not None
+            gh = GitHubClient(
+                client, api=cfg.github_api, repo=cfg.publish_repo, token_file=cfg.github_token_file
+            )
+        publisher = PublishService(cfg, sm, gh)
+        dispatch: DispatchService | None = None
+        runner: Dispatcher | None = dispatcher
+        if cfg.dispatch_enabled and runner is None:
+            if problems := dispatch_config_problems(cfg, own_tokens=app_tokens is None):
+                # Off, loudly, not a crash loop: e.g. lab enabled before its secrets exist.
+                log.error("dispatch is enabled but stays off: %s", "; ".join(problems))
+            else:
+                if client is None:
+                    client = httpx.AsyncClient()
+                dispatch = DispatchService(
+                    cfg,
+                    sm,
+                    kube or KubeClient.in_cluster(cfg.dispatch_namespace),
+                    app_tokens
+                    or AppTokens(
+                        client,
+                        api=cfg.github_api,
+                        app_id=cfg.github_app_id,
+                        installation_id=cfg.github_app_installation_id,
+                        key_file=cfg.github_app_key_file or Path(),
+                    ),
+                    notifier
+                    or GotifyNotifier(
+                        cfg.gotify_url,
+                        cfg.gotify_token_file,
+                        client,
+                        title_prefix=cfg.notify_title_prefix,
+                    ),
+                )
+                runner = dispatch
+                tasks.append(asyncio.create_task(dispatch.run_loop()))
+        work = WorkItemService(cfg, sm, runner)
+        if publisher.enabled and cfg.publish_reconcile_interval_s > 0:
+            tasks.append(
+                asyncio.create_task(publisher.run_reconcile_loop(cfg.publish_reconcile_interval_s))
+            )
         orchestrator: Orchestrator | None = None
         if (
             llm is not None or cfg.litellm_base_url
@@ -113,7 +193,14 @@ def create_app(
                     cfg.litellm_base_url, client, api_key_file=cfg.litellm_api_key_file
                 ),
                 vault,
-                notifier or GotifyNotifier(cfg.gotify_url, cfg.gotify_token_file, client),
+                notifier
+                or GotifyNotifier(
+                    cfg.gotify_url,
+                    cfg.gotify_token_file,
+                    client,
+                    title_prefix=cfg.notify_title_prefix,
+                ),
+                on_final=publisher.on_note_ready,
             )
         hub = IngestHub(
             cfg,
@@ -127,11 +214,24 @@ def create_app(
             orchestrator.attach(hub)
             await orchestrator.recover()
             tasks.append(asyncio.create_task(orchestrator.run_watchdog()))
+        oidc: OIDCClient | None = None
+        if cfg.oidc_issuer:
+            if client is None:
+                client = httpx.AsyncClient()
+            oidc = OIDCClient(
+                cfg.oidc_issuer, cfg.oidc_client_id, cfg.oidc_client_secret_file, client
+            )
+        app.state.oidc = oidc
         app.state.settings = cfg
         app.state.sessionmaker = sm
         app.state.bus = bus
         app.state.tickets = TicketStore(ttl_s=60)
         app.state.hub = hub
+        uploads = app.state.uploads = Uploads(hub)
+        app.state.orchestrator = orchestrator
+        app.state.publishing = publisher
+        app.state.work_items = work
+        app.state.dispatch = dispatch
         tasks.append(
             asyncio.create_task(
                 run_retention_loop(
@@ -145,6 +245,8 @@ def create_app(
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            await publisher.shutdown()
+            await uploads.shutdown()
             if orchestrator is not None:
                 await orchestrator.shutdown()
             await hub.shutdown()
@@ -153,20 +255,31 @@ def create_app(
             await engine.dispose()
 
     app = FastAPI(title="Jarvis Live", lifespan=lifespan)
+    app.include_router(auth.router)
+    app.include_router(account.router)
     app.include_router(sessions.router)
+    app.include_router(publishing.router)
+    app.include_router(work_items.router)
     app.include_router(stream.router)
+
+    cfg = settings or get_settings()
+    environment = cfg.environment
+    version = _version()
+    commit = cfg.git_sha.strip()[:7]
+    app.state.family_apps = load_family_apps(cfg)  # cached for the life of the process
 
     @app.get("/healthz")
     async def healthz() -> dict[str, str]:
-        """Liveness: the process is up."""
-        return {"status": "ok"}
+        """Liveness: the process is up. Also says which release channel, version and commit
+        this is, so lab and live can be told apart (and checked after a deploy)."""
+        return {"status": "ok", "environment": environment, "version": version, "commit": commit}
 
     @app.get("/readyz")
     async def readyz() -> dict[str, str]:
         """Readiness: always ok until dependencies (DB, STT) are wired in."""
         return {"status": "ok"}
 
-    dist = find_web_dist(settings or get_settings())
+    dist = find_web_dist(cfg)
     if dist is not None:
         _mount_web(app, dist)
 

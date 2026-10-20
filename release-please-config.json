@@ -4,7 +4,13 @@
   "include-v-in-tag": false,
   "tag-separator": "-v",
   "packages": {
-    "server": { "release-type": "python", "package-name": "server", "component": "server" },
+    "server": {
+      "release-type": "python", "package-name": "server", "component": "server",
+      "extra-files": [
+        { "type": "generic", "path": "deploy/k8s/base/deployment.yaml" },
+        { "type": "toml", "path": "uv.lock", "jsonpath": "$.package[?(@.name.value=='jarvis-live')].version" }
+      ]
+    },
     "macos": { "release-type": "simple", "package-name": "macos", "component": "macos" },
     "android": { "release-type": "simple", "package-name": "android", "component": "android" }
   }

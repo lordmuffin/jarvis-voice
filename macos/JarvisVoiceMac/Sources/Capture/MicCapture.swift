@@ -17,11 +17,14 @@ final class MicCapture: @unchecked Sendable {
     private var deviceUID: String?
     private var configObserver: NSObjectProtocol?
     private var monoFormat: AVAudioFormat?
+    private var wantsVoiceProcessing = true
 
-    /// Starts capture. Throws if the device cannot be opened.
-    func start(deviceUID: String?, handler: @escaping Handler) throws {
+    /// Starts capture. Throws if the device cannot be opened. Pass `voiceProcessing: false` for raw
+    /// input (dictation), so a second capture never adds its own echo cancellation or ducking.
+    func start(deviceUID: String?, voiceProcessing: Bool = true, handler: @escaping Handler) throws {
         self.handler = handler
         self.deviceUID = deviceUID
+        wantsVoiceProcessing = voiceProcessing
         try startEngine()
     }
 
@@ -46,13 +49,17 @@ final class MicCapture: @unchecked Sendable {
             )
         }
 
-        do {
-            try input.setVoiceProcessingEnabled(true)
-            input.voiceProcessingOtherAudioDuckingConfiguration = AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
-                enableAdvancedDucking: false, duckingLevel: .min
-            )
-            voiceProcessingActive = true
-        } catch {
+        if wantsVoiceProcessing {
+            do {
+                try input.setVoiceProcessingEnabled(true)
+                input.voiceProcessingOtherAudioDuckingConfiguration = AVAudioVoiceProcessingOtherAudioDuckingConfiguration(
+                    enableAdvancedDucking: false, duckingLevel: .min
+                )
+                voiceProcessingActive = true
+            } catch {
+                voiceProcessingActive = false
+            }
+        } else {
             voiceProcessingActive = false
         }
 

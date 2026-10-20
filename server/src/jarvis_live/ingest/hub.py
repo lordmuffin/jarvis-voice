@@ -1,6 +1,8 @@
 """Registry of live-session ingest state (single replica; Postgres is the source of truth)."""
 
 import asyncio
+import contextlib
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -9,6 +11,7 @@ from datetime import UTC, datetime
 from fastapi import WebSocket
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from starlette.websockets import WebSocketDisconnect
 
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
@@ -19,6 +22,13 @@ from jarvis_live.logging_setup import session_logger
 from jarvis_live.stt.backend import STTBackend
 
 
+async def close_producer(ws: WebSocket, code: int) -> None:
+    """Close a producer connection that may already be dead: after a network drop the server
+    can still hold the old socket when the client reconnects or the session ends."""
+    with contextlib.suppress(RuntimeError, WebSocketDisconnect):
+        await ws.close(code=code)
+
+
 @dataclass
 class SessionIngest:
     session_id: uuid.UUID
@@ -26,6 +36,8 @@ class SessionIngest:
     store: AudioStore
     pipeline: SessionPipeline
     producer: WebSocket | None = None
+    # Fed from an uploaded file rather than a producer (see ingest/upload.py).
+    uploading: bool = False
     ended: asyncio.Event = field(default_factory=asyncio.Event)
 
 
@@ -79,6 +91,18 @@ class IngestHub:
     def live_sessions(self) -> list[SessionIngest]:
         return list(self._states.values())
 
+    def is_streaming(self, session_id: uuid.UUID) -> bool:
+        """True while a producer is connected and sending audio. A ``live`` session without
+        this is waiting for its producer to reconnect, or for the idle watchdog to end it. An upload
+        counts as streaming until its audio is transcribed."""
+        state = self._states.get(session_id)
+        if state is None:
+            return False
+        return state.uploading or (
+            state.producer is not None
+            and time.monotonic() - state.pipeline.last_audio_at < self._cfg.streaming_stale_s
+        )
+
     async def end(self, session_id: uuid.UUID, *, caller: WebSocket | None = None) -> bool:
         """Move a live session to ``finalizing`` and drain its pipeline. Idempotent.
 
@@ -101,7 +125,7 @@ class IngestHub:
             await state.pipeline.finish()
             await state.pipeline.close()
             if state.producer is not None and state.producer is not caller:
-                await state.producer.close(code=4410)
+                await close_producer(state.producer, 4410)
         if transitioned:
             log.info("session ended")
             if self._on_end is not None:

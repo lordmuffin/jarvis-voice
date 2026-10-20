@@ -1,49 +1,73 @@
-import { duration, titleOf, when } from "../format";
+import { audioUrl } from "../api";
+import { Column, Player, Recordings as RecordingList } from "../ds/components";
+import { duration } from "../format";
+import { NoNote } from "../jarvis/NoNote";
+import { SessionHeader } from "../jarvis/SessionHeader";
+import { Timeline } from "../jarvis/Timeline";
 import { initialState, reduce, transcriptLines } from "../reducer";
-import type { SessionDetail } from "../types";
-import { NoteView } from "./NoteView";
+import type { Channel, SessionDetail, SessionSummary } from "../types";
+import { NotePane } from "./NotePane";
 import { Panes } from "./Panes";
-import { StatusChip } from "./StatusChip";
-import { Transcript } from "./Transcript";
+import { SessionTitle } from "./SessionTitle";
+import { SessionWorkItems } from "./WorkItems";
 
-export function PastSession({ detail }: { detail: SessionDetail }) {
+// Same names as the transcript: the mic is the local speaker, system audio everyone else.
+const CHANNEL_LABEL: Record<Channel, string> = { mic: "Me", system: "Them" };
+
+/** One player per channel that has a recording on the server. */
+export function Recordings({ detail }: { detail: SessionDetail }) {
+  const channels = detail.channels.filter((c) => detail.audio?.[c]);
+  if (channels.length === 0) return null;
+  return (
+    <RecordingList>
+      {channels.map((c) => (
+        <Player key={c} label={CHANNEL_LABEL[c]} labelId={`rec-${c}`} them={c === "system"} data-testid="recording">
+          <audio controls preload="none" src={audioUrl(detail.id, c)} aria-labelledby={`rec-${c}`} />
+        </Player>
+      ))}
+    </RecordingList>
+  );
+}
+
+export function PastSession({
+  detail,
+  onRenamed,
+  onChanged,
+}: {
+  detail: SessionDetail;
+  onRenamed: (s: SessionSummary) => void;
+  /** The note or its publication changed (the server's updated session). */
+  onChanged: (d: SessionDetail) => void;
+}) {
   const state = reduce(initialState, { type: "snapshot", detail });
   const lines = transcriptLines(state);
   const note = detail.final_note;
 
-  const noteContent = note?.markdown ? (
-    <NoteView markdown={note.markdown} />
-  ) : note ? (
-    <p class="muted">The note “{note.title}” is no longer available on the server.</p>
-  ) : detail.status === "failed" ? (
-    <p class="error">This session failed before a note was written.</p>
-  ) : detail.local_only ? (
-    <p class="muted">Local-only session: no note was generated.</p>
+  const noteContent = note ? (
+    <NotePane detail={detail} onChanged={onChanged} />
   ) : (
-    <p class="muted">No note was written for this session.</p>
+    <NoNote reason={detail.status === "failed" ? "failed" : detail.local_only ? "local" : "none"} />
   );
 
   return (
-    <section>
-      <div class="session-head">
-        <h1 class="h1">{titleOf(detail)}</h1>
-        <StatusChip status={detail.status} />
-        <span class="meta">
-          {when(detail.started_at)}
-          {duration(detail.started_at, detail.ended_at) &&
-            ` · ${duration(detail.started_at, detail.ended_at)}`}
-        </span>
-      </div>
+    <Column wide>
+      <SessionHeader
+        session={detail}
+        suffix={duration(detail.started_at, detail.ended_at) || undefined}
+        title={<SessionTitle session={detail} onRenamed={onRenamed} />}
+      />
+      <Recordings detail={detail} />
+      <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <Panes
         panes={[
           { id: "note", label: "Note", content: noteContent },
           {
             id: "transcript",
             label: "Transcript",
-            content: <Transcript lines={lines} markers={state.markers} />,
+            content: <Timeline label="Transcript text" lines={lines} markers={state.markers} />,
           },
         ]}
       />
-    </section>
+    </Column>
   );
 }

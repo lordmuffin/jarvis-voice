@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mac dictation HUD</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.cell{display:flex;flex-direction:column;gap:6px;min-width:0}
+.scr{height:160px;background:var(--inst-surface);border:1px solid var(--inst-line);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:8px;padding:0 16px 20px}
+.hud{height:52px;padding:0 20px;gap:12px;box-shadow:var(--inst-shadow-2)}
+.hud .lbl{font-size:10px}
+.hud .i-dot{width:10px;height:10px}
+.hud .i-meter{height:18px}
+.hud .tail{font-size:14px;max-width:300px;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(to right,transparent,currentColor 32px);mask-image:linear-gradient(to right,transparent,currentColor 32px)}
+.hud .msg{font-size:13px}
+.key{display:inline-flex;align-items:center;height:20px;padding:0 6px;border:1px solid var(--inst-control);border-bottom-width:2px;border-radius:var(--inst-radius-tail);background:var(--inst-surface-2);font-family:var(--inst-mono);font-size:11px;color:var(--inst-text)}
+.mode{background:var(--inst-surface-2);padding:12px;display:flex;flex-direction:column;gap:8px}
+.keys{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--inst-text-2)}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1440px; height: 700px; padding: 32px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px; align-content: start;">
+
+  <div class="cell">
+    <span class="t-micro t-2">1 · Listening</span>
+    <div class="scr">
+      <span class="i-live hud" role="status" aria-label="Dictation listening"><span class="i-dot i-breathe"></span><span class="lbl">LISTENING</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+      <span class="t-meta t-2">Hold Right ⌥ to talk · Esc cancels</span>
+    </div>
+  </div>
+
+  <div class="cell">
+    <span class="t-micro t-2">2 · Transcribing</span>
+    <div class="scr">
+      <span class="i-live hud" role="status" aria-label="Dictation transcribing" style="border-color: var(--inst-control);"><span class="i-spin"></span><span class="lbl" style="color: var(--inst-text-2);">TRANSCRIBING</span></span>
+    </div>
+  </div>
+
+  <div class="cell">
+    <span class="t-micro t-2">3 · Live text · last words only</span>
+    <div class="scr">
+      <span class="i-live hud" role="status" aria-label="Dictation: pricing and we'll size it against the DGX node"><span class="i-dot i-breathe"></span><span class="tail">…pricing and we'll size it against the DGX node</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+    </div>
+  </div>
+
+  <div class="cell">
+    <span class="t-micro t-2">4 · Copied</span>
+    <div class="scr">
+      <span class="i-live hud" role="status"><span class="lbl">✓ COPIED</span><span class="t-meta t-2">· <span class="t-mono">14</span> words</span></span>
+    </div>
+  </div>
+
+  <div class="cell">
+    <span class="t-micro t-2">5 · Didn't catch that</span>
+    <div class="scr">
+      <span class="i-live hud" role="status" style="border-color: var(--inst-error);"><span class="lbl" style="color: var(--inst-error);">✕ DIDN'T CATCH THAT</span></span>
+    </div>
+  </div>
+
+  <div class="cell">
+    <span class="t-micro t-2">6 · Cancelled · Esc</span>
+    <div class="scr">
+      <span class="i-live hud" role="status" style="border-color: var(--inst-control);"><span class="lbl" style="color: var(--inst-text-2);">CANCELLED</span></span>
+      <span class="t-meta t-2">Nothing was copied.</span>
+    </div>
+  </div>
+
+  <div class="cell">
+    <span class="t-micro t-2">7 · Microphone busy</span>
+    <div class="scr">
+      <span class="i-live hud" role="status" style="border-color: var(--inst-warning);"><span class="lbl" style="color: var(--inst-warning);">⚑</span><span class="msg">A Jarvis Live session is using the microphone.</span></span>
+      <span class="t-meta t-2">Dictation works again when the session stops.</span>
+    </div>
+  </div>
+
+  <div class="cell" style="grid-column: span 2;">
+    <span class="t-micro t-2">Trigger · a right modifier key, set in Settings</span>
+    <div style="height: 160px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; align-content: start;">
+      <div class="mode">
+        <span class="t-tag" style="color: var(--inst-accent);">Hold to talk</span>
+        <span class="keys"><span class="key">Right ⌥</span> hold</span>
+        <span class="t-caption t-2">Hold while you talk. Let go to finish.</span>
+      </div>
+      <div class="mode">
+        <span class="t-tag" style="color: var(--inst-accent);">Tap-tap</span>
+        <span class="keys"><span class="key">Right ⌥</span> start · <span class="key">Right ⌥</span> finish</span>
+        <span class="t-caption t-2">Tap once to start. Tap again to finish.</span>
+      </div>
+      <div class="mode">
+        <span class="t-tag" style="color: var(--inst-accent);">Double-tap</span>
+        <span class="keys"><span class="key">Right ⌥</span> ×2 start · <span class="key">Right ⌥</span> finish</span>
+        <span class="t-caption t-2">Double-tap to start. Tap once to finish.</span>
+      </div>
+      <div class="i-block" style="grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; padding: 8px 12px;">
+        <span class="key">Esc</span><span class="t-caption">Cancels in every mode. Nothing is copied or pasted.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":700}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

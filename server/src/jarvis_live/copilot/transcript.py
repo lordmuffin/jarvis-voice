@@ -15,6 +15,7 @@ class Line:
     end_ms: int
     speaker: str  # "me" | "them"
     text: str
+    segment_id: uuid.UUID | None = None
 
 
 def mmss(ms: int) -> str:
@@ -61,6 +62,28 @@ async def load_lines(db: AsyncSession, session_id: uuid.UUID, from_ms: int = 0) 
         if not text:
             continue
         (finals if r.source == "final" else drafts).append(
-            Line(r.start_ms, r.end_ms, r.speaker, text)
+            Line(r.start_ms, r.end_ms, r.speaker, text, r.id)
         )
     return merge_lines(finals, drafts)
+
+
+async def load_final_lines(
+    db: AsyncSession, session_id: uuid.UUID, after_ms: int = -1
+) -> list[Line]:
+    """Final segments only (their ids are stable, unlike drafts'), ending after ``after_ms``."""
+    rows = (
+        await db.execute(
+            select(SegmentRow)
+            .where(
+                SegmentRow.session_id == session_id,
+                SegmentRow.source == "final",
+                SegmentRow.end_ms > after_ms,
+            )
+            .order_by(SegmentRow.start_ms, SegmentRow.created_at)
+        )
+    ).scalars()
+    out: list[Line] = []
+    for r in rows:
+        if text := " ".join(r.text.split()):
+            out.append(Line(r.start_ms, r.end_ms, r.speaker, text, r.id))
+    return out

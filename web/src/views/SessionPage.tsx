@@ -1,7 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, getSession } from "../api";
-import { navigate, signOut, token } from "../store";
+import { Banner, Loading } from "../ds/components";
 import type { SessionDetail } from "../types";
+import { Link } from "./Link";
 import { LiveSession } from "./LiveSession";
 import { PastSession } from "./PastSession";
 
@@ -11,12 +12,11 @@ export function SessionPage({ id }: { id: string }) {
 
   useEffect(() => {
     let stopped = false;
-    getSession(token.value ?? "", id).then(
+    getSession(id).then(
       (d) => !stopped && setDetail(d),
       (e) => {
-        if (e instanceof ApiError && e.status === 401) return signOut();
-        if (!stopped)
-          setError(e instanceof ApiError && e.status === 404 ? "Session not found." : "Couldn't load session.");
+        if (stopped || (e instanceof ApiError && e.status === 401)) return;
+        setError(e instanceof ApiError && e.status === 404 ? "Session not found." : "Couldn't load session.");
       },
     );
     return () => {
@@ -24,33 +24,20 @@ export function SessionPage({ id }: { id: string }) {
     };
   }, [id]);
 
-  const back = (
-    <a
-      class="back"
-      href="/"
-      onClick={(e) => {
-        e.preventDefault();
-        navigate("/");
-      }}
-    >
-      ← Sessions
-    </a>
-  );
+  const back = <Link href="/">← Sessions</Link>;
 
   if (error)
     return (
       <>
         {back}
-        <p class="error" role="alert">
-          {error}
-        </p>
+        <Banner variant="error">{error}</Banner>
       </>
     );
   if (!detail)
     return (
       <>
         {back}
-        <p class="muted">Loading…</p>
+        <Loading />
       </>
     );
 
@@ -61,7 +48,12 @@ export function SessionPage({ id }: { id: string }) {
       {inProgress ? (
         <LiveSession key="live" detail={detail} onFinished={setDetail} />
       ) : (
-        <PastSession key="past" detail={detail} />
+        <PastSession
+          key="past"
+          detail={detail}
+          onRenamed={(s) => setDetail({ ...detail, ...s })}
+          onChanged={setDetail}
+        />
       )}
     </>
   );

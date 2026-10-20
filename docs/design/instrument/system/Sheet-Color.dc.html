@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Instrument colour tokens</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div class="inst" data-theme="light" style="width: 1440px; min-height: 1640px; padding: 48px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px;">
+    <div class="i-stack" style="gap: 6px;">
+      <span class="t-label">Instrument · v0.1.0 · 2 · System sheet</span>
+      <h1 class="t-display">Colour</h1>
+      <p class="t-body-lg t-2" style="max-width: 720px;">Every app uses these tokens and only these. Both themes are first-class and follow the system appearance. Web adds a manual toggle.</p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; width: 560px;">
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="t-tag" style="color: var(--inst-accent);">One accent</span>
+        <span class="t-caption">Teal marks the one primary action, live state, links, focus and your own voice. Nothing else is teal.</span>
+      </div>
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="t-tag" style="color: var(--inst-warning);">State is state</span>
+        <span class="t-caption">Green, amber and red mean state only and always come with a word or glyph.</span>
+      </div>
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="t-tag t-2">Charts stay apart</span>
+        <span class="t-caption">Series never use the accent, state or speaker colours. More than 4 series: use small multiples.</span>
+      </div>
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="t-tag t-2">Channels are fixed</span>
+        <span class="t-caption">Badge colours are the same in both themes, so LIVE never looks like LAB anywhere.</span>
+      </div>
+    </div>
+  </div>
+
+  <sc-for list="{{groups}}" as="g" hint-placeholder-count="6">
+    <section style="display: flex; flex-direction: column; gap: 4px;">
+      <div style="display: grid; grid-template-columns: 220px 200px 200px minmax(0, 1fr) 150px; gap: 16px; padding: 0 12px 4px; align-items: end;">
+        <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">{{g.title}}</h2>
+        <span class="t-label">Dark</span>
+        <span class="t-label">Light</span>
+        <span class="t-label">Use</span>
+        <span class="t-label" style="text-align: right;">Contrast d / l</span>
+      </div>
+      <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="4">
+        <div class="i-block" style="display: grid; grid-template-columns: 220px 200px 200px minmax(0, 1fr) 150px; gap: 16px; align-items: center; padding: 8px 12px;">
+          <span class="t-mono" style="font-size: 12px; font-weight: 700;">{{r.name}}</span>
+          <span style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 56px; height: 28px; background: {{r.d}}; box-shadow: inset 0 0 0 1px rgba(127,127,127,.35);"></span>
+            <span class="t-mono t-meta">{{r.d}}</span>
+          </span>
+          <span style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 56px; height: 28px; background: {{r.l}}; box-shadow: inset 0 0 0 1px rgba(127,127,127,.35);"></span>
+            <span class="t-mono t-meta">{{r.l}}</span>
+          </span>
+          <span class="t-caption t-2">{{r.use}}</span>
+          <span class="t-mono t-meta" style="text-align: right;">{{r.ratio}}</span>
+        </div>
+      </sc-for>
+    </section>
+  </sc-for>
+
+  <section style="display: flex; flex-direction: column; gap: 8px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding: 0 12px;">Series beside the accent, both themes</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px;">
+      <sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+        <div class="inst" data-theme="{{th.id}}" style="background: var(--inst-surface); padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="t-label">{{th.name}}</span>
+            <span class="i-btn i-btn--primary i-btn--sm" aria-hidden="true">Primary</span>
+          </div>
+          <div style="display: flex; align-items: flex-end; gap: 6px; height: 96px; border-bottom: 1px solid var(--inst-control); position: relative;">
+            <sc-for list="{{demo}}" as="b" hint-placeholder-count="12">
+              <span style="flex: 1; height: {{b.h}}px; background: {{b.c}};"></span>
+            </sc-for>
+            <span style="position: absolute; left: 0; right: 0; bottom: 54px; border-top: 1.5px dashed var(--inst-text);"></span>
+          </div>
+          <div class="i-legend">
+            <span><span class="i-sw" style="background: var(--inst-chart-1);"></span>Series 1</span>
+            <span><span class="i-sw" style="background: var(--inst-chart-2);"></span>Series 2</span>
+            <span><span class="i-sw" style="background: var(--inst-chart-3);"></span>Series 3</span>
+            <span><span class="i-sw" style="background: var(--inst-chart-4);"></span>Other</span>
+            <span><span class="i-sw--mean"></span>Mean</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const T = (name, d, l, use, ratio) => ({ name, d, l, use, ratio });
+    const hs = [60, 44, 72, 52, 64, 38, 70, 48, 58, 66, 42, 54];
+    const cs = ['var(--inst-chart-1)', 'var(--inst-chart-2)', 'var(--inst-chart-3)', 'var(--inst-chart-4)'];
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      demo: hs.map((h, i) => ({ h, c: cs[Math.floor(i / 3)] })),
+      groups: [
+        { title: 'Surfaces', rows: [
+          T('bg', '#0D1117', '#F6F8FA', 'Window ground. Gaps between blocks.', '—'),
+          T('surface', '#161B22', '#FFFFFF', 'Rows, panels, header, tables, dialogs.', '—'),
+          T('surface-2', '#1C2230', '#EAEEF2', 'Controls on surface, chips, segmented track, the AI bubble.', '—'),
+          T('inverse', '#E6EDF3', '#1F2328', 'Toasts, tooltips and the Viewing banner.', '—'),
+          T('line', '#21262D', '#D8DEE4', 'Dividers and table rules. Decorative only.', '—'),
+          T('control', '#6E7681', '#8C959F', 'Field and secondary-button outlines, chart axes.', '3.8 / 3.0')
+        ] },
+        { title: 'Text', rows: [
+          T('text', '#E6EDF3', '#1F2328', 'Titles, body, values.', '14.6 / 15.8'),
+          T('text-2', '#8B949E', '#57606A', 'Labels, meta, help text, timestamps.', '5.7 / 6.4'),
+          T('text-disabled', '#6E7681', '#8C959F', 'Disabled controls only. Always with a reason nearby.', '3.8 / 3.0'),
+          T('on-inverse', '#0D1117', '#FFFFFF', 'Text on inverse.', '15.8 / 15.8')
+        ] },
+        { title: 'Accent', rows: [
+          T('accent', '#00F5D4', '#00796B', 'Primary action, live, links, focus ring, your voice.', '13.5 / 5.3'),
+          T('on-accent', '#04130F', '#FFFFFF', 'Text on accent. Light theme changed to white for AA.', '13.6 / 5.3'),
+          T('accent-tint', '#0F2E2B', '#E0F2EF', 'Selected row, row just saved.', '—'),
+          T('accent-on-inverse', '#00695C', '#5EEAD4', 'Links and ✓ inside toasts and the Viewing banner.', '5.6 / 9.9')
+        ] },
+        { title: 'State', rows: [
+          T('success · tint', '#3FB950', '#1A7F37', '✓ Done, saved, fresh. Tints: #12261A / #DAFBE1.', '7.5 / 5.1'),
+          T('warning · tint', '#D29922', '#9A6700', 'In progress, getting stale, LAB reasons. Tints: #2B2312 / #FFF8DB.', '7.5 / 4.9'),
+          T('error · tint', '#F85149', '#CF222E', '✕ Failed, stale, destructive. Tints: #33191B / #FFEBE9.', '5.7 / 5.4')
+        ] },
+        { title: 'Speaker', rows: [
+          T('them', '#7B2FD4', '#7B2FD4', 'Fill for the second speaker tag. White text on it.', '6.6 / 6.6'),
+          T('them-text', '#B392F0', '#7B2FD4', 'Second speaker as text. The first speaker is accent.', '6.9 / 6.6')
+        ] },
+        { title: 'Channel badge', rows: [
+          T('channel-live', '#F85149', '#F85149', 'LIVE: latest release. Same in both themes.', '5.7 on-channel'),
+          T('channel-lab', '#D29922', '#D29922', 'LAB: latest commit on main.', '7.5 on-channel'),
+          T('channel-other', '#8B949E', '#8B949E', 'Any other channel, by name: DEV, PR 214.', '6.1 on-channel'),
+          T('on-channel', '#0D1117', '#0D1117', 'Badge text, always dark.', '—')
+        ] },
+        { title: 'Chart series', rows: [
+          T('chart-1', '#58A6FF', '#0969DA', 'First series. The value bar.', '6.9 / 5.2'),
+          T('chart-2', '#F0883E', '#BC4C00', 'Second series.', '6.9 / 5.0'),
+          T('chart-3', '#DB61A2', '#BF3989', 'Third series.', '5.2 / 5.0'),
+          T('chart-4', '#8B949E', '#6E7781', 'Other, comparison, previous period.', '5.7 / 4.6')
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

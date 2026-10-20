@@ -1,5 +1,161 @@
 # Changelog
 
+## [1.15.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.1...android-v1.15.0) (2026-10-15)
+
+
+### Features
+
+* design-system guardrails (web, Android, Swift) with CI ([8151724](https://github.com/lordmuffin/jarvis-voice/commit/8151724d4f3bb2988bf6ee6b154082c3c61d1d68))
+* design-system guardrails (web, Android, Swift) with CI ([7236e56](https://github.com/lordmuffin/jarvis-voice/commit/7236e566d2a33d15554b4d4b4675356b5135ec2e))
+
+## [1.14.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.0...android-v1.14.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* align copy and vocabulary with the Instrument design system ([492b090](https://github.com/lordmuffin/jarvis-voice/commit/492b0906ddf2fae45a3e25d340fb9e36637a1dcb))
+* **android:** align copy with Instrument vocabulary ([341a869](https://github.com/lordmuffin/jarvis-voice/commit/341a8693d69c9868302b8cdcb71c66c048b8647c))
+
+## [1.14.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.13.0...android-v1.14.0) (2026-10-14)
+
+
+### Features
+
+* **android:** adopt Instrument; shared pill with errors, Record as home, fold layouts ([4750f64](https://github.com/lordmuffin/jarvis-voice/commit/4750f64fabec004e30aed24d6a888a3643be4580))
+* **android:** launcher opens Record; Me/Them labels, connection chips, copilot order ([d3b160c](https://github.com/lordmuffin/jarvis-voice/commit/d3b160c9d98d8ec90ba4b8ab1ac2e7e77ea86adb))
+* **android:** shared dictation pill with Error state ([a413f87](https://github.com/lordmuffin/jarvis-voice/commit/a413f878792ce3c3ba20aec6a2f9b897a54eec35))
+* **android:** two-pane Record and Session Detail at 840dp ([6aa192d](https://github.com/lordmuffin/jarvis-voice/commit/6aa192d5d717392fe408e61273cf9f41f6edefef))
+
+
+### Bug Fixes
+
+* **android:** repair the main build broken by the Wear/Instrument merge ([60b898c](https://github.com/lordmuffin/jarvis-voice/commit/60b898cc269ab85e2087658fb06e359b7a713d10))
+* **android:** repair the Wear resources and car screen after the merge ([c1f43b7](https://github.com/lordmuffin/jarvis-voice/commit/c1f43b76e1572bf9c48ea4a90947fe86c978e59f))
+
+## [1.13.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.1...android-v1.13.0) (2026-10-14)
+
+
+### Features
+
+* **android:** adopt Instrument design system on Wear and Android Auto ([791a960](https://github.com/lordmuffin/jarvis-voice/commit/791a9607a0551ff0fb164d12dc7ea0b2ec1c8c68))
+* **android:** adopt Instrument design system on Wear and Android Auto ([9a119fd](https://github.com/lordmuffin/jarvis-voice/commit/9a119fd5ef32306ff2fcae2c20d2b8a826b5d4a5))
+
+
+### Bug Fixes
+
+* **android:** remove double hyphen from Wear drawable comments ([badadd0](https://github.com/lordmuffin/jarvis-voice/commit/badadd0dc94cbaf7c2c576814c45d637da542a68))
+* **android:** remove double hyphen from Wear drawable comments ([65c98fc](https://github.com/lordmuffin/jarvis-voice/commit/65c98fce153f8766d545ecef85d404946472fa10))
+
+## [1.12.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.0...android-v1.12.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **android:** point the Record tab's missing-model hint at Settings → STT Model ([77becc0](https://github.com/lordmuffin/jarvis-voice/commit/77becc0f33bc9ba981ce4e675d024f423eb403f8))
+
+## [1.12.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.1...android-v1.12.0) (2026-10-14)
+
+
+### Features
+
+* **android:** show the server's LAB/LIVE channel tag ([80d503e](https://github.com/lordmuffin/jarvis-voice/commit/80d503e048bfc55504a1a5f95d0f3a3ebb3eb46c))
+* **android:** show the server's LAB/LIVE channel tag ([782ddf3](https://github.com/lordmuffin/jarvis-voice/commit/782ddf3b49220b45ad0ce544d308398fc3b65d2c))
+
+## [1.11.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.0...android-v1.11.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **android:** take the app version from version.txt ([8e36818](https://github.com/lordmuffin/jarvis-voice/commit/8e368188ef42ded1f72f7577491434683659ffa6))
+* **android:** take the app version from version.txt ([3922aca](https://github.com/lordmuffin/jarvis-voice/commit/3922acaab11c5ee57a2095141b09111d2f214263))
+
+## [1.11.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.10.0...android-v1.11.0) (2026-10-11)
+
+
+### Features
+
+* **server:** promote live channel to live.apj.dev ([7b61b02](https://github.com/lordmuffin/jarvis-voice/commit/7b61b02a7f68c625cfe431ebca9530cb24edb0ef))
+* **server:** promote live channel to live.apj.dev ([122483a](https://github.com/lordmuffin/jarvis-voice/commit/122483a8f88f570dcfe99554fb83a5d67eb60de5))
+
+## [1.10.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.2...android-v1.10.0) (2026-10-11)
+
+
+### Features
+
+* **android:** turn on Local only automatically away from home ([9849075](https://github.com/lordmuffin/jarvis-voice/commit/9849075c87fd7ede9346ee35f00a18ef9789f9af))
+* turn on Local only automatically away from home (Android + macOS) ([a33ef5d](https://github.com/lordmuffin/jarvis-voice/commit/a33ef5dc6a07334cd11658233773b96d7c06077f))
+
+## [1.9.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.1...android-v1.9.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* **server,android:** fix Pocket-ID admin group name and say which account sign-in refused ([e813152](https://github.com/lordmuffin/jarvis-voice/commit/e813152c72f42dfe75fe5d7b0f9df1a22e576c69))
+* **server,android:** say which account Jarvis Live refused at sign-in ([dc74a90](https://github.com/lordmuffin/jarvis-voice/commit/dc74a90676414ce798b9e54f017b1b91233bfa63))
+
+## [1.9.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.0...android-v1.9.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **android:** keep Record history reachable when signed out ([143c276](https://github.com/lordmuffin/jarvis-voice/commit/143c27683f3fc50587a67abcd2f7348f0a63090a))
+* **android:** keep Record history reachable when signed out ([23eeec9](https://github.com/lordmuffin/jarvis-voice/commit/23eeec9185a295e69f26f6491b6f176505f21821))
+
+## [1.9.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.8.0...android-v1.9.0) (2026-10-11)
+
+
+### Features
+
+* **android:** merge Live into the Record tab ([a7eb5ba](https://github.com/lordmuffin/jarvis-voice/commit/a7eb5ba11a902a740118ba4738012dc6b4c2fa7f))
+* **android:** merge Live into the Record tab ([1861226](https://github.com/lordmuffin/jarvis-voice/commit/186122656986be21356ec45f1d4afa42d36dd7ed))
+
+## [1.8.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.4...android-v1.8.0) (2026-10-11)
+
+
+### Features
+
+* **android:** Pocket-ID sign-in and session history ([c8e1212](https://github.com/lordmuffin/jarvis-voice/commit/c8e12125de86499d14f1bfdf88ba8576512e62a9))
+* multiple users with Pocket-ID sign-in ([23fbd10](https://github.com/lordmuffin/jarvis-voice/commit/23fbd10e48aa1bd06524d57aae47cc337e103ef7))
+
+## [1.7.4](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.3...android-v1.7.4) (2026-10-10)
+
+
+### Documentation
+
+* **android:** document the sherpa-onnx setup step and version pinning ([bf79def](https://github.com/lordmuffin/jarvis-voice/commit/bf79def647d120a2d6f43b4ef4a158aaa537bdf7))
+
+## [1.7.3](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.2...android-v1.7.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** run Live drafts on CPU Whisper and log each decode ([dae62e4](https://github.com/lordmuffin/jarvis-voice/commit/dae62e4a491708a32ed7b69c82b1abcc0143d862))
+* **android:** run Live drafts on CPU Whisper and log each decode ([ee5ae6f](https://github.com/lordmuffin/jarvis-voice/commit/ee5ae6f6713fd341a3135eafda942bc489949938))
+
+## [1.7.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.1...android-v1.7.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** unload the enhancement LLM during a Live session ([f656ee6](https://github.com/lordmuffin/jarvis-voice/commit/f656ee602b22ed57167f2996f4146968cf0f4c51))
+* **android:** unload the enhancement LLM during a Live session ([b3fab5e](https://github.com/lordmuffin/jarvis-voice/commit/b3fab5efc6197f76f05d95c64bcf8d770613c5e6))
+
+## [1.7.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.0...android-v1.7.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** keep a Live session failure from crashing the app ([f4c9589](https://github.com/lordmuffin/jarvis-voice/commit/f4c9589eccdbea52a2737f5b0d4e35756cf5f355))
+* Live tab crash on Android and phone sessions missing from the web dashboard ([9e79195](https://github.com/lordmuffin/jarvis-voice/commit/9e791957999a8ede809497bb25c976cba30fcacf))
+
+## [1.7.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.6.0...android-v1.7.0) (2026-10-10)
+
+
+### Features
+
+* **android:** Live session recording, on-device transcription and streaming ([971237f](https://github.com/lordmuffin/jarvis-voice/commit/971237faffba6437bc39d39543e78220d8e52437))
+* **android:** Live session recording, on-device transcription and streaming ([b2738e9](https://github.com/lordmuffin/jarvis-voice/commit/b2738e92206c86a924e79104864ca67c51e27d82))
+
 ## [1.6.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.5.1...android-v1.6.0) (2026-10-09)
 
 

@@ -3,7 +3,6 @@
 import asyncio
 import json
 import logging
-import os
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
@@ -26,20 +25,27 @@ from jarvis_live.copilot.prompts import (
 )
 from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.copilot.transcript import Line, load_lines, render_lines
-from jarvis_live.db.models import CopilotItem, Device
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User, WorkItem
 from jarvis_live.db.models import Session as SessionRow
-from jarvis_live.finalize.render import NoteMeta, render_filename, render_note
+from jarvis_live.finalize.outbox import (
+    FINAL_NOTE_KIND,
+    note_file,
+    outbox_dir,
+    overwrite_atomic,
+    owned_by,
+)
+from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
-from jarvis_live.vault.index import VaultContext
+from jarvis_live.vault.index import NullVault, VaultContext
+from jarvis_live.workitems.template import session_url
 
 log = logging.getLogger(__name__)
 
 CHARS_PER_TOKEN = 4
 MAX_RELATED = 8
-FINAL_NOTE_KIND = "final_note"
 
 
 def estimate_tokens(text: str) -> int:
@@ -78,35 +84,46 @@ class Finalizer:
 
     @property
     def outbox(self) -> Path:
-        return self._cfg.outbox_dir or self._cfg.data_dir / "outbox"
+        return outbox_dir(self._cfg)
 
-    async def run(self, session_id: uuid.UUID) -> FinalResult | None:
-        """Finalize one session. Never raises: failures set status ``failed`` and notify."""
+    async def run(
+        self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
+    ) -> FinalResult | None:
+        """Finalize one session. Never raises: failures set status ``failed`` and notify.
+
+        ``replace`` is the outbox path of an earlier note of this session (a regeneration): if
+        the new note lands under a different name, the old file is removed. ``notify=False``
+        skips the "note ready" push (a regeneration the user asked for and is watching)."""
         slog = session_logger(__name__, session_id)
         try:
-            result = await self._finalize(session_id)
+            result = await self._finalize(session_id, replace=replace, notify=notify)
         except asyncio.CancelledError:
             raise  # shutdown: stays ``finalizing`` and is retried on the next start
-        except Exception as e:
+        except Exception:
             slog.exception("finalizer failed")
             await self._set_status(session_id, "failed")
-            await self._notifier.notify(
+            await self._notify_owner(
+                session_id,
                 "Jarvis: note failed",
-                f"Could not finalize session `{session_id}`: {e!r}",
+                f"Could not finalize session {session_id}. Try again from the sessions list.",
                 8,
                 self._session_url(session_id),
             )
             return None
         return result
 
-    async def _finalize(self, session_id: uuid.UUID) -> FinalResult | None:
+    async def _finalize(
+        self, session_id: uuid.UUID, *, replace: str | None, notify: bool
+    ) -> FinalResult | None:
         async with self._sm() as db:
             row = await db.get(SessionRow, session_id)
             if row is None or row.status != "finalizing":
                 return None
-            device = await db.get(Device, row.device_id)
+            device = await db.get(Device, row.device_id) if row.device_id else None
+            user = await db.get(User, row.user_id)
             lines = await load_lines(db, session_id)
             related_names = await self._shown_related(db, session_id)
+            work_items = await self._work_items(db, session_id)
         if row.local_only:
             await self._set_status(session_id, "done")  # never leaves the device's control
             return None
@@ -123,33 +140,55 @@ class Finalizer:
 
         candidates = "\n".join(f"- {n}" for n in related_names)
         note = await self._summarize(row.mode, today, candidates, lines)
-        note.related = await self._resolve_related(note.related, related_names)
+        # The vault is the owner's own: other users' notes link nothing from it.
+        vault = self._vault if row.user_id == OWNER_USER_ID else NullVault()
+        note.related = await self._resolve_related(vault, note.related, related_names)
 
         meta = NoteMeta(
             created=created,
             session_id=str(session_id),
             device=device.name if device else "unknown",
+            user=user.display_name if user else None,
             mode=row.mode,
             duration_minutes=max(1, round(duration_s / 60)),
         )
-        markdown = render_note(note, meta, lines)
+        markdown = render_note(note, meta, lines, work_items)
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
+        # Each user's notes go to their own folder; the owner's (no folder) to the outbox root.
+        subdir = user.notes_subdir if user else None
         written = await asyncio.to_thread(
-            write_atomic, self.outbox, name, markdown, str(session_id)
+            write_atomic,
+            self.outbox / subdir if subdir else self.outbox,
+            name,
+            markdown,
+            str(session_id),
         )
+        if subdir:
+            written = f"{subdir}/{written}"
+        if replace and replace != written:
+            await asyncio.to_thread(self._remove_old, replace, str(session_id))
 
         await self._persist_final(session_id, written, note.title)
+        await self._fill_title(session_id, note.title)
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
-        await self._notifier.notify(
-            "Jarvis: note ready",
-            f"**{note.title}**\n\n{note.summary.strip()}",
-            5,
-            self._session_url(session_id),
-        )
+        if notify:
+            await self._notify_owner(
+                session_id,
+                "Jarvis: note ready",
+                f"**{note.title}**\n\n{note.summary.strip()}",
+                5,
+                self._session_url(session_id),
+            )
         return FinalResult(written, note.title)
+
+    def _remove_old(self, name: str, session_id: str) -> None:
+        """Drop a regenerated session's previous note, but never another session's file."""
+        path = note_file(self.outbox, name)
+        if path is not None and owned_by(path, session_id):
+            path.unlink(missing_ok=True)
 
     # --- LLM --------------------------------------------------------------------------------
 
@@ -206,14 +245,43 @@ class Finalizer:
                 stems[Path(h["path"]).stem] = None
         return list(stems)
 
-    async def _resolve_related(self, suggested: list[str], shown: list[str]) -> list[str]:
+    async def _resolve_related(
+        self, vault: VaultContext, suggested: list[str], shown: list[str]
+    ) -> list[str]:
         """Wikilinks only to notes that exist: what the copilot showed, plus any model
         suggestion the vault index can resolve."""
         out: dict[str, None] = dict.fromkeys(shown)
         for name in suggested:
-            if stem := await self._vault.resolve_name(name):
+            if stem := await vault.resolve_name(name):
                 out[stem] = None
         return list(out)[:MAX_RELATED]
+
+    async def _work_items(self, db: AsyncSession, session_id: uuid.UUID) -> list[NoteWorkItem]:
+        """Drafts and approved work items, as the dashboard has them now."""
+        rows = (
+            await db.execute(
+                select(WorkItem)
+                .where(WorkItem.session_id == session_id, WorkItem.state.in_(("draft", "approved")))
+                .order_by(WorkItem.created_at, WorkItem.ref)
+            )
+        ).scalars()
+        sid = str(session_id)
+        return [
+            NoteWorkItem(
+                title=r.title,
+                repo=r.repo,
+                state=r.state,
+                intent=r.intent,
+                criteria=list(r.acceptance_criteria),
+                sources=[
+                    (int(s["start_ms"]), session_url(self._cfg, sid, int(s["start_ms"])))
+                    for s in r.sources
+                ],
+                review_url=session_url(self._cfg, sid),
+                prompt=r.prompt_md if r.state == "approved" else None,
+            )
+            for r in rows
+        ]
 
     # --- persistence ------------------------------------------------------------------------
 
@@ -228,6 +296,17 @@ class Finalizer:
             )
             await db.commit()
 
+    async def _fill_title(self, session_id: uuid.UUID, title: str) -> None:
+        """A session still untitled at the end (e.g. the copilot never ran) takes the note's
+        title. A user's or the copilot's title is kept."""
+        async with self._sm() as db:
+            await db.execute(
+                update(SessionRow)
+                .where(SessionRow.id == session_id, SessionRow.title.is_(None))
+                .values(title=title)
+            )
+            await db.commit()
+
     async def _set_status(self, session_id: uuid.UUID, status: str) -> None:
         async with self._sm() as db:
             await db.execute(
@@ -236,6 +315,21 @@ class Finalizer:
                 .values(status=status)
             )
             await db.commit()
+
+    async def _notify_owner(
+        self, session_id: uuid.UUID, title: str, message: str, priority: int, url: str | None
+    ) -> None:
+        """Gotify reaches the deployment owner's phone, so only their sessions notify: other
+        users' note titles and summaries are not the owner's to read."""
+        try:
+            async with self._sm() as db:
+                user_id = await db.scalar(
+                    select(SessionRow.user_id).where(SessionRow.id == session_id)
+                )
+        except Exception:  # e.g. the database outage that failed the note: tell the owner
+            user_id = OWNER_USER_ID
+        if user_id == OWNER_USER_ID:
+            await self._notifier.notify(title, message, priority, url)
 
     def _session_url(self, session_id: uuid.UUID) -> str | None:
         base = self._cfg.public_base_url.rstrip("/")
@@ -251,18 +345,8 @@ def write_atomic(outbox: Path, name: str, content: str, session_id: str) -> str:
     stem, suffix = Path(name).stem, Path(name).suffix
     target = outbox / name
     n = 1
-    while target.exists() and f"session_id: {session_id}" not in target.read_text(
-        encoding="utf-8", errors="replace"
-    ):
+    while target.exists() and not owned_by(target, session_id):
         n += 1
         target = outbox / f"{stem} ({n}){suffix}"
-    tmp = outbox / f".{target.name}.{uuid.uuid4().hex[:8]}.tmp"
-    try:
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(content)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp, target)
-    finally:
-        tmp.unlink(missing_ok=True)
+    overwrite_atomic(target, content)
     return target.name

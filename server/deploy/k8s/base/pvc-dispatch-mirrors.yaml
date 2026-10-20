@@ -1,0 +1,18 @@
+# Bare mirrors of the repos dispatch runs work on, one per repo, shared by every run (each
+# run's git worktree borrows its objects read-only). Written only by a run's prepare step,
+# under a per-repo lock, so ReadWriteMany. Re-fetchable from GitHub: losing it costs one
+# full clone per repo.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jarvis-dispatch-mirrors
+  labels:
+    app: jarvis-live
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: freenas-nfs-csi
+  resources:
+    requests:
+      storage: 20Gi

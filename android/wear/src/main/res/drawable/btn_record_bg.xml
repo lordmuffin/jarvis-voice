@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Instrument "wb-go": accent fill, on-accent glyph. -->
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:state_pressed="true">
         <shape android:shape="oval">
-            <solid android:color="#E5424D" />
+            <solid android:color="@color/inst_accent" />
+            <stroke android:width="@dimen/inst_border_focus" android:color="@color/inst_text" />
         </shape>
     </item>
     <item>
         <shape android:shape="oval">
-            <solid android:color="#1E2530" />
-            <stroke android:width="2dp" android:color="#3B82F6" />
+            <solid android:color="@color/inst_accent" />
         </shape>
     </item>
 </selector>

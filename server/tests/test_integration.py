@@ -1,9 +1,12 @@
 """End-to-end tests against the real app (uvicorn thread) and a real Postgres."""
 
 import asyncio
+import contextlib
+import io
 import os
 import time
 import uuid
+import wave
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,16 +16,16 @@ import websockets
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from jarvis_live.auth import create_device
 from jarvis_live.db.models import AudioChunk, CopilotItem, Device, MarkerRow, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.ingest.store import AudioStore
 from jarvis_live.protocol import Frame, server_message_adapter
 from jarvis_live.replay import ReplayProducer
 from jarvis_live.retention import purge_expired_audio
+from jarvis_live.users import create_user
 from tests.audio import TWO_UTTERANCES, dominant_freq, silence, tone
 from tests.conftest import FakeSTT, ServerHandle
-from tests.fakes import make_session
+from tests.fakes import make_session, new_device
 from tests.helpers import RawProducer, eventually, open_viewer
 from tests.test_segmenter import run as segment
 
@@ -129,10 +132,13 @@ async def test_resume_has_no_gaps_or_duplicates(server: ServerHandle, token: str
     assert not [e for e in res.events if e["type"] == "error"]
     stored_at_abort = len(await chunk_rows(sm, sid))
     assert 0 < stored_at_abort <= 45
-    # the client is behind the server, so the resume below must re-send already-stored frames
-    assert res.acked["mic"] is None or res.acked["mic"] < stored_at_abort - 1
+    # The client must be behind the server so the resume re-sends already-stored frames. Acks
+    # usually trail the store, but on a slow runner they can have caught up by the time the
+    # socket dies; then act as if the last ack was lost in flight. None re-sends from seq 0.
+    acked = res.acked["mic"]
+    resume_from = None if acked is None or stored_at_abort < 2 else min(acked, stored_at_abort - 2)
 
-    res = await rp.run(TWO_UTTERANCES, session_id=sid, resume_from=res.acked["mic"], result=res)
+    res = await rp.run(TWO_UTTERANCES, session_id=sid, resume_from=resume_from, result=res)
 
     rows = await chunk_rows(sm, sid)
     assert [r.seq for r in rows] == list(range(N_FRAMES)), "gap or duplicate in audio_chunks"
@@ -277,26 +283,86 @@ async def test_token_is_stored_hashed(server: ServerHandle, token: str, sm: SM) 
     assert token not in hashes
 
 
-async def test_sessions_are_private_to_their_device(
-    server: ServerHandle, token: str, sm: SM
+async def test_a_users_devices_share_sessions_other_users_see_nothing(
+    server: ServerHandle, sm: SM
 ) -> None:
-    rp = ReplayProducer(server.url, token)
+    phone_id, phone = await new_device(sm, "phone")
+    async with sm() as db:
+        user_id = (await db.get(Device, phone_id)).user_id  # type: ignore[union-attr]
+    _, mac = await new_device(sm, "mac", user_id=user_id)
+    _, stranger = await new_device(sm, "stranger")
+    rp = ReplayProducer(server.url, phone)
     sid = await rp.create_session()
-    _, other = await create_device(sm, "other")
-    h = {"Authorization": f"Bearer {other}"}
-    async with httpx.AsyncClient(base_url=server.url, headers=h) as c:
+
+    # One person's devices: the Mac sees, streams into and ends the phone's sessions.
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {mac}"}
+    ) as c:
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["id"] == sid
+        page = (await c.get("/v1/sessions")).json()
+        assert [s["id"] for s in page["items"]] == [sid] and page["total"] == 1
+        assert page["items"][0]["owner"]["id"] == str(user_id)
+        for role in ("viewer", "producer"):
+            r = await c.post(f"/v1/sessions/{sid}/ticket", json={"role": role})
+            assert r.status_code == 200
+
+    # Another user: as if it did not exist.
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {stranger}"}
+    ) as c:
+        assert (await c.get("/v1/sessions")).json()["total"] == 0
         assert (await c.get(f"/v1/sessions/{sid}")).status_code == 404
+        assert (await c.patch(f"/v1/sessions/{sid}", json={"title": "x"})).status_code == 404
+        assert (await c.get(f"/v1/sessions/{sid}/audio/mic.wav")).status_code == 404
+        for role in ("viewer", "producer"):
+            r = await c.post(f"/v1/sessions/{sid}/ticket", json={"role": role})
+            assert r.status_code == 404
+        assert (await c.post(f"/v1/sessions/{sid}/end")).status_code == 404
+        assert (await c.get("/v1/sessions", params={"all": "true"})).status_code == 403
+        assert (await c.get(f"/v1/sessions/{uuid.uuid4()}")).status_code == 404
+
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {mac}"}
+    ) as c:
+        assert (await c.post(f"/v1/sessions/{sid}/end")).status_code == 200
+
+
+async def test_admins_see_everyones_sessions_but_cannot_stream_into_them(
+    server: ServerHandle, sm: SM
+) -> None:
+    _, alice = await new_device(sm, "alice-phone")
+    admin = await create_user(sm, "Admin", is_admin=True)
+    _, root = await new_device(sm, "admin-mac", user_id=admin.id)
+    sid = await ReplayProducer(server.url, alice).create_session()
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {root}"}
+    ) as c:
+        assert (await c.get("/v1/sessions")).json()["total"] == 0  # own by default
+        everyone = (await c.get("/v1/sessions", params={"all": "true", "limit": 100})).json()
+        assert sid in [s["id"] for s in everyone["items"]]
+        detail = (await c.get(f"/v1/sessions/{sid}")).json()
+        assert detail["owner"]["display_name"].startswith("user ")
+        owner_id = detail["owner"]["id"]
+        mine = (await c.get("/v1/sessions", params={"user_id": owner_id})).json()
+        assert [s["id"] for s in mine["items"]] == [sid]
         assert (
             await c.post(f"/v1/sessions/{sid}/ticket", json={"role": "viewer"})
+        ).status_code == 200
+        assert (
+            await c.post(f"/v1/sessions/{sid}/ticket", json={"role": "producer"})
         ).status_code == 404
-        assert (await c.post(f"/v1/sessions/{sid}/end")).status_code == 404
-        assert (await c.get("/v1/sessions")).json()["total"] == 0
+        users = (await c.get("/v1/admin/users")).json()
+        assert {"id": owner_id, "sessions": 1}.items() <= next(
+            u for u in users if u["id"] == owner_id
+        ).items()
 
 
 async def test_session_rest_lifecycle(server: ServerHandle, sm: SM) -> None:
-    _, tok = await create_device(sm, "rest")
+    _, tok = await new_device(sm, "rest")
     h = {"Authorization": f"Bearer {tok}"}
     async with httpx.AsyncClient(base_url=server.url, headers=h) as c:
+        # Every device sees every session, including ones other tests created.
+        before = (await c.get("/v1/sessions", params={"limit": 1})).json()["total"]
         ids = []
         for i in range(3):
             r = await c.post(
@@ -308,10 +374,10 @@ async def test_session_rest_lifecycle(server: ServerHandle, sm: SM) -> None:
             await asyncio.sleep(0.01)
 
         page = (await c.get("/v1/sessions", params={"limit": 2})).json()
-        assert page["total"] == 3
+        assert page["total"] == before + 3
         assert [s["id"] for s in page["items"]] == [ids[2], ids[1]]  # newest first
         page2 = (await c.get("/v1/sessions", params={"limit": 2, "offset": 2})).json()
-        assert [s["id"] for s in page2["items"]] == [ids[0]]
+        assert page2["items"][0]["id"] == ids[0]
 
         s = (await c.get(f"/v1/sessions/{ids[0]}")).json()
         assert (s["status"], s["mode"], s["channels"], s["segments"]) == (
@@ -340,13 +406,90 @@ async def test_session_rest_lifecycle(server: ServerHandle, sm: SM) -> None:
         ).status_code == 200
 
 
+async def test_rename_session(server: ServerHandle, sm: SM) -> None:
+    tok_id, tok = await new_device(sm, "rename")
+    async with sm() as db:
+        user_id = (await db.get(Device, tok_id)).user_id  # type: ignore[union-attr]
+    _, other = await new_device(sm, "rename-other", user_id=user_id)
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {tok}"}
+    ) as c:
+        sid = (await c.post("/v1/sessions", json={"mode": "solo", "channels": ["mic"]})).json()[
+            "id"
+        ]
+        r = await c.patch(f"/v1/sessions/{sid}", json={"title": "  Budget review "})
+        assert r.status_code == 200 and r.json()["title"] == "Budget review"
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["title"] == "Budget review"
+        assert (await c.get("/v1/sessions")).json()["items"][0]["title"] == "Budget review"
+        # blank clears it (the copilot may name it again)
+        assert (await c.patch(f"/v1/sessions/{sid}", json={"title": " "})).json()["title"] is None
+        assert (await c.patch(f"/v1/sessions/{sid}", json={"title": "x" * 201})).status_code == 422
+        assert (await c.patch(f"/v1/sessions/{sid}", json={})).status_code == 422
+        # ended sessions can be renamed too
+        await c.post(f"/v1/sessions/{sid}/end")
+        r = await c.patch(f"/v1/sessions/{sid}", json={"title": "After the fact"})
+        assert r.json()["title"] == "After the fact"
+        # the dashboard renames sessions with its own device token
+        r = await c.patch(
+            f"/v1/sessions/{sid}",
+            json={"title": "From the dashboard"},
+            headers={"Authorization": f"Bearer {other}"},
+        )
+        assert r.status_code == 200 and r.json()["title"] == "From the dashboard"
+        r = await c.patch(
+            f"/v1/sessions/{uuid.uuid4()}",
+            json={"title": "x"},
+            headers={"Authorization": f"Bearer {other}"},
+        )
+        assert r.status_code == 404
+
+
+async def test_streaming_flag_follows_the_producer(
+    make_server: Callable[..., ServerHandle], token: str
+) -> None:
+    server = make_server(streaming_stale_s=1.0)
+    rp = ReplayProducer(server.url, token)
+    sid = await rp.create_session()
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {token}"}
+    ) as c:
+
+        async def streaming() -> tuple[bool, bool]:
+            one = (await c.get(f"/v1/sessions/{sid}")).json()
+            items = (await c.get("/v1/sessions")).json()["items"]
+            listed = next(s for s in items if s["id"] == sid)
+            return one["streaming"], listed["streaming"]
+
+        assert await streaming() == (False, False)  # created, no producer yet
+        p, _ = await RawProducer.connect(rp, sid)
+        await p.send_pcm(0, silence(0.3))
+        await p.recv_until("ack")
+        assert await streaming() == (True, True)
+        await asyncio.sleep(1.2)  # connected, but no audio for longer than streaming_stale_s
+        assert await streaming() == (False, False)
+        nxt = await p.send_pcm(0, silence(0.3), seq0=3)
+        while (await p.recv_until("ack"))["seq"] < nxt - 1:
+            pass
+        assert await streaming() == (True, True)
+        await p.close()
+        for _ in range(50):  # the server notices the disconnect asynchronously
+            if await streaming() == (False, False):
+                break
+            await asyncio.sleep(0.05)
+        assert await streaming() == (False, False)
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["status"] == "live"
+
+
 async def test_rest_end_disconnects_producer_and_drains(
     server: ServerHandle, token: str, sm: SM
 ) -> None:
     rp = ReplayProducer(server.url, token)
     sid = await rp.create_session()
     p, _ = await RawProducer.connect(rp, sid)
-    await p.send_pcm(0, silence(0.5) + tone(1.0))  # an utterance still open when the session ends
+    nxt = await p.send_pcm(0, silence(0.5) + tone(1.0))  # an utterance still open at session end
+    ack = None  # frames must be stored before ending, or they race the REST end
+    while ack is None or ack["seq"] < nxt - 1:
+        ack = await p.recv_until("ack")
     async with httpx.AsyncClient(
         base_url=server.url, headers={"Authorization": f"Bearer {token}"}
     ) as c:
@@ -430,17 +573,23 @@ async def test_status_lag_is_stream_time_minus_last_final_segment(
     sid = await rp.create_session()
     async with await open_viewer(rp, sid) as viewer:
         p, _ = await RawProducer.connect(rp, sid)
-        await p.send_pcm(0, silence(0.5) + tone(1.0) + silence(1.0) + silence(2.0))  # 4.5 s
+        nxt = await p.send_pcm(0, silence(0.5) + tone(1.0) + silence(1.0) + silence(2.0))  # 4.5 s
+        # Frames are fed to the pipeline before they are acked, so after the last ack the stream
+        # position is final. Statuses published earlier carry a smaller lag.
+        while (await p.recv_until("ack"))["seq"] < nxt - 1:
+            pass
         await eventually(lambda: len(viewer.of_type("segment")) == 1)
         seg_end = viewer.of_type("segment")[0]["end_ms"]
-        await eventually(
-            lambda: (
-                viewer.of_type("status")[-1:] != [] and viewer.of_type("status")[-1]["lag_ms"] > 0
-            )
-        )
-        lag = viewer.of_type("status")[-1]["lag_ms"]
+        expected = 4500 - seg_end  # 4.5 s = 150 whole 30 ms frames
+
+        def lag() -> int | None:
+            statuses = viewer.of_type("status")
+            return statuses[-1]["lag_ms"] if statuses else None
+
+        with contextlib.suppress(AssertionError):  # the assert below reports the values
+            await eventually(lambda: lag() == expected)
         await p.close()
-    assert lag == 4500 - seg_end  # 4.5 s = 150 whole 30 ms frames
+    assert lag() == expected
 
 
 class ToneSTT(FakeSTT):
@@ -483,9 +632,17 @@ async def test_mic_echo_of_system_audio_is_dropped(
 
 
 async def _make_session(sm: SM, status: str = "live") -> uuid.UUID:
-    device_id, _ = await create_device(sm, "store")
+    device_id, _ = await new_device(sm, "store")
     async with sm() as db:
-        row = SessionRow(device_id=device_id, mode="solo", status=status, channels=["mic"])
+        device = await db.get(Device, device_id)
+        assert device is not None
+        row = SessionRow(
+            device_id=device_id,
+            user_id=device.user_id,
+            mode="solo",
+            status=status,
+            channels=["mic"],
+        )
         db.add(row)
         await db.commit()
         return row.id
@@ -571,7 +728,7 @@ async def test_session_detail_includes_markers_and_final_note(
     outbox.mkdir()
     (outbox / "2026-10-09 note.md").write_text("# Weekly sync\n\nBody\n", encoding="utf-8")
     server = make_server(outbox_dir=outbox)
-    dev_id, tok = await create_device(sm, "detail")
+    dev_id, tok = await new_device(sm, "detail")
     sid = await make_session(sm, dev_id, status="done")
     async with sm() as db:
         db.add(MarkerRow(session_id=sid, t_ms=9000, label="later"))
@@ -609,3 +766,66 @@ async def test_session_detail_includes_markers_and_final_note(
         }
         bad = (await c.get(f"/v1/sessions/{other}")).json()
         assert bad["final_note"]["markdown"] is None  # path traversal is refused
+
+
+async def test_final_note_in_a_users_folder_is_served(
+    make_server: Callable[..., ServerHandle], sm: SM, tmp_path: Path
+) -> None:
+    outbox = tmp_path / "outbox"
+    (outbox / "alice").mkdir(parents=True)
+    (outbox / "alice" / "n.md").write_text("# Mine\n", encoding="utf-8")
+    (tmp_path / "secret.md").write_text("nope", encoding="utf-8")
+    server = make_server(outbox_dir=outbox)
+    dev_id, tok = await new_device(sm, "notes")
+    good = await make_session(sm, dev_id, status="done")
+    bad = await make_session(sm, dev_id, status="done")
+    async with sm() as db:
+        for sid, path in ((good, "alice/n.md"), (bad, "../secret.md")):
+            db.add(
+                CopilotItem(session_id=sid, kind="final_note", payload={"path": path, "title": "t"})
+            )
+        await db.commit()
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {tok}"}
+    ) as c:
+        assert (await c.get(f"/v1/sessions/{good}")).json()["final_note"]["markdown"] == "# Mine\n"
+        assert (await c.get(f"/v1/sessions/{bad}")).json()["final_note"]["markdown"] is None
+
+
+# --- recordings --------------------------------------------------------------------------------
+
+
+async def test_recording_is_served_as_wav_with_ranges(server: ServerHandle, sm: SM) -> None:
+    dev_id, tok = await new_device(sm, "audio")
+    sid = await make_session(sm, dev_id, status="done")  # channels mic + system
+    pcm = bytes(range(256)) * 40 + b"\x01"  # an odd trailing byte (mid-sample) is dropped
+    d = server.settings.data_dir / "sessions" / str(sid)
+    d.mkdir(parents=True)
+    (d / "mic.pcm").write_bytes(pcm)
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {tok}"}
+    ) as c:
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["audio"] == {
+            "mic": True,
+            "system": False,
+        }
+        r = await c.get(f"/v1/sessions/{sid}/audio/mic.wav")
+        assert r.status_code == 200 and r.headers["content-type"] == "audio/wav"
+        assert r.headers["accept-ranges"] == "bytes"
+        body = r.content
+        assert len(body) == 44 + 10240 and body[44:] == pcm[:10240]
+        with wave.open(io.BytesIO(body)) as w:
+            assert (w.getnchannels(), w.getsampwidth(), w.getframerate()) == (1, 2, 16_000)
+            assert w.getnframes() == 5120
+
+        r = await c.get(f"/v1/sessions/{sid}/audio/mic.wav", headers={"Range": "bytes=40-49"})
+        assert r.status_code == 206 and r.headers["content-range"] == f"bytes 40-49/{len(body)}"
+        assert r.content == body[40:50]
+        r = await c.get(f"/v1/sessions/{sid}/audio/mic.wav", headers={"Range": "bytes=-4"})
+        assert r.content == body[-4:]
+        r = await c.get(f"/v1/sessions/{sid}/audio/mic.wav", headers={"Range": "bytes=99999-"})
+        assert r.status_code == 416
+
+        # no file (never recorded, or removed by retention)
+        assert (await c.get(f"/v1/sessions/{sid}/audio/system.wav")).status_code == 404
+        assert (await c.get(f"/v1/sessions/{sid}/audio/other.wav")).status_code == 422

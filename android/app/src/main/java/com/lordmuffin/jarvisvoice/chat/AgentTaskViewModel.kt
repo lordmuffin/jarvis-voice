@@ -62,7 +62,7 @@ class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
             if (id != null) {
                 refresh()
             } else {
-                _error.value = "Failed to create task — check server connectivity"
+                _error.value = "Could not create the task. Check the server connection."
             }
         }
     }
@@ -75,7 +75,7 @@ class AgentTaskViewModel(app: Application) : AndroidViewModel(app) {
                 val list = repo.listTasks()
                 if (list.isNotEmpty()) _tasks.value = list
             } else {
-                _error.value = "Reply failed — check server"
+                _error.value = "Reply failed. Check the server connection."
             }
         }
     }

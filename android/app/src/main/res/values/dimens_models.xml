@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="app_models_dot">8dp</dimen>
+    <dimen name="app_models_dot_active">24dp</dimen>
+    <dimen name="app_models_logo">96dp</dimen>
+    <dimen name="app_models_logo_dot">16dp</dimen>
+    <dimen name="app_models_check">88dp</dimen>
+    <dimen name="app_models_icon_tile">48dp</dimen>
+    <dimen name="app_models_icon">24dp</dimen>
+    <dimen name="app_models_step_top">96dp</dimen>
+    <dimen name="app_models_pill_w">120dp</dimen>
+    <dimen name="app_models_pill_h">40dp</dimen>
+    <dimen name="app_models_pill_dot">8dp</dimen>
+</resources>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings screen: flat rows and panels on Instrument tokens (artboard Jarvis-And-Settings). -->
+<resources>
+    <!-- Section heading: Inst.Text.Label, normal-case source text. Spacing is set on the view. -->
+    <style name="Settings.Heading" parent="Inst.Text.Label" />
+
+    <!-- Group heading (Jarvis Live, Dictation, Models, Kai, Device, About), above its sub-sections. -->
+    <style name="Settings.Group" parent="Inst.Text.BodyLg">
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Flat inst_surface panel; children are laid out by the view that wears it. -->
+    <style name="Settings.Panel" parent="">
+        <item name="android:background">@drawable/inst_row_surface</item>
+        <item name="android:padding">@dimen/inst_space_12</item>
+        <item name="android:gravity">center_vertical</item>
+    </style>
+
+    <!-- Row title / description inside a panel (switch rows, microphone row). -->
+    <style name="Settings.RowTitle" parent="Inst.Text.BodyLg" />
+    <style name="Settings.RowDesc" parent="Inst.Text.Caption" />
+
+    <!-- Help line under a field or row. -->
+    <style name="Settings.Help" parent="Inst.Text.Meta">
+        <item name="android:paddingStart">@dimen/inst_space_4</item>
+        <item name="android:paddingEnd">@dimen/inst_space_4</item>
+    </style>
+
+    <!-- Field label above an input. -->
+    <style name="Settings.FieldLabel" parent="Inst.Text.Meta">
+        <item name="android:paddingStart">@dimen/inst_space_4</item>
+        <item name="android:paddingEnd">@dimen/inst_space_4</item>
+    </style>
+
+    <!-- A full-width tappable row (opens another screen): flat surface, left-aligned label. -->
+    <style name="Settings.RowButton" parent="Widget.Inst.Button">
+        <item name="android:background">@drawable/inst_row_surface</item>
+        <item name="android:textColor">@color/inst_text</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textSize">@dimen/inst_type_body</item>
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:minHeight">@dimen/inst_space_48</item>
+        <item name="android:paddingStart">@dimen/inst_space_12</item>
+        <item name="android:paddingEnd">@dimen/inst_space_12</item>
+    </style>
+
+    <!-- Stat cell in the Metro grid. -->
+    <style name="Settings.StatValue" parent="Inst.Text.Stat" />
+    <style name="Settings.StatCaption" parent="Inst.Text.Micro" />
+</resources>

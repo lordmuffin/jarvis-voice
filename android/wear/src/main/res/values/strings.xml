@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Jarvis Wear</string>
+    <string name="wear_state_ready">Tap to capture</string>
+    <string name="wear_state_recording">Recording…</string>
+    <string name="wear_state_saved">Saved. It syncs on Wi‑Fi.</string>
+    <string name="wear_state_captured">Captured</string>
+    <string name="wear_state_failed">Sync failed.</string>
+    <string name="wear_meta_synced">Sent to Jarvis.</string>
+    <string name="wear_meta_failed">Jarvis retries on Wi‑Fi.</string>
+    <string name="wear_meta_waiting">%1$d waiting</string>
+    <string name="wear_start_capture">Start capture</string>
+    <string name="wear_stop_capture">Stop capture</string>
+    <string name="wear_settings">Settings</string>
+    <string name="wear_mic_required">Microphone permission required</string>
 </resources>

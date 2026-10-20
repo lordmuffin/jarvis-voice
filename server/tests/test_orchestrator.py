@@ -7,12 +7,12 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from jarvis_live.auth import create_device
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
+from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.orchestrator import Orchestrator
 from tests.conftest import FakeSTT
-from tests.fakes import FakeClock, FakeLLM, FakeNotifier, make_session
+from tests.fakes import FakeClock, FakeLLM, FakeNotifier, make_session, new_device
 from tests.helpers import eventually
 from tests.test_copilot_loop import FakeVault
 
@@ -33,9 +33,11 @@ class StubHub:
         return True
 
 
-def _state(clock: FakeClock, idle_for: float = 0.0) -> Any:
+def _state(clock: FakeClock, idle_for: float = 0.0, uploading: bool = False) -> Any:
     return SimpleNamespace(
-        session_id=uuid.uuid4(), pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for)
+        session_id=uuid.uuid4(),
+        pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for),
+        uploading=uploading,
     )
 
 
@@ -71,8 +73,16 @@ async def test_idle_session_is_ended_after_ten_minutes(rig: Any) -> None:
     assert rig.hub.ended == [quiet.session_id]
 
 
+async def test_uploaded_session_is_not_ended_as_idle_while_it_is_transcribed(rig: Any) -> None:
+    # An upload feeds all its audio at once; transcribing it can take longer than idle_end_s.
+    upload = _state(rig.clock, idle_for=3600, uploading=True)
+    rig.hub.states = [upload]
+    await rig.orch.check_once()
+    assert rig.hub.ended == []
+
+
 async def test_live_session_without_producer_is_ended_after_idle_period(rig: Any, sm: SM) -> None:
-    device_id, _ = await create_device(sm, f"dev-{uuid.uuid4()}")
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}")
     sid = await make_session(sm, device_id)  # live in the DB, nothing in the hub
     await rig.orch.check_once()
     await rig.clock.advance(599)
@@ -126,7 +136,7 @@ async def test_recover_finalizes_recent_finalizing_sessions_only(rig: Any, sm: S
     from tests.fakes import add_segments
 
     rig.orch._finalizer._llm = FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S"))
-    device_id, _ = await create_device(sm, f"dev-{uuid.uuid4()}")
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
     now = datetime.now(UTC)
     recent = await make_session(sm, device_id, status="finalizing", ended_at=now)
     stale = await make_session(sm, device_id, status="finalizing", ended_at=now - timedelta(days=3))
@@ -137,3 +147,39 @@ async def test_recover_finalizes_recent_finalizing_sessions_only(rig: Any, sm: S
     await eventually(lambda: any(str(recent) in (s.url or "") for s in rig.notifier.sent))
     await rig.orch.shutdown()
     assert not any(str(stale) in (s.url or "") for s in rig.notifier.sent)
+
+
+async def test_on_final_runs_after_a_note_and_its_errors_are_contained(
+    sm: SM, tmp_path: Path
+) -> None:
+    from jarvis_live.copilot.schema import FinalNote
+    from tests.fakes import add_segments
+
+    called: list[uuid.UUID] = []
+
+    async def hook(sid: uuid.UUID) -> None:
+        called.append(sid)
+        raise RuntimeError("GitHub is down")
+
+    llm = FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S"))
+    orch = Orchestrator(
+        Settings(outbox_dir=tmp_path),
+        sm,
+        Bus(),
+        FakeSTT(),
+        llm,
+        FakeVault(),
+        FakeNotifier(),
+        on_final=hook,
+    )
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
+    written = await make_session(sm, device_id, status="finalizing")
+    await add_segments(sm, written, [(0, 1000, "me", "hi")])
+    empty = await make_session(sm, device_id, status="finalizing")  # no transcript: no note
+
+    orch.regenerate(written, None)
+    orch.on_end(empty)
+    assert orch.is_finalizing(written)
+    await eventually(lambda: not orch.is_finalizing(written) and not orch.is_finalizing(empty))
+    await orch.shutdown()
+    assert called == [written]

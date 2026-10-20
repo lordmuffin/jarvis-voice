@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sessions states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0;background:#0D1117}</style></helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 1440px; min-height: 1700px; padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · Web · Sessions</span>
+    <h1 class="t-title">Sessions: empty, error, search, viewing and upload states</h1>
+  </div>
+
+  <section aria-label="Empty states" class="i-stack" style="gap: 8px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Empty</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">No sessions at all</span>
+        <div class="i-stack">
+          <div class="i-block" style="display: flex; align-items: center; gap: 8px;"><span class="t-body t-2" style="flex: 1;">Search by title</span><button type="button" class="i-btn i-btn--secondary i-btn--sm">Upload Recording</button></div>
+          <div class="i-block" role="region" aria-label="No sessions" style="padding: 32px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-height: 196px; justify-content: center;">
+            <span aria-hidden="true" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-text-2);">—</span>
+            <span style="font-size: 14px; font-weight: 700;">No sessions yet</span>
+            <span class="t-caption t-2" style="max-width: 280px;">Start one from the Mac app, or upload a recording.</span>
+            <button type="button" class="i-btn i-btn--secondary i-btn--sm">Upload Recording</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Filtered to one user, who has none</span>
+        <div class="i-stack">
+          <div class="i-block" style="display: flex; align-items: center; gap: 8px;"><span class="t-label">User</span><button type="button" class="i-btn i-btn--secondary i-btn--sm" aria-label="Remove user filter: priya">priya ✕</button></div>
+          <div class="i-block" role="region" aria-label="No sessions for this user" style="padding: 32px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-height: 196px; justify-content: center;">
+            <span aria-hidden="true" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-text-2);">—</span>
+            <span style="font-size: 14px; font-weight: 700;">No sessions for this user</span>
+            <span class="t-caption t-2" style="max-width: 280px;">Their sessions appear here once they record one.</span>
+            <button type="button" class="i-btn i-btn--quiet i-btn--sm">Clear Filter</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Search with no match</span>
+        <div class="i-stack">
+          <div class="i-block" style="display: flex; align-items: center; gap: 8px;">
+            <label class="i-sr" for="e-q">Search by title</label>
+            <input id="e-q" type="search" class="i-input" value="egress" style="flex: 1; min-width: 0; height: 32px;">
+            <div class="i-seg" role="radiogroup" aria-label="Search in"><button type="button" role="radio" aria-checked="true">Titles</button><button type="button" role="radio" aria-checked="false">Transcripts</button></div>
+          </div>
+          <div class="i-block" role="region" aria-label="No matches" style="padding: 32px 16px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; min-height: 196px; justify-content: center;">
+            <span aria-hidden="true" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-text-2);">—</span>
+            <span style="font-size: 14px; font-weight: 700;">No sessions match “egress”</span>
+            <span class="t-caption t-2" style="max-width: 280px;">Check the spelling, or search transcripts instead.</span>
+            <button type="button" class="i-btn i-btn--quiet i-btn--sm">Clear Search</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Errors and searching" class="i-stack" style="gap: 8px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Errors and searching</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">List failed to load</span>
+        <div class="i-stack">
+          <div class="i-banner i-banner--error" role="alert"><b>✕ Couldn't load sessions.</b><span>The server didn't answer. Nothing was lost.</span><button type="button" class="i-btn i-btn--secondary i-btn--sm i-banner-act">↩ Try Again</button></div>
+          <div class="i-block" aria-hidden="true" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 12px; opacity: .5;">
+            <span class="i-skel" style="width: 62%;"></span><span class="i-skel" style="width: 38%; height: 8px;"></span>
+          </div>
+          <div class="i-block" aria-hidden="true" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 12px; opacity: .5;">
+            <span class="i-skel" style="width: 48%;"></span><span class="i-skel" style="width: 34%; height: 8px;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Not an admin, asked for all users</span>
+        <div class="i-stack">
+          <div class="i-block" style="display: flex; align-items: center; gap: 12px;"><label class="i-choice"><input type="checkbox" checked><span>All users</span></label></div>
+          <div class="i-banner i-banner--error" role="alert"><b>✕ Only admins can see other people's sessions.</b><a href="#" class="i-banner-act">Back to your own</a></div>
+        </div>
+      </div>
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Searching transcripts, more not yet loaded</span>
+        <div class="i-stack">
+          <div class="i-block" style="display: flex; align-items: center; gap: 8px;">
+            <label class="i-sr" for="e-q2">Search transcripts</label>
+            <input id="e-q2" type="search" class="i-input" value="pricing" style="flex: 1; min-width: 0; height: 32px;">
+            <div class="i-seg" role="radiogroup" aria-label="Search in"><button type="button" role="radio" aria-checked="false">Titles</button><button type="button" role="radio" aria-checked="true">Transcripts</button></div>
+          </div>
+          <p class="t-caption t-2" role="status" style="padding: 4px 0;">Searching <span class="t-mono">100</span> of <span class="t-mono">214</span> sessions. Clear the search to load more.</p>
+          <a href="#" class="j-srow" style="align-items: flex-start;">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <span class="ti">ARC runner migration vendor call</span>
+              <span class="t-caption t-2">“Send me the GPU runner <b style="color: var(--inst-accent);">pricing</b> and we'll size it…” <span class="i-src">▶ 16:12</span></span>
+            </span>
+            <span class="i-chip i-chip--live"><span class="i-dot i-breathe"></span>Live</span>
+          </a>
+          <a href="#" class="j-srow" style="align-items: flex-start;">
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+              <span class="ti">Homelab power budget</span>
+              <span class="t-caption t-2">“…the <b style="color: var(--inst-accent);">pricing</b> on the second UPS is close…” <span class="i-src">▶ 7:40</span></span>
+            </span>
+            <span class="i-chip i-chip--done">✓ Done</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Viewing and boot" class="i-stack" style="gap: 8px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Viewing another user · first load</h2>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+      <div class="i-stack" style="gap: 8px; grid-column: span 2;">
+        <span class="t-micro t-2">Admin filtered to Sam</span>
+        <div style="background: var(--inst-bg); border: 1px solid var(--inst-line);">
+          <header class="i-header">
+            <div class="i-header-in">
+              <div class="i-brand">
+                <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+                <a href="#" class="i-wordmark">Jarvis Live</a>
+                <span class="i-badge i-badge--live">Live</span>
+              </div>
+              <nav class="i-nav" aria-label="Main"><a href="#" aria-current="page">Sessions</a><a href="#">Devices</a><a href="#">Work Items</a><a href="#">Publishing</a><a href="#">Admin</a></nav>
+              <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+            </div>
+          </header>
+          <div class="i-banner i-banner--viewing"><b>Viewing Sam's sessions.</b><a href="#">Back to your own</a></div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+            <h3 class="t-title">Sessions</h3>
+            <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;">
+              <label class="i-sr" for="v-q">Search by title</label>
+              <input id="v-q" type="search" class="i-input" placeholder="Search by title" style="flex: 1 1 200px; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 8px;"><span class="t-label">User</span><button type="button" class="i-btn i-btn--secondary i-btn--sm" aria-label="Remove user filter: sam">sam ✕</button></div>
+              <label class="i-choice"><input type="checkbox"><span>All users</span></label>
+            </div>
+            <div class="i-stack">
+              <sc-for list="{{samRows}}" as="r" hint-placeholder-count="4">
+                <a href="#" class="j-srow">
+                  <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <span class="{{r.tiCls}}">{{r.title}}</span>
+                    <span class="mt"><span style="color: var(--inst-text); font-weight: 600;">sam</span> · {{r.when}} · <span class="t-mono">{{r.dur}}</span> · {{r.mode}}</span>
+                  </span>
+                  <span class="{{r.chip}}"><sc-if value="{{r.fin}}" hint-placeholder-val="{{false}}"><span class="i-spin i-chip-spin"></span></sc-if><sc-if value="{{r.off}}" hint-placeholder-val="{{false}}"><span class="i-dot i-dot--hollow"></span></sc-if>{{r.st}}</span>
+                </a>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="i-stack" style="gap: 8px;">
+        <span class="t-micro t-2">Boot: before the session is known</span>
+        <div style="background: var(--inst-bg); border: 1px solid var(--inst-line); min-height: 452px; display: flex; flex-direction: column;">
+          <header class="i-header">
+            <div class="i-header-in">
+              <div class="i-brand">
+                <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+                <a href="#" class="i-wordmark">Jarvis Live</a>
+                <span class="i-badge i-badge--live">Live</span>
+              </div>
+            </div>
+          </header>
+          <div role="status" aria-busy="true" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span class="i-spin"></span><span class="t-caption t-2">Loading…</span>
+          </div>
+          <footer class="i-footer" style="width: 100%;"><span></span><span class="t-mono">server-v0.18.0 · 39e69a0</span></footer>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-label="Upload states" class="i-stack" style="gap: 8px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700;">Upload recording</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+      <sc-for list="{{ups}}" as="u" hint-placeholder-count="4">
+        <div class="i-stack" style="gap: 8px;">
+          <span class="t-micro t-2">{{u.cap}}</span>
+          <form class="j-upload" aria-label="Upload recording" aria-busy="{{u.busyAttr}}" style="box-shadow: inset 0 1.5px 0 var(--inst-accent);">
+            <div class="i-field" style="flex: 1 1 220px;">
+              <span class="i-label">File</span>
+              <div style="display: flex; align-items: center; gap: 8px; height: 36px; min-width: 0;">
+                <span class="t-mono t-caption" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;">{{u.file}}</span>
+                <span class="t-mono t-meta t-2" style="flex: none;">{{u.size}}</span>
+                <sc-if value="{{u.idle}}" hint-placeholder-val="{{true}}"><button type="button" class="i-btn i-btn--quiet i-btn--sm" style="flex: none;">Change</button></sc-if>
+              </div>
+            </div>
+            <div class="i-field" style="flex: 1 1 200px;">
+              <label class="i-label" for="u-t-{{$index}}">Title <span class="opt">(optional)</span></label>
+              <sc-if value="{{u.busy}}" hint-placeholder-val="{{false}}"><input id="u-t-{{$index}}" class="i-input" value="Vendor follow-up" disabled></sc-if>
+              <sc-if value="{{u.idle}}" hint-placeholder-val="{{true}}"><input id="u-t-{{$index}}" class="i-input" placeholder="{{u.file}}"></sc-if>
+            </div>
+            <div class="i-field">
+              <span class="i-label">Mode</span>
+              <div class="i-seg" role="radiogroup" aria-label="Mode" style="height: 36px; align-items: center;"><button type="button" role="radio" aria-checked="false">Solo</button><button type="button" role="radio" aria-checked="true">Meeting</button></div>
+            </div>
+            <div class="j-acts">
+              <sc-if value="{{u.busy}}" hint-placeholder-val="{{false}}"><button type="submit" class="i-btn i-btn--primary" disabled aria-busy="true"><span class="i-spin" style="width: 10px; height: 10px;"></span>Uploading…</button></sc-if>
+              <sc-if value="{{u.blocked}}" hint-placeholder-val="{{false}}"><button type="submit" class="i-btn i-btn--primary" disabled aria-describedby="u-e-{{$index}}">Upload</button></sc-if>
+              <sc-if value="{{u.retry}}" hint-placeholder-val="{{false}}"><button type="submit" class="i-btn i-btn--primary">Upload</button></sc-if>
+              <button type="button" class="i-btn i-btn--quiet">Cancel</button>
+            </div>
+            <sc-if value="{{u.busy}}" hint-placeholder-val="{{false}}">
+              <div class="i-stack" style="flex-basis: 100%; gap: 4px;">
+                <div class="i-progress" role="progressbar" aria-label="Upload progress" aria-valuenow="64" aria-valuemin="0" aria-valuemax="100"><span style="width: 64%;"></span></div>
+                <span class="t-mono t-meta t-2">24.4 of 38.2 MB · 64%</span>
+              </div>
+            </sc-if>
+            <sc-if value="{{u.err}}" hint-placeholder-val="{{false}}"><span id="u-e-{{$index}}" class="i-msg-error" role="alert" style="flex-basis: 100%;">{{u.msg}}</span></sc-if>
+          </form>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (title, when, dur, mode, st) => ({
+      title: title || 'Untitled session', tiCls: title ? 'ti' : 'ti ti--none', when, dur, mode,
+      fin: st === 'fin', off: st === 'off',
+      st: st === 'done' ? '✓ Done' : st === 'fin' ? 'Finalizing' : st === 'off' ? 'Offline' : '✕ Failed',
+      chip: st === 'done' ? 'i-chip i-chip--done' : st === 'fin' ? 'i-chip i-chip--progress' : st === 'off' ? 'i-chip' : 'i-chip i-chip--failed'
+    });
+    const U = (cap, file, size, kind, msg) => ({
+      cap, file, size, msg, busy: kind === 'busy', idle: kind !== 'busy', busyAttr: kind === 'busy' ? 'true' : 'false',
+      blocked: kind === 'blocked', retry: kind === 'retry', err: kind !== 'busy'
+    });
+    return {
+      theme: this.props.theme ?? 'dark',
+      samRows: [
+        S('Garage sensor walkthrough', 'Oct 14, 3:10 PM', '12 min', 'Solo', 'fin'),
+        S('Offsite backup review', 'Oct 12, 4:30 PM', '19 min', 'Meeting', 'done'),
+        S('Homelab power budget', 'Oct 11, 2:15 PM', '28 min', 'Meeting', 'done'),
+        S('', 'Oct 9, 6:48 PM', '3 min', 'Solo', 'off')
+      ],
+      ups: [
+        U('Uploading', 'vendor-followup-2026-10-14.m4a', '38.2 MB', 'busy', ''),
+        U('Too large · checked before sending', 'offsite-full-day.wav', '812.0 MB', 'blocked', '✕ Recordings are limited to 500 MB.'),
+        U('Empty file · checked before sending', 'voice-memo.m4a', '0 B', 'blocked', '✕ The upload is empty.'),
+        U('No audio · reported by the server', 'screen-capture.mov', '112.4 MB', 'retry', '✕ No audio could be read from the file.')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

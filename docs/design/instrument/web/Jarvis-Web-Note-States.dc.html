@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Note states</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet><style>body{margin:0;background:#0D1117}</style></helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 1440px; min-height: 2000px; padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · Web · Past session · Note</span>
+    <h1 class="t-title">Note: publication, editing, confirms and missing notes</h1>
+  </div>
+
+  <section aria-label="Toolbar by publication state" class="i-stack" style="gap: 4px;">
+    <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Note toolbar · every publication state</h2>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">Not published</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip">Not published</span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--primary i-btn--sm">Publish</button><button type="button" class="i-btn i-btn--secondary i-btn--sm">Skip</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-haspopup="dialog">Regenerate</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">Publishing</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Publishing</span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--primary i-btn--sm" disabled aria-busy="true"><span class="i-spin" style="width: 10px; height: 10px;"></span>Opening a pull request…</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">PR open</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip i-chip--live">PR open</span>
+        <a href="#" class="t-mono t-caption">PR #212</a>
+        <div class="j-acts" style="margin-left: auto;"><a href="#" class="i-btn i-btn--secondary i-btn--sm">Review</a><button type="button" class="i-btn i-btn--primary i-btn--sm" aria-haspopup="dialog">Merge</button><button type="button" class="i-btn i-btn--secondary i-btn--sm">Close PR</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" disabled aria-describedby="r-po">Regenerate</button><span id="r-po" class="i-reason">⚑ Close the pull request first.</span></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">PR open · edited</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip i-chip--live">PR open</span>
+        <a href="#" class="t-mono t-caption">PR #212</a>
+        <span class="i-reason">⚑ Edited since it was published</span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--primary i-btn--sm">Publish Changes</button><a href="#" class="i-btn i-btn--secondary i-btn--sm">Review</a><button type="button" class="i-btn i-btn--secondary i-btn--sm" aria-haspopup="dialog">Merge</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Close PR</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" disabled aria-describedby="r-pe">Regenerate</button><span id="r-pe" class="i-reason">⚑ Close the pull request first.</span></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">Merged</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip i-chip--done">✓ Merged</span>
+        <a href="#" class="t-mono t-caption">PR #212</a>
+        <span class="t-meta t-2">In <span class="t-mono">lordmuffin/obsidian-vault</span> on <span class="t-mono">main</span></span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-haspopup="dialog">Regenerate</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">PR closed</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip">PR closed</span>
+        <a href="#" class="t-mono t-caption">PR #212</a>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--primary i-btn--sm">Publish</button><button type="button" class="i-btn i-btn--secondary i-btn--sm">Skip</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-haspopup="dialog">Regenerate</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">Skipped</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip">Skipped</span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--secondary i-btn--sm">Unskip</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-haspopup="dialog">Regenerate</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">Publish failed</span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip i-chip--failed">✕ Publish failed</span>
+        <span class="i-msg-error" role="alert" style="font-size: 12px;">✕ Publishing failed: GitHub answered 409. Branch <span class="t-mono">note/7f3c9a2e</span> already exists.</span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--primary i-btn--sm">↩ Retry</button><button type="button" class="i-btn i-btn--secondary i-btn--sm">Skip</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong" style="display: flex; align-items: center; gap: 8px;">On LAB <span class="i-badge i-badge--lab">Lab</span></span>
+      <div class="j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip">Not published</span>
+        <div class="j-acts" style="margin-left: auto;"><button type="button" class="i-btn i-btn--primary i-btn--sm" disabled aria-describedby="r-lab">Publish</button><span id="r-lab" class="i-reason">⚑ LAB: publishing is off in this copy.</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button><button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-haspopup="dialog">Regenerate</button></div>
+      </div>
+    </div>
+
+    <div class="i-block" style="display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 8px 16px; align-items: center;">
+      <span class="t-caption t-strong">Busy · each action</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: flex-start;">
+        <sc-for list="{{busy}}" as="b" hint-placeholder-count="5">
+          <span class="i-stack" style="gap: 4px; align-items: flex-start;">
+            <button type="button" class="i-btn i-btn--sm" disabled aria-busy="true"><span class="i-spin" style="width: 10px; height: 10px;"></span>{{b.label}}</button>
+            <span class="t-micro t-2">{{b.from}}</span>
+          </span>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <section aria-label="Edit mode" class="i-stack" style="gap: 4px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Edit mode · PR open</h2>
+      <div class="i-block j-toolbar" role="toolbar" aria-label="Note actions">
+        <span class="i-chip i-chip--live">PR open</span>
+        <a href="#" class="t-mono t-caption">PR #212</a>
+        <div class="j-acts" style="margin-left: auto;"><button type="submit" form="ed" class="i-btn i-btn--primary i-btn--sm">Save</button><button type="button" class="i-btn i-btn--quiet i-btn--sm">Cancel</button></div>
+      </div>
+      <form id="ed" class="i-block i-field" style="padding: 12px; gap: 6px;">
+        <label class="i-label" for="ed-src">Note <span class="opt">(Markdown)</span></label>
+        <textarea id="ed-src" class="i-input i-input--mono is-focus" aria-describedby="ed-h1 ed-h2" spellcheck="false" style="min-height: 460px; resize: vertical; white-space: pre; overflow: auto;" value="{{src}}"></textarea>
+        <span id="ed-h1" class="i-help">Keep the session_id line in the frontmatter.</span>
+        <span id="ed-h2" class="i-help">Saving also updates the open pull request.</span>
+      </form>
+    </section>
+
+    <section aria-label="Confirms" class="i-stack" style="gap: 4px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Confirms</h2>
+      <div style="background: var(--inst-scrim); padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 24px;">
+        <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="dr-h" aria-describedby="dr-d">
+          <div class="i-dialog-hd"><span class="t-tag" style="color: var(--inst-warning);">⚑ Replaces your edits</span><h2 id="dr-h">Regenerate the note?</h2></div>
+          <div class="i-dialog-bd"><p id="dr-d" class="t-2">Write the note again from the transcript? The current note, edits included, is replaced.</p></div>
+          <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary is-focus">Cancel</button><button type="button" class="i-btn i-btn--danger">Regenerate</button></div>
+        </div>
+        <div class="i-dialog" role="dialog" aria-modal="true" aria-labelledby="dm-h" aria-describedby="dm-d">
+          <div class="i-dialog-hd"><h2 id="dm-h">Merge PR #212?</h2></div>
+          <div class="i-dialog-bd"><p id="dm-d" class="t-2">The note lands in <span class="t-mono">lordmuffin/obsidian-vault</span> on <span class="t-mono">main</span>. You can still edit it here.</p></div>
+          <div class="i-dialog-ft"><button type="button" class="i-btn i-btn--secondary is-focus">Cancel</button><button type="button" class="i-btn i-btn--primary">Merge</button></div>
+        </div>
+      </div>
+      <span class="t-caption t-2">Esc and Cancel close. Focus starts on Cancel.</span>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start;">
+
+    <section aria-label="Regenerate failed" class="i-stack" style="gap: 4px;">
+      <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Regenerate failed · previous note kept</h2>
+      <div class="i-banner i-banner--warning" role="alert"><b>⚑ Writing a new note failed.</b><span>This is the previous one.</span><button type="button" class="i-btn i-btn--secondary i-btn--sm i-banner-act">↩ Try Again</button></div>
+      <article class="j-note" aria-label="Note">
+        <h1>ARC runner migration vendor call</h1>
+        <p class="t-meta t-2">Meeting · Oct 14, 2026 · 30 min · Andrew and the vendor</p>
+        <p>The vendor supports <b>ARC scale sets</b> on Kubernetes, with the controller in its own namespace. We agreed to pilot on <code>k3s2</code> before moving anything else.</p>
+        <h2>Decisions</h2>
+        <ul>
+          <li>Pilot on the <b>k3s2</b> cluster first. The VM runners stay as a fallback.</li>
+          <li>Register scale sets at the org level, not per repository.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section aria-label="No note and no audio" class="i-stack" style="gap: 16px;">
+      <div class="i-stack" style="gap: 4px;">
+        <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">No note · in the note pane</h2>
+        <div class="i-block" role="status" style="display: flex; align-items: center; gap: 12px; padding: 20px 16px;">
+          <span aria-hidden="true" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-error);">✕</span>
+          <span class="t-body" style="color: var(--inst-error); font-weight: 600;">This session failed before a note was written.</span>
+        </div>
+        <div class="i-block" role="status" style="display: flex; align-items: center; gap: 12px; padding: 20px 16px;">
+          <span aria-hidden="true" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); color: var(--inst-text);"><span class="i-sq" style="width: 8px; height: 8px;"></span></span>
+          <span class="t-body">Local-only session: no note was generated.</span>
+        </div>
+        <div class="i-block" role="status" style="display: flex; align-items: center; gap: 12px; padding: 20px 16px;">
+          <span aria-hidden="true" style="width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--inst-surface-2); font-size: 14px; font-weight: 700; color: var(--inst-text-2);">—</span>
+          <span class="t-body t-2">No note was written for this session.</span>
+        </div>
+      </div>
+
+      <div class="i-stack" style="gap: 4px;">
+        <h2 class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Audio deleted · replaces the players</h2>
+        <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 32px; padding: 12px 16px;">
+          <div class="i-stack" style="flex: 1 1 280px; min-width: 0;">
+            <span class="t-label">Solo · Jul 2, 8:20 AM · <span class="t-mono">14:51</span></span>
+            <span class="t-body-lg t-strong">Flux bootstrap retro</span>
+          </div>
+          <span class="i-chip i-chip--done">✓ Done</span>
+        </div>
+        <div class="i-banner" role="status"><b>ⓘ Audio deleted</b><span>Audio is kept for 90 days. The transcript and note are kept.</span></div>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const src = [
+      '---',
+      'session_id: 7f3c9a2e-41d8-4b6a-9c11-0e5d2b8f6a14',
+      'title: ARC runner migration vendor call',
+      'date: 2026-10-14',
+      'mode: meeting',
+      'tags: [jarvis, homelab, ci]',
+      '---',
+      '',
+      '# ARC runner migration vendor call',
+      '',
+      'The vendor supports **ARC scale sets** on Kubernetes, with the',
+      'controller in its own namespace. We agreed to pilot on `k3s2`',
+      'before moving anything else.',
+      '',
+      '## Decisions',
+      '- Pilot on the **k3s2** cluster first. The VM runners stay as a fallback.',
+      '- Register scale sets at the org level, not per repository.',
+      '',
+      '## Actions',
+      '- [ ] Send the node inventory. (Me, Fri 16 Oct)',
+      '- [ ] Confirm GPU runner pricing. (Vendor)',
+      '- [x] List the four repos that need runners.',
+      '',
+      '## Related',
+      '- [[DGX Spark K3s Node — Architecture Capture]]',
+      '- [[GitHub ARC on k3s — Build Spec]]'
+    ].join('\n');
+    return {
+      theme: this.props.theme ?? 'dark',
+      src,
+      busy: [
+        { label: 'Merging…', from: 'Merge' },
+        { label: 'Closing the pull request…', from: 'Close PR' },
+        { label: 'Skipping…', from: 'Skip' },
+        { label: 'Saving…', from: 'Save' },
+        { label: 'Starting…', from: 'Regenerate' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>
