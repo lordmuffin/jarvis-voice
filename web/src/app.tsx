@@ -6,7 +6,7 @@ import { Devices } from "./views/Devices";
 import { Link } from "./views/Link";
 import { Login } from "./views/Login";
 import { Publishing } from "./views/Publishing";
-import { ServerVersion } from "./views/ServerVersion";
+import { HeaderVersion, ServerVersion } from "./views/ServerVersion";
 import { SessionPage } from "./views/SessionPage";
 import { SessionsView } from "./views/Sessions";
 import { ThemeToggle } from "./views/ThemeToggle";
@@ -89,6 +89,7 @@ export function App() {
       }
       tools={
         <>
+          <HeaderVersion />
           <span data-testid="user-name" title={user.email ?? undefined}>
             {user.display_name}
           </span>

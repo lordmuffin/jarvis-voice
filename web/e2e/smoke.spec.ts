@@ -319,7 +319,7 @@ test("release channel tag: LAB on lab, LIVE on live, signed out and in", async (
   await expect(banner.getByTestId("release-channel")).toHaveText("Lab");
 });
 
-test("the server's version sits in the footer, like every family app", async ({ page }) => {
+test("the server's version sits in the footer, and in the header by the user name", async ({ page }) => {
   await page.route("**/healthz", (route) =>
     route.fulfill({
       json: { status: "ok", environment: "live", version: "1.2.3", commit: "abc1234" },
@@ -329,8 +329,10 @@ test("the server's version sits in the footer, like every family app", async ({ 
   const footer = page.getByRole("contentinfo");
   await expect(footer).toContainText("Private. Self-hosted. Open source.");
   await expect(footer.getByTestId("server-version")).toHaveText("jarvis-live v1.2.3 · abc1234");
-  // Not in the header any more: the top right is who you are, the theme and Sign Out.
-  await expect(page.getByRole("banner").getByTestId("server-version")).toHaveCount(0);
+  // The header carries just the version, left of the signed-in name.
+  const header = page.getByRole("banner");
+  await expect(header.getByTestId("server-version")).toHaveCount(0);
+  await expect(header.getByTestId("header-version")).toHaveText("v1.2.3");
 });
 
 test("upload a recording: it is transcribed and gets a note", async ({ page }) => {
