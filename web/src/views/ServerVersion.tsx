@@ -15,3 +15,14 @@ export function ServerVersion() {
     </Text>
   );
 }
+
+/** The bare version ("v0.16.0") for the header, left of the signed-in name. */
+export function HeaderVersion() {
+  const build = serverBuild.value;
+  if (!build || build.version === "unknown") return null;
+  return (
+    <Text size="mono" data-testid="header-version">
+      v{build.version}
+    </Text>
+  );
+}

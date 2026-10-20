@@ -2,7 +2,7 @@
 import { h, render } from "preact";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadHealth, releaseChannel, serverBuild } from "../src/store";
-import { ServerVersion } from "../src/views/ServerVersion";
+import { HeaderVersion, ServerVersion } from "../src/views/ServerVersion";
 import { Brand } from "../src/ds/components";
 
 const healthz = (body: unknown) =>
@@ -54,6 +54,17 @@ describe("server version", () => {
     expect(document.querySelector("[data-testid=server-version]")!.textContent).toBe(
       "jarvis-live v0.16.0",
     );
+  });
+
+  it("shows the bare version in the header", () => {
+    serverBuild.value = { version: "0.16.0", commit: "abc1234" };
+    render(h(HeaderVersion, {}), document.body);
+    expect(document.querySelector("[data-testid=header-version]")!.textContent).toBe("v0.16.0");
+  });
+
+  it("shows no header version while it is unknown", () => {
+    render(h(HeaderVersion, {}), document.body);
+    expect(document.querySelector("[data-testid=header-version]")).toBeNull();
   });
 
   it("shows nothing while the version is unknown", () => {
