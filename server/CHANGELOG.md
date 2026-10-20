@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.20.0...server-v0.20.1) (2026-10-20)
+
+
+### Documentation
+
+* **server:** note that OBS's fragmented MP4s upload as audio too ([9f1d65b](https://github.com/lordmuffin/jarvis-voice/commit/9f1d65b4e5a06acebd8c0d39c2d83ea4a4511733))
+* **server:** note that OBS's fragmented MP4s upload as audio too ([14881be](https://github.com/lordmuffin/jarvis-voice/commit/14881beae9f555c34e09c03f1c433b761a7f07f6))
+
 ## [0.20.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.19.1...server-v0.20.0) (2026-10-20)
 
 
