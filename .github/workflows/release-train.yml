@@ -27,7 +27,7 @@ jobs:
         run: |
           total=0
           table=$'| Component | Last tag | Unreleased commits |\n|---|---|---|'
-          for c in server macos android; do
+          for c in server web macos android; do
             tag=$(git describe --tags --match "${c}-v*" --abbrev=0 2>/dev/null || true)
             if [ -n "$tag" ]; then
               n=$(git rev-list --count "${tag}..HEAD" -- "$c")
