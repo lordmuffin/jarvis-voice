@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { adtsParams, extractAudio, isExtractableVideo } from "../src/extractAudio";
-import { ASC_LC_48K_STEREO, box, cat, enc, esds, mp4, soundEntry, trak } from "./mp4";
+import { ASC_LC_48K_STEREO, box, cat, enc, esds, fragmentedMp4, mp4, soundEntry, trak } from "./mp4";
 
 const frames = [3, 5, 2, 4].map((n, i) => new Uint8Array(n).fill(i + 1));
 const file = (bytes: Uint8Array, name = "clip.mp4", type = "video/mp4") =>
@@ -55,9 +55,60 @@ describe("extractAudio", () => {
     expect(await extractAudio(file(enc.encode("\x1aE\xdf\xa3 matroska, not mp4"), "a.mkv"))).toBeNull();
     const opus = soundEntry("Opus", box("dOps", new Uint8Array(11)));
     expect(await extractAudio(file(mp4({ audio: frames, audioEntry: opus })))).toBeNull();
-    // Fragmented MP4: the moov has empty sample tables, frames live in moof boxes.
+    // An audio track with no samples anywhere.
     const empty = box("moov", trak("soun", soundEntry("mp4a", esds(0x40, ASC_LC_48K_STEREO)), [], [], []));
     expect(await extractAudio(file(cat(box("ftyp", enc.encode("iso5")), empty)))).toBeNull();
+  });
+
+  describe("fragmented MP4 (OBS, screen recorders)", () => {
+    const frags = [frames.slice(0, 2), frames.slice(2)];
+    const payloads = async (f: File | null) => adtsFrames(await bytesOf(f!)).map((x) => [...x.payload]);
+
+    it.each([
+      ["sizes per sample, offsets from the moof", { base: "moof", sizes: "trun" }],
+      ["an explicit base offset", { base: "explicit", sizes: "trun" }],
+    ] as const)("reads each moof's audio run, skipping the video: %s", async (_, opts) => {
+      expect(await payloads(await extractAudio(file(fragmentedMp4(frags, opts))))).toEqual(frames.map((f) => [...f]));
+    });
+
+    it.each([["tfhd"], ["trex"]] as const)("takes a fixed sample size from %s", async (sizes) => {
+      const same = [0, 1, 2, 3].map((i) => new Uint8Array(4).fill(i + 1));
+      const got = await payloads(await extractAudio(file(fragmentedMp4([same.slice(0, 2), same.slice(2)], { sizes }))));
+      expect(got).toEqual(same.map((f) => [...f]));
+    });
+
+    it("reads the moov's own samples first, then the fragments", async () => {
+      const head = [Uint8Array.of(9, 9), Uint8Array.of(8)];
+      const got = await payloads(await extractAudio(file(fragmentedMp4(frags, { moovSamples: head }))));
+      expect(got).toEqual([...head, ...frames].map((f) => [...f]));
+    });
+
+    it("reads a file with both a fragmented and a complete moov without doubling the audio", async () => {
+      // As a recorder leaves it when it stops cleanly: fragments, then one full index.
+      const fragmented = fragmentedMp4(frags);
+      const sizes = frames.map((f) => f.length);
+      const offs: number[] = [];
+      let o = 0;
+      for (let i = 0; i < fragmented.length; ) {
+        const v = new DataView(fragmented.buffer, i);
+        const size = v.getUint32(0);
+        const type = String.fromCharCode(...fragmented.subarray(i + 4, i + 8));
+        if (type === "mdat") {
+          let p = i + 8 + 100; // past the video
+          for (let k = 0; k < 2; k++) {
+            offs.push(p);
+            p += sizes[o++]!;
+          }
+        }
+        i += size;
+      }
+      const complete = box(
+        "moov",
+        trak("soun", soundEntry("mp4a", esds(0x40, ASC_LC_48K_STEREO)), sizes, [[1, 1]], offs),
+      );
+      const got = await payloads(await extractAudio(file(cat(fragmented, complete))));
+      expect(got).toEqual(frames.map((f) => [...f]));
+    });
   });
 });
 

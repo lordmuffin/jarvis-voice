@@ -6,8 +6,11 @@
  * headers (a `.aac` stream); MP3 frames are self-framing and are simply concatenated. Only the
  * container's index and the audio bytes are read (`File.slice`), never the whole file.
  *
- * Returns null when the file is not something this can copy (another container, a fragmented
- * MP4, an audio codec other than AAC/MP3); the caller then uploads the file as it is.
+ * Both layouts are read: a regular MP4 (one index in `moov`) and a fragmented one (each `moof`
+ * indexes the `mdat` after it), as OBS and some screen recorders write.
+ *
+ * Returns null when the file is not something this can copy (another container, an audio
+ * codec other than AAC/MP3), logging why; the caller then uploads the file as it is.
  */
 
 interface Box {
@@ -18,6 +21,7 @@ interface Box {
 }
 
 interface AudioTrack {
+  id: number;
   codec: "aac" | "mp3";
   /** AAC only: the 7-byte ADTS header's fixed part (profile, rate, channels). */
   adts?: { profile: number; freq: number; channels: number };
@@ -25,59 +29,101 @@ interface AudioTrack {
   chunkOffsets: number[];
   /** stsc: [first chunk (1-based), samples per chunk]. */
   samplesPerChunk: [number, number][];
+  /** Its moov has mvex: more samples follow in moof fragments. */
+  fragmented: boolean;
+  /** trex: the sample size fragments use when they don't say. */
+  defaultSize: number;
+}
+
+interface Run {
+  offset: number;
+  length: number;
+  sizes: number[];
+}
+
+/** A top-level box: where it starts in the file and how long it is. */
+interface TopBox {
+  type: string;
+  offset: number;
+  header: number;
+  size: number;
 }
 
 const VIDEO_EXT = /\.(mp4|m4v|mov|qt)$/i;
 const READ_BATCH = 8 * 1024 * 1024;
 // The moov box is read whole. Hours of video index to a few MB; past this, give up.
 const MAX_MOOV = 256 * 1024 * 1024;
+const FIRST_BOXES = ["ftyp", "styp", "wide", "free", "skip", "mdat", "moov", "pnot"];
 
 /** Video this can take the audio out of: MP4 or QuickTime. */
 export function isExtractableVideo(file: File): boolean {
   return /^video\/(mp4|quicktime|x-m4v)$/.test(file.type) || VIDEO_EXT.test(file.name);
 }
 
-export async function extractAudio(
-  file: File,
-  onProgress?: (done: number, total: number) => void,
-): Promise<File | null> {
-  const moov = await readMoov(file);
-  if (!moov) return null;
-  const track = findAudioTrack(moov);
-  if (!track || track.sizes.length === 0) return null;
+export async function extractAudio(file: File): Promise<File | null> {
+  const top = await topLevel(file);
+  if (!top) return skip("not an MP4/MOV file");
+  let track: AudioTrack | null = null;
+  // A recorder may leave a fragmented moov at the front and write a complete one at the end
+  // when it stops: the complete one indexes everything, so it wins.
+  for (const b of top.filter((t) => t.type === "moov")) {
+    if (b.size > MAX_MOOV) return skip("moov too large");
+    const found = findAudioTrack(await view(file, b.offset + b.header, b.offset + b.size));
+    if (typeof found === "string") return skip(found);
+    if (found && (!track || (track.fragmented && !found.fragmented))) track = found;
+  }
+  if (!track) return skip("no audio track");
 
   const parts: Uint8Array[] = [];
-  const total = track.sizes.reduce((a, b) => a + b, 0);
-  let done = 0;
-  for (const run of runs(track)) {
+  for await (const run of runsOf(file, top, track)) {
     const buf = new Uint8Array(await file.slice(run.offset, run.offset + run.length).arrayBuffer());
-    if (buf.length < run.length) return null; // index points past the end: truncated file
-    const out = new Uint8Array(run.length + (track.adts ? 7 * run.sizes.length : 0));
-    let r = 0;
-    let w = 0;
-    for (const size of run.sizes) {
-      if (track.adts) {
-        out.set(adtsHeader(track.adts, size), w);
-        w += 7;
-      }
-      out.set(buf.subarray(r, r + size), w);
-      r += size;
-      w += size;
-    }
-    parts.push(out);
-    done += run.length;
-    onProgress?.(done, total);
+    if (buf.length < run.length) return skip("index points past the end of the file");
+    parts.push(frame(track, run, buf));
   }
+  if (parts.length === 0) return skip("audio track has no samples");
   const stem = file.name.replace(/\.[^.]+$/, "") || "recording";
   const ext = track.codec === "aac" ? "aac" : "mp3";
   const type = track.codec === "aac" ? "audio/aac" : "audio/mpeg";
   return new File(parts as BlobPart[], `${stem}.${ext}`, { type });
 }
 
-/** Byte runs to read: consecutive chunks merged, each run at most READ_BATCH. */
-function* runs(t: AudioTrack): Generator<{ offset: number; length: number; sizes: number[] }> {
+function skip(reason: string): null {
+  console.warn(`Not extracting audio in the browser: ${reason}. Uploading the file as it is.`);
+  return null;
+}
+
+/** One run's samples, each behind an ADTS header for AAC. */
+function frame(track: AudioTrack, run: Run, buf: Uint8Array): Uint8Array {
+  const out = new Uint8Array(run.length + (track.adts ? 7 * run.sizes.length : 0));
+  let r = 0;
+  let w = 0;
+  for (const size of run.sizes) {
+    if (track.adts) {
+      out.set(adtsHeader(track.adts, size), w);
+      w += 7;
+    }
+    out.set(buf.subarray(r, r + size), w);
+    r += size;
+    w += size;
+  }
+  return out;
+}
+
+async function view(file: File, start: number, end: number): Promise<DataView> {
+  return new DataView(await file.slice(start, end).arrayBuffer());
+}
+
+/** The moov's own samples, then (fragmented) each moof's. */
+async function* runsOf(file: File, top: TopBox[], t: AudioTrack): AsyncGenerator<Run> {
+  yield* tableRuns(t);
+  if (t.fragmented) yield* fragmentRuns(file, top, t);
+}
+
+/** Byte runs to read from a regular MP4's tables: consecutive chunks merged, each run at most
+ * READ_BATCH. */
+function* tableRuns(t: AudioTrack): Generator<Run> {
   let sample = 0;
-  let cur: { offset: number; length: number; sizes: number[] } | null = null;
+  let cur: Run | null = null;
   for (let chunk = 0; chunk < t.chunkOffsets.length && sample < t.sizes.length; chunk++) {
     const n = samplesInChunk(t.samplesPerChunk, chunk + 1);
     const sizes = t.sizes.slice(sample, sample + n);
@@ -93,6 +139,55 @@ function* runs(t: AudioTrack): Generator<{ offset: number; length: number; sizes
     }
   }
   if (cur) yield cur;
+}
+
+/** Byte runs from a fragmented MP4: each moof's track runs (trun) for this track. Only the
+ * moof boxes are read; the video in between is skipped. */
+async function* fragmentRuns(file: File, top: TopBox[], t: AudioTrack): AsyncGenerator<Run> {
+  for (const b of top.filter((x) => x.type === "moof")) {
+    if (b.size > MAX_MOOV) continue;
+    const v = await view(file, b.offset, b.offset + b.size);
+    const moof: Box = { type: "moof", start: b.header, end: b.size };
+    let dataEnd = 0; // where the previous traf's data ended, for the oldest base-offset rule
+    for (const traf of children(v, moof.start, moof.end).filter((x) => x.type === "traf")) {
+      const tfhd = child(v, traf, "tfhd");
+      if (!tfhd) continue;
+      const flags = v.getUint32(tfhd.start) & 0xffffff;
+      if (v.getUint32(tfhd.start + 4) !== t.id) continue;
+      let p = tfhd.start + 8;
+      let base = dataEnd || b.offset;
+      if (flags & 0x01) {
+        base = Number(v.getBigUint64(p));
+        p += 8;
+      } else if (flags & 0x020000) {
+        base = b.offset;
+      }
+      if (flags & 0x02) p += 4;
+      if (flags & 0x08) p += 4;
+      const defaultSize = flags & 0x10 ? v.getUint32(p) : t.defaultSize;
+      let next = base;
+      for (const trun of children(v, traf.start, traf.end).filter((x) => x.type === "trun")) {
+        const tf = v.getUint32(trun.start) & 0xffffff;
+        const count = v.getUint32(trun.start + 4);
+        let q = trun.start + 8;
+        if (tf & 0x01) {
+          next = base + v.getInt32(q);
+          q += 4;
+        }
+        if (tf & 0x04) q += 4;
+        const stride = 4 * [0x100, 0x200, 0x400, 0x800].filter((f) => tf & f).length;
+        const sizeAt = tf & 0x100 ? 4 : 0;
+        const sizes = new Array<number>(count);
+        for (let i = 0; i < count; i++) {
+          sizes[i] = tf & 0x200 ? v.getUint32(q + i * stride + sizeAt) : defaultSize;
+        }
+        const length = sizes.reduce((a, c) => a + c, 0);
+        if (count > 0) yield { offset: next, length, sizes };
+        next += length;
+      }
+      dataEnd = next;
+    }
+  }
 }
 
 function samplesInChunk(stsc: [number, number][], chunk: number): number {
@@ -120,33 +215,29 @@ function adtsHeader(a: { profile: number; freq: number; channels: number }, size
 
 // ---- Container -------------------------------------------------------------------------
 
-/** The moov box's bytes, or null if this is not an ISO-BMFF file. Only box headers are read
- * on the way, so a moov after a huge mdat costs a few small reads. */
-async function readMoov(file: File): Promise<DataView | null> {
+/** The file's top-level boxes, or null if this is not an ISO-BMFF file. Only box headers are
+ * read, so walking past a huge mdat (or thousands of fragments) costs a small read each. */
+async function topLevel(file: File): Promise<TopBox[] | null> {
+  const out: TopBox[] = [];
   let off = 0;
-  let first = true;
   while (off + 8 <= file.size) {
-    const h = new DataView(await file.slice(off, off + 16).arrayBuffer());
+    const h = await view(file, off, off + 16);
     let size = h.getUint32(0);
     const type = fourcc(h, 4);
     let header = 8;
     if (size === 1) {
-      if (h.byteLength < 16) return null;
+      if (h.byteLength < 16) break;
       size = Number(h.getBigUint64(8));
       header = 16;
     } else if (size === 0) {
       size = file.size - off;
     }
-    if (size < header || !/^[\x20-\x7e]{4}$/.test(type)) return null;
-    if (first && !["ftyp", "wide", "free", "skip", "mdat", "moov", "pnot"].includes(type)) return null;
-    first = false;
-    if (type === "moov") {
-      if (size > MAX_MOOV) return null;
-      return new DataView(await file.slice(off + header, off + size).arrayBuffer());
-    }
+    if (size < header || !/^[\x20-\x7e]{4}$/.test(type)) break; // trailing garbage: stop here
+    if (out.length === 0 && !FIRST_BOXES.includes(type)) return null;
+    out.push({ type, offset: off, header, size });
     off += size;
   }
-  return null;
+  return out.length > 0 ? out : null;
 }
 
 function fourcc(v: DataView, at: number): string {
@@ -181,23 +272,39 @@ function child(v: DataView, box: Box | undefined, ...path: string[]): Box | unde
   return cur;
 }
 
-function findAudioTrack(v: DataView): AudioTrack | null {
+/** The first audio track this can copy; a reason if the audio is in a codec it can't. */
+function findAudioTrack(v: DataView): AudioTrack | string | null {
+  const trex = new Map<number, number>();
+  const mvex = children(v, 0, v.byteLength).find((b) => b.type === "mvex");
+  for (const b of mvex ? children(v, mvex.start, mvex.end).filter((x) => x.type === "trex") : []) {
+    trex.set(v.getUint32(b.start + 4), v.getUint32(b.start + 16));
+  }
+  let reason: string | null = null;
   for (const trak of children(v, 0, v.byteLength).filter((b) => b.type === "trak")) {
     const hdlr = child(v, trak, "mdia", "hdlr");
     if (!hdlr || fourcc(v, hdlr.start + 8) !== "soun") continue;
+    const tkhd = child(v, trak, "tkhd");
     const stbl = child(v, trak, "mdia", "minf", "stbl");
-    const track = stbl && audioTrack(v, stbl);
-    if (track) return track;
+    if (!tkhd || !stbl) continue;
+    const id = v.getUint32(tkhd.start + (v.getUint8(tkhd.start) === 1 ? 20 : 12));
+    const track = audioTrack(v, stbl, id, mvex !== undefined, trex.get(id) ?? 0);
+    if (typeof track !== "string") return track;
+    reason ??= track;
   }
-  return null;
+  return reason;
 }
 
-function audioTrack(v: DataView, stbl: Box): AudioTrack | null {
+function audioTrack(
+  v: DataView,
+  stbl: Box,
+  id: number,
+  fragmented: boolean,
+  defaultSize: number,
+): AudioTrack | string {
   const stsd = child(v, stbl, "stsd");
-  if (!stsd) return null;
   // stsd: version/flags, entry count, then sample entries.
-  const entry = children(v, stsd.start + 8, stsd.end)[0];
-  if (!entry) return null;
+  const entry = stsd && children(v, stsd.start + 8, stsd.end)[0];
+  if (!entry) return "audio track has no sample description";
   let codec: AudioTrack["codec"];
   let adts: AudioTrack["adts"];
   if (entry.type === ".mp3") {
@@ -205,31 +312,37 @@ function audioTrack(v: DataView, stbl: Box): AudioTrack | null {
   } else if (entry.type === "mp4a") {
     const esds = findEsds(v, entry);
     const config = esds && decoderConfig(v, esds);
-    if (!config) return null;
+    if (!config) return "mp4a track without a readable esds";
     if (config.oti === 0x69 || config.oti === 0x6b) {
       codec = "mp3";
     } else if ([0x40, 0x66, 0x67, 0x68].includes(config.oti) && config.asc) {
       codec = "aac";
       adts = adtsParams(config.asc) ?? undefined;
-      if (!adts) return null;
+      if (!adts) return "AAC configuration ADTS can't carry";
     } else {
-      return null;
+      return `mp4a object type 0x${config.oti.toString(16)}`;
     }
   } else {
-    return null;
+    return `audio codec ${entry.type}`;
   }
 
-  const sizes = sampleSizes(v, child(v, stbl, "stsz"));
-  const chunkOffsets = offsets(v, child(v, stbl, "stco"), child(v, stbl, "co64"));
   const stsc = child(v, stbl, "stsc");
-  if (!sizes || !chunkOffsets || !stsc) return null;
   const samplesPerChunk: [number, number][] = [];
-  const n = v.getUint32(stsc.start + 4);
+  const n = stsc ? v.getUint32(stsc.start + 4) : 0;
   for (let i = 0; i < n; i++) {
-    const at = stsc.start + 8 + i * 12;
+    const at = stsc!.start + 8 + i * 12;
     samplesPerChunk.push([v.getUint32(at), v.getUint32(at + 4)]);
   }
-  return { codec, adts, sizes, chunkOffsets, samplesPerChunk };
+  return {
+    id,
+    codec,
+    adts,
+    sizes: sampleSizes(v, child(v, stbl, "stsz")) ?? [],
+    chunkOffsets: offsets(v, child(v, stbl, "stco"), child(v, stbl, "co64")) ?? [],
+    samplesPerChunk,
+    fragmented,
+    defaultSize,
+  };
 }
 
 /** The esds box in an mp4a sample entry: after the entry's fields, or (QuickTime) in `wave`. */
