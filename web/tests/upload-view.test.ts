@@ -2,6 +2,7 @@
 import { h, render } from "preact";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UploadRecording } from "../src/views/UploadRecording";
+import { mp4 } from "./mp4";
 
 let root: HTMLElement;
 const settle = async () => {
@@ -75,6 +76,34 @@ describe("upload a recording", () => {
     );
     expect(root.querySelector("[data-testid=upload-form]")).not.toBeNull();
     expect(onUploaded).not.toHaveBeenCalled();
+  });
+
+  it("sends only the audio of a video", async () => {
+    const fetch = answer(202, { id: "s7" });
+    render(h(UploadRecording, { onUploaded: vi.fn() }), root);
+    const frames = [3, 5, 2, 4].map((n) => new Uint8Array(n).fill(7));
+    await choose(new File([mp4({ audio: frames }) as BlobPart], "Offsite.mp4", { type: "video/mp4" }));
+
+    root.querySelector("[data-testid=upload-form]")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    await settle();
+
+    expect(String(fetch.mock.calls[0]![0])).toContain("filename=Offsite.aac");
+    const body = fetch.mock.calls[0]![1]!.body as File;
+    expect(body.size).toBe(14 + 4 * 7); // the frames and their ADTS headers, no video
+  });
+
+  it("uploads a video it can't take apart as it is, and says what to do if it's too big", async () => {
+    const fetch = answer(413, { detail: "Recordings are limited to 500 MB." });
+    render(h(UploadRecording, { onUploaded: vi.fn() }), root);
+    await choose(new File(["not really mp4"], "screen.mp4", { type: "video/mp4" }));
+
+    root.querySelector("[data-testid=upload-form]")!.dispatchEvent(new Event("submit", { cancelable: true }));
+    await settle();
+
+    expect(String(fetch.mock.calls[0]![0])).toContain("filename=screen.mp4");
+    const alert = root.querySelector("[role=alert]")!.textContent!;
+    expect(alert).toContain("limited to 500 MB");
+    expect(alert).toContain("Save just the audio");
   });
 
   it("cancel puts the file back", async () => {

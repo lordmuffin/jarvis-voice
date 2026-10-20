@@ -12,6 +12,7 @@ export function UploadForm({
   file,
   mode,
   busy,
+  status,
   error,
   progress,
   blocked,
@@ -23,6 +24,8 @@ export function UploadForm({
   file: { name: string; size: number };
   mode: Mode;
   busy: boolean;
+  /** What a busy form is doing; default "Uploading…". */
+  status?: string;
   error: string | null;
   progress?: { sent: number; total: number };
   blocked?: string;
@@ -68,7 +71,7 @@ export function UploadForm({
       </div>
       <div class="d-bar">
         <Button variant="primary" type="submit" disabled={busy || blocked !== undefined}>
-          {busy ? "Uploading…" : "Upload"}
+          {busy ? (status ?? "Uploading…") : "Upload"}
         </Button>
         <Button variant="quiet" data-testid="upload-cancel" onClick={onCancel}>
           Cancel

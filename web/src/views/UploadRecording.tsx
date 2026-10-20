@@ -1,6 +1,7 @@
 import { useRef, useState } from "preact/hooks";
 import { ApiError, uploadRecording } from "../api";
 import { FilePick } from "../ds/components";
+import { extractAudio, isExtractableVideo } from "../extractAudio";
 import { UploadForm } from "../jarvis/UploadForm";
 import { navigate } from "../store";
 
@@ -21,6 +22,7 @@ export function UploadRecording({
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<"solo" | "meeting">("solo");
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<string | undefined>();
   const [error, setError] = useState<string | null>(null);
 
   function reset() {
@@ -38,13 +40,18 @@ export function UploadRecording({
     setBusy(true);
     setError(null);
     try {
-      const id = await uploadRecording(file, { mode, title });
+      const id = await uploadRecording(await audioOf(file, setStatus), { mode, title });
       reset();
       onUploaded(id);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Couldn't upload the recording.");
+      let message = err instanceof ApiError ? err.message : "Couldn't upload the recording.";
+      if (err instanceof ApiError && err.status === 413 && file.type.startsWith("video/")) {
+        message += " Save just the audio of this video (for example as .m4a) and upload that.";
+      }
+      setError(message);
     } finally {
       setBusy(false);
+      setStatus(undefined);
     }
   }
 
@@ -68,6 +75,7 @@ export function UploadRecording({
           file={file}
           mode={mode}
           busy={busy}
+          status={status}
           error={error}
           onMode={setMode}
           onSubmit={submit}
@@ -77,4 +85,18 @@ export function UploadRecording({
       )}
     </>
   );
+}
+
+/** A video's audio track alone when it can be copied out here (the server keeps only the
+ * audio, and a long video is gigabytes); otherwise the file as chosen. */
+async function audioOf(file: File, setStatus: (s: string | undefined) => void): Promise<File> {
+  if (!isExtractableVideo(file)) return file;
+  setStatus("Extracting audio…");
+  try {
+    return (await extractAudio(file)) ?? file;
+  } catch {
+    return file;
+  } finally {
+    setStatus("Uploading…");
+  }
 }
