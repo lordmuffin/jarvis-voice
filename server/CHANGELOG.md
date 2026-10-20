@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.20.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.19.1...server-v0.20.0) (2026-10-20)
+
+
+### Documentation
+
+* **server:** note that the dashboard uploads only a video's audio ([5417bca](https://github.com/lordmuffin/jarvis-voice/commit/5417bca7a91d0d7c82ef9bae04d09eeed55867cc))
+* **server:** note that the dashboard uploads only a video's audio ([a99709c](https://github.com/lordmuffin/jarvis-voice/commit/a99709c795a99c09f2e40a66bcb4aa1ca6f322d8))
+
 ## [0.19.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.19.0...server-v0.19.1) (2026-10-15)
 
 
