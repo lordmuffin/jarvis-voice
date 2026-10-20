@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.20.1...server-v0.21.0) (2026-10-20)
+
+
+### Miscellaneous Chores
+
+* **server:** Synchronize server and web versions
+
 ## [0.20.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.20.0...server-v0.20.1) (2026-10-20)
 
 
