@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.22.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.21.0...web-v0.22.0) (2026-10-20)
+
+
+### Features
+
+* **web:** show the server version left of the signed-in name ([75b7d4e](https://github.com/lordmuffin/jarvis-voice/commit/75b7d4e4955eac63a26d580d5f88ade63477dc9a))
+* **web:** show the server version left of the signed-in name ([ce42958](https://github.com/lordmuffin/jarvis-voice/commit/ce429586474118d890a7db64bb9f5786b73b1fab))
+
 ## [0.21.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.20.0...web-v0.21.0) (2026-10-20)
 
 
