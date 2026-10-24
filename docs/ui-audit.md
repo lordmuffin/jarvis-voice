@@ -79,6 +79,28 @@ The README's known misses (`jv_glass_border`, `jv_dot_inactive`) belong to the p
 | L4 | Settings and Chat: full-width fields and composer, no max width. | `settings_inner_*`, `voice_chat_inner_*` |
 | L5 | Onboarding: fine, but the primary button spans the full inner width. | `onboarding_inner_*` |
 
+## Status after this pass
+
+Before/after sheets: [`docs/ui-audit/compare/`](ui-audit/compare/). Baselines for the new screens are the Paparazzi snapshots in `android/app/src/test/snapshots/images/`.
+
+| Finding | Status |
+|---|---|
+| D1, D2 empty / error / loading | Fixed on Record (recent sessions), History and Detail: one `StatePanel` template, skeletons for first load, 50% content while refreshing |
+| D3 app bar | Fixed on Record, History, Detail (56dp, wordmark, channel badge) |
+| D4 Detail has no nav or back | Fixed: back row and navigation |
+| D5, D6 unfolded Record and navigation | Fixed on Record, History, Detail: 80dp rail, 320dp session pane with REC pill and Marker/Stop, feed on the right |
+| D7 level meter | Fixed: live waveform in the REC pill |
+| D8 history and new recording on one page | Fixed: Record shows pending sessions and the 5 most recent sessions under the new-session controls |
+| D9 copilot as one text blob | Partly: sections are separate blocks, still a panel above the feed rather than events interleaved with the transcript (the live snapshot carries no per-event source time) |
+| D10 status chips | Fixed: `InstChip` with the state word |
+| L1, L2, L3 inner-display breaks | Fixed: History is list + detail on the unfolded display; Record uses the spec's panes |
+| T1-T5, touch targets, L4, L5 | Not touched: Chat, Settings, Models, Agent, Dictionary, Onboarding are still Views (see below) |
+| Contrast misses | Token-level, to be fixed in `lordmuffin/instrument` |
+
+Transcript auto-scroll: the feed pins to the newest line while you follow it, pauses when you drag away, and shows "Jump to live" (`FollowLive`, unit-tested).
+
+Still on Views, with their findings above as follow-ups: Chat, Settings, Models, STT models, Agent, Dictionary, Dictation history, Onboarding, Debug log. Their screenshot baselines are `LegacyLayoutsTest`.
+
 ## Plan
 
 Fix order, as agreed: (1) map Instrument tokens into a Compose theme; (2) Record screen (live waveform, history and new recording on one page, transcript auto-scroll); (3) two-pane History / Detail on the unfolded display; (4) empty, error and loading states. UI only: recording, upload and sync code is untouched. Token-level contrast misses go to `lordmuffin/instrument`. Chat, Settings, Models, Agent and Dictionary stay on Views for now; their touch-target and max-width findings are listed above as follow-ups.

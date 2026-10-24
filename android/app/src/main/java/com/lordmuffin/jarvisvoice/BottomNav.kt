@@ -43,19 +43,22 @@ object BottomNav {
             root.findViewById<View>(t.indicatorId)?.setBackgroundColor(if (isActive) accent else Color.TRANSPARENT)
 
             if (t.tab != active) {
-                root.findViewById<LinearLayout>(t.tabId)?.setOnClickListener {
-                    val intent = Intent(activity, when (t.tab) {
-                        Tab.RECORD   -> LiveActivity::class.java
-                        Tab.HISTORY  -> HistoryActivity::class.java
-                        Tab.CHAT     -> VoiceChatActivity::class.java
-                        Tab.SETTINGS -> SettingsActivity::class.java
-                        Tab.MODELS   -> ModelManagerActivity::class.java
-                        Tab.AGENT    -> AgentTaskActivity::class.java
-                    })
-                    intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                    activity.startActivity(intent)
-                }
+                root.findViewById<LinearLayout>(t.tabId)?.setOnClickListener { open(activity, t.tab) }
             }
         }
+    }
+
+    /** Switches to [tab]'s screen, bringing it to the front if it is already open. Shared by the View and Compose navs. */
+    fun open(activity: AppCompatActivity, tab: Tab) {
+        val intent = Intent(activity, when (tab) {
+            Tab.RECORD   -> LiveActivity::class.java
+            Tab.HISTORY  -> HistoryActivity::class.java
+            Tab.CHAT     -> VoiceChatActivity::class.java
+            Tab.SETTINGS -> SettingsActivity::class.java
+            Tab.MODELS   -> ModelManagerActivity::class.java
+            Tab.AGENT    -> AgentTaskActivity::class.java
+        })
+        intent.flags = Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+        activity.startActivity(intent)
     }
 }
