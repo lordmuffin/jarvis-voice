@@ -236,7 +236,23 @@ export async function mockPast(page: Page, { ownerId }: { ownerId: string }): Pr
     streaming: false,
     owner: { id: ownerId, display_name: "Root Admin" },
     segments,
-    copilot: { version: 3, notes: [], actions: [], decisions: [], suggestions: [], related: [] },
+    // What the server reads back from NOTE's Actions and Decisions (finalize/note_items.py).
+    copilot: {
+      version: 3,
+      notes: [],
+      actions: [
+        { id: "note-action-0", text: "Send the node inventory. (Me, Fri 16 Oct)", owner: null, due: null },
+        { id: "note-action-1", text: "Confirm GPU runner pricing. (Vendor)", owner: null, due: null },
+        { id: "note-action-2", text: "List the four repos that need runners.", owner: null, due: null },
+      ],
+      decisions: [
+        { id: "note-decision-0", text: "Pilot on the **k3s2** cluster first. The VM runners stay as a fallback." },
+        { id: "note-decision-1", text: "Register scale sets at the org level, not per repository." },
+        { id: "note-decision-2", text: "The vendor gets read-only access to cluster metrics during the pilot." },
+      ],
+      suggestions: [],
+      related: [],
+    },
     markers: [{ t_ms: 965_000, label: "Pricing" }],
     final_note: { path: "Sessions/arc.md", title: "ARC runner migration vendor call", markdown: NOTE },
     audio: { mic: true, system: true },
