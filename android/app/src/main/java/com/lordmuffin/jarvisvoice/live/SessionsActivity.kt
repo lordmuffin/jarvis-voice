@@ -80,6 +80,7 @@ class SessionsActivity : AppCompatActivity() {
                             DetailActions(
                                 onTab = model::selectTab, onRetry = model::load, onRefresh = model::load,
                                 onPlay = model::onPlayTapped, onSeek = model::seekTo, onProcess = model::process,
+                        onCopy = { SessionClipboard.copy(this@SessionsActivity, it) },
                             ),
                         )
                     }

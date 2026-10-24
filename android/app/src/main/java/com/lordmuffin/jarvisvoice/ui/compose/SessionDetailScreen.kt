@@ -52,6 +52,7 @@ class DetailActions(
     val onPlay: (String) -> Unit = {},
     val onSeek: (String, Float) -> Unit = { _, _ -> },
     val onProcess: () -> Unit = {},
+    val onCopy: (String) -> Unit = {},
 )
 
 /**
@@ -93,7 +94,7 @@ fun SessionDetailContent(ui: DetailUi, actions: DetailActions, modifier: Modifie
                         selected = ui.tab, onSelect = actions.onTab,
                     )
                 }
-                DetailBody(ui, Modifier.weight(1f))
+                DetailBody(ui, actions, Modifier.weight(1f))
             }
         }
     }
@@ -137,10 +138,13 @@ private fun DetailHeader(ui: DetailUi, actions: DetailActions) {
 }
 
 @Composable
-private fun DetailBody(ui: DetailUi, modifier: Modifier) {
+private fun DetailBody(ui: DetailUi, actions: DetailActions, modifier: Modifier) {
     val sp = InstUi.space
     when (ui.tab) {
         DetailTab.SUMMARY -> Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(sp.s16)) {
+            ui.summaryText?.let { text ->
+                InstButton(stringResource(R.string.detail_copy_summary), { actions.onCopy(text) }, kind = ButtonKind.Quiet, size = ButtonSize.Sm)
+            }
             when (val s = ui.summary) {
                 is SummaryUi.Note -> MarkdownBlocks(s.blocks)
                 is SummaryUi.Placeholder -> Placeholder(s.text)
@@ -155,6 +159,9 @@ private fun DetailBody(ui: DetailUi, modifier: Modifier) {
                 verticalArrangement = Arrangement.spacedBy(sp.s4),
             ) { items(ui.transcript, key = { it.id }) { UtteranceRow(it) } }
         DetailTab.ACTIONS -> Column(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(sp.s16), verticalArrangement = Arrangement.spacedBy(sp.s16)) {
+            ui.actionsText?.let { text ->
+                InstButton(stringResource(R.string.detail_copy_actions), { actions.onCopy(text) }, kind = ButtonKind.Quiet, size = ButtonSize.Sm)
+            }
             when (val a = ui.actions) {
                 is ActionsUi.Placeholder -> Placeholder(a.text)
                 is ActionsUi.Sections -> a.sections.forEach { section ->
@@ -163,9 +170,16 @@ private fun DetailBody(ui: DetailUi, modifier: Modifier) {
                         section.items.forEach { item ->
                             Row(horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
                                 InstText(section.glyph, InstUi.type.body, color = Inst.colors.accent)
-                                Column(verticalArrangement = Arrangement.spacedBy(sp.s4 / 2)) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(sp.s4 / 2)) {
                                     InstText(item.text, InstUi.type.body)
                                     if (item.extra != null) InstText(item.extra, InstUi.type.meta)
+                                }
+                                item.copyText?.let { line ->
+                                    InstButton(
+                                        stringResource(R.string.detail_copy_item), { actions.onCopy(line) },
+                                        kind = ButtonKind.Quiet, size = ButtonSize.Sm,
+                                        contentDescription = stringResource(R.string.detail_copy_item_a11y, item.text),
+                                    )
                                 }
                             }
                         }

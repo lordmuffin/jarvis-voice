@@ -113,7 +113,7 @@ object Fixtures {
         transcript = transcript.map { it.copy(draft = false) },
         actions = ActionsUi.Sections(
             listOf(
-                ActionSectionUi("Actions", "☐", listOf(ActionItemUi("Send the node inventory.", "owner: Me · due Fri 16 Oct"), ActionItemUi("Confirm GPU runner pricing.", "owner: Vendor"))),
+                ActionSectionUi("Actions", "☐", listOf(ActionItemUi("Send the node inventory.", "owner: Me · due Fri 16 Oct", "- [ ] Send the node inventory."), ActionItemUi("Confirm GPU runner pricing.", "owner: Vendor", "- [ ] Confirm GPU runner pricing."))),
                 ActionSectionUi("Decisions", "✓", listOf(ActionItemUi("Pilot on the k3s2 cluster first.", null))),
                 ActionSectionUi("Notes", "•", listOf(ActionItemUi("No date yet for the ARM images.", null))),
             )
@@ -123,6 +123,8 @@ object Fixtures {
             AudioUi("system", Speaker.THEM, playing = true, time = "14:02 / 30:04", progress = 0.47f, seekable = true),
         ),
         canProcess = true,
+        summaryText = "# ARC runner migration vendor call",
+        actionsText = "- [ ] Send the node inventory.\n- [ ] Confirm GPU runner pricing.\n",
     )
 
     /** "Transcribe & summarize" waiting while a job (this button's or the server's own) runs. */
@@ -132,6 +134,7 @@ object Fixtures {
         status = "Finalizing", statusTone = Tone.Warning,
         notice = "The note is still being prepared.",
         summary = SummaryUi.Placeholder("The summary appears here when the session is finalized."),
+        summaryText = null,
         audio = emptyList(),
     )
 

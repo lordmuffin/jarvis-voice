@@ -29,7 +29,8 @@ sealed interface SummaryUi {
     data class Placeholder(val text: String) : SummaryUi
 }
 
-data class ActionItemUi(val text: String, val extra: String?)
+/** [copyText] is the item's checklist line, for an action; null for decisions and notes. */
+data class ActionItemUi(val text: String, val extra: String?, val copyText: String? = null)
 data class ActionSectionUi(val title: String, val glyph: String, val items: List<ActionItemUi>)
 
 sealed interface ActionsUi {
@@ -71,6 +72,10 @@ data class DetailUi(
     /** "Transcribing…", "Summarizing…" or "Transcription failed"; null when idle. */
     val processing: String? = null,
     val processingTone: Tone = Tone.Warning,
+    /** What "Copy summary" puts on the clipboard: the note's Markdown without its frontmatter. */
+    val summaryText: String? = null,
+    /** What "Copy actions" puts on the clipboard: a "- [ ] item" checklist. */
+    val actionsText: String? = null,
 ) {
     val loaded: Boolean get() = status != null
 }
@@ -258,14 +263,19 @@ class SessionDetailModel(
             transcript = d.segments.map { FeedLine(it.id, LocalMarkdown.clock(it.startMs), speakerFor(it.speaker), it.text) },
             actions = actionsOf(d.copilot),
             audio = audioUi(),
+            summaryText = noteBody(d),
+            actionsText = CopyText.checklist(d.copilot.actions),
             canProcess = d.canRegenerate,
         )
         showProcessing(d.processing)
     }
 
+    private fun noteBody(d: RemoteSessionDetail): String? =
+        d.finalNote?.markdown?.let { MarkdownModel.stripFrontmatter(it) }?.takeIf { it.isNotBlank() }
+
     private fun summaryOf(d: RemoteSessionDetail): SummaryUi {
         val note = d.finalNote
-        val body = note?.markdown?.let { MarkdownModel.stripFrontmatter(it) }?.takeIf { it.isNotBlank() }
+        val body = noteBody(d)
         return when {
             body != null -> SummaryUi.Note(MarkdownModel.parse(body))
             note != null && note.markdown == null -> SummaryUi.Placeholder(app.getString(R.string.detail_summary_gone, note.path))
@@ -292,7 +302,10 @@ class SessionDetailModel(
                         item.owner?.let { app.getString(R.string.detail_owner, it) },
                         item.due?.let { app.getString(R.string.detail_due, it) },
                     )
-                    ActionItemUi(item.text, extra.takeIf { it.isNotEmpty() }?.joinToString(" · "))
+                    ActionItemUi(
+                        item.text, extra.takeIf { it.isNotEmpty() }?.joinToString(" · "),
+                        copyText = if (section == CopilotSection.ACTIONS) CopyText.line(item.text, item.owner, item.due) else null,
+                    )
                 },
             )
         }
