@@ -5,7 +5,13 @@
 
 ### Features
 
+* **android:** Compose Record, History and Session Detail on Instrument ([7bd4737](https://github.com/lordmuffin/jarvis-voice/commit/7bd47378737f7f5f641769278d6573b91ea49761))
 * forward homelab questions to Pi Durable's jarvis session ([f1fca41](https://github.com/lordmuffin/jarvis-voice/commit/f1fca41a6a8cff9e97e1eb4e13b82c0e4b112728))
+
+
+### Bug Fixes
+
+* **android:** add missing Compose and Paparazzi catalog entries, drop stale merge tail ([cbce872](https://github.com/lordmuffin/jarvis-voice/commit/cbce872965498cdfacdb05aeda93a191a4f6e85a))
 
 ## [1.16.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.15.0...android-v1.16.0) (2026-10-24)
 
