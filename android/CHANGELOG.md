@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.16.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.15.0...android-v1.16.0) (2026-10-24)
+
+
+### Features
+
+* **android:** Wear OS companion with watch-to-phone sync ([1af3d89](https://github.com/lordmuffin/jarvis-voice/commit/1af3d897c611e4f6a3a90bb8803ab8d866423b6c))
+* **android:** Wear OS companion with watch-to-phone sync ([37ab227](https://github.com/lordmuffin/jarvis-voice/commit/37ab227eea13e47789165af1f3cd6a6fcdfa9a0e))
+
 ## [1.15.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.1...android-v1.15.0) (2026-10-15)
 
 
