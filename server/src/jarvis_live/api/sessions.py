@@ -7,6 +7,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from jarvis_live.api.audio import audio_available, wav_response
@@ -52,6 +53,8 @@ class SessionOut(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     local_only: bool
+    # "watch" for a recording made on the Wear OS app; None when the uploader did not say.
+    source: str | None
     # Audio is arriving right now. ``status`` stays ``live`` while a dropped producer may still
     # reconnect, so viewers use this to tell "live" from "live but nothing streaming".
     streaming: bool
@@ -68,6 +71,7 @@ class SessionOut(BaseModel):
             started_at=s.started_at,
             ended_at=s.ended_at,
             local_only=s.local_only,
+            source=s.source,
             streaming=s.status == "live" and request.app.state.hub.is_streaming(s.id),
             owner=OwnerOut(id=owner.id, display_name=owner.display_name),
         )
@@ -217,10 +221,27 @@ async def upload_recording(
     title: Annotated[str | None, Query(max_length=200)] = None,
     filename: Annotated[str | None, Query(max_length=255)] = None,
     mode: Literal["meeting", "solo"] = "solo",
+    source: Literal["watch", "phone", "web"] | None = None,
+    client_id: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
 ) -> SessionCreateResponse:
     """A recorded file as the raw request body (any format ffmpeg reads). It becomes a mic-only
     session, transcribed in the background like a live one; the title defaults to the file
-    name. 415 if it holds no audio, 413 over ``upload_max_mb``."""
+    name. 415 if it holds no audio, 413 over ``upload_max_mb``.
+
+    ``source`` tags where it was recorded. ``client_id`` is the uploader's id for the recording:
+    repeating an upload with the same one returns the existing session (202 again) instead of a
+    second, so a client that never saw the response can retry until it does. The 202 is the
+    server's acknowledgement that the audio is stored: only then may the uploader delete it."""
+    if client_id is not None:
+        existing = (
+            await db.execute(
+                select(SessionRow.id).where(
+                    SessionRow.user_id == principal.user.id, SessionRow.client_id == client_id
+                )
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return SessionCreateResponse(id=existing)
     cfg = request.app.state.settings
     limit = cfg.upload_max_mb * 1024 * 1024
     if int(request.headers.get("content-length") or 0) > limit:
@@ -255,9 +276,23 @@ async def upload_recording(
         mode=mode,
         status="live",
         channels=["mic"],
+        source=source,
+        client_id=client_id,
     )
     db.add(row)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:  # two retries raced past the check above
+        await db.rollback()
+        pcm.unlink(missing_ok=True)
+        raced = (
+            await db.execute(
+                select(SessionRow.id).where(
+                    SessionRow.user_id == principal.user.id, SessionRow.client_id == client_id
+                )
+            )
+        ).scalar_one()
+        return SessionCreateResponse(id=raced)
     session_logger(__name__, row.id).info("recording uploaded", extra={"bytes": size})
     request.app.state.uploads.start(row.id, pcm)
     return SessionCreateResponse(id=row.id)
