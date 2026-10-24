@@ -8,6 +8,7 @@ import type {
   NewDevice,
   Publication,
   PublishingQueue,
+  Processing,
   SessionDetail,
   SessionPage,
   SessionSummary,
@@ -168,6 +169,16 @@ export const endSession = (id: string, f?: typeof fetch) =>
 
 export const regenerateNote = (id: string, f?: typeof fetch) =>
   request<SessionDetail>(`${sid(id)}/regenerate`, { method: "POST" }, f);
+
+/**
+ * Transcribe the recording again, then write the note again. Never starts a second job: with one
+ * running, `started` is false and `processing` is that job.
+ */
+export const processSession = (id: string, f?: typeof fetch) =>
+  request<{ started: boolean; processing: Processing }>(`${sid(id)}/process`, { method: "POST" }, f);
+
+/** Just the processing state, to poll while a job runs. */
+export const getProcessing = (id: string, f?: typeof fetch) => request<Processing>(`${sid(id)}/processing`, {}, f);
 
 /** The publication, after the server checked an open PR on GitHub. */
 export const getPublication = (id: string, f?: typeof fetch) =>

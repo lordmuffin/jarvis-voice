@@ -4,6 +4,7 @@ ingest path as a live producer (store, VAD, STT, copilot, finalizer)."""
 import asyncio
 import logging
 import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from jarvis_live.ingest.hub import IngestHub, SessionIngest
@@ -50,13 +51,25 @@ class Uploads:
     def __init__(self, hub: IngestHub) -> None:
         self._hub = hub
         self._tasks: set[asyncio.Task[None]] = set()
+        self._since: dict[uuid.UUID, datetime] = {}
 
     def start(self, session_id: uuid.UUID, pcm: Path) -> None:
+        self._since[session_id] = datetime.now(UTC)
         task = asyncio.create_task(self._run(session_id, pcm))
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
+    def since(self, session_id: uuid.UUID) -> datetime | None:
+        """When this upload's ingest began, until the session has been ended."""
+        return self._since.get(session_id)
+
     async def _run(self, session_id: uuid.UUID, pcm: Path) -> None:
+        try:
+            await self._ingest(session_id, pcm)
+        finally:
+            self._since.pop(session_id, None)
+
+    async def _ingest(self, session_id: uuid.UUID, pcm: Path) -> None:
         slog = session_logger(__name__, session_id)
         ing: SessionIngest | None = None
         try:

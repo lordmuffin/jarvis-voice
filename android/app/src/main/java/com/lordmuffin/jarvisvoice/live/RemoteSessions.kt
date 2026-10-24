@@ -88,6 +88,45 @@ data class RemoteMarker(val tMs: Long, val label: String)
 /** The Markdown note the server wrote; [markdown] is null once the file has left the outbox. */
 data class RemoteFinalNote(val path: String, val title: String, val markdown: String?)
 
+/**
+ * What a session's transcription and note are doing now (`processing` in `GET /v1/sessions/{id}`).
+ * The server derives it from the jobs it is running: a live or uploaded recording, an ending
+ * session, a regeneration, or a `POST .../process`. Each phase is `idle`, `queued`, `running` or `failed`.
+ */
+data class RemoteProcessing(
+    val transcription: String = IDLE,
+    val summary: String = IDLE,
+    val startedAt: Instant? = null,
+    /** `live`, `upload`, `finalize`, `regenerate` or `reprocess`; null when nothing runs. */
+    val jobSource: String? = null,
+) {
+    enum class Activity { TRANSCRIBING, SUMMARIZING }
+
+    /** A job is in flight: a new one would not start. */
+    val busy: Boolean get() = listOf(transcription, summary).any { it == RUNNING || it == QUEUED }
+
+    /** What to tell the user; the note waits for the transcript, so transcribing comes first. */
+    val activity: Activity?
+        get() = when {
+            transcription == RUNNING || transcription == QUEUED -> Activity.TRANSCRIBING
+            summary == RUNNING || summary == QUEUED -> Activity.SUMMARIZING
+            else -> null
+        }
+
+    /** The last re-transcription could not run; the earlier transcript and note were kept. */
+    val transcriptionFailed: Boolean get() = transcription == FAILED
+
+    companion object {
+        const val IDLE = "idle"
+        const val QUEUED = "queued"
+        const val RUNNING = "running"
+        const val FAILED = "failed"
+    }
+}
+
+/** `POST /v1/sessions/{id}/process`: [started] is false when a job was already running. */
+data class ProcessResult(val started: Boolean, val processing: RemoteProcessing)
+
 /** `GET /v1/sessions/{id}` */
 data class RemoteSessionDetail(
     val session: RemoteSession,
@@ -96,6 +135,9 @@ data class RemoteSessionDetail(
     val markers: List<RemoteMarker>,
     val finalNote: RemoteFinalNote?,
     val audio: Map<String, Boolean>,
+    val processing: RemoteProcessing = RemoteProcessing(),
+    /** The server can re-run the note (and transcription): an LLM is configured, not local-only. */
+    val canRegenerate: Boolean = false,
 ) {
     /** Channels with a recording on the server, mic first. */
     val audioChannels: List<String>
@@ -184,6 +226,25 @@ object RemoteSessions {
                 )
             },
             audio = audio,
+            processing = json.optJSONObject("processing")?.let { parseProcessing(it) } ?: RemoteProcessing(),
+            canRegenerate = json.optBoolean("can_regenerate", false),
+        )
+    }
+
+    fun parseProcessing(text: String): RemoteProcessing = parseProcessing(JSONObject(text))
+
+    fun parseProcessing(json: JSONObject) = RemoteProcessing(
+        transcription = json.stringOrNull("transcription") ?: RemoteProcessing.IDLE,
+        summary = json.stringOrNull("summary") ?: RemoteProcessing.IDLE,
+        startedAt = parseInstant(json.stringOrNull("started_at")),
+        jobSource = json.stringOrNull("job_source"),
+    )
+
+    fun parseProcessResult(text: String): ProcessResult {
+        val json = JSONObject(text)
+        return ProcessResult(
+            started = json.optBoolean("started", false),
+            processing = json.optJSONObject("processing")?.let { parseProcessing(it) } ?: RemoteProcessing(),
         )
     }
 

@@ -35,7 +35,7 @@ class SessionDetailActivity : AppCompatActivity() {
                     model.ui,
                     DetailActions(
                         onTab = model::selectTab, onRetry = model::load, onRefresh = model::load,
-                        onPlay = model::onPlayTapped, onSeek = model::seekTo,
+                        onPlay = model::onPlayTapped, onSeek = model::seekTo, onProcess = model::process,
                     ),
                     onBack = { finish() },
                     onNav = { BottomNav.open(this, it) },

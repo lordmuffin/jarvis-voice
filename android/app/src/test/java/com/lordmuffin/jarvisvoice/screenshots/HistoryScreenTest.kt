@@ -48,6 +48,7 @@ class HistoryScreenTest(private val variant: Variant) {
     @Test fun detailSummary() = detail("detail_summary", Fixtures.detail)
     @Test fun detailTranscript() = detail("detail_transcript", Fixtures.detail.copy(tab = DetailTab.TRANSCRIPT))
     @Test fun detailActions() = detail("detail_actions", Fixtures.detail.copy(tab = DetailTab.ACTIONS))
+    @Test fun detailProcessing() = detail("detail_processing", Fixtures.detailProcessing)
     @Test fun detailFinalizing() = detail("detail_finalizing", Fixtures.detailFinalizing)
     @Test fun detailLoading() = detail("detail_loading", Fixtures.detailLoading)
     @Test fun detailError() = detail("detail_error", Fixtures.detailError)

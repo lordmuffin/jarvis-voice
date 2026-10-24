@@ -2,6 +2,7 @@ import { audioUrl } from "../api";
 import { Column, Player, Recordings as RecordingList } from "../ds/components";
 import { duration } from "../format";
 import { NoNote } from "../jarvis/NoNote";
+import { ProcessControl } from "../jarvis/ProcessControl";
 import { SessionHeader } from "../jarvis/SessionHeader";
 import { Timeline } from "../jarvis/Timeline";
 import { initialState, reduce, transcriptLines } from "../reducer";
@@ -55,6 +56,7 @@ export function PastSession({
         session={detail}
         suffix={duration(detail.started_at, detail.ended_at) || undefined}
         title={<SessionTitle session={detail} onRenamed={onRenamed} />}
+        actions={<ProcessControl detail={detail} onChanged={onChanged} />}
       />
       <Recordings detail={detail} />
       <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />

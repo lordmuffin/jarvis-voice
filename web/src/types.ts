@@ -162,6 +162,22 @@ export interface SessionDetail extends SessionSummary {
   can_publish: boolean;
   /** The note can be written again from the transcript (an LLM is configured). */
   can_regenerate: boolean;
+  /** What transcription and the note are doing now; absent from servers before it existed. */
+  processing?: Processing;
+}
+
+export type ProcessingPhase = "idle" | "queued" | "running" | "failed";
+
+/**
+ * A session's transcription and note jobs, as the server sees them in flight: a live or
+ * uploaded recording, an ending session, a regeneration, or `POST .../process`.
+ */
+export interface Processing {
+  transcription: ProcessingPhase;
+  summary: ProcessingPhase;
+  /** When the job in flight began. */
+  started_at: string | null;
+  job_source: "live" | "upload" | "finalize" | "regenerate" | "reprocess" | null;
 }
 
 export type PublicationState = "publishing" | "open" | "merged" | "closed" | "skipped" | "failed";

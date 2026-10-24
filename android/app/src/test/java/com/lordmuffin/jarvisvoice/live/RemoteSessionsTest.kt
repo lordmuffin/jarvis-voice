@@ -120,6 +120,41 @@ class RemoteSessionsTest {
         assertTrue(d.audioChannels.isEmpty())
     }
 
+    @Test fun parsesProcessing() {
+        val d = RemoteSessions.parseDetail(
+            """{"id": "s5", "status": "live", "can_regenerate": true,
+                "processing": {"transcription": "running", "summary": "queued",
+                               "started_at": "2026-10-24T09:00:00Z", "job_source": "upload"}}"""
+        )
+        val p = d.processing
+        assertTrue(p.busy)
+        assertEquals(RemoteProcessing.Activity.TRANSCRIBING, p.activity)
+        assertEquals("upload", p.jobSource)
+        assertEquals(Instant.parse("2026-10-24T09:00:00Z"), p.startedAt)
+        assertTrue(d.canRegenerate)
+    }
+
+    @Test fun summarizingAfterTheTranscript() {
+        val p = RemoteSessions.parseProcessing("""{"transcription": "idle", "summary": "running", "job_source": "regenerate"}""")
+        assertTrue(p.busy)
+        assertEquals(RemoteProcessing.Activity.SUMMARIZING, p.activity)
+        assertFalse(p.transcriptionFailed)
+    }
+
+    @Test fun anOlderServerReadsIdleAndCannotProcess() {
+        val d = RemoteSessions.parseDetail("""{"id": "s6", "status": "done"}""")
+        assertFalse(d.processing.busy)
+        assertNull(d.processing.activity)
+        assertFalse(d.canRegenerate)
+    }
+
+    @Test fun aFailedTranscriptionIsNotBusy() {
+        val p = RemoteSessions.parseProcessing("""{"transcription": "failed", "summary": "idle"}""")
+        assertFalse(p.busy)
+        assertNull(p.activity)
+        assertTrue(p.transcriptionFailed)
+    }
+
     @Test fun finalNoteWithoutMarkdown() {
         val d = RemoteSessions.parseDetail("""{"id": "s3", "final_note": {"path": "a.md", "title": "A", "markdown": null}}""")
         assertEquals("a.md", d.finalNote?.path)

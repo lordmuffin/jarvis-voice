@@ -11,6 +11,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import update
 
+from jarvis_live.api.audio import audio_available
 from jarvis_live.api.sessions import (
     Db,
     PrincipalDep,
@@ -18,12 +19,14 @@ from jarvis_live.api.sessions import (
     SessionDetail,
     _visible,
     get_session,
+    processing_of,
 )
 from jarvis_live.db.models import NotePublication
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.outbox import latest_final_note
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.orchestrator import Orchestrator
+from jarvis_live.processing import ProcessingState
 from jarvis_live.publish.service import (
     MAX_NOTE_BYTES,
     PublishError,
@@ -61,39 +64,91 @@ async def edit_note(
     return await get_session(session_id, principal, db, request)
 
 
+def _orchestrator(row: SessionRow, request: Request) -> Orchestrator:
+    orchestrator: Orchestrator | None = request.app.state.orchestrator
+    if orchestrator is None:
+        raise HTTPException(503, "No LLM is configured.")
+    if row.local_only:
+        raise HTTPException(409, "Local-only sessions are never sent to an LLM.")
+    return orchestrator
+
+
+async def _reopen(db: Db, orchestrator: Orchestrator, session_id: uuid.UUID) -> str:
+    """Put a finished session back into ``finalizing`` for a new run; returns its status before.
+    The caller holds the publishing lock of the session."""
+    pub = await db.get(NotePublication, session_id, populate_existing=True)
+    if pub is not None and pub.state in ("open", "publishing"):
+        raise HTTPException(409, "Close the pull request first.")
+    row = await db.get(SessionRow, session_id, populate_existing=True)
+    assert row is not None
+    # A session stuck in ``finalizing`` with no run in flight (e.g. a restart beyond the
+    # recovery window) may be run again too.
+    allowed = ["done", "failed"]
+    if not orchestrator.is_finalizing(session_id):
+        allowed.append("finalizing")
+    if row.status not in allowed:
+        raise HTTPException(409, "The session is not finished.")
+    res = await db.execute(
+        update(SessionRow)
+        .where(SessionRow.id == session_id, SessionRow.status == row.status)
+        .values(status="finalizing")
+    )
+    if res.rowcount == 0:  # type: ignore[attr-defined]
+        raise HTTPException(409, "The session is not finished.")
+    await db.commit()
+    return row.status
+
+
 @router.post("/sessions/{session_id}/regenerate")
 async def regenerate(
     session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
 ) -> SessionDetail:
     """Write the note again from the transcript. The session is ``finalizing`` meanwhile."""
     row, _ = await _visible(db, principal, session_id)
-    orchestrator: Orchestrator | None = request.app.state.orchestrator
-    if orchestrator is None:
-        raise HTTPException(503, "No LLM is configured.")
-    if row.local_only:
-        raise HTTPException(409, "Local-only sessions are never sent to an LLM.")
-    service = _service(request)
-    async with service.lock(session_id):
-        pub = await db.get(NotePublication, session_id, populate_existing=True)
-        if pub is not None and pub.state in ("open", "publishing"):
-            raise HTTPException(409, "Close the pull request first.")
-        # A session stuck in ``finalizing`` with no run in flight (e.g. a restart beyond the
-        # recovery window) may be regenerated too.
-        allowed = ["done", "failed"]
-        if not orchestrator.is_finalizing(session_id):
-            allowed.append("finalizing")
-        res = await db.execute(
-            update(SessionRow)
-            .where(SessionRow.id == session_id, SessionRow.status.in_(allowed))
-            .values(status="finalizing")
-        )
-        if res.rowcount == 0:  # type: ignore[attr-defined]
-            raise HTTPException(409, "The session is not finished.")
-        await db.commit()
+    orchestrator = _orchestrator(row, request)
+    async with _service(request).lock(session_id):
+        await _reopen(db, orchestrator, session_id)
         note = await latest_final_note(db, session_id)
         orchestrator.regenerate(session_id, note[0] if note else None)
     session_logger(__name__, session_id).info("note regeneration started")
     return await get_session(session_id, principal, db, request)
+
+
+class ProcessOut(BaseModel):
+    started: bool  # False: a job was already running, and ``processing`` is that job
+    processing: ProcessingState
+
+
+@router.post("/sessions/{session_id}/process", status_code=202)
+async def process(
+    session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
+) -> ProcessOut:
+    """Transcribe the stored recording again (if there is one), then write the note again.
+
+    Never starts a second job: if the session is already being transcribed or summarized (a
+    live or uploaded recording, an ending session, a regeneration, an earlier call), nothing is
+    started and the 202 carries that job's state."""
+    row, _ = await _visible(db, principal, session_id)
+    orchestrator = _orchestrator(row, request)
+    async with _service(request).lock(session_id):
+        await db.refresh(row)
+        current = processing_of(request, row)
+        if current.busy:
+            return ProcessOut(started=False, processing=current)
+        before = await _reopen(db, orchestrator, session_id)
+        note = await latest_final_note(db, session_id)
+        replace = note[0] if note else None
+        data_dir = request.app.state.settings.data_dir
+        if any(audio_available(data_dir, session_id, c) for c in row.channels):
+            # Failing to transcribe leaves the note as it was; a stuck session reads failed.
+            restore = "failed" if before == "finalizing" else before
+            orchestrator.reprocess(session_id, replace, restore=restore)
+        else:
+            orchestrator.regenerate(session_id, replace)
+        await db.refresh(row)
+        state = processing_of(request, row)
+    session_logger(__name__, session_id).info("processing started")
+    return ProcessOut(started=True, processing=state)
 
 
 class PublicationState(BaseModel):

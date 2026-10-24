@@ -122,7 +122,11 @@ object Fixtures {
             AudioUi("mic", Speaker.ME, time = "00:00 / 30:04"),
             AudioUi("system", Speaker.THEM, playing = true, time = "14:02 / 30:04", progress = 0.47f, seekable = true),
         ),
+        canProcess = true,
     )
+
+    /** "Transcribe & summarize" waiting while a job (this button's or the server's own) runs. */
+    val detailProcessing = detail.copy(processBusy = true, processing = "Transcribing…")
 
     val detailFinalizing = detail.copy(
         status = "Finalizing", statusTone = Tone.Warning,

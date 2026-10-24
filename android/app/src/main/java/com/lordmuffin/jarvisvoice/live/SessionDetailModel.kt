@@ -64,6 +64,13 @@ data class DetailUi(
     val transcript: List<FeedLine> = emptyList(),
     val actions: ActionsUi = ActionsUi.Placeholder(""),
     val audio: List<AudioUi> = emptyList(),
+    /** "Transcribe & summarize" is offered (the server can run it for this session). */
+    val canProcess: Boolean = false,
+    /** A transcription or summary job is in flight: the button waits. */
+    val processBusy: Boolean = false,
+    /** "Transcribing…", "Summarizing…" or "Transcription failed"; null when idle. */
+    val processing: String? = null,
+    val processingTone: Tone = Tone.Warning,
 ) {
     val loaded: Boolean get() = status != null
 }
@@ -96,6 +103,7 @@ class SessionDetailModel(
     private var detail: RemoteSessionDetail? = null
     private var channel: ServerChannel? = null
     private var loadJob: Job? = null
+    private var pollJob: Job? = null
     private val client: LiveApiClient by lazy(clientProvider)
 
     private class AudioRow(val channel: String) {
@@ -117,7 +125,14 @@ class SessionDetailModel(
         lifecycle?.addObserver(this)
     }
 
-    override fun onStop(owner: LifecycleOwner) = stopPlayback()
+    override fun onStart(owner: LifecycleOwner) {
+        if (ui.processBusy) pollProcessing()
+    }
+
+    override fun onStop(owner: LifecycleOwner) {
+        stopPlayback()
+        pollJob?.cancel()
+    }
 
     override fun onDestroy(owner: LifecycleOwner) = release()
 
@@ -125,6 +140,7 @@ class SessionDetailModel(
     fun release() {
         lifecycle?.removeObserver(this)
         loadJob?.cancel()
+        pollJob?.cancel()
         audioRows.values.forEach { it.downloadJob?.cancel() }
         stopPlayback()
     }
@@ -165,6 +181,64 @@ class SessionDetailModel(
 
     // endregion
 
+    // region Processing
+
+    /** "Transcribe & summarize": the server never starts a second job, so a tap while one runs just joins it. */
+    fun process() {
+        if (ui.processBusy) return
+        ui = ui.copy(processBusy = true, notice = null)
+        scope.launch {
+            try {
+                showProcessing(client.process(sessionId).processing)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val reason = if (e is LiveHttpException) app.getString(R.string.livesess_http, e.status)
+                else e.message ?: e.javaClass.simpleName
+                ui = ui.copy(processBusy = false, notice = app.getString(R.string.detail_process_error, reason))
+            }
+        }
+    }
+
+    private fun showProcessing(p: RemoteProcessing) {
+        ui = ui.copy(
+            processBusy = p.busy,
+            processing = when {
+                p.activity == RemoteProcessing.Activity.TRANSCRIBING -> app.getString(R.string.detail_processing_transcribing)
+                p.activity == RemoteProcessing.Activity.SUMMARIZING -> app.getString(R.string.detail_processing_summarizing)
+                p.transcriptionFailed -> app.getString(R.string.detail_processing_transcription_failed)
+                else -> null
+            },
+            processingTone = if (p.busy) Tone.Warning else Tone.Error,
+        )
+        if (p.busy) pollProcessing()
+    }
+
+    /** While a job runs (started here or by the server on its own), check it until it is done, then reload. */
+    private fun pollProcessing() {
+        if (pollJob?.isActive == true) return
+        pollJob = scope.launch {
+            while (isActive) {
+                delay(POLL_MS)
+                val p = try {
+                    client.getProcessing(sessionId)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    continue // a dropped request: try again on the next tick
+                }
+                if (p.busy) {
+                    showProcessing(p)
+                } else {
+                    load()
+                    break
+                }
+            }
+        }
+    }
+
+    // endregion
+
     // region Rendering
 
     private fun render() {
@@ -184,7 +258,9 @@ class SessionDetailModel(
             transcript = d.segments.map { FeedLine(it.id, LocalMarkdown.clock(it.startMs), speakerFor(it.speaker), it.text) },
             actions = actionsOf(d.copilot),
             audio = audioUi(),
+            canProcess = d.canRegenerate,
         )
+        showProcessing(d.processing)
     }
 
     private fun summaryOf(d: RemoteSessionDetail): SummaryUi {
@@ -394,6 +470,7 @@ class SessionDetailModel(
 
     private companion object {
         const val AUDIO_CACHE_DIR = "live_audio"
+        const val POLL_MS = 2_000L
         fun safeName(id: String) = id.replace(Regex("[^A-Za-z0-9_-]"), "_")
     }
 }

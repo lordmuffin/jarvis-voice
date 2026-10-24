@@ -17,6 +17,7 @@ from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.outbox import latest_final_note, outbox_dir, read_note
 from jarvis_live.ingest.upload import UndecodableAudio, decode_to_pcm
 from jarvis_live.logging_setup import session_logger
+from jarvis_live.processing import ProcessingState, derive
 from jarvis_live.protocol import (
     Copilot,
     SessionCreateRequest,
@@ -158,6 +159,25 @@ class SessionDetail(SessionOut):
     # What the caller may do with the note: publish it to the vault repo, re-run the LLM.
     can_publish: bool
     can_regenerate: bool
+    # What transcription and the note are doing now (``POST .../process`` re-runs both).
+    processing: ProcessingState
+
+
+def processing_of(request: Request, row: SessionRow) -> ProcessingState:
+    """From the jobs in flight in this process: the hub (streaming, draining an ended session),
+    uploads being ingested, and the orchestrator's finalize/regenerate/reprocess runs."""
+    state = request.app.state
+    orchestrator = state.orchestrator
+    return derive(
+        row.status,
+        started_at=row.started_at,
+        local_only=row.local_only,
+        streaming=row.status == "live" and state.hub.is_streaming(row.id),
+        uploading_since=state.uploads.since(row.id),
+        draining_since=state.hub.draining_since(row.id),
+        job=orchestrator.job(row.id) if orchestrator else None,
+        transcription_failed=bool(orchestrator and orchestrator.transcription_failed(row.id)),
+    )
 
 
 # Every session belongs to a user. Its owner (from any of their devices or the web dashboard)
@@ -395,6 +415,7 @@ async def get_session(
         else None,
         can_publish=service.can_publish(principal.user) and may_publish_for(owner),
         can_regenerate=request.app.state.orchestrator is not None and not row.local_only,
+        processing=processing_of(request, row),
         markers=[MarkerOut(t_ms=m.t_ms, label=m.label) for m in markers],
         final_note=final_note,
         segments=[
@@ -411,6 +432,15 @@ async def get_session(
         ],
         copilot=copilot,
     )
+
+
+@router.get("/{session_id}/processing")
+async def get_processing(
+    session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
+) -> ProcessingState:
+    """Just the processing state, cheap enough to poll while a job runs."""
+    row, _ = await _visible(db, principal, session_id)
+    return processing_of(request, row)
 
 
 @router.post("/{session_id}/ticket")
