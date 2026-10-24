@@ -103,6 +103,13 @@ class Orchestrator:
     def job(self, session_id: uuid.UUID) -> Job | None:
         return self._jobs.get(session_id)
 
+    def progress(self, session_id: uuid.UUID) -> float | None:
+        """How much of the recording a reprocess has transcribed (0-1), while it does."""
+        job = self._jobs.get(session_id)
+        if job is None or job.stage != "transcription" or job.progress is None:
+            return None
+        return job.progress()
+
     def transcription_failed(self, session_id: uuid.UUID) -> bool:
         return session_id in self._transcription_failed
 
@@ -194,6 +201,12 @@ class Orchestrator:
             row = await db.get(SessionRow, session_id)
         if row is None:
             return
+        job = self._jobs.get(session_id)
+
+        def watch(probe: Callable[[], float | None]) -> None:
+            if job is not None:
+                job.progress = probe
+
         try:
             await retranscribe(
                 session_id,
@@ -202,6 +215,7 @@ class Orchestrator:
                 sessionmaker=self._sm,
                 bus=self._bus,
                 stt=self._stt,
+                on_progress=watch,
             )
         except RetranscribeFailed as e:
             log.warning("could not transcribe %s again: %s", session_id, e)
@@ -214,7 +228,7 @@ class Orchestrator:
                 )
                 await db.commit()
             return
-        if (job := self._jobs.get(session_id)) is not None:
+        if job is not None:
             job.stage = "summary"
         await self._finalize(session_id, replace=replace, notify=False)
 

@@ -14,7 +14,7 @@ from jarvis_live.db.models import SegmentRow
 from jarvis_live.ingest.segmenter import Segmenter, SegmenterConfig, SpeechSegment
 from jarvis_live.ingest.store import SPEAKER
 from jarvis_live.logging_setup import session_logger
-from jarvis_live.protocol import Error, Segment, Status
+from jarvis_live.protocol import BYTES_PER_MS, Error, Segment, Status
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
 from jarvis_live.stt.guards import is_duplicate_of, is_hallucination, rms_level
 
@@ -107,6 +107,28 @@ class SessionPipeline:
         """Speech segments cut but not yet through STT, across channels."""
         return sum(len(s) for s in self._inflight.values())
 
+    def transcribed_ms(self) -> int:
+        """Audio through STT, summed over channels (each up to its first segment still waiting)."""
+        return sum(self._transcribed_ms(c) for c in self.channels)
+
+    def fed_ms(self) -> int:
+        """Audio fed, summed over channels: what ``transcribed_ms`` reaches once all is done."""
+        return sum(s.position_ms for s in self._segmenters.values())
+
+    def ms_of(self, nbytes: int) -> int:
+        """The audio a channel of ``nbytes`` comes to, counted as ``fed_ms`` does: whole VAD
+        frames, so a recording's total is what ``transcribed_ms`` reaches once it is done."""
+        frame_ms = self._cfg.vad_frame_ms
+        return nbytes // (frame_ms * BYTES_PER_MS) * frame_ms
+
+    def _transcribed_ms(self, channel: str) -> int:
+        """Up to the channel's first segment still waiting, else its open one, else all it has
+        been fed."""
+        seg = self._segmenters[channel]
+        open_start = seg.open_start_ms
+        horizon = seg.position_ms if open_start is None else open_start
+        return min([horizon, *self._inflight[channel]])
+
     def _enqueue(self, channel: str, seg: SpeechSegment) -> None:
         self._inflight[channel].add(seg.start_ms)
         self._queues[channel].put_nowait(seg)
@@ -163,10 +185,7 @@ class SessionPipeline:
     def _system_settled_ms(self) -> float:
         if "system" not in self.channels:
             return math.inf
-        seg = self._segmenters["system"]
-        open_start = seg.open_start_ms
-        horizon = seg.position_ms if open_start is None else open_start
-        return min([horizon, *self._inflight["system"]])
+        return self._transcribed_ms("system")
 
     async def _release_held(self) -> None:
         settled = self._system_settled_ms()

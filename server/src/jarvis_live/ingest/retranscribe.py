@@ -6,6 +6,7 @@ the new ones are removed and the old transcript stays."""
 
 import asyncio
 import uuid
+from collections.abc import Callable
 from contextlib import ExitStack
 
 from sqlalchemy import delete, func, select
@@ -18,6 +19,7 @@ from jarvis_live.db.models import SegmentRow
 from jarvis_live.ingest.pipeline import SessionPipeline
 from jarvis_live.ingest.upload import UPLOAD_MAX_BACKLOG
 from jarvis_live.logging_setup import session_logger
+from jarvis_live.processing import fraction
 from jarvis_live.protocol import MAX_PAYLOAD
 from jarvis_live.stt.backend import STTBackend, STTUnavailable, Transcription
 
@@ -52,8 +54,10 @@ async def retranscribe(
     sessionmaker: "async_sessionmaker[AsyncSession]",
     bus: Bus,
     stt: STTBackend,
+    on_progress: Callable[[Callable[[], float | None]], None] | None = None,
 ) -> int:
-    """Returns the number of segments in the new transcript. Raises ``RetranscribeFailed``."""
+    """Returns the number of segments in the new transcript. Raises ``RetranscribeFailed``.
+    ``on_progress`` is handed a probe of how much of the recording is transcribed (0-1)."""
     slog = session_logger(__name__, session_id)
     recorded = [c for c in channels if audio_available(settings.data_dir, session_id, c)]
     if not recorded:
@@ -75,6 +79,12 @@ async def retranscribe(
         session_id, recorded, settings=settings, sessionmaker=sessionmaker, bus=bus, stt=counting
     )
     pipeline.start()
+    if on_progress is not None:
+        total_ms = sum(
+            pipeline.ms_of(pcm_path(settings.data_dir, session_id, c).stat().st_size)
+            for c in recorded
+        )
+        on_progress(lambda: fraction(pipeline.transcribed_ms(), total_ms))
     ok = False
     try:
         with ExitStack() as files:

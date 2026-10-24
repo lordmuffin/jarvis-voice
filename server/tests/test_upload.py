@@ -20,10 +20,16 @@ from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.ingest.pipeline import SessionPipeline
-from jarvis_live.ingest.upload import UPLOAD_MAX_BACKLOG, UndecodableAudio, Uploads, decode_to_pcm
-from jarvis_live.protocol import MAX_PAYLOAD
+from jarvis_live.ingest.upload import (
+    FRAME_MS,
+    UPLOAD_MAX_BACKLOG,
+    UndecodableAudio,
+    Uploads,
+    decode_to_pcm,
+)
+from jarvis_live.protocol import BYTES_PER_MS, MAX_PAYLOAD
 from jarvis_live.stt.backend import Transcription
-from tests.audio import SR, TWO_UTTERANCES, dominant_freq
+from tests.audio import SR, TWO_UTTERANCES, dominant_freq, silence
 from tests.conftest import ServerHandle
 from tests.fakes import FakeLLM
 from tests.helpers import eventually
@@ -209,16 +215,61 @@ async def test_pipeline_counts_the_segments_still_waiting_for_stt() -> None:
         await pipeline.close()
 
 
+async def test_pipeline_has_transcribed_only_the_audio_before_its_first_waiting_segment() -> None:
+    stt = BlockedSTT()
+    pipeline = SessionPipeline(
+        uuid.uuid4(),
+        ["mic"],
+        settings=Settings(),
+        sessionmaker=None,
+        bus=Bus(),
+        stt=stt,  # type: ignore[arg-type]
+    )
+    pipeline.start()
+    try:
+        assert pipeline.transcribed_ms() == 0
+        pipeline.feed("mic", TWO_UTTERANCES)
+        assert pipeline.transcribed_ms() <= 1000  # the first utterance starts after 1 s silence
+        assert pipeline.fed_ms() == pipeline.ms_of(len(TWO_UTTERANCES)) == 7680  # 30 ms frames
+        stt.release.set()
+        await eventually(lambda: pipeline.transcribed_ms() == pipeline.fed_ms())
+    finally:
+        await pipeline.close()
+
+
+async def test_pipeline_reaches_all_its_audio_when_its_channels_differ_in_length() -> None:
+    pipeline = SessionPipeline(
+        uuid.uuid4(),
+        ["mic", "system"],
+        settings=Settings(),
+        sessionmaker=None,
+        bus=Bus(),
+        stt=BlockedSTT(),  # type: ignore[arg-type]
+    )
+    pipeline.start()
+    try:
+        pipeline.feed("mic", silence(2.0))
+        pipeline.feed("system", silence(5.0))
+        assert pipeline.transcribed_ms() == pipeline.fed_ms() == 1980 + 4980  # 30 ms frames
+    finally:
+        await pipeline.close()
+
+
 class FakeIngest:
     """Stands in for the hub's per-session state, with a settable STT backlog."""
 
     def __init__(self) -> None:
         self.fed = 0
         self.backlog = 0
+        self.done_ms = 0
         self.uploading = False
         self.store = SimpleNamespace(append=self._append)
         self.pipeline = SimpleNamespace(
-            feed=self._feed, pending_segments=lambda: self.backlog, finish=self._finish
+            feed=self._feed,
+            pending_segments=lambda: self.backlog,
+            transcribed_ms=lambda: self.done_ms,
+            ms_of=lambda n: n // BYTES_PER_MS,
+            finish=self._finish,
         )
 
     async def _append(self, frame: object) -> str:
@@ -262,6 +313,26 @@ async def test_upload_stops_feeding_while_stt_is_behind(tmp_path: Path) -> None:
     ing.backlog = 0
     await eventually(lambda: hub.ended == [sid])
     assert ing.fed == 10 and not ing.uploading and not pcm.exists()
+
+
+async def test_upload_reports_how_much_of_its_recording_is_transcribed(tmp_path: Path) -> None:
+    pcm = tmp_path / "x.pcm"
+    pcm.write_bytes(bytes(MAX_PAYLOAD * 10))
+    ing = FakeIngest()
+    ing.backlog = UPLOAD_MAX_BACKLOG
+    hub = FakeHub(ing)
+    uploads = Uploads(hub)  # type: ignore[arg-type]
+    sid = uuid.uuid4()
+
+    assert uploads.progress(sid) is None
+    uploads.start(sid, pcm)
+    await eventually(lambda: ing.uploading)
+    ing.done_ms = 5 * FRAME_MS
+    assert uploads.progress(sid) == 0.5
+
+    ing.backlog = 0
+    await eventually(lambda: hub.ended == [sid])
+    assert uploads.progress(sid) is None
 
 
 async def test_upload_that_cannot_start_still_removes_its_audio(tmp_path: Path) -> None:

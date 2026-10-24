@@ -169,6 +169,12 @@ def processing_of(request: Request, row: SessionRow) -> ProcessingState:
     uploads being ingested, and the orchestrator's finalize/regenerate/reprocess runs."""
     state = request.app.state
     orchestrator = state.orchestrator
+    # Whichever transcription of known length is in flight: at most one at a time.
+    measures = (
+        orchestrator.progress(row.id) if orchestrator else None,
+        state.hub.draining_progress(row.id),
+        state.uploads.progress(row.id),
+    )
     return derive(
         row.status,
         started_at=row.started_at,
@@ -178,6 +184,7 @@ def processing_of(request: Request, row: SessionRow) -> ProcessingState:
         draining_since=state.hub.draining_since(row.id),
         job=orchestrator.job(row.id) if orchestrator else None,
         transcription_failed=bool(orchestrator and orchestrator.transcription_failed(row.id)),
+        progress=next((p for p in measures if p is not None), None),
     )
 
 

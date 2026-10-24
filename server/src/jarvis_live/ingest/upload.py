@@ -9,6 +9,7 @@ from pathlib import Path
 
 from jarvis_live.ingest.hub import IngestHub, SessionIngest
 from jarvis_live.logging_setup import session_logger
+from jarvis_live.processing import fraction
 from jarvis_live.protocol import BYTES_PER_MS, CHANNEL_MIC, MAX_PAYLOAD, Frame
 
 log = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class Uploads:
         self._hub = hub
         self._tasks: set[asyncio.Task[None]] = set()
         self._since: dict[uuid.UUID, datetime] = {}
+        self._feeding: dict[uuid.UUID, tuple[SessionIngest, int]] = {}  # with its length (ms)
 
     def start(self, session_id: uuid.UUID, pcm: Path) -> None:
         self._since[session_id] = datetime.now(UTC)
@@ -63,11 +65,19 @@ class Uploads:
         """When this upload's ingest began, until the session has been ended."""
         return self._since.get(session_id)
 
+    def progress(self, session_id: uuid.UUID) -> float | None:
+        """How much of this upload's recording is transcribed (0-1), while it is ingested."""
+        if (feeding := self._feeding.get(session_id)) is None:
+            return None
+        ing, total_ms = feeding
+        return fraction(ing.pipeline.transcribed_ms(), total_ms)
+
     async def _run(self, session_id: uuid.UUID, pcm: Path) -> None:
         try:
             await self._ingest(session_id, pcm)
         finally:
             self._since.pop(session_id, None)
+            self._feeding.pop(session_id, None)
 
     async def _ingest(self, session_id: uuid.UUID, pcm: Path) -> None:
         slog = session_logger(__name__, session_id)
@@ -75,6 +85,7 @@ class Uploads:
         try:
             ing = await self._hub.get(session_id, ["mic"])
             ing.uploading = True
+            self._feeding[session_id] = ing, ing.pipeline.ms_of(pcm.stat().st_size)
             seq = 0
             with pcm.open("rb") as f:
                 while chunk := f.read(MAX_PAYLOAD):
