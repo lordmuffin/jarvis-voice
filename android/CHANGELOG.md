@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.16.0...android-v1.17.0) (2026-10-24)
+
+
+### Features
+
+* forward homelab questions to Pi Durable's jarvis session ([f1fca41](https://github.com/lordmuffin/jarvis-voice/commit/f1fca41a6a8cff9e97e1eb4e13b82c0e4b112728))
+
 ## [1.16.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.15.0...android-v1.16.0) (2026-10-24)
 
 

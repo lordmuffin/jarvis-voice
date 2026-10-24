@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.23.0...server-v0.24.0) (2026-10-24)
+
+
+### Features
+
+* forward homelab questions to Pi Durable's jarvis session ([f1fca41](https://github.com/lordmuffin/jarvis-voice/commit/f1fca41a6a8cff9e97e1eb4e13b82c0e4b112728))
+
 ## [0.23.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.22.0...server-v0.23.0) (2026-10-24)
 
 

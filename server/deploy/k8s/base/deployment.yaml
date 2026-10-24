@@ -59,7 +59,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: jarvis-live
-          image: ghcr.io/lordmuffin/jarvis-live:0.23.0 # x-release-please-version
+          image: ghcr.io/lordmuffin/jarvis-live:0.24.0 # x-release-please-version
           envFrom:
             - configMapRef:
                 name: jarvis-live-config
