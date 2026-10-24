@@ -62,6 +62,7 @@ class IngestHub:
         self._bus = bus
         self._stt = stt
         self._states: dict[uuid.UUID, SessionIngest] = {}
+        self._draining: dict[uuid.UUID, datetime] = {}  # end() in progress: since when
         self._lock = asyncio.Lock()
 
     async def get(self, session_id: uuid.UUID, channels: list[str]) -> SessionIngest:
@@ -103,11 +104,22 @@ class IngestHub:
             and time.monotonic() - state.pipeline.last_audio_at < self._cfg.streaming_stale_s
         )
 
+    def draining_since(self, session_id: uuid.UUID) -> datetime | None:
+        """When an ``end()`` of this session began, while it drains the last segments."""
+        return self._draining.get(session_id)
+
     async def end(self, session_id: uuid.UUID, *, caller: WebSocket | None = None) -> bool:
         """Move a live session to ``finalizing`` and drain its pipeline. Idempotent.
 
         Returns True if this call performed the transition. A producer other than ``caller`` is
         disconnected."""
+        self._draining.setdefault(session_id, datetime.now(UTC))
+        try:
+            return await self._end(session_id, caller)
+        finally:
+            self._draining.pop(session_id, None)
+
+    async def _end(self, session_id: uuid.UUID, caller: WebSocket | None) -> bool:
         log = session_logger(__name__, session_id)
         async with self._sm() as db:
             result = await db.execute(

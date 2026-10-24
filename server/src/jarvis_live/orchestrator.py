@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.bus import Bus
@@ -18,8 +18,10 @@ from jarvis_live.db.models import OWNER_USER_ID, User
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.finalizer import Finalizer
 from jarvis_live.ingest.hub import IngestHub, SessionIngest
+from jarvis_live.ingest.retranscribe import RetranscribeFailed, retranscribe
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
+from jarvis_live.processing import Job, JobSource, Stage
 from jarvis_live.stt.backend import STTBackend
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.ideas import IdeasLoop, IdeasPass
@@ -55,7 +57,8 @@ class Orchestrator:
             IdeasPass(settings, sessionmaker, llm) if settings.work_items_enabled else None
         )
         self._finals: set[asyncio.Task[object]] = set()
-        self._finalizing: set[uuid.UUID] = set()  # a finalizer run is in flight
+        self._jobs: dict[uuid.UUID, Job] = {}  # a finalizer (or reprocess) run is in flight
+        self._transcription_failed: set[uuid.UUID] = set()  # the last reprocess could not
         self._on_final = on_final  # after a note is written (auto-publish)
         self._orphans: dict[uuid.UUID, float] = {}  # live in the DB, no ingest state: first seen
         self._outage_since: float | None = None
@@ -70,24 +73,49 @@ class Orchestrator:
         self._copilots[state.session_id] = asyncio.create_task(self._run_copilot(state))
 
     def on_end(self, session_id: uuid.UUID) -> None:
-        self._track(session_id, self._end(session_id))
+        self._track(session_id, "finalize", "summary", self._end(session_id))
 
     def regenerate(self, session_id: uuid.UUID, replace: str | None) -> None:
         """Re-run the finalizer on a session the caller has put back into ``finalizing``.
         ``replace`` is its current note, removed if the new one gets another name."""
-        self._track(session_id, self._finalize(session_id, replace=replace, notify=False))
+        self._track(
+            session_id,
+            "regenerate",
+            "summary",
+            self._finalize(session_id, replace=replace, notify=False),
+        )
+
+    def reprocess(self, session_id: uuid.UUID, replace: str | None, *, restore: str) -> None:
+        """Transcribe a session the caller has put back into ``finalizing`` again from its stored
+        audio, then re-run the finalizer. If the audio cannot be transcribed, the transcript and
+        note stay as they were and the session returns to ``restore``."""
+        self._transcription_failed.discard(session_id)
+        self._track(
+            session_id,
+            "reprocess",
+            "transcription",
+            self._reprocess(session_id, replace, restore),
+        )
 
     def is_finalizing(self, session_id: uuid.UUID) -> bool:
-        return session_id in self._finalizing
+        return session_id in self._jobs
 
-    def _track(self, session_id: uuid.UUID, coro: Awaitable[None]) -> None:
-        self._finalizing.add(session_id)
+    def job(self, session_id: uuid.UUID) -> Job | None:
+        return self._jobs.get(session_id)
+
+    def transcription_failed(self, session_id: uuid.UUID) -> bool:
+        return session_id in self._transcription_failed
+
+    def _track(
+        self, session_id: uuid.UUID, source: JobSource, stage: Stage, coro: Awaitable[None]
+    ) -> None:
+        self._jobs[session_id] = Job(source, stage, datetime.now(UTC))
 
         async def run() -> None:
             try:
                 await coro
             finally:
-                self._finalizing.discard(session_id)
+                self._jobs.pop(session_id, None)
 
         task = asyncio.create_task(run())
         self._finals.add(task)
@@ -160,6 +188,35 @@ class Orchestrator:
             await self._ideas_pass.run(session_id)
         except Exception:
             log.exception("final ideas pass failed for %s", session_id)
+
+    async def _reprocess(self, session_id: uuid.UUID, replace: str | None, restore: str) -> None:
+        async with self._sm() as db:
+            row = await db.get(SessionRow, session_id)
+        if row is None:
+            return
+        try:
+            await retranscribe(
+                session_id,
+                list(row.channels),
+                settings=self._cfg,
+                sessionmaker=self._sm,
+                bus=self._bus,
+                stt=self._stt,
+            )
+        except RetranscribeFailed as e:
+            log.warning("could not transcribe %s again: %s", session_id, e)
+            self._transcription_failed.add(session_id)
+            async with self._sm() as db:
+                await db.execute(
+                    update(SessionRow)
+                    .where(SessionRow.id == session_id, SessionRow.status == "finalizing")
+                    .values(status=restore)
+                )
+                await db.commit()
+            return
+        if (job := self._jobs.get(session_id)) is not None:
+            job.stage = "summary"
+        await self._finalize(session_id, replace=replace, notify=False)
 
     async def _finalize(
         self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True

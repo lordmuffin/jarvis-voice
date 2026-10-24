@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +12,7 @@ from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.orchestrator import Orchestrator
+from jarvis_live.stt.backend import Transcription
 from tests.conftest import FakeSTT
 from tests.fakes import FakeClock, FakeLLM, FakeNotifier, make_session, new_device
 from tests.helpers import eventually
@@ -183,3 +185,110 @@ async def test_on_final_runs_after_a_note_and_its_errors_are_contained(
     await eventually(lambda: not orch.is_finalizing(written) and not orch.is_finalizing(empty))
     await orch.shutdown()
     assert called == [written]
+
+
+class GatedSTT(FakeSTT):
+    """Holds every transcription until ``gate`` is set."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.gate = asyncio.Event()
+
+    async def transcribe(self, pcm: bytes, prompt: str) -> Transcription:
+        await self.gate.wait()
+        return await super().transcribe(pcm, prompt)
+
+
+async def _finished_with_audio(sm: SM, data_dir: Path, status: str = "finalizing") -> uuid.UUID:
+    from tests.audio import TWO_UTTERANCES
+    from tests.fakes import add_segments
+
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
+    sid = await make_session(sm, device_id, status=status)
+    await add_segments(sm, sid, [(0, 1000, "me", "old words")])
+    d = data_dir / "sessions" / str(sid)
+    d.mkdir(parents=True)
+    (d / "mic.pcm").write_bytes(TWO_UTTERANCES)
+    return sid
+
+
+async def _status(sm: SM, sid: uuid.UUID) -> str:
+    from jarvis_live.db.models import Session as SessionRow
+
+    async with sm() as db:
+        row = await db.get(SessionRow, sid, populate_existing=True)
+        assert row is not None
+        return row.status
+
+
+async def test_reprocess_transcribes_the_audio_again_then_writes_the_note(
+    sm: SM, tmp_path: Path
+) -> None:
+    from jarvis_live.copilot.schema import FinalNote
+
+    stt = GatedSTT()
+    llm = FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S"))
+    orch = Orchestrator(
+        Settings(outbox_dir=tmp_path / "outbox", data_dir=tmp_path),
+        sm,
+        Bus(),
+        stt,
+        llm,
+        FakeVault(),
+        FakeNotifier(),
+    )
+    sid = await _finished_with_audio(sm, tmp_path)
+
+    orch.reprocess(sid, None, restore="done")
+    job = orch.job(sid)
+    assert job is not None and (job.source, job.stage) == ("reprocess", "transcription")
+    assert orch.is_finalizing(sid)
+    stt.gate.set()
+    await eventually(lambda: orch.job(sid) is None)
+    await orch.shutdown()
+    assert await _status(sm, sid) == "done"
+    assert "seg-1" in llm.calls[-1].user and "old words" not in llm.calls[-1].user
+    assert not orch.transcription_failed(sid)
+
+
+async def test_reprocess_that_cannot_transcribe_keeps_the_note_and_says_so(
+    sm: SM, tmp_path: Path
+) -> None:
+    from jarvis_live.stt.backend import STTUnavailable
+
+    class DownSTT(FakeSTT):
+        async def transcribe(self, pcm: bytes, prompt: str) -> Transcription:
+            raise STTUnavailable("down")
+
+    llm = FakeLLM()
+    orch = Orchestrator(
+        Settings(outbox_dir=tmp_path / "outbox", data_dir=tmp_path),
+        sm,
+        Bus(),
+        DownSTT(),
+        llm,
+        FakeVault(),
+        FakeNotifier(),
+    )
+    sid = await _finished_with_audio(sm, tmp_path)
+    orch.reprocess(sid, None, restore="done")
+    await eventually(lambda: orch.job(sid) is None)
+    await orch.shutdown()
+    assert orch.transcription_failed(sid)
+    assert await _status(sm, sid) == "done"  # the earlier note still stands
+    assert llm.calls == []
+
+
+async def test_a_finalizer_run_is_a_summary_job(sm: SM, tmp_path: Path) -> None:
+    from jarvis_live.copilot.schema import FinalNote
+
+    llm = FakeLLM(delay_s=0.2).queue("FinalNote", FinalNote(title="T", summary="S"))
+    orch = Orchestrator(
+        Settings(outbox_dir=tmp_path), sm, Bus(), FakeSTT(), llm, FakeVault(), FakeNotifier()
+    )
+    sid = await _finished_with_audio(sm, tmp_path / "data")
+    orch.on_end(sid)
+    job = orch.job(sid)
+    assert job is not None and (job.source, job.stage) == ("finalize", "summary")
+    await eventually(lambda: orch.job(sid) is None)
+    await orch.shutdown()
