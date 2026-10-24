@@ -36,6 +36,7 @@ class SessionDetailActivity : AppCompatActivity() {
                     DetailActions(
                         onTab = model::selectTab, onRetry = model::load, onRefresh = model::load,
                         onPlay = model::onPlayTapped, onSeek = model::seekTo, onProcess = model::process,
+                        onCopy = { SessionClipboard.copy(this, it) },
                     ),
                     onBack = { finish() },
                     onNav = { BottomNav.open(this, it) },

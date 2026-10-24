@@ -25,6 +25,8 @@ import {
 } from "../ds/components";
 import type { SessionDetail } from "../types";
 import { NoteView } from "./NoteView";
+import { actionsChecklist, noteBody } from "../copy";
+import { CopyButton } from "../jarvis/CopyButton";
 import { PublicationChip } from "../jarvis/PublicationChip";
 
 const BUSY_WHY = "Another action is running.";
@@ -165,6 +167,12 @@ export function NotePane({
               )
             )}
           </>
+        )}
+        {note.markdown !== null && !editing && (
+          <CopyButton label="Copy Summary" text={() => noteBody(note.markdown ?? "")} />
+        )}
+        {detail.copilot.actions.length > 0 && !editing && (
+          <CopyButton label="Copy Actions" text={() => actionsChecklist(detail.copilot.actions)} />
         )}
         {note.markdown !== null && !editing && (
           <Button

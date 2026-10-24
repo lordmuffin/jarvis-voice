@@ -14,6 +14,7 @@ from jarvis_live.api.audio import audio_available, wav_response
 from jarvis_live.auth import Principal, current_principal
 from jarvis_live.db.models import CopilotItem, MarkerRow, NotePublication, SegmentRow, User
 from jarvis_live.db.models import Session as SessionRow
+from jarvis_live.finalize.note_items import merge_note_items
 from jarvis_live.finalize.outbox import latest_final_note, outbox_dir, read_note
 from jarvis_live.ingest.upload import UndecodableAudio, decode_to_pcm
 from jarvis_live.logging_setup import session_logger
@@ -403,6 +404,9 @@ async def get_session(
         path, title = found
         markdown = await asyncio.to_thread(read_note, outbox_dir(request.app.state.settings), path)
         final_note = FinalNoteOut(path=path, title=title, markdown=markdown)
+        # The live copilot may never have run (an upload, a short or solo session): the actions
+        # and decisions the note lists show alongside its own, without repeats.
+        copilot = merge_note_items(copilot, markdown)
     pub = await db.get(NotePublication, session_id, populate_existing=True)
     service: PublishService = request.app.state.publishing
     data_dir = request.app.state.settings.data_dir

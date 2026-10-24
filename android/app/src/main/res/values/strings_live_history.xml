@@ -30,6 +30,11 @@
     <string name="detail_tab_actions">Actions</string>
     <string name="detail_in_progress">This session is still in progress. The note is still being prepared.</string>
     <string name="detail_finalizing">The note is still being prepared.</string>
+    <string name="detail_copy_summary">Copy summary</string>
+    <string name="detail_copy_actions">Copy actions</string>
+    <string name="detail_copy_item">Copy</string>
+    <string name="detail_copy_item_a11y">Copy action: %1$s</string>
+    <string name="detail_copied">Copied</string>
     <string name="detail_process">Transcribe &amp; summarize</string>
     <string name="detail_processing_transcribing">Transcribing…</string>
     <string name="detail_processing_summarizing">Summarizing…</string>
