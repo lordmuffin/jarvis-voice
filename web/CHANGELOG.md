@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.25.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.24.0...web-v0.25.0) (2026-10-24)
+
+
+### Features
+
+* force "Transcribe & summarize" on a session, with a live processing indicator ([cc01f4e](https://github.com/lordmuffin/jarvis-voice/commit/cc01f4ef122e22e4ae0da997cce966824b639385))
+* **web:** copy a session's summary and actions ([179fed4](https://github.com/lordmuffin/jarvis-voice/commit/179fed497ad5fbccc63811778d636a54f1ec5599))
+* **web:** Transcribe & summarize on the session page ([01c0109](https://github.com/lordmuffin/jarvis-voice/commit/01c0109e24cafe539868a2de14961657d115688e))
+
+
+### Bug Fixes
+
+* Actions tab lists the note's actions; copy summary and actions ([d61de3f](https://github.com/lordmuffin/jarvis-voice/commit/d61de3ffc685660e45fc0d3ff69e186a6511b27b))
+
 ## [0.24.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.23.0...web-v0.24.0) (2026-10-24)
 
 
