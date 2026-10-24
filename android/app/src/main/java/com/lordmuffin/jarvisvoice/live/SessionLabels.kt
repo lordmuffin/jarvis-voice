@@ -51,11 +51,12 @@ internal object SessionLabels {
     fun modeLabel(ctx: Context, mode: String): String =
         ctx.getString(if (mode == "meeting") R.string.history_mode_meeting else R.string.history_mode_solo)
 
-    /** "Oct 11, 2026, 9:14 AM · 42:10 · Meeting" */
+    /** "Oct 11, 2026, 9:14 AM · 42:10 · Meeting", plus "· Watch" for a recording made on the watch. */
     fun meta(ctx: Context, s: RemoteSession): String = listOfNotNull(
         s.startedAt?.let { DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(it.toEpochMilli())) },
         s.durationMs?.let { RemoteSessions.formatDuration(it) }
             ?: if (s.isInProgress) ctx.getString(R.string.history_in_progress) else null,
         modeLabel(ctx, s.mode),
+        if (s.isFromWatch) ctx.getString(R.string.history_source_watch) else null,
     ).joinToString(" · ")
 }
