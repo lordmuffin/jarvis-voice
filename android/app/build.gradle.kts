@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.paparazzi)
 }
 
 val gitCommit: String = runCatching {
@@ -53,9 +55,11 @@ android {
     }
     // Instrument design-system resources, vendored (managed, never edit) by the Instrument sync PR.
     sourceSets["main"].res.srcDir("src/instrument/android/res")
+    sourceSets["main"].kotlin.srcDir("src/instrument/android/compose")
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
     testOptions {
         // android.jar stubs (Log, etc.) return defaults instead of throwing in JVM unit tests.
@@ -99,6 +103,11 @@ dependencies {
     implementation(libs.androidx.car.app)
     implementation(libs.androidx.media3.common)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.activity.compose)
+    debugImplementation(libs.androidx.compose.ui.tooling)
 
     testImplementation(libs.junit)
     // Android's org.json is a stub in JVM tests; use the real one.

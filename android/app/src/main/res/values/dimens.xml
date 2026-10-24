@@ -16,4 +16,16 @@
     <dimen name="app_time_column">44dp</dimen>
     <dimen name="app_live_copilot_height">140dp</dimen>
     <dimen name="app_pill_time_text">13sp</dimen>
+    <!-- Compose layout (Instrument artboards: Jarvis-And-Record, Jarvis-And-Record-Unfolded). -->
+    <dimen name="app_appbar">56dp</dimen>
+    <dimen name="app_rail_width">80dp</dimen>
+    <dimen name="app_rail_item">72dp</dimen>
+    <dimen name="app_rail_edge">3dp</dimen>
+    <dimen name="app_session_pane">320dp</dimen>
+    <dimen name="app_list_pane">360dp</dimen>
+    <dimen name="app_waveform_height">28dp</dimen>
+    <dimen name="app_waveform_bar">3dp</dimen>
+    <dimen name="app_state_glyph">32dp</dimen>
+    <dimen name="app_state_text_max">280dp</dimen>
+    <dimen name="app_play_button">48dp</dimen>
 </resources>

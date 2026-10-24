@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings for the Compose screens (Record, History, Session Detail) and their shared states. -->
+<resources>
+    <string name="ui_rec">REC</string>
+    <string name="ui_rec_a11y">Recording, %1$s</string>
+    <string name="ui_following_live">↓ Following live</string>
+    <string name="ui_jump_to_live">↓ Jump to live</string>
+    <string name="ui_new_session">New session</string>
+    <string name="ui_recent_sessions">Recent sessions</string>
+    <string name="ui_recent_see_all">See all</string>
+    <string name="ui_back_history">↩ History</string>
+    <string name="ui_select_session">Select a session</string>
+    <string name="ui_select_session_line">Pick one from the list to read its summary, transcript and actions.</string>
+    <string name="ui_loading">Loading</string>
+    <string name="ui_updating">Updating</string>
+    <string name="ui_refresh">Refresh</string>
+    <string name="ui_state_glyph_empty" translatable="false">—</string>
+    <string name="ui_state_glyph_error" translatable="false">✕</string>
+    <string name="ui_state_glyph_warn" translatable="false">⚑</string>
+    <string name="ui_history_empty_title">No sessions yet</string>
+    <string name="ui_history_empty_line">Sessions you stream to Jarvis Live show up here.</string>
+    <string name="ui_history_empty_action">Go to Record</string>
+    <string name="ui_history_error_title">Could not load sessions</string>
+    <string name="ui_history_signin_title">Sign in to see your sessions</string>
+    <string name="ui_history_expired_title">Your sign-in has expired</string>
+    <string name="ui_history_signin_line">Sign in again in Settings. Your sessions are safe on the server.</string>
+    <string name="ui_history_open_settings">Open Settings</string>
+    <string name="ui_detail_error_title">Could not load this session</string>
+    <string name="ui_transcript_empty_title">Waiting for speech</string>
+    <string name="ui_pending_upload">Upload</string>
+    <string name="ui_pending_delete_a11y">Delete %1$s</string>
+    <string name="ui_pending_count">%1$d</string>
+    <string name="ui_audio_play_a11y">Play %1$s</string>
+    <string name="ui_server_label">Server</string>
+    <string name="ui_switch_on">ON</string>
+    <string name="ui_switch_off">OFF</string>
+</resources>

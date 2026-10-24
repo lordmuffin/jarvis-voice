@@ -18,7 +18,7 @@
 - Server: `cd server && uv sync && uv run ruff check . && uv run ruff format --check . && uv run mypy src && uv run pytest -q`
 - Legacy Python: `pip install -r requirements.txt -r requirements-dev.txt && python -m pytest -q tests/`
 - Web: `cd web && npm ci && npm test && npm run build && npx playwright test` (Playwright needs Postgres: Docker, or `JARVIS_LIVE_TEST_DATABASE_URL`)
-- Android: `cd android && ./gradlew test`
+- Android: `cd android && ./gradlew test` (includes the Paparazzi screenshot checks; after an intended UI change run `./gradlew recordPaparazziDebug` and commit the images)
 - macOS: `cd macos/JarvisLiveKit && swift test` (consumes `protocol/v1/fixtures`); the app itself: see `macos/JarvisVoiceMac/TESTING.md`.
 - Workflow lint: `uvx --from actionlint-py actionlint .github/workflows/*.yml`
 

@@ -3,31 +3,19 @@ package com.lordmuffin.jarvisvoice.live
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Typeface
-import android.text.format.DateUtils
 import android.os.Bundle
 import android.os.SystemClock
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.LinearLayout
-import android.widget.ProgressBar
-import android.widget.RadioGroup
-import android.widget.ScrollView
-import android.widget.TextView
+import android.text.format.DateUtils
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.SwitchCompat
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.ListAdapter
-import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkManager
 import com.lordmuffin.jarvisvoice.BottomNav
 import com.lordmuffin.jarvisvoice.DictationHistoryManager
@@ -35,118 +23,94 @@ import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.SettingsActivity
 import com.lordmuffin.jarvisvoice.VoiceOverlayService
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
-import com.lordmuffin.jarvisvoice.live.protocol.Speaker
 import com.lordmuffin.jarvisvoice.ui.InstToast
-import com.lordmuffin.jarvisvoice.ui.bindConnection
-import com.lordmuffin.jarvisvoice.ui.bindSpeaker
-import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
+import com.lordmuffin.jarvisvoice.ui.compose.CopilotBlock
+import com.lordmuffin.jarvisvoice.ui.compose.DictationUi
+import com.lordmuffin.jarvisvoice.ui.compose.FeedLine
+import com.lordmuffin.jarvisvoice.ui.compose.JarvisTheme
+import com.lordmuffin.jarvisvoice.ui.compose.LevelHistory
+import com.lordmuffin.jarvisvoice.ui.compose.PendingUi
+import com.lordmuffin.jarvisvoice.ui.compose.RecentRow
+import com.lordmuffin.jarvisvoice.ui.compose.RecentUi
+import com.lordmuffin.jarvisvoice.ui.compose.RecordActions
+import com.lordmuffin.jarvisvoice.ui.compose.RecordPhase
+import com.lordmuffin.jarvisvoice.ui.compose.RecordScreen
+import com.lordmuffin.jarvisvoice.ui.compose.RecordUi
+import com.lordmuffin.jarvisvoice.ui.compose.Tone
 import java.text.DateFormat
 import java.util.Date
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/** The Record tab: start/stop a session, watch the transcript and copilot, manage pending uploads. */
+/**
+ * The Record tab: start/stop a session, watch the transcript and copilot, manage pending uploads, and
+ * see recent history on the same page. The screen is Compose (`RecordScreen`); this class owns the
+ * service, permission and network logic and hands the screen a [RecordUi] to draw.
+ */
 class LiveActivity : AppCompatActivity() {
 
     private lateinit var settings: LiveSettings
     private lateinit var repo: SessionRepository
     private lateinit var networkMonitor: NetworkPlaceMonitor
 
-    private lateinit var tvStatus: TextView
-    private lateinit var tvMessage: TextView
-    private lateinit var chipConnection: TextView
-    private lateinit var chipCopilot: TextView
-    private lateinit var tvDictationStatus: TextView
-    private lateinit var tvDictationLast: TextView
-    private lateinit var setupGroup: View
-    private lateinit var recordingGroup: View
-    private lateinit var rgMode: RadioGroup
-    private lateinit var etTitle: EditText
-    private lateinit var swLocalOnly: SwitchCompat
-    private lateinit var tvNetwork: TextView
-    private lateinit var btnStart: Button
-    private lateinit var btnHistory: Button
-    private lateinit var tvPendingHeader: TextView
-    private lateinit var pendingList: LinearLayout
-    private lateinit var tvTimer: TextView
-    private lateinit var pbLevel: ProgressBar
-    private lateinit var tvDetails: TextView
-    private lateinit var tvCopilotHeader: TextView
-    private lateinit var svCopilot: ScrollView
-    private lateinit var tvCopilot: TextView
-    private lateinit var groupTranscriptEmpty: View
-    private lateinit var rvTranscript: RecyclerView
-    private val adapter = LineAdapter()
+    private var ui by mutableStateOf(RecordUi())
 
     private var copilotExpanded = true
-    private val wide by lazy { resources.getBoolean(R.bool.is_wide) }
     private var lastPending: List<SessionMeta> = emptyList()
-    /** Set while [renderAwayMode] moves the switch, so it doesn't count as the user's choice. */
-    private var settingSwitch = false
     private var checkingNetwork = false
     /** The release channel `GET /healthz` reported, and for which server URL. */
     private var serverChannel: Pair<String, ServerChannel>? = null
     private var channelJob: Job? = null
+    private var recentJob: Job? = null
+    private var recentClient: LiveApiClient? = null
+    private var recentClientKey: Pair<String, String?>? = null
+    /** The last few input levels, for the live waveform. UI-only; recording is untouched. */
+    private val levels = LevelHistory(LEVEL_SAMPLES)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_live)
-        supportActionBar?.title = getString(R.string.live_title)
-        BottomNav.wire(this, BottomNav.Tab.RECORD)
         settings = LiveSettings(this)
         repo = SessionRepository(settings.sessionsRoot)
         networkMonitor = NetworkPlaceMonitor(this)
 
-        tvStatus = findViewById(R.id.tv_live_status)
-        tvMessage = findViewById(R.id.tv_live_message)
-        chipConnection = findViewById(R.id.chip_live_connection)
-        chipCopilot = findViewById(R.id.chip_live_copilot)
-        tvDictationStatus = findViewById(R.id.tv_dictation_status)
-        tvDictationLast = findViewById(R.id.tv_dictation_last)
-        findViewById<View>(R.id.row_dictation).setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+        setContent {
+            JarvisTheme {
+                RecordScreen(
+                    ui,
+                    RecordActions(
+                        onStart = ::onStartTapped,
+                        onStop = { LiveSessionService.stop(this) },
+                        onMarker = {
+                            LiveSessionService.marker(this)
+                            InstToast.show(this, R.string.live_marker_added)
+                        },
+                        onHistory = { startActivity(Intent(this, SessionsActivity::class.java)) },
+                        onOpenSession = { id ->
+                            // Unfolded the history opens with the session beside the list; folded it opens on its own.
+                            if (resources.getBoolean(R.bool.is_wide)) startActivity(SessionsActivity.intent(this, id))
+                            else startActivity(SessionDetailActivity.intent(this, id, (ui.recent as? RecentUi.Items)?.rows?.firstOrNull { it.id == id }?.title))
+                        },
+                        onModeChange = { ui = ui.copy(mode = it) },
+                        onTitleChange = { ui = ui.copy(title = it) },
+                        onLocalOnlyChange = ::onLocalOnlyChanged,
+                        onDictation = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                        onDismissMessage = { LiveSessionService.clearMessage() },
+                        onToggleCopilot = {
+                            copilotExpanded = !copilotExpanded
+                            render(LiveSessionService.ui.value)
+                        },
+                        onUpload = ::uploadPending,
+                        onDelete = { id -> lastPending.firstOrNull { it.id == id }?.let(::confirmDelete) },
+                        onRetryRecent = ::refreshRecent,
+                        onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
+                        onNav = { BottomNav.open(this, it) },
+                    ),
+                )
+            }
         }
-        setupGroup = findViewById(R.id.group_live_setup)
-        recordingGroup = findViewById(R.id.group_live_recording)
-        rgMode = findViewById(R.id.rg_live_mode)
-        etTitle = findViewById(R.id.et_live_title)
-        swLocalOnly = findViewById(R.id.sw_live_local_only)
-        tvNetwork = findViewById(R.id.tv_live_network)
-        btnStart = findViewById(R.id.btn_live_start)
-        btnHistory = findViewById(R.id.btn_live_history)
-        tvPendingHeader = findViewById(R.id.tv_live_pending_header)
-        pendingList = findViewById(R.id.list_live_pending)
-        tvTimer = findViewById(R.id.tv_live_timer)
-        pbLevel = findViewById(R.id.pb_live_level)
-        tvDetails = findViewById(R.id.tv_live_details)
-        tvCopilotHeader = findViewById(R.id.tv_live_copilot_header)
-        svCopilot = findViewById(R.id.sv_live_copilot)
-        tvCopilot = findViewById(R.id.tv_live_copilot)
-        groupTranscriptEmpty = findViewById(R.id.group_live_transcript_empty)
-        rvTranscript = findViewById(R.id.rv_live_transcript)
-
-        rvTranscript.layoutManager = LinearLayoutManager(this).apply { stackFromEnd = true }
-        rvTranscript.adapter = adapter
-
-        btnStart.setOnClickListener { onStartTapped() }
-        swLocalOnly.setOnCheckedChangeListener { _, checked ->
-            if (settingSwitch || !settings.isConfigured) return@setOnCheckedChangeListener
-            settings.awayMode = settings.awayMode.withManual(checked)
-            renderAwayMode()
-        }
-        btnHistory.setOnClickListener { startActivity(Intent(this, SessionsActivity::class.java)) }
-        findViewById<Button>(R.id.btn_live_stop).setOnClickListener { LiveSessionService.stop(this) }
-        findViewById<Button>(R.id.btn_live_marker).setOnClickListener {
-            LiveSessionService.marker(this)
-            InstToast.show(this, R.string.live_marker_added)
-        }
-        if (!wide) tvCopilotHeader.setOnClickListener {
-            copilotExpanded = !copilotExpanded
-            render(LiveSessionService.ui.value)
-        }
-        tvMessage.setOnClickListener { LiveSessionService.clearMessage() }
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -164,7 +128,7 @@ class LiveActivity : AppCompatActivity() {
                     while (true) {
                         val state = LiveSessionService.ui.value
                         if (state.phase == LiveUiState.Phase.RECORDING) {
-                            tvTimer.text = LocalMarkdown.clock(SystemClock.elapsedRealtime() - state.startedElapsed)
+                            ui = ui.copy(timer = LocalMarkdown.clock(SystemClock.elapsedRealtime() - state.startedElapsed))
                         }
                         refreshPending(state)
                         delay(1_000)
@@ -181,18 +145,17 @@ class LiveActivity : AppCompatActivity() {
         renderAwayMode()
         refreshServerChannel()
         refreshDictation()
+        refreshRecent()
     }
 
     /** The dictation row: whether the overlay is running and the last dictation's numbers. */
     private fun refreshDictation() {
         val running = VoiceOverlayService.instance != null
-        tvDictationStatus.setText(if (running) R.string.home_dictation_running else R.string.home_dictation_stopped)
-        tvDictationStatus.setTextColor(getColor(if (running) R.color.inst_accent else R.color.inst_text_2))
         val last = runCatching {
             val history = DictationHistoryManager(this)
             try { history.getLastSession() } finally { history.close() }
         }.getOrNull()
-        tvDictationLast.text = if (last == null) {
+        val text = if (last == null) {
             getString(R.string.home_dictation_none)
         } else {
             getString(
@@ -201,6 +164,7 @@ class LiveActivity : AppCompatActivity() {
                 DateUtils.getRelativeTimeSpanString(last.timestamp, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS),
             )
         }
+        ui = ui.copy(dictation = DictationUi(running, text))
     }
 
     /** The saved server's channel once /healthz has answered for the current URL; null until then. */
@@ -219,6 +183,38 @@ class LiveActivity : AppCompatActivity() {
         }
     }
 
+    /** The last few server sessions, for the history block under the new-session controls. Read-only. */
+    private fun refreshRecent() {
+        recentJob?.cancel()
+        if (!settings.isConfigured) {
+            ui = ui.copy(recent = RecentUi.SignedOut)
+            return
+        }
+        if (ui.recent !is RecentUi.Items) ui = ui.copy(recent = RecentUi.Loading)
+        else ui = ui.copy(recent = (ui.recent as RecentUi.Items).copy(refreshing = true))
+        recentJob = lifecycleScope.launch {
+            try {
+                val key = settings.serverUrl to settings.deviceToken
+                if (key != recentClientKey) {
+                    recentClient = settings.apiClient()
+                    recentClientKey = key
+                }
+                val page = recentClient!!.listSessions(RECENT_COUNT, 0)
+                ui = ui.copy(
+                    recent = if (page.items.isEmpty()) RecentUi.Empty
+                    else RecentUi.Items(page.items.map { SessionLabels.row(this@LiveActivity, it) }),
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ui = ui.copy(
+                    recent = if (e is LiveHttpException && e.status == 401) RecentUi.Expired
+                    else RecentUi.Error(SessionLabels.errorText(this@LiveActivity, e)),
+                )
+            }
+        }
+    }
+
     /** Away from home and off NetBird → Local only, unless the user chose otherwise. */
     private suspend fun checkNetwork() {
         if (!settings.isConfigured || !settings.awayMode.enabled) return renderAwayMode()
@@ -233,17 +229,22 @@ class LiveActivity : AppCompatActivity() {
         }
     }
 
+    private fun onLocalOnlyChanged(checked: Boolean) {
+        if (!settings.isConfigured) return
+        settings.awayMode = settings.awayMode.withManual(checked)
+        renderAwayMode()
+    }
+
     private fun onStartTapped() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), REQ_MIC)
             return
         }
-        if (!swLocalOnly.isChecked && !settings.isConfigured) {
+        if (!ui.localOnly && !settings.isConfigured) {
             InstToast.show(this, R.string.live_not_configured)
             return
         }
-        val mode = if (rgMode.checkedRadioButtonId == R.id.rb_live_meeting) SessionMode.MEETING else SessionMode.SOLO
-        LiveSessionService.start(this, mode, etTitle.text.toString().trim(), swLocalOnly.isChecked)
+        LiveSessionService.start(this, ui.mode, ui.title.trim(), ui.localOnly)
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -257,12 +258,10 @@ class LiveActivity : AppCompatActivity() {
 
     private fun renderAwayMode() {
         val away = settings.awayMode
-        settingSwitch = true
-        swLocalOnly.isChecked = !settings.isConfigured || away.localOnly
-        settingSwitch = false
-        val label = awayLabel(away)
-        tvNetwork.text = label
-        tvNetwork.visibility = if (label == null) View.GONE else View.VISIBLE
+        ui = ui.copy(
+            localOnly = !settings.isConfigured || away.localOnly,
+            networkLabel = awayLabel(away),
+        )
     }
 
     private fun awayLabel(away: AutoLocalOnly): String? {
@@ -286,30 +285,19 @@ class LiveActivity : AppCompatActivity() {
 
     private fun render(state: LiveUiState) {
         val idle = state.phase == LiveUiState.Phase.IDLE
-        setupGroup.visibility = if (idle) View.VISIBLE else View.GONE
-        recordingGroup.visibility = if (idle) View.GONE else View.VISIBLE
-        btnStart.isEnabled = idle
-
-        when (state.phase) {
-            LiveUiState.Phase.IDLE -> if (settings.isConfigured) {
-                val url = settings.serverUrl
-                tvStatus.setTextWithChannel(getString(R.string.livesess_server, url), currentChannel())
-            } else {
-                tvStatus.text = getString(R.string.live_not_configured)
-            }
-            LiveUiState.Phase.STARTING -> tvStatus.setTextWithChannel(getString(R.string.livesess_starting), currentChannel())
-            LiveUiState.Phase.RECORDING -> tvStatus.setTextWithChannel(connectionDetail(state), currentChannel())
-            LiveUiState.Phase.STOPPING -> tvStatus.setTextWithChannel(getString(R.string.livesess_finishing), currentChannel())
+        var serverLine = when (state.phase) {
+            LiveUiState.Phase.IDLE ->
+                if (settings.isConfigured) getString(R.string.livesess_server, settings.serverUrl) else getString(R.string.live_not_configured)
+            LiveUiState.Phase.STARTING -> getString(R.string.livesess_starting)
+            LiveUiState.Phase.RECORDING -> connectionDetail(state)
+            LiveUiState.Phase.STOPPING -> getString(R.string.livesess_finishing)
         }
         val chip = if (idle) ConnectionChip(ConnectionKind.IDLE)
         else ConnectionChip.of(state.connection, state.localOnly, state.session.lagMs, state.session.llmOk)
-        chipConnection.bindConnection(chip)
-        chipCopilot.visibility = if (chip.copilotOffline) View.VISIBLE else View.GONE
-        tvMessage.text = state.message
-        tvMessage.visibility = if (state.message.isNullOrBlank()) View.GONE else View.VISIBLE
 
-        pbLevel.progress = (state.level * 100).toInt()
-        tvDetails.text = buildList<String?> {
+        if (state.phase == LiveUiState.Phase.RECORDING) levels.push(state.level) else levels.clear()
+
+        val details = buildList<String?> {
             add(getString(if (state.mode == SessionMode.MEETING) R.string.live_mode_meeting else R.string.live_mode_solo))
             add(
                 when (state.localStt) {
@@ -323,16 +311,32 @@ class LiveActivity : AppCompatActivity() {
         }.filterNotNull().joinToString(" · ")
 
         val streamMs = if (idle) null else SystemClock.elapsedRealtime() - state.startedElapsed
-        renderCopilot(state.session, streamMs)
-        val lines = state.session.lines
-        adapter.submitList(lines) {
-            if (lines.isNotEmpty()) rvTranscript.scrollToPosition(lines.lastIndex)
-        }
-        groupTranscriptEmpty.visibility = if (lines.isEmpty() && !idle) View.VISIBLE else View.GONE
-
         state.session.finalNote?.let { note ->
-            if (idle && state.message == null) tvStatus.text = getString(R.string.livesess_saved_to, note.path)
+            if (idle && state.message == null) serverLine = getString(R.string.livesess_saved_to, note.path)
         }
+
+        ui = ui.copy(
+            phase = when (state.phase) {
+                LiveUiState.Phase.IDLE -> RecordPhase.IDLE
+                LiveUiState.Phase.STARTING -> RecordPhase.STARTING
+                LiveUiState.Phase.RECORDING -> RecordPhase.RECORDING
+                LiveUiState.Phase.STOPPING -> RecordPhase.STOPPING
+            },
+            serverLine = serverLine,
+            channel = currentChannel(),
+            connection = chip.kind,
+            connectionDetail = if (idle) "" else connectionDetail(state),
+            copilotOffline = chip.copilotOffline,
+            message = state.message,
+            levels = levels.snapshot(),
+            details = details,
+            sessionTitle = ui.title.trim(),
+            transcript = state.session.lines.map {
+                FeedLine(it.id, LocalMarkdown.clock(it.startMs), it.speaker, it.text, it.isDraft)
+            },
+            copilot = copilotBlocks(state.session, streamMs),
+            copilotExpanded = copilotExpanded,
+        )
     }
 
     /** What sits beside the connection chip while recording: tier, lag, queued audio, reconnect attempt. */
@@ -350,33 +354,20 @@ class LiveActivity : AppCompatActivity() {
         return parts.joinToString(" · ")
     }
 
-    private fun renderCopilot(snapshot: SessionSnapshot, streamMs: Long?) {
-        val sections = CopilotSections.build(snapshot.copilot, snapshot.finalNote, streamMs)
-        val text = if (sections.isEmpty()) null else buildString {
-            for ((section, entries) in sections) {
-                if (isNotEmpty()) append('\n')
-                append(sectionTitle(section)).append('\n')
-                for (e in entries) {
-                    append("• ")
-                    e.kind?.let { append(kindLabel(it)).append(": ") }
-                    append(listOfNotNull(e.text, e.owner?.let { o -> "($o)" }, e.due?.let { d -> getString(R.string.detail_due, d) }).joinToString(" "))
-                    append('\n')
-                }
-            }
-        }?.trimEnd()
-        val has = !text.isNullOrEmpty()
-        if (wide) {
-            // Unfolded: the copilot has its own pane, always open, so there is nothing to collapse.
-            tvCopilotHeader.visibility = View.VISIBLE
-            svCopilot.visibility = View.VISIBLE
-            tvCopilot.text = text
-            return
+    private fun copilotBlocks(snapshot: SessionSnapshot, streamMs: Long?): List<CopilotBlock> =
+        CopilotSections.build(snapshot.copilot, snapshot.finalNote, streamMs).map { (section, entries) ->
+            CopilotBlock(
+                sectionTitle(section),
+                entries.map { e ->
+                    buildString {
+                        e.kind?.let { append(kindLabel(it)).append(": ") }
+                        append(
+                            listOfNotNull(e.text, e.owner?.let { o -> "($o)" }, e.due?.let { d -> getString(R.string.detail_due, d) }).joinToString(" ")
+                        )
+                    }
+                },
+            )
         }
-        tvCopilotHeader.visibility = if (has) View.VISIBLE else View.GONE
-        tvCopilotHeader.text = "${getString(R.string.live_copilot)} ${getString(if (copilotExpanded) R.string.livesess_copilot_expanded else R.string.livesess_copilot_collapsed)}"
-        svCopilot.visibility = if (has && copilotExpanded) View.VISIBLE else View.GONE
-        tvCopilot.text = text
-    }
 
     private fun sectionTitle(section: CopilotSection) = getString(
         when (section) {
@@ -402,33 +393,37 @@ class LiveActivity : AppCompatActivity() {
         val pending = repo.pending(state.sessionId.takeIf { state.isActive })
         if (pending == lastPending) return
         lastPending = pending
-        tvPendingHeader.visibility = if (pending.isEmpty()) View.GONE else View.VISIBLE
-        pendingList.removeAllViews()
-        val inflater = LayoutInflater.from(this)
-        for (meta in pending) {
-            val row = inflater.inflate(R.layout.item_live_pending, pendingList, false)
+        ui = ui.copy(pending = pending.map { meta ->
             val started = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(meta.startedAt))
-            row.findViewById<TextView>(R.id.tv_pending_title).text = meta.title ?: started
-            row.findViewById<TextView>(R.id.tv_pending_state).text = when {
-                meta.state == SessionMeta.State.FAILED -> getString(R.string.livesess_pending_failed, meta.error ?: getString(R.string.livesess_pending_rejected))
-                meta.serverId == null -> getString(R.string.livesess_pending_local, started)
-                meta.state == SessionMeta.State.RECORDING -> getString(R.string.livesess_pending_interrupted)
-                else -> getString(R.string.livesess_pending_uploading)
-            }
-            val upload = row.findViewById<Button>(R.id.btn_pending_upload)
-            upload.visibility = if (meta.state == SessionMeta.State.FAILED && meta.serverId != null) View.GONE else View.VISIBLE
-            upload.setOnClickListener {
-                if (!settings.isConfigured) {
-                    InstToast.show(this, R.string.live_not_configured)
-                    return@setOnClickListener
-                }
-                if (meta.state == SessionMeta.State.FAILED) repo.write(meta.copy(state = SessionMeta.State.PENDING, error = null))
-                LiveUploadWorker.enqueue(this, meta.id)
-                InstToast.show(this, R.string.live_upload_queued)
-            }
-            row.findViewById<Button>(R.id.btn_pending_delete).setOnClickListener { confirmDelete(meta) }
-            pendingList.addView(row)
+            val failed = meta.state == SessionMeta.State.FAILED
+            PendingUi(
+                id = meta.id,
+                title = meta.title ?: started,
+                state = when {
+                    failed -> getString(R.string.livesess_pending_failed, meta.error ?: getString(R.string.livesess_pending_rejected))
+                    meta.serverId == null -> getString(R.string.livesess_pending_local, started)
+                    meta.state == SessionMeta.State.RECORDING -> getString(R.string.livesess_pending_interrupted)
+                    else -> getString(R.string.livesess_pending_uploading)
+                },
+                tone = when {
+                    failed -> Tone.Error
+                    meta.serverId != null -> Tone.Warning
+                    else -> Tone.Neutral
+                },
+                canUpload = !(failed && meta.serverId != null),
+            )
+        })
+    }
+
+    private fun uploadPending(id: String) {
+        val meta = lastPending.firstOrNull { it.id == id } ?: return
+        if (!settings.isConfigured) {
+            InstToast.show(this, R.string.live_not_configured)
+            return
         }
+        if (meta.state == SessionMeta.State.FAILED) repo.write(meta.copy(state = SessionMeta.State.PENDING, error = null))
+        LiveUploadWorker.enqueue(this, meta.id)
+        InstToast.show(this, R.string.live_upload_queued)
     }
 
     private fun confirmDelete(meta: SessionMeta) {
@@ -446,37 +441,10 @@ class LiveActivity : AppCompatActivity() {
 
     // endregion
 
-    private class LineAdapter : ListAdapter<TranscriptLine, LineAdapter.Holder>(DIFF) {
-        class Holder(view: View) : RecyclerView.ViewHolder(view) {
-            val time: TextView = view.findViewById(R.id.tv_line_time)
-            val speaker: TextView = view.findViewById(R.id.tv_line_speaker)
-            val text: TextView = view.findViewById(R.id.tv_line_text)
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_live_line, parent, false))
-
-        override fun onBindViewHolder(holder: Holder, position: Int) {
-            val line = getItem(position)
-            val ctx = holder.itemView.context
-            holder.time.text = LocalMarkdown.clock(line.startMs)
-            holder.speaker.bindSpeaker(line.speaker)
-            holder.text.text = line.text
-            holder.text.setTypeface(null, if (line.isDraft) Typeface.ITALIC else Typeface.NORMAL)
-            holder.itemView.setBackgroundResource(if (line.speaker == Speaker.ME) R.drawable.livesess_utt_me else R.drawable.livesess_utt_them)
-            holder.text.setTextColor(ctx.getColor(if (line.isDraft) R.color.inst_text_2 else R.color.inst_text))
-        }
-
-        companion object {
-            val DIFF = object : DiffUtil.ItemCallback<TranscriptLine>() {
-                override fun areItemsTheSame(a: TranscriptLine, b: TranscriptLine) = a.id == b.id
-                override fun areContentsTheSame(a: TranscriptLine, b: TranscriptLine) = a == b
-            }
-        }
-    }
-
     private companion object {
         const val REQ_MIC = 7101
         const val NETWORK_SETTLE_MS = 750L
+        const val LEVEL_SAMPLES = 64
+        const val RECENT_COUNT = 5
     }
 }

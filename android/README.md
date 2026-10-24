@@ -18,6 +18,20 @@ The app also hosts **Jarvis Live** (session recording and history), **Kai Chat**
 
 ---
 
+## UI and screenshot tests
+
+Record, History and Session Detail are Jetpack Compose on the Instrument tokens (`ui/compose/`: `JarvisTheme`, `InstUi`, components). The other screens are still XML views. Both read the same vendored tokens.
+
+Screenshots are Paparazzi snapshots on the Pixel Fold cover display (411dp) and inner display (851dp), light and dark. They run with `./gradlew testDebugUnitTest` (verify). After an intended UI change, re-record and commit the images:
+
+```bash
+cd android && ./gradlew recordPaparazziDebug
+```
+
+JDK 17 is required (`org.gradle.java.home` in `gradle-local.properties`).
+
+---
+
 ## Build
 
 First fetch the sherpa-onnx (on-device Whisper) Kotlin bindings, native libraries and model, from the repo root:
