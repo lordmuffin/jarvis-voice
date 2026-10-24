@@ -23,6 +23,7 @@ private fun toolLabel(name: String) = when (name) {
     "write_note"       -> "Saving note…"
     "web_fetch"        -> "Fetching page…"
     "run_command"      -> "Running command…"
+    "ask_homelab"      -> "Asking the homelab assistant…"
     else               -> "Using tools…"
 }
 
@@ -189,6 +190,9 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
                 val full = llm.chatWithTools(
                     history    = allMessages.takeLast(10),
                     model      = _selectedModel.value,
+                    // The ask_homelab tool reuses this verbatim as its requestId, so a retried
+                    // turn is answered once by dpi-backend's idempotency.
+                    conversationId = "$sessionId-${allMessages.size}",
                     onToolCall = { toolName ->
                         _status.value = ChatStatus.TOOL_CALL
                         _toolStatusText.value = toolLabel(toolName)

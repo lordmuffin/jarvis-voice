@@ -98,3 +98,12 @@ data:
   JARVIS_LIVE_DISPATCH_ENABLED: "false"
   JARVIS_LIVE_DISPATCH_MODEL: "claude-sonnet-5-5"
   JARVIS_LIVE_DISPATCH_MAX_CONCURRENT: "1"
+
+  # Homelab Q&A (POST /v1/homelab/ask, called by the Android/macOS apps' ask_homelab tool):
+  # forwards a question to Pi Durable's persistent `jarvis` session and returns its answer.
+  # DPI_TOKEN_FILE (deployment.yaml, secret jarvis-live-dpi) is unset until that 1Password
+  # field exists; until then the route always returns its fallback phrase. See
+  # np-home-homelab docs/pi-durable.md.
+  JARVIS_LIVE_DPI_BASE_URL: "http://dpi-backend.pi-durable.svc.cluster.local:4780"
+  JARVIS_LIVE_DPI_SESSION: "jarvis"
+  JARVIS_LIVE_DPI_WAIT_MS: "60000"
