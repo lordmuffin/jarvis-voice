@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.25.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.24.0...server-v0.25.0) (2026-10-24)
+
+
+### Features
+
+* force "Transcribe & summarize" on a session, with a live processing indicator ([cc01f4e](https://github.com/lordmuffin/jarvis-voice/commit/cc01f4ef122e22e4ae0da997cce966824b639385))
+* **server:** per-session processing state and a force-process endpoint ([99e7713](https://github.com/lordmuffin/jarvis-voice/commit/99e77130c3d3848111abc426b69f8f8bcc2911aa))
+
+
+### Bug Fixes
+
+* Actions tab lists the note's actions; copy summary and actions ([d61de3f](https://github.com/lordmuffin/jarvis-voice/commit/d61de3ffc685660e45fc0d3ff69e186a6511b27b))
+* **server:** list a finished note's actions and decisions in the session's copilot ([7fb7e5f](https://github.com/lordmuffin/jarvis-voice/commit/7fb7e5f115c6b1f0d37afe409fd7660506a050f6))
+
+
+### Documentation
+
+* **server:** document processing state and POST .../process ([4517dbd](https://github.com/lordmuffin/jarvis-voice/commit/4517dbd6516e9e7ebaf6989cd37678a74196c393))
+
 ## [0.24.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.23.0...server-v0.24.0) (2026-10-24)
 
 

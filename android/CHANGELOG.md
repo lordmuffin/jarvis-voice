@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.18.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.17.0...android-v1.18.0) (2026-10-24)
+
+
+### Features
+
+* **android:** copy a session's summary, its actions, or one action ([33af048](https://github.com/lordmuffin/jarvis-voice/commit/33af04886a4e21e3df2adeb41bb8c906701a6d11))
+* **android:** Transcribe & summarize on the session detail ([d4114dc](https://github.com/lordmuffin/jarvis-voice/commit/d4114dc7593aca0a248342dab6b4c1c545259851))
+* force "Transcribe & summarize" on a session, with a live processing indicator ([cc01f4e](https://github.com/lordmuffin/jarvis-voice/commit/cc01f4ef122e22e4ae0da997cce966824b639385))
+
+
+### Bug Fixes
+
+* Actions tab lists the note's actions; copy summary and actions ([d61de3f](https://github.com/lordmuffin/jarvis-voice/commit/d61de3ffc685660e45fc0d3ff69e186a6511b27b))
+* **android:** show agent task conversation as a full-screen window ([135ce8b](https://github.com/lordmuffin/jarvis-voice/commit/135ce8b1d109154df970bd415a342a99230d0171))
+
 ## [1.17.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.16.0...android-v1.17.0) (2026-10-24)
 
 
