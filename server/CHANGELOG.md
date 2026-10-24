@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.25.0...server-v0.26.0) (2026-10-24)
+
+
+### Features
+
+* **server:** report how far a transcription is in session processing ([c3a1afd](https://github.com/lordmuffin/jarvis-voice/commit/c3a1afdf4689dfae074cafeab4c36964ad18341a))
+* show transcription progress as a percentage ([cc98eb1](https://github.com/lordmuffin/jarvis-voice/commit/cc98eb19623cc95492aadcbeac33b94b3857d3f8))
+
 ## [0.25.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.24.0...server-v0.25.0) (2026-10-24)
 
 
