@@ -119,6 +119,69 @@ Errors that used to fail silently now show on the pill:
 
 ---
 
+## Wear OS companion
+
+A watch app (`wear/`) records on the wrist and sends the audio through the phone to Jarvis Live. Both apps share `wearcommon/` (queue and sync state machine, uploader, Data Layer protocol).
+
+**Using it.** Tap the mic button, the Jarvis tile, or the Jarvis complication to start; tap again to stop. The watch buzzes once on start and twice on stop and shows the elapsed time. Recording is AAC, 16 kHz mono, 24 kbps (about 180 KB a minute) and continues with the screen off.
+
+**Where the audio goes.** Watch → phone (Wearable Data Layer channel) → the phone app uploads it with the same sign-in as everything else → server. If no phone is in range but the watch has Wi-Fi or LTE, the watch uploads to the server itself. With neither, it keeps the recording and retries. The watch deletes its copy only after the server accepted the upload (the phone relays that acknowledgement). The recording appears in the phone's session history tagged **Watch**, is transcribed like any other, and its note lands in the vault inbox with `source: watch` in the frontmatter.
+
+### Pairing
+
+1. Pair the watch with the phone in the Wear OS app as usual. The watch app does not have its own sign-in: sign in to Jarvis Live on the phone (Settings), and the phone sends the server address and device token to the watch.
+2. Install **both** APKs. They have the same application id and must be signed with the same key, or the Data Layer will not connect them. Debug builds from one machine share the debug key; release builds share the release keystore.
+3. Open the watch app once and allow the microphone and notifications. Add the **Jarvis record** tile (swipe to the tile list, long-press to edit) and the **Jarvis** complication (long-press the watch face, Edit, pick a slot).
+
+### Testing on a physical watch
+
+```bash
+cd android && ./gradlew :app:assembleDebug :wear:assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk          # phone
+# Wear OS 3+: enable Developer options > Wireless debugging, then
+adb pair <watch-ip>:<pair-port>        # code from the watch
+adb connect <watch-ip>:<port>
+adb -s <watch-ip>:<port> install -r wear/build/outputs/apk/debug/wear-debug.apk
+```
+
+Check, in this order:
+
+| Test | Expect |
+|---|---|
+| Tap the mic, wait 10 s, tap again | one buzz, then two; timer ran; the screen reads "Saved" then "Sent to your phone" |
+| Turn the screen off while recording | the timer is still correct when you wake it; the recording is whole |
+| Phone app: Session History | a new row tagged **Watch**, "Finalizing" then "Done"; the note appears in the vault inbox |
+| Watch screen: "Sent to your phone" clears | that is the server's ack arriving; the audio is deleted from the watch only now |
+| Airplane mode on the phone, record, then switch it off | the recording waits; nothing is lost; it uploads on reconnect |
+| Phone off or out of range, watch on Wi-Fi | it uploads directly (needs the phone to have been signed in once) |
+| Tile and complication | tap starts and stops; both reflect the state |
+| Settings (gear) on the watch | shows the server and the number waiting; "Sync now" runs a pass |
+
+Logs: `adb logcat -s WearRecording WatchReceiver WatchUpload WearBridge`. On the emulator, pair a Wear OS image with a phone image through Android Studio's Device Manager "pair" flow; the microphone is the host's.
+
+### Tests
+
+`./gradlew test` runs the queue and retry state machine, the sync runner, the uploader and the phone-side inbox as JVM tests. `./gradlew :wearcommon:connectedDebugAndroidTest` (a running device or emulator) transfers a file through a fake Data Layer node and checks the whole acknowledgement chain, including a link that drops mid-file.
+
+### Manifest permissions
+
+Watch (`wear/src/main/AndroidManifest.xml`), all new for this feature:
+
+| Permission | Why |
+|---|---|
+| `RECORD_AUDIO` | the microphone (already declared) |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MICROPHONE` | keep recording with the screen off (Android 14 requires the typed permission) |
+| `POST_NOTIFICATIONS` | the ongoing "Recording" notification the foreground service must show (Android 13+) |
+| `VIBRATE` | start and stop haptics |
+| `WAKE_LOCK` | keep the CPU awake while recording (already declared) |
+| `INTERNET`, `ACCESS_NETWORK_STATE` | direct upload when the phone is away; checking whether the watch has a network |
+
+Removed from the watch: the `SystemForegroundService` `dataSync` entry (nothing uses it now). Phone: no new permissions; it only gains the `WatchReceiverService` listener. The tile and complication services are protected by the system `BIND_TILE_PROVIDER` / `BIND_COMPLICATION_PROVIDER` permissions.
+
+The watch holds the phone's device token (encrypted with an Android Keystore key) so it can upload alone. Signing out on the phone removes it from the watch.
+
+---
+
 ## On-Device ASR Note
 
 `SpeechEngineFactory` picks the engine. By default it is `SherpaOnnxSpeechEngine` (on-device Whisper), using the model chosen under Settings → STT Model. When "On-device STT (Offline)" is turned off, or no Whisper model is downloaded, it falls back to `AndroidSpeechEngine`.

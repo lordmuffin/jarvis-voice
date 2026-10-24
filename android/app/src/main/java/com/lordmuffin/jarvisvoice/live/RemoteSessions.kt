@@ -34,7 +34,11 @@ data class RemoteSession(
     val localOnly: Boolean,
     val streaming: Boolean,
     val owner: RemoteOwner?,
+    /** Where it was recorded, when the uploader said: `watch` for the Wear OS app. */
+    val source: String? = null,
 ) {
+    val isFromWatch: Boolean get() = source == SOURCE_WATCH
+
     /** `live` or `finalizing`: the transcript and note may still change. */
     val isInProgress: Boolean get() = status == STATUS_LIVE || status == STATUS_FINALIZING
 
@@ -42,6 +46,7 @@ data class RemoteSession(
         get() = if (startedAt != null && endedAt != null) maxOf(0, endedAt.toEpochMilli() - startedAt.toEpochMilli()) else null
 
     companion object {
+        const val SOURCE_WATCH = "watch"
         const val STATUS_LIVE = "live"
         const val STATUS_FINALIZING = "finalizing"
         const val STATUS_DONE = "done"
@@ -144,6 +149,7 @@ object RemoteSessions {
         owner = json.optJSONObject("owner")?.let {
             RemoteOwner(id = it.optString("id"), displayName = it.stringOrNull("display_name").orEmpty())
         },
+        source = json.stringOrNull("source"),
     )
 
     fun parseDetail(text: String): RemoteSessionDetail = parseDetail(JSONObject(text))

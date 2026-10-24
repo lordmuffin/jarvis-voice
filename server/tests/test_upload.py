@@ -273,3 +273,95 @@ async def test_upload_that_cannot_start_still_removes_its_audio(tmp_path: Path) 
     uploads.start(uuid.uuid4(), pcm)
     await eventually(lambda: not pcm.exists())
     await uploads.shutdown()
+
+
+# --- the Wear OS watch: source tag, retry idempotency, its AAC format -------------------------
+
+
+def aac_adts_bytes(pcm: bytes) -> bytes:
+    """What the watch records: raw AAC-LC (ADTS), 16 kHz mono, low bitrate."""
+    import shutil
+    import subprocess
+
+    if shutil.which("ffmpeg") is None:
+        pytest.skip("ffmpeg not installed")
+    proc = subprocess.run(  # noqa: S603
+        ["ffmpeg", "-nostdin", "-loglevel", "error", "-f", "wav", "-i", "pipe:0"]  # noqa: S607
+        + ["-c:a", "aac", "-b:a", "24k", "-f", "adts", "pipe:1"],
+        input=wav_bytes(pcm),
+        capture_output=True,
+        check=True,
+    )
+    return proc.stdout
+
+
+async def test_watch_upload_is_tagged_and_lands_as_a_note_like_any_other_capture(
+    make_server: Callable[..., ServerHandle], token: str, tmp_path: Path
+) -> None:
+    outbox = tmp_path / "outbox"
+    server = make_server(
+        llm=FakeLLM().queue("FinalNote", FinalNote(title="Watch memo", summary="From the wrist.")),
+        outbox_dir=outbox,
+        finalize_recover_max_age_s=0,
+    )
+    async with device_client(server, token) as c:
+        r = await c.post(
+            "/v1/sessions/upload",
+            params={"filename": "watch-1.aac", "source": "watch", "client_id": "w-0001"},
+            content=aac_adts_bytes(TWO_UTTERANCES),
+        )
+        assert r.status_code == 202, r.text
+        sid = r.json()["id"]
+
+        body = await _wait_for_status(c, sid, "done")
+        assert body["source"] == "watch"
+        assert len(body["segments"]) == 2
+        listed = (await c.get("/v1/sessions")).json()["items"]
+        assert [s["source"] for s in listed if s["id"] == sid] == ["watch"]
+
+    notes = list(outbox.glob("*.md"))
+    assert len(notes) == 1
+    text = notes[0].read_text()
+    assert "source: watch\n" in text
+    assert "tags: [ai-output, jarvis-live, inbox]" in text  # the same inbox capture as the rest
+
+
+async def test_repeating_an_upload_with_the_same_client_id_makes_no_second_session(
+    make_server: Callable[..., ServerHandle], token: str, sm: SM
+) -> None:
+    server = make_server(
+        llm=FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S")),
+        finalize_recover_max_age_s=0,
+    )
+    async with device_client(server, token) as c:
+        kw = {
+            "params": {"source": "watch", "client_id": "w-dup"},
+            "content": wav_bytes(TWO_UTTERANCES),
+        }
+        first = await c.post("/v1/sessions/upload", **kw)
+        again = await c.post("/v1/sessions/upload", **kw)
+    assert first.status_code == 202 and again.status_code == 202
+    assert again.json()["id"] == first.json()["id"]  # the ack the watch needs, a second time
+    async with sm() as db:
+        n = (
+            await db.execute(
+                select(func.count()).select_from(SessionRow).where(SessionRow.client_id == "w-dup")
+            )
+        ).scalar_one()
+    assert n == 1
+
+
+async def test_upload_without_a_source_has_none_and_an_unknown_source_is_refused(
+    make_server: Callable[..., ServerHandle], token: str
+) -> None:
+    server = make_server(
+        llm=FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S")),
+        finalize_recover_max_age_s=0,
+    )
+    async with device_client(server, token) as c:
+        bad = await c.post(
+            "/v1/sessions/upload", params={"source": "toaster"}, content=wav_bytes(TWO_UTTERANCES)
+        )
+        assert bad.status_code == 422
+        ok = await c.post("/v1/sessions/upload", content=wav_bytes(TWO_UTTERANCES))
+        assert (await c.get(f"/v1/sessions/{ok.json()['id']}")).json()["source"] is None

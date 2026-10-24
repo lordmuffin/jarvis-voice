@@ -3,15 +3,9 @@ package com.lordmuffin.jarvisvoice.live
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.util.Base64
+import com.lordmuffin.jarvisvoice.watch.WearBridge
+import com.lordmuffin.jarvisvoice.wearcommon.SecretStore
 import java.io.File
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 
 /**
  * Jarvis Live connection settings. The server URL lives in `jarvis_prefs`; the device token
@@ -23,13 +17,18 @@ class LiveSettings(private val context: Context) {
 
     var serverUrl: String
         get() = prefs.getString(KEY_SERVER_URL, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_SERVER_URL
-        set(value) = prefs.edit().putString(KEY_SERVER_URL, value.trim()).apply()
+        set(value) {
+            prefs.edit().putString(KEY_SERVER_URL, value.trim()).apply()
+            WearBridge.publishConfigAsync(context)
+        }
 
     var deviceToken: String?
         get() = prefs.getString(KEY_TOKEN, null)?.let { SecretStore.decrypt(it) }
         set(value) {
             if (value.isNullOrBlank()) prefs.edit().remove(KEY_TOKEN).apply()
             else prefs.edit().putString(KEY_TOKEN, SecretStore.encrypt(value.trim())).apply()
+            // The watch uploads with this token too, so it follows sign-in and sign-out.
+            WearBridge.publishConfigAsync(context)
         }
 
     /** Display name from `GET /v1/me`, cached so Settings can show it before the request returns. */
@@ -119,39 +118,5 @@ class LiveSettings(private val context: Context) {
         private const val KEY_AWAY_PLACE = "live_away_place"
         private const val KEY_AWAY_MANUAL = "live_away_manual"
         private const val KEY_AWAY_AGAINST = "live_away_manual_against"
-    }
-}
-
-/** AES-GCM with a non-exportable Android Keystore key. */
-private object SecretStore {
-    private const val ALIAS = "jarvis_live_token"
-    private const val TRANSFORMATION = "AES/GCM/NoPadding"
-
-    fun encrypt(plain: String): String {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key())
-        val out = cipher.iv + cipher.doFinal(plain.toByteArray())
-        return Base64.encodeToString(out, Base64.NO_WRAP)
-    }
-
-    fun decrypt(encoded: String): String? = runCatching {
-        val bytes = Base64.decode(encoded, Base64.NO_WRAP)
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, key(), GCMParameterSpec(128, bytes, 0, 12))
-        String(cipher.doFinal(bytes, 12, bytes.size - 12))
-    }.getOrNull()
-
-    private fun key(): SecretKey {
-        val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (ks.getKey(ALIAS, null) as? SecretKey)?.let { return it }
-        val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
-        gen.init(
-            KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-                .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                .setKeySize(256)
-                .build()
-        )
-        return gen.generateKey()
     }
 }

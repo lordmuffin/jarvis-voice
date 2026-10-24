@@ -146,3 +146,11 @@ def test_work_items_section() -> None:
         "no repository yet · draft\n"
     )
     assert "## Work items" not in render_note(NOTE, META, LINES, [])
+
+
+def test_source_is_in_the_frontmatter_only_when_the_recording_states_one() -> None:
+    import dataclasses
+
+    assert "source" not in frontmatter(render_note(NOTE, META, LINES))
+    watch = dataclasses.replace(META, source="watch")
+    assert frontmatter(render_note(NOTE, watch, LINES))["source"] == "watch"

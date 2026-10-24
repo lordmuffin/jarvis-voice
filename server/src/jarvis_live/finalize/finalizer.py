@@ -150,6 +150,7 @@ class Finalizer:
             device=device.name if device else "unknown",
             user=user.display_name if user else None,
             mode=row.mode,
+            source=row.source,
             duration_minutes=max(1, round(duration_s / 60)),
         )
         markdown = render_note(note, meta, lines, work_items)

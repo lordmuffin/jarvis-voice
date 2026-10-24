@@ -3,6 +3,7 @@ package com.lordmuffin.jarvisvoice.live
 import com.lordmuffin.jarvisvoice.live.protocol.Channel
 import com.lordmuffin.jarvisvoice.live.protocol.RestBodies
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
+import com.lordmuffin.jarvisvoice.wearcommon.RecordingUploader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -31,6 +32,12 @@ class LiveApiClient(
     val http: OkHttpClient = defaultClient(),
 ) {
     val baseUrl: HttpUrl = baseUrl.trim().trimEnd('/').toHttpUrl()
+
+    /**
+     * Uploads a recorded file (`POST /v1/sessions/upload`) with this client's server and token. It has
+     * its own timeouts: the server decodes the audio before it answers.
+     */
+    fun recordingUploader(): RecordingUploader = RecordingUploader(baseUrl.toString(), deviceToken)
 
     /** `POST /v1/sessions` → the new session id. */
     suspend fun createSession(mode: SessionMode, channels: List<Channel>, title: String?): String {

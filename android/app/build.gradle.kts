@@ -83,6 +83,9 @@ android {
 }
 
 dependencies {
+    implementation(project(":wearcommon"))
+    implementation(libs.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.commons.compress)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.browser)

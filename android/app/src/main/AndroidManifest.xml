@@ -47,6 +47,16 @@
         <uses-native-library android:name="libOpenCL.so" android:required="false"/>
         <uses-native-library android:name="libcdsprpc.so" android:required="false"/>
 
+        <!-- Receives recordings from the paired Wear OS watch over the Data Layer. -->
+        <service
+            android:name=".watch.WatchReceiverService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CHANNEL_EVENT" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/jarvis/recording" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".SettingsActivity"
             android:exported="false"

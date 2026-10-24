@@ -9,7 +9,7 @@
 | `server/deploy/k8s/` | Kubernetes manifests Flux applies to the homelab cluster: `base/` shared, `jarvis-live/` = live channel (branch `deploy/live`), `jarvis-live-lab/` = lab channel (branch `deploy/lab`). See `server/deploy/README.md` |
 | `web/` | Web dashboard (viewer): Vite + TypeScript + Preact, served by the server at `/` |
 | `macos/` | Jarvis Live macOS app (Swift, 0.12.0): `JarvisVoiceMac`, a SwiftUI menu-bar app with a live-session recorder (mic + system audio), a Copilot panel, a dictation HUD and a settings window, on the `JarvisLiveKit` Swift package. A working app, styled with Instrument (`Color.inst.*`, `InstType`), see `macos/README.md` |
-| `android/` | Android app |
+| `android/` | Android app (`app/`), the Wear OS companion (`wear/`, sync code shared in `wearcommon/`: see `android/README.md`) |
 | `design/` | Android-era token extraction (`tokens.json`, usage rules). The design system's source of truth is [lordmuffin/instrument](https://github.com/lordmuffin/instrument); its pinned release is vendored (managed, never edit) into `web/src/instrument/` and `macos/JarvisVoiceMac/Sources/Instrument/`, artboards in `docs/design/instrument/` |
 | `src/jarvis_voice/`, `tests/` | **Legacy** FastAPI service — bugfix only |
 
