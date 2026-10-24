@@ -1,6 +1,7 @@
 """Transcribing a finished session again from its stored audio."""
 
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -96,3 +97,28 @@ async def test_no_stored_audio_fails_and_keeps_the_old_transcript(sm: SM, tmp_pa
             stt=FakeSTT(),
         )
     assert await _texts(sm, sid) == ["old words"]
+
+
+async def test_it_reports_how_much_of_the_recording_is_transcribed(sm: SM, tmp_path: Path) -> None:
+    sid = await _session_with_audio(sm, tmp_path)
+    probes: list[Callable[[], float | None]] = []
+    seen: list[float | None] = []
+
+    class WatchingSTT(FakeSTT):
+        async def transcribe(self, pcm: bytes, prompt: str) -> Transcription:
+            seen.append(probes[0]())  # how far it is when each segment reaches STT
+            return await super().transcribe(pcm, prompt)
+
+    await retranscribe(
+        sid,
+        ["mic"],
+        settings=Settings(data_dir=tmp_path),
+        sessionmaker=sm,
+        bus=Bus(),
+        stt=WatchingSTT(),
+        on_progress=probes.append,
+    )
+    assert len(probes) == 1
+    assert len(seen) == 2 and all(p is not None and p < 1 for p in seen)
+    assert seen[0] < seen[1]  # type: ignore[operator]
+    assert probes[0]() == 1.0

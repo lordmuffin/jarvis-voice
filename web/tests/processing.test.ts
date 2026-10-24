@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { processingView } from "../src/processing";
+import { processingView, showsProcessingWhileLive } from "../src/processing";
 import type { Processing } from "../src/types";
 
 const p = (over: Partial<Processing> = {}): Processing => ({
@@ -24,6 +24,21 @@ describe("processingView", () => {
     });
   });
 
+  it("says how much of the recording is transcribed, when the server knows", () => {
+    expect(processingView(p({ transcription: "running", job_source: "reprocess", progress: 0.426 }))).toEqual({
+      busy: true,
+      label: "Transcribing… 42%",
+      tone: "progress",
+    });
+    // Rounded down: 100% only once it is all done.
+    expect(processingView(p({ transcription: "running", job_source: "upload", progress: 0.999 })).label).toBe(
+      "Transcribing… 99%",
+    );
+    expect(processingView(p({ transcription: "running", job_source: "live", progress: null })).label).toBe(
+      "Transcribing…",
+    );
+  });
+
   it("says Summarizing… while the note is written", () => {
     expect(processingView(p({ summary: "running", job_source: "finalize" }))).toMatchObject({
       busy: true,
@@ -37,5 +52,17 @@ describe("processingView", () => {
       label: "Transcription failed",
       tone: "failed",
     });
+  });
+});
+
+describe("showsProcessingWhileLive", () => {
+  it("follows an uploaded recording's transcription and an ending session", () => {
+    expect(showsProcessingWhileLive("live", p({ transcription: "running", job_source: "upload" }))).toBe(true);
+    expect(showsProcessingWhileLive("finalizing", p())).toBe(true);
+  });
+
+  it("stays out of a recording streamed live: its transcript is the progress", () => {
+    expect(showsProcessingWhileLive("live", p({ transcription: "running", job_source: "live" }))).toBe(false);
+    expect(showsProcessingWhileLive("live", undefined)).toBe(false);
   });
 });

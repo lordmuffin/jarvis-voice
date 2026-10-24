@@ -32,7 +32,18 @@ class GatedSTT(FakeSTT):
         return await super().transcribe(pcm, prompt)
 
 
-IDLE = {"transcription": "idle", "summary": "idle", "started_at": None, "job_source": None}
+IDLE = {
+    "transcription": "idle",
+    "summary": "idle",
+    "started_at": None,
+    "job_source": None,
+    "progress": None,
+}
+
+
+def _partly_transcribed(d: dict[str, Any]) -> bool:
+    p = d["processing"]["progress"]
+    return p is not None and 0 < p < 1
 
 
 async def _until(
@@ -91,6 +102,7 @@ async def test_process_transcribes_again_then_summarizes_and_never_runs_twice(
         assert again.json()["started"] is False
         assert again.json()["processing"] == body["processing"]
         assert (await c.post(f"/v1/sessions/{sid}/regenerate")).status_code == 409
+        await _until(c, sid, _partly_transcribed)  # held at its first segment
 
         stt.gate.set()
         d = await _until(c, sid, lambda d: d["processing"] == IDLE and d["status"] == "done")
@@ -119,6 +131,7 @@ async def test_process_joins_an_upload_still_being_transcribed(
         r = await c.post(f"/v1/sessions/{sid}/process")
         assert r.status_code == 202 and r.json()["started"] is False
         assert r.json()["processing"]["job_source"] == "upload"
+        await _until(c, sid, _partly_transcribed)
 
         stt.gate.set()
         d = await _until(c, sid, lambda d: d["processing"] == IDLE and d["status"] == "done")

@@ -19,6 +19,7 @@ from jarvis_live.db.models import Session
 from jarvis_live.ingest.pipeline import SessionPipeline
 from jarvis_live.ingest.store import AudioStore
 from jarvis_live.logging_setup import session_logger
+from jarvis_live.processing import fraction
 from jarvis_live.stt.backend import STTBackend
 
 
@@ -63,6 +64,7 @@ class IngestHub:
         self._stt = stt
         self._states: dict[uuid.UUID, SessionIngest] = {}
         self._draining: dict[uuid.UUID, datetime] = {}  # end() in progress: since when
+        self._drained: dict[uuid.UUID, SessionPipeline] = {}  # the pipeline end() drains
         self._lock = asyncio.Lock()
 
     async def get(self, session_id: uuid.UUID, channels: list[str]) -> SessionIngest:
@@ -108,6 +110,12 @@ class IngestHub:
         """When an ``end()`` of this session began, while it drains the last segments."""
         return self._draining.get(session_id)
 
+    def draining_progress(self, session_id: uuid.UUID) -> float | None:
+        """How much of an ending session's audio is transcribed (0-1), while it drains."""
+        if (pipeline := self._drained.get(session_id)) is None:
+            return None
+        return fraction(pipeline.transcribed_ms(), pipeline.fed_ms())
+
     async def end(self, session_id: uuid.UUID, *, caller: WebSocket | None = None) -> bool:
         """Move a live session to ``finalizing`` and drain its pipeline. Idempotent.
 
@@ -118,6 +126,7 @@ class IngestHub:
             return await self._end(session_id, caller)
         finally:
             self._draining.pop(session_id, None)
+            self._drained.pop(session_id, None)
 
     async def _end(self, session_id: uuid.UUID, caller: WebSocket | None) -> bool:
         log = session_logger(__name__, session_id)
@@ -134,6 +143,7 @@ class IngestHub:
         if state is not None:
             state.ended.set()
             await state.store.close()  # reject further frames, fsync
+            self._drained[session_id] = state.pipeline
             await state.pipeline.finish()
             await state.pipeline.close()
             if state.producer is not None and state.producer is not caller:

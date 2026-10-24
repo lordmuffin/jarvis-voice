@@ -2,6 +2,7 @@
 flight in this process (single replica): a producer streaming, an upload being fed, the hub
 draining an ended session, or an orchestrator run (finalize, regenerate, reprocess)."""
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
@@ -20,6 +21,8 @@ class Job:
     source: JobSource
     stage: Stage
     started_at: datetime
+    # While it transcribes: how much of the recording is done (0-1).
+    progress: Callable[[], float | None] | None = None
 
 
 class ProcessingState(BaseModel):
@@ -27,6 +30,9 @@ class ProcessingState(BaseModel):
     summary: Phase
     started_at: datetime | None  # when the job in flight began
     job_source: JobSource | None
+    # How much of a recording of known length is transcribed (0-1): an upload, an ending
+    # session draining, a reprocess. None otherwise (a live stream has no end).
+    progress: float | None = None
 
     @property
     def busy(self) -> bool:
@@ -43,8 +49,41 @@ def derive(
     draining_since: datetime | None,
     job: Job | None,
     transcription_failed: bool,
+    progress: float | None = None,
 ) -> ProcessingState:
-    """``started_at`` is the session's; the rest describe what is in flight for it."""
+    """``started_at`` is the session's; the rest describe what is in flight for it. ``progress``
+    is the in-flight transcription's, if its length is known."""
+    state = _derive(
+        status,
+        started_at=started_at,
+        local_only=local_only,
+        streaming=streaming,
+        uploading_since=uploading_since,
+        draining_since=draining_since,
+        job=job,
+        transcription_failed=transcription_failed,
+    )
+    if state.transcription == "running" and state.job_source != "live":
+        state.progress = progress
+    return state
+
+
+def fraction(done_ms: int, total_ms: int) -> float | None:
+    """The share of a recording done, capped at all of it; None when there is nothing to do."""
+    return min(1.0, done_ms / total_ms) if total_ms > 0 else None
+
+
+def _derive(
+    status: str,
+    *,
+    started_at: datetime,
+    local_only: bool,
+    streaming: bool,
+    uploading_since: datetime | None,
+    draining_since: datetime | None,
+    job: Job | None,
+    transcription_failed: bool,
+) -> ProcessingState:
     # Local-only sessions are never sent to an LLM: no note is ever queued for them.
     then: Phase = "idle" if local_only else "queued"
     if job is not None:
