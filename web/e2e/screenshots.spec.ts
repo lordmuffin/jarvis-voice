@@ -83,6 +83,7 @@ for (const theme of THEMES) {
       await page.goto(`/sessions/${PAST_ID}`);
       await expect(page.getByTestId("note")).toBeVisible();
       await expect(page.getByTestId("segment").first()).toBeVisible();
+      await expect(page.getByRole("toolbar", { name: "Note" }).getByRole("button", { name: "Copy Actions" })).toBeVisible();
       await shoot(page, "past", theme);
       await page.getByRole("toolbar", { name: "Note" }).getByRole("button", { name: "Edit" }).click();
       await expect(page.getByLabel("Note Markdown")).toBeVisible();
