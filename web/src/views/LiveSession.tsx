@@ -11,6 +11,7 @@ import { ConnectionChip } from "../jarvis/ConnectionChip";
 import { dockView, type Holds } from "../jarvis/dock";
 import { isMine } from "../jarvis/OwnerLabel";
 import { NowDock } from "../jarvis/NowDock";
+import { ProcessControl } from "../jarvis/ProcessControl";
 import { Timeline } from "../jarvis/Timeline";
 import { useArrivals } from "../jarvis/useArrivals";
 import { useLookMarker } from "../look";
@@ -142,11 +143,15 @@ export function LiveSession({
           </>
         }
         actions={
-          mine && (
-            <Button variant="danger-quiet" size="sm" onClick={() => setEnding("confirm")}>
-              End Session
-            </Button>
-          )
+          <>
+            {mine && (
+              <Button variant="danger-quiet" size="sm" onClick={() => setEnding("confirm")}>
+                End Session
+              </Button>
+            )}
+            {/* An ending, regenerated or re-transcribed session: which job runs, until it is done. */}
+            {session.status === "finalizing" && <ProcessControl detail={detail} onChanged={onFinished} />}
+          </>
         }
       />
       {s.error && <Banner variant="error">{s.error.message}</Banner>}

@@ -5,6 +5,7 @@ import {
   createDevice,
   editNote,
   endSession,
+  getProcessing,
   getPublishing,
   health,
   listSessions,
@@ -14,6 +15,7 @@ import {
   onUnauthorized,
   publicationAction,
   publicationRequest,
+  processSession,
   publishAll,
   regenerateNote,
   revokeDevice,
@@ -146,6 +148,19 @@ describe("api", () => {
       path: "/v1/sessions/s1/publication/skip",
       method: "DELETE",
     });
+  });
+
+  it("starts processing and polls its state", async () => {
+    const started = fakeFetch(202, {
+      started: false,
+      processing: { transcription: "running", summary: "queued", started_at: null, job_source: "upload" },
+    });
+    expect((await processSession("s 1", started.f)).started).toBe(false);
+    expect(started.calls[0]).toMatchObject({ url: "/v1/sessions/s%201/process", init: { method: "POST" } });
+
+    const poll = fakeFetch(200, { transcription: "idle", summary: "idle", started_at: null, job_source: null });
+    expect((await getProcessing("s1", poll.f)).summary).toBe("idle");
+    expect(poll.calls[0]!.url).toBe("/v1/sessions/s1/processing");
   });
 
   it("edits, regenerates and publishes notes", async () => {
