@@ -165,4 +165,16 @@ class LiveApiClientTest {
         gone.shutdown()
         assertNull(LiveApiClient(url, "tok-123").channel())
     }
+
+    @Test fun recordingUploaderReusesTheClientsServerAndToken() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("""{"id": "3f2c0c5e-0000-4000-8000-000000000001"}"""))
+        val file = tmp.newFile("w-1.aac").apply { writeBytes(ByteArray(64)) }
+
+        val result = client.recordingUploader().upload(file, clientId = "w-1", title = "Watch memo", source = "watch")
+
+        assertEquals(com.lordmuffin.jarvisvoice.wearcommon.UploadResult.Acked("3f2c0c5e-0000-4000-8000-000000000001"), result)
+        val req = server.takeRequest()
+        assertEquals("Bearer tok-123", req.getHeader("Authorization"))
+        assertEquals("watch", req.requestUrl!!.queryParameter("source"))
+    }
 }

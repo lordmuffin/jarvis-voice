@@ -113,6 +113,14 @@ class Session(Base):
         CheckConstraint("mode IN ('meeting','solo')", name="ck_sessions_mode"),
         Index("ix_sessions_device_started", "device_id", text("started_at DESC")),
         Index("ix_sessions_user_started", "user_id", text("started_at DESC")),
+        # A client retrying an upload (a watch that never saw the ack) gets its session back.
+        Index(
+            "uq_sessions_user_client_id",
+            "user_id",
+            "client_id",
+            unique=True,
+            postgresql_where=text("client_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -131,6 +139,10 @@ class Session(Base):
     channels: Mapped[list[str]] = mapped_column(
         ARRAY(String(8)), default=lambda: ["mic"], server_default=text("'{mic}'")
     )
+    # Which capture surface made an uploaded recording ("watch"); NULL when not stated.
+    source: Mapped[str | None] = mapped_column(String(16))
+    # The uploader's own id for the recording; makes an upload retry idempotent.
+    client_id: Mapped[str | None] = mapped_column(String(64))
 
 
 class AudioChunk(Base):

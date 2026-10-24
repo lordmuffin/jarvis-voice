@@ -1,38 +1,38 @@
 package com.lordmuffin.jarvisvoice.wear
 
-import com.lordmuffin.jarvisvoice.wear.db.SyncStatus
+import com.lordmuffin.jarvisvoice.wearcommon.sync.QueueItem
+import com.lordmuffin.jarvisvoice.wearcommon.sync.SyncState
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Test
 
 class WearUiStateTest {
+    private fun item(state: SyncState, id: String = "x") = QueueItem(id, "/f/$id.aac", 1, 1000, 100, state)
 
-    @Test fun `no recording is ready`() {
-        val s = WearUiState.forLatest(null, waiting = 0)
+    @Test fun `an empty queue is ready`() {
+        val s = WearUiState.forQueue(emptyList())
         assertEquals(WearUiState.Tone.NONE, s.tone)
         assertEquals(R.string.wear_state_ready, s.labelRes)
-        assertNull(s.response)
     }
 
-    @Test fun `pending shows saved with waiting count`() {
-        val s = WearUiState.forLatest(SyncStatus.PENDING, waiting = 2)
+    @Test fun `an unsent recording shows saved with the number waiting`() {
+        val s = WearUiState.forQueue(listOf(item(SyncState.RECORDED, "a"), item(SyncState.AT_PHONE, "b")))
         assertEquals(R.string.wear_state_saved, s.labelRes)
         assertEquals(WearUiState.Glyph.SQUARE, s.glyph)
         assertEquals(2, s.waiting)
     }
 
-    @Test fun `synced is success and server response wins`() {
-        val s = WearUiState.forLatest(SyncStatus.SYNCED, waiting = 0, response = "Noted.")
+    @Test fun `everything at the phone is sent, waiting for the server`() {
+        val s = WearUiState.forQueue(listOf(item(SyncState.AT_PHONE)))
+        assertEquals(R.string.wear_state_sent, s.labelRes)
         assertEquals(WearUiState.Tone.SUCCESS, s.tone)
-        assertEquals(R.string.wear_state_captured, s.labelRes)
-        assertEquals("Noted.", s.response)
-        assertNull(WearUiState.forLatest(SyncStatus.SYNCED, 0, "  ").response)
     }
 
-    @Test fun `failed is warning`() {
-        val s = WearUiState.forLatest(SyncStatus.FAILED, waiting = 1)
-        assertEquals(WearUiState.Tone.WARNING, s.tone)
-        assertEquals(R.string.wear_state_failed, s.labelRes)
-        assertEquals(R.string.wear_meta_failed, s.metaRes)
+    @Test fun `a blocked or refused recording outranks progress`() {
+        for (stuck in listOf(SyncState.BLOCKED, SyncState.QUARANTINED)) {
+            val s = WearUiState.forQueue(listOf(item(SyncState.RECORDED, "a"), item(stuck, "b")))
+            assertEquals(WearUiState.Tone.WARNING, s.tone)
+            assertEquals(R.string.wear_state_failed, s.labelRes)
+            assertEquals(1, s.waiting)
+        }
     }
 }

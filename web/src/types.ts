@@ -131,6 +131,8 @@ export interface SessionSummary {
   started_at: string;
   ended_at: string | null;
   local_only: boolean;
+  /** Where an uploaded recording was made ("watch"); absent or null when not stated. */
+  source?: string | null;
   /** Audio is arriving now. A `live` session that is not streaming lost its recorder. */
   streaming: boolean;
   owner: Owner;

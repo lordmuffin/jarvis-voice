@@ -20,6 +20,7 @@ class NoteMeta:
     mode: str
     duration_minutes: int
     user: str | None = None
+    source: str | None = None  # where an uploaded recording was made, e.g. "watch"
 
 
 @dataclass(frozen=True)
@@ -100,6 +101,7 @@ def render_note(
         f"device: {_yaml(meta.device)}",
         *([f"user: {_yaml(meta.user)}"] if meta.user else []),
         f"mode: {meta.mode}",
+        *([f"source: {_yaml(meta.source)}"] if meta.source else []),
         f"duration_minutes: {meta.duration_minutes}",
         "tags: [ai-output, jarvis-live, inbox]",
         "---",

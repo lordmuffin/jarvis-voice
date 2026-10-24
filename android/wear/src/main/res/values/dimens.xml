@@ -3,4 +3,5 @@
 <resources>
     <dimen name="wear_state_glyph">28sp</dimen>
     <dimen name="wear_record_button">72dp</dimen>
+    <dimen name="wear_tile_button">120dp</dimen>
 </resources>

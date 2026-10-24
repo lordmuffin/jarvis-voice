@@ -25,6 +25,9 @@ class JarvisApp : Application() {
         runCatching { WorkManager.getInstance(this).cancelAllWorkByTag(TAG_DOWNLOAD) }
 
         installCrashHandler()
+
+        // Recordings from the watch that arrived while signed out or offline; and the watch's config.
+        runCatching { com.lordmuffin.jarvisvoice.watch.WatchUploadWorker.resume(this) }
     }
 
     private fun installCrashHandler() {
