@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.25.0...web-v0.26.0) (2026-10-24)
+
+
+### Features
+
+* show transcription progress as a percentage ([cc98eb1](https://github.com/lordmuffin/jarvis-voice/commit/cc98eb19623cc95492aadcbeac33b94b3857d3f8))
+* **web:** show transcription progress as a percentage ([582d395](https://github.com/lordmuffin/jarvis-voice/commit/582d3955579e4760f3db120ebfcaebbfc0933f8e))
+
 ## [0.25.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.24.0...web-v0.25.0) (2026-10-24)
 
 
