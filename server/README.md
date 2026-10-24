@@ -102,6 +102,18 @@ Each finished session's note sits in the outbox. From the session page in the da
 
 - **Edit** the note's Markdown (`PUT /v1/sessions/{id}/note`). Keep the frontmatter line `session_id: <id>`: the finalizer recognises its own file by it.
 - **Regenerate** it from the transcript (`POST /v1/sessions/{id}/regenerate`). The session goes back to `finalizing` while the LLM runs, and the new note replaces the old one. This is refused while the note's pull request is open.
+- **Transcribe & summarize** (`POST /v1/sessions/{id}/process`, also on Android). The stored recording is transcribed again with the same VAD, STT and guards as a live session, then the note is regenerated. If any segment can't be transcribed, the old transcript and note are kept and `processing.transcription` reads `failed`. A session with no stored audio only gets its note rewritten. This never starts a second job: if one is already running, the 202 response has `started: false` and that job's state.
+
+**Processing state.** `GET /v1/sessions/{id}` includes `processing: {transcription, summary, started_at, job_source}`. Each phase is `idle`, `queued`, `running` or `failed`. `GET .../processing` returns only this object, so clients can poll it. The state comes from the jobs running in this process (single replica), checked in this order:
+
+| Job in flight | transcription | summary | `job_source` |
+|---|---|---|---|
+| orchestrator re-transcription (`/process`) | running | queued | `reprocess` |
+| orchestrator note run (end of session, `/regenerate`, `/process` after its transcript) | idle | running | `finalize` / `regenerate` / `reprocess` |
+| hub draining an ending session's last segments | running | queued | `finalize` |
+| uploaded file being fed and transcribed | running | queued | `upload` |
+| producer streaming | running | idle | `live` |
+| none | idle (`failed` after a failed re-transcription) | idle (`failed` if the session failed) | null |
 
 **Publishing** works like capture's vault-writer. Each session gets one branch and one pull request in the vault repo, against its base branch, and nothing is pushed straight to `main`. The server does this through the GitHub REST API, so it needs no git binary and no clone.
 
