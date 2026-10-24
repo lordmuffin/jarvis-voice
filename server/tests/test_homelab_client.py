@@ -97,6 +97,7 @@ async def test_unanswered_and_still_pending_raise(tmp_path: Path) -> None:
         await _client(
             tmp_path, lambda r: httpx.Response(200, json={"status": "unanswered", "reason": "busy"})
         ).ask("ping", "r-1")
+
     def pending(r: httpx.Request) -> httpx.Response:
         return httpx.Response(202, json={"submissionId": "s1", "status": "pending"})
 
