@@ -59,6 +59,27 @@ class LiveApiClientTest {
         assertEquals("/v1/sessions/s1", server.takeRequest().path)
     }
 
+    @Test fun processPostsAndReadsTheJobState() = runBlocking<Unit> {
+        server.enqueue(
+            MockResponse().setResponseCode(202).setBody(
+                """{"started": false, "processing": {"transcription": "idle", "summary": "running",
+                    "started_at": "2026-10-24T09:00:00Z", "job_source": "finalize"}}"""
+            )
+        )
+        val r = client.process("s1")
+        assertFalse(r.started)
+        assertEquals(RemoteProcessing.Activity.SUMMARIZING, r.processing.activity)
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/v1/sessions/s1/process", req.path)
+    }
+
+    @Test fun getProcessingPollsTheStateAlone() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setBody("""{"transcription": "idle", "summary": "idle", "started_at": null, "job_source": null}"""))
+        assertFalse(client.getProcessing("s1").busy)
+        assertEquals("/v1/sessions/s1/processing", server.takeRequest().path)
+    }
+
     @Test fun unauthorizedIsALiveHttpException() = runBlocking<Unit> {
         server.enqueue(MockResponse().setResponseCode(401).setBody("""{"detail": "bad token"}"""))
         try {

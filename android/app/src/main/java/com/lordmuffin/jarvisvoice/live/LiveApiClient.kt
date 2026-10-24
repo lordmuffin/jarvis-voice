@@ -103,6 +103,21 @@ class LiveApiClient(
     suspend fun getSession(id: String): RemoteSessionDetail =
         RemoteSessions.parseDetail(execute(request(sessionUrl(id)).get().build()))
 
+    /**
+     * `POST /v1/sessions/{id}/process`: transcribe the stored recording again, then rewrite the note.
+     * Never starts a second job; the result then carries the one already running.
+     */
+    suspend fun process(id: String): ProcessResult {
+        val url = sessionUrl(id).newBuilder().addPathSegment("process").build()
+        return RemoteSessions.parseProcessResult(execute(request(url).post(EMPTY_BODY).build()))
+    }
+
+    /** `GET /v1/sessions/{id}/processing`: just the job state, for polling while one runs. */
+    suspend fun getProcessing(id: String): RemoteProcessing {
+        val url = sessionUrl(id).newBuilder().addPathSegment("processing").build()
+        return RemoteSessions.parseProcessing(execute(request(url).get().build()))
+    }
+
     /** `PATCH /v1/sessions/{id}` `{title}`; a blank title clears it. */
     suspend fun renameSession(id: String, title: String?) {
         val body = JSONObject().put("title", title?.trim()?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL)
@@ -203,6 +218,7 @@ class LiveApiClient(
 
     companion object {
         private val JSON = "application/json".toMediaType()
+        private val EMPTY_BODY = ByteArray(0).toRequestBody(null)
 
         /** Away, the server's address usually times out rather than refusing; don't wait long. */
         const val PROBE_TIMEOUT_S = 4L

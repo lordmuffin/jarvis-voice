@@ -30,6 +30,11 @@
     <string name="detail_tab_actions">Actions</string>
     <string name="detail_in_progress">This session is still in progress. The note is still being prepared.</string>
     <string name="detail_finalizing">The note is still being prepared.</string>
+    <string name="detail_process">Transcribe &amp; summarize</string>
+    <string name="detail_processing_transcribing">Transcribing…</string>
+    <string name="detail_processing_summarizing">Summarizing…</string>
+    <string name="detail_processing_transcription_failed">Transcription failed</string>
+    <string name="detail_process_error">Couldn\'t start: %1$s</string>
     <string name="detail_summary_pending">The summary appears here when the session is finalized.</string>
     <string name="detail_summary_none">No summary for this session.</string>
     <string name="detail_summary_gone">The note was saved to %1$s and is no longer available on the server.</string>

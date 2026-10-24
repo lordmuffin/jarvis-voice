@@ -51,6 +51,7 @@ class DetailActions(
     val onRefresh: () -> Unit = {},
     val onPlay: (String) -> Unit = {},
     val onSeek: (String, Float) -> Unit = { _, _ -> },
+    val onProcess: () -> Unit = {},
 )
 
 /**
@@ -118,9 +119,19 @@ private fun DetailHeader(ui: DetailUi, actions: DetailActions) {
             ui.status?.let { InstChip(it, ui.statusTone.color()) }
             InstButton(stringResource(R.string.ui_refresh), actions.onRefresh, kind = ButtonKind.Quiet)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
-            InstText(ui.meta, InstUi.type.meta, Modifier.weight(1f, fill = false))
-            ui.channel?.let { ChannelBadge(it) }
+        // The server's release channel (a red LIVE tag) stays in the app bar: beside a finished
+        // session's meta it read as the session's own state.
+        InstText(ui.meta, InstUi.type.meta)
+        if (ui.canProcess || ui.processing != null) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
+                if (ui.canProcess) {
+                    InstButton(
+                        stringResource(R.string.detail_process), actions.onProcess,
+                        size = ButtonSize.Sm, enabled = !ui.processBusy,
+                    )
+                }
+                ui.processing?.let { InstChip(it, ui.processingTone.color(), leading = if (ui.processBusy) "◌" else null) }
+            }
         }
     }
 }

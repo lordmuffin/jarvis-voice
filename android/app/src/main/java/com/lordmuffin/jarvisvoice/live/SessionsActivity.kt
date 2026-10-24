@@ -79,7 +79,7 @@ class SessionsActivity : AppCompatActivity() {
                             model.ui,
                             DetailActions(
                                 onTab = model::selectTab, onRetry = model::load, onRefresh = model::load,
-                                onPlay = model::onPlayTapped, onSeek = model::seekTo,
+                                onPlay = model::onPlayTapped, onSeek = model::seekTo, onProcess = model::process,
                             ),
                         )
                     }
