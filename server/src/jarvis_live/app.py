@@ -9,7 +9,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import account, auth, publishing, sessions, stream, work_items
+from jarvis_live.api import account, auth, homelab, publishing, sessions, stream, work_items
 from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
@@ -18,6 +18,7 @@ from jarvis_live.db.session import make_engine, make_sessionmaker, run_migration
 from jarvis_live.dispatch.githubapp import AppTokens
 from jarvis_live.dispatch.kube import KubeClient
 from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
+from jarvis_live.homelab.client import DpiClient
 from jarvis_live.ingest.hub import IngestHub
 from jarvis_live.ingest.upload import Uploads
 from jarvis_live.llm.client import LLM, LiteLLMClient
@@ -91,13 +92,16 @@ def create_app(
     dispatcher: Dispatcher | None = None,
     kube: Kube | None = None,
     app_tokens: Tokens | None = None,
+    dpi: DpiClient | None = None,
 ) -> FastAPI:
     """``stt``, ``llm``, ``notifier``, ``github`` and ``dispatcher`` override what is built
     from settings (tests). The copilot and finalizer run only if an LLM is configured or
     injected; notes are published only if ``publish_repo`` and ``github_token_file`` are set.
     Work items are found only with ``work_items_enabled`` and an LLM. With
     ``dispatch_enabled``, approved items run as Kubernetes Jobs (``kube`` and ``app_tokens``
-    stand in for the cluster and the GitHub App in tests)."""
+    stand in for the cluster and the GitHub App in tests). ``dpi`` overrides the Pi Durable
+    client built from ``dpi_base_url``/``dpi_token_file`` (tests); unset and unconfigured,
+    ``POST /v1/homelab/ask`` always answers with the fallback phrase."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -221,6 +225,18 @@ def create_app(
             oidc = OIDCClient(
                 cfg.oidc_issuer, cfg.oidc_client_id, cfg.oidc_client_secret_file, client
             )
+        dpi_client = dpi
+        if dpi_client is None and cfg.dpi_base_url:
+            if client is None:
+                client = httpx.AsyncClient()
+            dpi_client = DpiClient(
+                cfg.dpi_base_url,
+                cfg.dpi_token_file,
+                client,
+                session=cfg.dpi_session,
+                wait_ms=cfg.dpi_wait_ms,
+            )
+        app.state.dpi = dpi_client
         app.state.oidc = oidc
         app.state.settings = cfg
         app.state.sessionmaker = sm
@@ -261,6 +277,7 @@ def create_app(
     app.include_router(publishing.router)
     app.include_router(work_items.router)
     app.include_router(stream.router)
+    app.include_router(homelab.router)
 
     cfg = settings or get_settings()
     environment = cfg.environment

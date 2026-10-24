@@ -83,6 +83,11 @@ spec:
                   name: jarvis-live-oidc
                   key: client_id
                   optional: true
+            # jarvis-live-dpi: DPI_TOKEN_JARVIS field of np-home-homelab's pi-durable 1Password
+            # item, synced into this namespace (onepassword-items.yaml). Optional so the pod
+            # starts before that field exists; /v1/homelab/ask then just returns its fallback.
+            - name: JARVIS_LIVE_DPI_TOKEN_FILE
+              value: /secrets/dpi/password
           ports:
             - name: http
               containerPort: 8080
@@ -139,6 +144,9 @@ spec:
             - name: oidc
               mountPath: /secrets/oidc
               readOnly: true
+            - name: dpi-token
+              mountPath: /secrets/dpi
+              readOnly: true
             # notes-vault-pat: the app publishes finished notes to lordmuffin/Notes
             # itself (one branch + PR per session, merge from the dashboard).
             - name: github-token
@@ -178,6 +186,18 @@ spec:
             items:
               - key: client_secret
                 path: client_secret
+        # Selects only DPI_TOKEN_JARVIS out of the jarvis-live-dpi Secret (which also carries
+        # the other fields of the shared pi-durable 1Password item): this pod's filesystem
+        # never sees DPI_TOKEN or GITOPS_TOKEN, only its own field, renamed `password` to
+        # match JARVIS_LIVE_DPI_TOKEN_FILE above.
+        - name: dpi-token
+          secret:
+            secretName: jarvis-live-dpi
+            optional: true
+            defaultMode: 0400
+            items:
+              - key: DPI_TOKEN_JARVIS
+                path: password
         - name: github-token
           secret:
             secretName: notes-vault-pat

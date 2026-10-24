@@ -178,6 +178,14 @@ class Settings(BaseSettings):
     github_app_installation_id: str = ""
     github_app_key_file: Path | None = None
 
+    # Homelab Q&A (jarvis_live/homelab/): POST /v1/homelab/ask forwards a device's question to
+    # Pi Durable's persistent `jarvis` session and returns its answer. Empty base URL: the
+    # route always returns the fallback phrase, so lab can run with no backend wired up.
+    dpi_base_url: str = ""
+    dpi_token_file: Path | None = None
+    dpi_session: str = "jarvis"
+    dpi_wait_ms: int = 60_000
+
     @staticmethod
     def _repo_list(text: str) -> dict[str, str]:
         repos: dict[str, str] = {}
