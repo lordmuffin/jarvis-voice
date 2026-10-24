@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.23.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.22.0...server-v0.23.0) (2026-10-24)
+
+
+### Features
+
+* **android:** Wear OS companion with watch-to-phone sync ([1af3d89](https://github.com/lordmuffin/jarvis-voice/commit/1af3d897c611e4f6a3a90bb8803ab8d866423b6c))
+* **server:** tag uploads with a source and make upload retries idempotent ([4072d1e](https://github.com/lordmuffin/jarvis-voice/commit/4072d1e8e965b8de7b23de5fcb936f7a09e7a7dd))
+
 ## [0.22.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.21.0...server-v0.22.0) (2026-10-20)
 
 
