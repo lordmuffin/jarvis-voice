@@ -15,6 +15,7 @@ import { ProcessControl } from "../jarvis/ProcessControl";
 import { Timeline } from "../jarvis/Timeline";
 import { useArrivals } from "../jarvis/useArrivals";
 import { useLookMarker } from "../look";
+import { showsProcessingWhileLive } from "../processing";
 import { initialState, reduce, transcriptLines, type Event } from "../reducer";
 import type { SessionDetail, WorkItemPage } from "../types";
 import { watchSession } from "../ws";
@@ -149,8 +150,11 @@ export function LiveSession({
                 End Session
               </Button>
             )}
-            {/* An ending, regenerated or re-transcribed session: which job runs, until it is done. */}
-            {session.status === "finalizing" && <ProcessControl detail={detail} onChanged={onFinished} />}
+            {/* An upload, or an ending, regenerated or re-transcribed session: which job runs and
+                how far, until it is done. */}
+            {showsProcessingWhileLive(session.status, detail.processing) && (
+              <ProcessControl detail={detail} onChanged={onFinished} />
+            )}
           </>
         }
       />

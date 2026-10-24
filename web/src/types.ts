@@ -178,6 +178,11 @@ export interface Processing {
   /** When the job in flight began. */
   started_at: string | null;
   job_source: "live" | "upload" | "finalize" | "regenerate" | "reprocess" | null;
+  /**
+   * How much of a recording of known length is transcribed (0-1): an upload, a reprocess, an
+   * ending session. Null for a live stream; absent from servers before it existed.
+   */
+  progress?: number | null;
 }
 
 export type PublicationState = "publishing" | "open" | "merged" | "closed" | "skipped" | "failed";
