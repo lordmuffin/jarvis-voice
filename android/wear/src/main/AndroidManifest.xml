@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Wear OS feature declarations -->
     <uses-feature android:name="android.hardware.type.watch" />
+    <uses-feature android:name="android.hardware.microphone" android:required="true" />
 
     <application
         android:allowBackup="false"
@@ -15,6 +20,10 @@
         android:label="@string/app_name"
         android:theme="@style/Theme.JarvisWear"
         android:networkSecurityConfig="@xml/network_security_config">
+
+        <uses-library android:name="com.google.android.wearable" android:required="false" />
+        <!-- Works without the phone app installed (direct upload), so mark it standalone. -->
+        <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
 
         <activity
             android:name=".WearMainActivity"
@@ -29,15 +38,66 @@
         <activity
             android:name=".WearSettingsActivity"
             android:exported="false"
-            android:label="Settings" />
+            android:label="@string/wear_settings" />
 
-        <!-- WorkManager's SystemForegroundService for upload worker -->
+        <!-- Tile and complication taps land here: toggle recording, then vanish. -->
+        <activity
+            android:name=".ToggleActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- Keeps the microphone open with the screen off. -->
         <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="shortService|dataSync"
+            android:name=".RecordingService"
             android:exported="false"
-            tools:node="merge"
-            xmlns:tools="http://schemas.android.com/tools" />
+            android:foregroundServiceType="microphone" />
+
+        <!-- Receives the phone's server acks and config as Data Layer items. -->
+        <service
+            android:name=".sync.WearDataListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/jarvis/" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.CAPABILITY_CHANGED" />
+                <data android:scheme="wear" android:host="*" android:pathPrefix="/jarvis_phone_receiver" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".tile.RecordTileService"
+            android:exported="true"
+            android:label="@string/tile_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/rec_dot" />
+        </service>
+
+        <service
+            android:name=".complication.RecordComplicationService"
+            android:exported="true"
+            android:icon="@drawable/rec_dot"
+            android:label="@string/complication_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
 
     </application>
 </manifest>

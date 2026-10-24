@@ -164,4 +164,18 @@ class RemoteSessionsTest {
         assertEquals("42:10", RemoteSessions.formatDuration((42 * 60 + 10) * 1000L))
         assertEquals("1:02:03", RemoteSessions.formatDuration((3600 + 2 * 60 + 3) * 1000L))
     }
+
+    @Test fun readsWhereASessionWasRecorded() {
+        val watch = RemoteSessions.parseSession(org.json.JSONObject("""{"id": "s1", "source": "watch"}"""))
+        assertEquals("watch", watch.source)
+        assertTrue(watch.isFromWatch)
+
+        // An older server sends no source, a newer one may send a value we don't know.
+        val none = RemoteSessions.parseSession(org.json.JSONObject("""{"id": "s2"}"""))
+        assertNull(none.source)
+        assertFalse(none.isFromWatch)
+        val nul = RemoteSessions.parseSession(org.json.JSONObject("""{"id": "s3", "source": null}"""))
+        assertNull(nul.source)
+        assertFalse(RemoteSessions.parseSession(org.json.JSONObject("""{"id": "s4", "source": "toaster"}""")).isFromWatch)
+    }
 }

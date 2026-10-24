@@ -21,6 +21,7 @@
     <string name="history_status_finalizing">Finalizing</string>
     <string name="history_status_done">Done</string>
     <string name="history_status_failed">Failed</string>
+    <string name="history_source_watch">Watch</string>
     <string name="history_in_progress">in progress</string>
 
     <!-- Session detail (SessionDetailActivity) -->
