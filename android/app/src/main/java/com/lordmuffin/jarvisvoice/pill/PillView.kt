@@ -51,6 +51,14 @@ class PillView @JvmOverloads constructor(
         }
     }
 
+    override fun onFinishInflate() {
+        super.onFinishInflate()
+        // The service inflates without a parent, so the layout's height is dropped and the pill wraps
+        // its content. Hold every state at the listening row's height so the idle dot stays tappable.
+        val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
+        minimumHeight = listOf(label, time).maxOf { it.measure(unspecified, unspecified); it.measuredHeight }
+    }
+
     fun render(state: PillState) {
         if (state == shown) return
         shown = state
