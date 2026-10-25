@@ -1,10 +1,17 @@
 name: Web CI
 
 on:
+  # Push builds main only; branches get CI through their PR, not twice.
   push:
+    branches: [main]
     paths: ["web/**", "protocol/**", ".github/workflows/web-ci.yml"]
   pull_request:
     paths: ["web/**", "protocol/**", ".github/workflows/web-ci.yml"]
+
+# One run per PR or branch: a newer push cancels the older PR run. Runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
