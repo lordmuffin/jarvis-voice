@@ -54,9 +54,10 @@ class PillView @JvmOverloads constructor(
     override fun onFinishInflate() {
         super.onFinishInflate()
         // The service inflates without a parent, so the layout's height is dropped and the pill wraps
-        // its content. Hold every state at the listening row's height so the idle dot stays tappable.
+        // its content. Hold every state at half again the listening row's height so it is easy to tap.
         val unspecified = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED)
-        minimumHeight = listOf(label, time).maxOf { it.measure(unspecified, unspecified); it.measuredHeight }
+        val row = listOf(label, time).maxOf { it.measure(unspecified, unspecified); it.measuredHeight }
+        minimumHeight = (row * HEIGHT_SCALE).toInt()
     }
 
     fun render(state: PillState) {
@@ -167,4 +168,8 @@ class PillView @JvmOverloads constructor(
     }
 
     override fun performClick(): Boolean = super.performClick()
+
+    private companion object {
+        const val HEIGHT_SCALE = 1.5f
+    }
 }
