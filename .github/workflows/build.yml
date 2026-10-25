@@ -1,10 +1,19 @@
 name: Build Debug APKs (phone and watch)
 
 on:
+  # Only Android changes need an APK build. This also skips release-please PRs,
+  # which only bump android/version.txt and the changelog (release.yml builds the tagged APK).
   push:
     branches: [ main, dev ]
+    paths: ["android/**", "!android/CHANGELOG.md", "!android/version.txt", ".github/workflows/build.yml"]
   pull_request:
     branches: [ main ]
+    paths: ["android/**", "!android/CHANGELOG.md", "!android/version.txt", ".github/workflows/build.yml"]
+
+# One run per PR or branch: a newer push cancels the older PR run. Runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
