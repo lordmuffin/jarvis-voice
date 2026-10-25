@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.19.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.18.1...android-v1.19.0) (2026-10-25)
+
+
+### Features
+
+* **android:** make the dictation pill 50% taller in every state ([6bdf0e1](https://github.com/lordmuffin/jarvis-voice/commit/6bdf0e1d122e38d7404dd95804290dd1fc957157))
+* **android:** make the dictation pill 50% taller in every state ([8268515](https://github.com/lordmuffin/jarvis-voice/commit/82685157ac4542f4460e0348052f36f4c45bbe21))
+
 ## [1.18.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.18.0...android-v1.18.1) (2026-10-25)
 
 
