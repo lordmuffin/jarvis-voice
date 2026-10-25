@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.18.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.18.0...android-v1.18.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **android:** make the idle pill as tall as the listening pill ([7c7c3ed](https://github.com/lordmuffin/jarvis-voice/commit/7c7c3ed19deffb9d504d484a908cc5a01e8c0cc8))
+* **android:** make the idle pill as tall as the listening pill ([956fab0](https://github.com/lordmuffin/jarvis-voice/commit/956fab011429026416a006f6e3f16f709d902dbe))
+
 ## [1.18.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.17.0...android-v1.18.0) (2026-10-24)
 
 
