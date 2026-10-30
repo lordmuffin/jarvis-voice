@@ -37,6 +37,7 @@ class WearMainActivity : WearBaseActivity() {
     private lateinit var tvGlyph: TextView
     private lateinit var root: View
     private lateinit var graph: WearGraph
+    private val pendingToggle = PendingToggle()
 
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
@@ -71,9 +72,24 @@ class WearMainActivity : WearBaseActivity() {
         }
         SyncScheduler.kick(this)   // opening the app is a good moment to catch up
 
-        if (intent.getBooleanExtra(EXTRA_START_AFTER_PERMISSION, false)) {
-            intent.removeExtra(EXTRA_START_AFTER_PERMISSION)
-            onRecordToggle()
+        takeToggleRequest(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        takeToggleRequest(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (pendingToggle.take()) onRecordToggle()
+    }
+
+    private fun takeToggleRequest(intent: Intent) {
+        if (intent.getBooleanExtra(EXTRA_TOGGLE, false)) {
+            intent.removeExtra(EXTRA_TOGGLE)   // not again after the activity is recreated
+            pendingToggle.request()
         }
     }
 
@@ -155,6 +171,7 @@ class WearMainActivity : WearBaseActivity() {
     }
 
     companion object {
-        const val EXTRA_START_AFTER_PERMISSION = "start_after_permission"
+        /** Start or stop once the screen is visible: the tile, the complication and a mapped button send this. */
+        const val EXTRA_TOGGLE = "toggle"
     }
 }

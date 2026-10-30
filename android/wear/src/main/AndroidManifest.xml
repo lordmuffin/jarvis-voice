@@ -40,7 +40,8 @@
             android:exported="false"
             android:label="@string/wear_settings" />
 
-        <!-- Tile, complication and record-shortcut taps land here: toggle recording, then vanish. -->
+        <!-- Tile, complication and record-shortcut taps land here: open the record screen, which
+             starts or stops recording once it is visible, then vanish. -->
         <activity
             android:name=".ToggleActivity"
             android:exported="true"
