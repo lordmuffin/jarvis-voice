@@ -93,7 +93,7 @@ Once overlay, microphone and accessibility are granted, `VoiceOverlayService` st
 2. The pill appears near the bottom of the screen while a keyboard is open, and hides when it closes.
 3. **Tap** the pill to begin dictation.
 4. Speak. The pill shows "Listening", a waveform and a timer; it does not show partial text (the pill is compact).
-5. **Tap again** to stop. In tap mode both engines also stop on their own after a pause: the default on-device Whisper engine commits and finishes after about 3 s of silence following speech (and gives up after about 60 s of pure silence), and the Android-recognizer fallback (see below) stops after 2.5 s. Hold mode (long-press) never auto-stops.
+5. **Tap again** to stop. Tap mode keeps listening through pauses, so you can dictate as long as you like: the default on-device Whisper engine transcribes each phrase at a 3 s pause (or every 20 s of nonstop talk) and only finishes on its own after a minute of silence. The Android-recognizer fallback (see below) is asked for the same one-minute window, though Android's recognizer may still end a session on its own limits. Hold mode (long-press) never auto-stops. Voice chat still sends each phrase as soon as you pause.
 6. The transcript is always copied to the clipboard, then injected into the focused field (`ACTION_SET_TEXT`, falling back to paste). A toast reports the result, for example "42 words · 138 wpm", or "Copied · 42 words · 138 wpm" when no field had focus.
 7. **Drag** the pill anywhere on screen to reposition it; it remembers where you left it.
 8. **Long-press** the pill to trigger hold-to-record mode (releases on lift).

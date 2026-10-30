@@ -34,6 +34,7 @@ import com.lordmuffin.jarvisvoice.chat.ChatStatus
 import com.lordmuffin.jarvisvoice.chat.ConversationMessage
 import com.lordmuffin.jarvisvoice.chat.SessionMeta
 import com.lordmuffin.jarvisvoice.chat.VoiceChatViewModel
+import com.lordmuffin.jarvisvoice.speech.ListenMode
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
 import com.lordmuffin.jarvisvoice.ui.InstButtonKind
@@ -214,7 +215,7 @@ class VoiceChatActivity : AppCompatActivity() {
         if (engine == null) engine = SpeechEngineFactory.create(this)
         // Do NOT change viewModel status — it stays SPEAKING.
         engine?.startListening(
-            holdMode  = false,
+            mode      = ListenMode.CONVERSATION,
             onPartial = { },
             onFinal   = { text ->
                 if (!bargeInListening) return@startListening
@@ -259,10 +260,10 @@ class VoiceChatActivity : AppCompatActivity() {
         if (engine == null) engine = SpeechEngineFactory.create(this)
         viewModel.setStatus(ChatStatus.LISTENING)
 
-        // holdMode=false: silence auto-fires onFinal.
-        // SherpaOnnx fires after 1.5s of silence; AndroidSTT after 2.5s.
+        // Conversation mode: the first pause auto-fires onFinal.
+        // SherpaOnnx fires after 3s of silence; AndroidSTT after 2.5s.
         engine?.startListening(
-            holdMode  = false,
+            mode      = ListenMode.CONVERSATION,
             onPartial = { },
             onFinal   = { text ->
                 val discard = discardNextResult
