@@ -48,6 +48,31 @@ async def test_request_shape_and_parse(tmp_path: Path) -> None:
     assert "notes_upsert" in rf["json_schema"]["schema"]["properties"]
 
 
+async def test_thinking_is_left_to_the_model_by_default() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return _completion("{}")
+
+    await _call(_client(handler))
+    assert "chat_template_kwargs" not in json.loads(seen[0].content)
+
+
+async def test_think_false_asks_the_chat_template_to_skip_reasoning() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return _completion("{}")
+
+    await _client(handler).complete_json(
+        model="heavy", system="s", user="u", schema=CopilotDelta, think=False
+    )
+    body = json.loads(seen[0].content)
+    assert body["chat_template_kwargs"] == {"enable_thinking": False}
+
+
 async def test_no_auth_header_without_key_file() -> None:
     seen: list[httpx.Request] = []
 

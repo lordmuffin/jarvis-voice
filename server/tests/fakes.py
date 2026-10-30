@@ -24,6 +24,7 @@ class LLMCall:
     system: str
     user: str
     schema: str
+    think: bool = True
 
 
 @dataclass
@@ -43,9 +44,16 @@ class FakeLLM:
         return self
 
     async def complete_json(
-        self, *, model: str, system: str, user: str, schema: type[T], timeout_s: float | None = None
+        self,
+        *,
+        model: str,
+        system: str,
+        user: str,
+        schema: type[T],
+        timeout_s: float | None = None,
+        think: bool = True,
     ) -> T:
-        self.calls.append(LLMCall(model, system, user, schema.__name__))
+        self.calls.append(LLMCall(model, system, user, schema.__name__, think))
         self.active += 1
         self.max_active = max(self.max_active, self.active)
         try:

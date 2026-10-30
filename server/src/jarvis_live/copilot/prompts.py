@@ -1,5 +1,5 @@
 """Prompt text. The copilot prompt starts with ``/no_think`` (Qwen3 latency convention); the
-finalizer's must not."""
+finalizer's must not (whether it reasons is the ``final_thinking`` setting)."""
 
 COPILOT_SYSTEM = """/no_think
 You are Jarvis, a live meeting copilot. You read a rolling transcript and keep a small, accurate \

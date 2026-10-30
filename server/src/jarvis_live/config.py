@@ -72,6 +72,8 @@ class Settings(BaseSettings):
     final_model: str = "heavy"
     copilot_timeout_s: float = 60.0
     final_timeout_s: float = 600.0
+    # Off: a reasoning model can spend the whole completion budget thinking and write no note.
+    final_thinking: bool = False
 
     # Copilot loop
     copilot_poll_s: float = 1.0

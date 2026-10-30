@@ -22,9 +22,17 @@ class LLMError(Exception):
 
 class LLM(Protocol):
     async def complete_json(
-        self, *, model: str, system: str, user: str, schema: type[T], timeout_s: float | None = None
+        self,
+        *,
+        model: str,
+        system: str,
+        user: str,
+        schema: type[T],
+        timeout_s: float | None = None,
+        think: bool = True,
     ) -> T:
-        """One structured completion. Raises ``LLMError`` on failure."""
+        """One structured completion. Raises ``LLMError`` on failure. ``think=False`` asks a
+        reasoning model's chat template to answer without a reasoning pass."""
         ...
 
 
@@ -62,7 +70,14 @@ class LiteLLMClient:
         return {"Authorization": f"Bearer {key}"} if key else {}
 
     async def complete_json(
-        self, *, model: str, system: str, user: str, schema: type[T], timeout_s: float | None = None
+        self,
+        *,
+        model: str,
+        system: str,
+        user: str,
+        schema: type[T],
+        timeout_s: float | None = None,
+        think: bool = True,
     ) -> T:
         body: dict[str, Any] = {
             "model": model,
@@ -76,6 +91,8 @@ class LiteLLMClient:
                 "json_schema": {"name": schema.__name__, "schema": schema.model_json_schema()},
             },
         }
+        if not think:
+            body["chat_template_kwargs"] = {"enable_thinking": False}
         last: Exception | None = None
         for attempt in (1, 2):
             content = await self._chat(body, timeout_s or self._timeout)
