@@ -227,6 +227,7 @@ class Finalizer:
             user=user,
             schema=FinalNote,
             timeout_s=self._cfg.final_timeout_s,
+            think=self._cfg.final_thinking,
         )
 
     # --- related ----------------------------------------------------------------------------

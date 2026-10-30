@@ -185,6 +185,23 @@ async def test_single_pass_when_under_budget(mk: Any) -> None:
     assert len(rig.llm.calls) == 1
 
 
+async def test_final_pass_asks_for_no_reasoning_by_default(mk: Any) -> None:
+    # A reasoning model can spend the whole completion budget thinking and return no note.
+    rig: Rig = mk()
+    sid = await rig.session()
+    await add_segments(rig.sm, sid, [(0, 1000, "me", "short")])
+    await rig.fin.run(sid)
+    assert [c.think for c in rig.llm.calls] == [False]
+
+
+async def test_final_thinking_setting_turns_reasoning_back_on(mk: Any) -> None:
+    rig: Rig = mk(final_thinking=True)
+    sid = await rig.session()
+    await add_segments(rig.sm, sid, [(0, 1000, "me", "short")])
+    await rig.fin.run(sid)
+    assert [c.think for c in rig.llm.calls] == [True]
+
+
 def test_split_windows_by_start_time() -> None:
     from jarvis_live.copilot.transcript import Line
 
