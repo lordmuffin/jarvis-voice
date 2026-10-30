@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.26.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.26.0...server-v0.26.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **server:** skip the reasoning pass for the final note ([7aba8d9](https://github.com/lordmuffin/jarvis-voice/commit/7aba8d9a49bafe977d7961d7dd63dca540fd0953))
+* **server:** skip the reasoning pass for the final note ([15c0c50](https://github.com/lordmuffin/jarvis-voice/commit/15c0c5023476f00bb9601228b4cf48dff9097f08))
+
 ## [0.26.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.25.0...server-v0.26.0) (2026-10-24)
 
 
