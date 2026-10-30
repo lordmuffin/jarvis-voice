@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.20.0...android-v1.20.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **android:** keep tap dictation listening through pauses ([0e41d9d](https://github.com/lordmuffin/jarvis-voice/commit/0e41d9d58620d3e07adba2193158f5eb603fd7e6))
+
 ## [1.20.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.19.0...android-v1.20.0) (2026-10-30)
 
 
