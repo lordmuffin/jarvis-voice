@@ -19,6 +19,7 @@
     <string name="wear_mic_required">Microphone permission required</string>
     <string name="wear_notif_channel">Recording</string>
     <string name="tile_label">Jarvis record</string>
+    <string name="shortcut_label">Jarvis record</string>
     <string name="tile_record">Record</string>
     <string name="tile_stop">Stop</string>
     <string name="complication_label">Jarvis</string>

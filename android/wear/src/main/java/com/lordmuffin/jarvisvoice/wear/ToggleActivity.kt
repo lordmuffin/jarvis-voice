@@ -8,8 +8,9 @@ import android.os.Bundle
 import androidx.core.content.ContextCompat
 
 /**
- * Invisible trampoline for the tile and the complication. Starting a microphone foreground service
- * needs a visible activity, and these surfaces can only launch activities, so this is the activity.
+ * Invisible trampoline for the tile, the complication and the "Jarvis record" launcher entry (the one
+ * a watch button is mapped to). Starting a microphone foreground service needs a visible activity,
+ * and these surfaces can only launch activities, so this is the activity.
  * Without the mic permission it hands over to the main screen, which asks for it.
  */
 class ToggleActivity : Activity() {

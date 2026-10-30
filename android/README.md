@@ -123,7 +123,7 @@ Errors that used to fail silently now show on the pill:
 
 A watch app (`wear/`) records on the wrist and sends the audio through the phone to Jarvis Live. Both apps share `wearcommon/` (queue and sync state machine, uploader, Data Layer protocol).
 
-**Using it.** Tap the mic button, the Jarvis tile, or the Jarvis complication to start; tap again to stop. The watch buzzes once on start and twice on stop and shows the elapsed time. Recording is AAC, 16 kHz mono, 24 kbps (about 180 KB a minute) and continues with the screen off.
+**Using it.** Tap the mic button, the Jarvis tile, the Jarvis complication, or a watch button mapped to **Jarvis record** (below) to start; do the same again to stop. The watch buzzes once on start and twice on stop and shows the elapsed time. Recording is AAC, 16 kHz mono, 24 kbps (about 180 KB a minute) and continues with the screen off.
 
 **Where the audio goes.** Watch → phone (Wearable Data Layer channel) → the phone app uploads it with the same sign-in as everything else → server. If no phone is in range but the watch has Wi-Fi or LTE, the watch uploads to the server itself. With neither, it keeps the recording and retries. The watch deletes its copy only after the server accepted the upload (the phone relays that acknowledgement). The recording appears in the phone's session history tagged **Watch**, is transcribed like any other, and its note lands in the vault inbox with `source: watch` in the frontmatter.
 
@@ -132,6 +132,16 @@ A watch app (`wear/`) records on the wrist and sends the audio through the phone
 1. Pair the watch with the phone in the Wear OS app as usual. The watch app does not have its own sign-in: sign in to Jarvis Live on the phone (Settings), and the phone sends the server address and device token to the watch.
 2. Install **both** APKs. They have the same application id and must be signed with the same key, or the Data Layer will not connect them. Debug builds from one machine share the debug key; release builds share the release keystore.
 3. Open the watch app once and allow the microphone and notifications. Add the **Jarvis record** tile (swipe to the tile list, long-press to edit) and the **Jarvis** complication (long-press the watch face, Edit, pick a slot).
+
+### Mapping a watch button
+
+The watch app list has two Jarvis entries: **Jarvis Wear** opens the record screen, **Jarvis record** starts recording at once (and stops it if one is running) without opening anything. Map a button to **Jarvis record**. A mapped button can only open an app, so this entry exists for it; the first press starts, the next press stops, with the same buzzes as the tile.
+
+- **Samsung Galaxy Watch:** Settings → Advanced features → Customize buttons → Double press (on some models, "Double press Home key") → Jarvis record.
+- **Watches with extra buttons** (Fossil, Mobvoi and others): Settings → Personalization → Customize hardware buttons → pick the button → Jarvis record. Menu names vary between Wear OS versions.
+- **Pixel Watch:** the crown and side button cannot be mapped to an app, so use the Jarvis record tile or the complication for one tap.
+
+If the microphone has not been allowed yet, the first press opens the record screen to ask for it, then starts recording.
 
 ### Testing on a physical watch
 
@@ -155,6 +165,7 @@ Check, in this order:
 | Airplane mode on the phone, record, then switch it off | the recording waits; nothing is lost; it uploads on reconnect |
 | Phone off or out of range, watch on Wi-Fi | it uploads directly (needs the phone to have been signed in once) |
 | Tile and complication | tap starts and stops; both reflect the state |
+| Map a button to **Jarvis record**, press it twice with 10 s between | records like the tile; no screen opens; the tile and complication show the state |
 | Settings (gear) on the watch | shows the server and the number waiting; "Sync now" runs a pass |
 
 Logs: `adb logcat -s WearRecording WatchReceiver WatchUpload WearBridge`. On the emulator, pair a Wear OS image with a phone image through Android Studio's Device Manager "pair" flow; the microphone is the host's.

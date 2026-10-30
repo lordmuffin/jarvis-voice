@@ -40,7 +40,7 @@
             android:exported="false"
             android:label="@string/wear_settings" />
 
-        <!-- Tile and complication taps land here: toggle recording, then vanish. -->
+        <!-- Tile, complication and record-shortcut taps land here: toggle recording, then vanish. -->
         <activity
             android:name=".ToggleActivity"
             android:exported="true"
@@ -48,6 +48,20 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- A second launcher entry, for the watch's button-shortcut settings: a mapped button can
+             only open an app from this list, so this one goes straight to the toggle. Must follow
+             its target activity. -->
+        <activity-alias
+            android:name=".RecordShortcut"
+            android:exported="true"
+            android:label="@string/shortcut_label"
+            android:targetActivity=".ToggleActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Keeps the microphone open with the screen off. -->
         <service
