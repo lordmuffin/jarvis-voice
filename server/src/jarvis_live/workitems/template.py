@@ -27,6 +27,7 @@ FIELDS = frozenset(
         "session_url",
         "date",
         "branch",
+        "pr_marker",
     }
 )
 REQUIRED = frozenset({"repo", "title", "intent", "acceptance_criteria", "done_when"})
@@ -79,6 +80,7 @@ def find_template(cfg: Settings) -> Path:
 
 @dataclass(frozen=True)
 class PromptInput:
+    item_id: str
     session_id: str
     session_title: str | None
     started_at: datetime
@@ -102,6 +104,11 @@ def slug(text: str, max_len: int = 40) -> str:
 
 def branch_name(session_id: str, ref: str, title: str) -> str:
     return f"claude/work-{session_id[:6]}-{ref}-{slug(title)}"
+
+
+def pr_marker(item_id: str) -> str:
+    """The line a prompt asks for in the PR description, which finds the PR on any branch."""
+    return f"Jarvis-Work-Item: {item_id}"
 
 
 def session_url(cfg: Settings, session_id: str, t_ms: int | None = None) -> str:
@@ -136,5 +143,6 @@ def render_prompt(template: PromptTemplate, item: PromptInput, cfg: Settings) ->
             "session_url": session_url(cfg, item.session_id) or "(no link configured)",
             "date": item.started_at.astimezone(tz).date().isoformat(),
             "branch": branch_name(item.session_id, item.ref, item.title),
+            "pr_marker": pr_marker(item.item_id),
         }
     )

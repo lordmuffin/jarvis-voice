@@ -271,7 +271,7 @@ export interface AdminUser {
 
 // --- Work items: the copilot's draft Claude Code prompts ---
 
-export type WorkItemState = "draft" | "approved" | "discarded" | "merged";
+export type WorkItemState = "draft" | "approved" | "discarded" | "merged" | "done";
 
 export interface WorkItemSource {
   segment_id: string;
@@ -328,6 +328,9 @@ export interface WorkItem {
   branch: string;
   prompt_sha256: string | null;
   approved_at: string | null;
+  done_at: string | null;
+  /** The merged PR that closed it. */
+  merged_pr_url: string | null;
   version: number;
   created_at: string;
   updated_at: string;

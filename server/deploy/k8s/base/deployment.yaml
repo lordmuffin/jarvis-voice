@@ -152,6 +152,9 @@ spec:
             - name: github-token
               mountPath: /secrets/github
               readOnly: true
+            - name: forgejo-token
+              mountPath: /secrets/forgejo
+              readOnly: true
             # The family's shared apps list behind the ▦ switcher (apps.json).
             - name: family-apps
               mountPath: /config/family
@@ -201,6 +204,12 @@ spec:
         - name: github-token
           secret:
             secretName: notes-vault-pat
+            defaultMode: 0400
+        # forgejo-read-token (live only, jarvis-live/onepassword-forgejo.yaml).
+        - name: forgejo-token
+          secret:
+            secretName: forgejo-read-token
+            optional: true
             defaultMode: 0400
         # ConfigMap `family-apps` (key apps.json) is provided by np-home-homelab
         # (apps/services/family-apps, docs/family-apps.md): the list is shared by every app

@@ -87,6 +87,12 @@ data:
   JARVIS_LIVE_WORK_REPOS: |
     lordmuffin/jarvis-voice     Jarvis Live: transcription server, copilot, web dashboard, Android and macOS apps, CI
     lordmuffin/np-home-homelab  homelab GitOps: k3s2 cluster, Flux apps, TrueNAS, Proxmox, LXC services, alerting
+  # Close work items whose PR merged on Forgejo, which holds the homelab repo (GitHub's copy
+  # is only its mirror). Lab removes the token, so there items close only by Mark Done.
+  JARVIS_LIVE_FORGEJO_URL: "https://git.apj.dev"
+  JARVIS_LIVE_FORGEJO_TOKEN_FILE: "/secrets/forgejo/password"
+  JARVIS_LIVE_WORK_FORGEJO_REPOS: |
+    lordmuffin/np-home-homelab  lordmuffin/homelab-gitops
   # Empty: the copilot model. The ideas pass is less latency-bound than the live
   # copilot; see server/tests/evals/test_ideas_evals.py before switching to heavy.
   JARVIS_LIVE_IDEAS_MODEL: ""

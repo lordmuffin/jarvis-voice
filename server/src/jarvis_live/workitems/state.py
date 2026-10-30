@@ -13,7 +13,7 @@ from jarvis_live.copilot.transcript import Line, mmss
 from jarvis_live.workitems.schema import IdeasDelta, ItemUpsert
 
 OPEN = "draft"
-CLOSED = ("approved", "discarded", "merged")
+CLOSED = ("approved", "discarded", "merged", "done")
 EDITABLE_FIELDS = ("title", "repo", "intent", "acceptance_criteria", "done_when")
 
 MAX_OPEN_ITEMS = 20
@@ -135,7 +135,7 @@ class IdeasState:
                 changes[item.ref] = Change(item, True, fields)
                 continue
             if item.state != OPEN:
-                continue  # approved, discarded and merged items are the owner's now
+                continue  # approved and closed items are the owner's now
             fields = self._update(item, up, srcs, creating=False)
             if fields:
                 prev = changes.get(item.ref)

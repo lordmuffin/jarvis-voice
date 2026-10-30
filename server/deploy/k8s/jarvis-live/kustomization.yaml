@@ -17,3 +17,4 @@ resources:
   - namespace.yaml
   - ../base
   - ingress-promoted.yaml
+  - onepassword-forgejo.yaml

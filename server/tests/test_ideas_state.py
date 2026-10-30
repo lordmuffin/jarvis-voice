@@ -140,6 +140,7 @@ def test_closed_items_stay_closed() -> None:
         Item(ref="w1", title="Retry failed Gotify notifications", state="discarded"),
         Item(ref="w2", title="Alert on TrueNAS nfsd saturation", state="approved"),
         Item(ref="w3", title="Merged away", state="merged"),
+        Item(ref="w4", title="Shipped already", state="done"),
     ]
     st = IdeasState(items, REPOS)
     changes = st.apply(
@@ -147,6 +148,7 @@ def test_closed_items_stay_closed() -> None:
             gotify(),  # same title as the discarded one: not proposed again
             ItemUpsert(ref="w2", title="Changed", source_lines=["L5"]),  # approved: read-only
             ItemUpsert(ref="w3", title="Merged away", source_lines=["L6"]),
+            ItemUpsert(ref="w4", title="Changed too", source_lines=["L7"]),
         ),
         refs,
     )

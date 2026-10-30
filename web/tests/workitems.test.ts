@@ -40,6 +40,8 @@ const item = (over: Partial<WorkItem>): WorkItem => ({
   branch: "claude/work-s-w1-t",
   prompt_sha256: null,
   approved_at: null,
+  done_at: null,
+  merged_pr_url: null,
   version: 1,
   created_at: "2026-10-12T10:00:00Z",
   updated_at: "2026-10-12T10:00:00Z",
@@ -91,10 +93,11 @@ describe("work item helpers", () => {
     const out = sortItems([
       item({ id: "d2", created_at: "2026-10-12T10:05:00Z" }),
       item({ id: "x", state: "discarded" }),
+      item({ id: "d", state: "done" }),
       item({ id: "a", state: "approved", created_at: "2026-10-12T11:00:00Z" }),
       item({ id: "d1" }),
     ]);
-    expect(out.map((i) => i.id)).toEqual(["a", "d1", "d2", "x"]);
+    expect(out.map((i) => i.id)).toEqual(["a", "d1", "d2", "x", "d"]);
   });
 
   it("links into the transcript and reads the link back", () => {

@@ -27,6 +27,8 @@ Gotify pushes vanish when Gotify restarts. Retry a failed push with backoff.
 
 - Keep the change scoped to this task. Use Conventional Commits.
 - Work on the branch `claude/work-3f2a9c-w1-retry-failed-gotify-notifications`. Never push to the default branch.
+- If you open a pull request, put this line in its description, on a line of its own:
+  `Jarvis-Work-Item: 77777777-0000-4000-8000-000000000002`
 
 ## Where this came from
 

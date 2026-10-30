@@ -150,6 +150,7 @@ When you think out loud in a session, the copilot picks out the ideas that are w
 - **Reviewing.** Work items appear in the session page (live and past) and on the **Work Items** page. There you can edit, approve, merge drafts of one session, discard and restore.
   - **Approving** needs the dashboard sign-in, not a device token. It freezes the prompt: what you copy is byte-for-byte what was approved, with its sha256 in the audit log.
   - **Editing** an approved item puts it back to draft.
+- **Closing.** An approved item goes to `done` when a PR merges on Forgejo on the branch its prompt names, on a branch one of its runs used, or with its `Jarvis-Work-Item: <id>` line in the description. Prompts approved before that line existed match by branch only. Only repos in `JARVIS_LIVE_WORK_FORGEJO_REPOS` are looked up. **Mark Done** closes any open item by hand; **Reopen** undoes it, and the same PR does not close the item again. A PR closed without merging changes nothing. (`merged` is unrelated: a draft folded into another.)
 - **Audit log.** Every change, LLM or human, is written to `work_item_events`.
 - **Dispatch** (`POST /v1/work-items/{id}/dispatch`): see below. The gate refuses (409, logged) unless the item is approved, its prompt is unchanged since, it was approved by you from the dashboard, and its repo is on both the work and the dispatch allowlists.
 
@@ -159,6 +160,9 @@ When you think out loud in a session, the copilot picks out the ideas that are w
 | `JARVIS_LIVE_WORK_REPOS` | The only repos a work item may target, one `owner/name  description` per line. The description helps the LLM pick. |
 | `JARVIS_LIVE_IDEAS_MODEL` | Empty means the copilot model. Compare models with `tests/evals/test_ideas_evals.py` (`--live`). |
 | `JARVIS_LIVE_IDEAS_MIN_NEW_SEGMENTS` / `_INTERVAL_S` / `_OVERLAP_S` | Defaults 4 / 120 / 60. |
+| `JARVIS_LIVE_FORGEJO_URL`, `JARVIS_LIVE_FORGEJO_TOKEN_FILE` | The Forgejo that holds work repos, and a `read:repository` token, to close items whose PR merged there. Unset: only Mark Done closes items. |
+| `JARVIS_LIVE_WORK_FORGEJO_REPOS` | Which work repos to look up: `work-repo  forgejo-owner/name` per line. A repo not listed (it lives on GitHub) closes only by Mark Done. |
+| `JARVIS_LIVE_WORK_PR_POLL_S` | Seconds between those lookups. Default 300; 0 disables. |
 | `JARVIS_LIVE_WORK_TEMPLATE` | Overrides the template path. Default: `/app/prompts/templates/work-item.md` in the image (copied from `prompts/` at build time), else the repo's copy. |
 
 ## Dispatch: approved work items as headless Claude Code

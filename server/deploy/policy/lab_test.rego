@@ -87,3 +87,13 @@ test_lab_must_not_hold_lives_github_app if {
 	some msg in deny with input as d
 	contains(msg, "GitHub App")
 }
+
+test_lab_must_not_hold_the_forgejo_token if {
+	some msg in deny with input as {"kind": "OnePasswordItem", "metadata": {"name": "forgejo-read-token", "namespace": "jarvis-live-lab"}}
+	contains(msg, "forgejo-read-token")
+}
+
+test_lab_must_not_read_prs_with_a_token_file if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_FORGEJO_TOKEN_FILE": "/x"})
+	contains(msg, "JARVIS_LIVE_FORGEJO_TOKEN_FILE")
+}

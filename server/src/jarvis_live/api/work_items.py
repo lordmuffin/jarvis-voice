@@ -26,7 +26,7 @@ from jarvis_live.workitems.template import branch_name
 
 router = APIRouter(prefix="/v1")
 
-State = Literal["draft", "approved", "discarded", "merged"]
+State = Literal["draft", "approved", "discarded", "merged", "done"]
 
 
 def _service(request: Request) -> WorkItemService:
@@ -114,6 +114,8 @@ class WorkItemOut(BaseModel):
     branch: str
     prompt_sha256: str | None
     approved_at: datetime | None
+    done_at: datetime | None
+    merged_pr_url: str | None
     version: int
     created_at: datetime
     updated_at: datetime
@@ -141,6 +143,8 @@ class WorkItemOut(BaseModel):
             branch=branch_name(str(item.session_id), item.ref, item.title),
             prompt_sha256=item.prompt_sha256,
             approved_at=item.approved_at,
+            done_at=item.done_at,
+            merged_pr_url=item.merged_pr_url,
             version=item.version,
             created_at=item.created_at,
             updated_at=item.updated_at,
@@ -310,6 +314,21 @@ async def restore_work_item(
     item_id: uuid.UUID, principal: PrincipalDep, request: Request
 ) -> WorkItemOut:
     return await _act(request, lambda s: s.restore(item_id, _actor(principal)))
+
+
+@router.post("/work-items/{item_id}/done")
+async def mark_work_item_done(
+    item_id: uuid.UUID, principal: PrincipalDep, request: Request
+) -> WorkItemOut:
+    return await _act(request, lambda s: s.done(item_id, _actor(principal)))
+
+
+@router.post("/work-items/{item_id}/reopen")
+async def reopen_work_item(
+    item_id: uuid.UUID, principal: PrincipalDep, request: Request
+) -> WorkItemOut:
+    """Back to approved with its frozen prompt, or to draft if it had none."""
+    return await _act(request, lambda s: s.reopen(item_id, _actor(principal)))
 
 
 @router.post("/work-items/merge")
