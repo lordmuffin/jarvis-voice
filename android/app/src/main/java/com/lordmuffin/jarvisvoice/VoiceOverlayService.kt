@@ -41,6 +41,7 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.lordmuffin.jarvisvoice.live.LiveSessionService
+import com.lordmuffin.jarvisvoice.speech.ListenMode
 import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SpeechEngineFactory
@@ -446,7 +447,8 @@ class VoiceOverlayService : Service() {
                 onError   = { code ->
                     Handler(Looper.getMainLooper()).post { failDictation(PillError.fromEngineError(code)) }
                 },
-                holdMode  = holdMode
+                // Tap dictation listens through pauses until the next tap (or a minute of silence).
+                mode      = if (holdMode) ListenMode.HOLD else ListenMode.DICTATION
             )
         } catch (e: SecurityException) {
             DebugLog.e("Overlay", "recorder refused to start", e)

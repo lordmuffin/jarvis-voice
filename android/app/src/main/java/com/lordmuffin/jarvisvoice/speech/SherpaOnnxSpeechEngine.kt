@@ -29,7 +29,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
     @Volatile private var isListening  = false
     @Volatile private var pendingFinal = false
-    @Volatile private var holdMode     = false
+    @Volatile private var mode         = ListenMode.CONVERSATION
+    private var gate = ChunkGate(mode)  // owned by the recording thread once it starts
 
     private val mainHandler       = Handler(Looper.getMainLooper())
     private val transcribeExecutor = Executors.newSingleThreadExecutor { r ->
@@ -39,17 +40,12 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
     private val sampleRate   = 16000
     private val chunkSamples = sampleRate * 300 / 1000   // 300 ms per read
 
-    // VAD-flush thresholds
-    private val FLUSH_SILENCE_CHUNKS    = 10             // 10 × 300ms = 3s pause → commit
-    private val MAX_BUFFER_SAMPLES      = sampleRate * 20 // 20s without pause → force commit
+    // Pause, buffer and silence-stop thresholds live in ChunkGate.
     private val MIN_CHUNK_SAMPLES       = sampleRate / 2  // 0.5s minimum to transcribe
-    private val AUTO_STOP_EMPTY_FLUSHES = 20             // 20 × ~3s = ~60s pure silence
 
     private val silenceRmsThreshold  = 200.0
     private val partialIntervalMs    = 2_000L
 
-    private var silenceRunChunks     = 0
-    private var emptyFlushCount      = 0
     private var lastPartialTimestamp = 0L
 
     // Text accumulated from flushed chunks; only written from transcribeExecutor
@@ -80,7 +76,7 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         onPartial: (String) -> Unit,
         onFinal:   (String) -> Unit,
         onError:   (Int)    -> Unit,
-        holdMode:  Boolean
+        mode:      ListenMode
     ) {
         if (whisper?.isReady != true) {
             DebugLog.e("STT", "startListening called but recognizer is null")
@@ -91,17 +87,16 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
         onPartialCallback = onPartial
         onFinalCallback   = onFinal
         onErrorCallback   = onError
-        this.holdMode     = holdMode
+        this.mode         = mode
+        gate              = ChunkGate(mode)
 
         isListening      = true
         pendingFinal     = false
-        silenceRunChunks = 0
-        emptyFlushCount  = 0
         lastPartialTimestamp = 0L
         committedText    = ""
         synchronized(bufferLock) { currentBuffer.clear() }
 
-        DebugLog.i("STT", "startListening holdMode=$holdMode")
+        DebugLog.i("STT", "startListening mode=$mode")
 
         // Route to preferred microphone (earbuds, USB, etc.)
         val preferredDevice = deviceRouter.getPreferredDevice()
@@ -146,43 +141,32 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
                 val samples = chunk.copyOf(read)
                 val silent  = rms(samples) < silenceRmsThreshold
 
-                if (!silent) {
-                    silenceRunChunks = 0
-                    emptyFlushCount  = 0
-                } else {
-                    silenceRunChunks++
-                }
-
                 synchronized(bufferLock) { samples.forEach { currentBuffer.add(it) } }
 
                 val bufSize = synchronized(bufferLock) { currentBuffer.size }
 
-                val vadFlush   = silenceRunChunks >= FLUSH_SILENCE_CHUNKS
-                val sizeFlush  = bufSize >= MAX_BUFFER_SAMPLES
-                val shouldFlush = !pendingFinal && (vadFlush || sizeFlush)
+                val step = if (pendingFinal) ChunkGate.Step.Keep
+                           else gate.onChunk(silent, ms = read * 1000 / sampleRate)
 
-                if (shouldFlush) {
-                    silenceRunChunks = 0
+                if (step == ChunkGate.Step.Flush) {
                     val snapshot: ShortArray
                     synchronized(bufferLock) {
                         snapshot = currentBuffer.toShortArray()
                         currentBuffer.clear()
                     }
                     if (snapshot.size >= MIN_CHUNK_SAMPLES) {
-                        emptyFlushCount = 0
                         DebugLog.i("STT", "flush chunk ${snapshot.size} samples (${snapshot.size / sampleRate}s)")
                         transcribeExecutor.submit { flushChunk(snapshot) }
-                    } else {
-                        emptyFlushCount++
-                        DebugLog.i("STT", "empty flush #$emptyFlushCount holdMode=$holdMode")
-                        if (!holdMode && emptyFlushCount >= AUTO_STOP_EMPTY_FLUSHES) {
-                            DebugLog.i("STT", "auto-stop: 30s silence reached")
-                            pendingFinal = true
-                            isListening  = false
-                            val committed = committedText
-                            mainHandler.post { onFinalCallback?.invoke(committed.trim()) }
-                        }
                     }
+                } else if (step == ChunkGate.Step.Drop) {
+                    synchronized(bufferLock) { currentBuffer.clear() }
+                    DebugLog.i("STT", "dropped a pause with no speech mode=$mode")
+                } else if (step == ChunkGate.Step.Stop) {
+                    DebugLog.i("STT", "auto-stop: ${mode.silenceStopMs}ms of silence mode=$mode")
+                    // The buffer is silence; end through stopListening so the session finishes like a tap.
+                    synchronized(bufferLock) { currentBuffer.clear() }
+                    mainHandler.post { stopListening() }
+                    break
                 } else if (!pendingFinal) {
                     val now = SystemClock.elapsedRealtime()
                     if (bufSize > MIN_CHUNK_SAMPLES &&
@@ -216,12 +200,12 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
             committedText += sep + text.trim()
         }
 
-        // In VAD conversation mode (holdMode=false), each committed speech chunk
-        // is a complete utterance — auto-fire onFinal so the caller can send to
-        // the LLM immediately without waiting for 30s silence or stopListening().
+        // In conversation mode each committed speech chunk is a complete utterance —
+        // auto-fire onFinal so the caller can send to the LLM immediately without
+        // waiting for stopListening(). Dictation and hold keep listening through pauses.
         // Guard with pendingFinal so a concurrent stopListening() call doesn't
         // double-fire the callback.
-        if (!holdMode && text.isNotBlank() && !pendingFinal) {
+        if (mode.endsAtPause && text.isNotBlank() && !pendingFinal) {
             val final = committedText.trim()
             committedText = ""
             pendingFinal = true
@@ -252,7 +236,8 @@ class SherpaOnnxSpeechEngine(private val context: Context) : SpeechEngine {
 
             val snapshot: ShortArray
             synchronized(bufferLock) {
-                snapshot = currentBuffer.toShortArray()
+                // A trailing pause with no speech would only make Whisper invent words.
+                snapshot = if (gate.bufferHasSpeech) currentBuffer.toShortArray() else ShortArray(0)
                 currentBuffer.clear()
             }
 

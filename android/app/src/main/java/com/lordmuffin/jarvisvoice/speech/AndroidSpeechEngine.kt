@@ -16,9 +16,15 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
     companion object {
         private const val CONFIDENCE_THRESHOLD = 0.65f
         private const val SILENCE_TIMEOUT_MS   = 2_500L
-        // When holdMode=true, pass a large silence window so the recognizer never
+        // In hold mode, pass a large silence window so the recognizer never
         // auto-terminates on a pause. The user stops explicitly via stopListening().
         private const val SILENCE_HOLDMODE_MS  = 5 * 60 * 1000L  // 5 min
+
+        /** The silence window the recognizer is asked for. It may still end a session on its own limits. */
+        fun silenceWindowMs(mode: ListenMode): Long = when {
+            mode.endsAtPause -> SILENCE_TIMEOUT_MS
+            else             -> mode.silenceStopMs ?: SILENCE_HOLDMODE_MS
+        }
     }
 
     private var recognizer: SpeechRecognizer? = null
@@ -28,7 +34,6 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
     private var onErrorCallback: ((Int) -> Unit)? = null
     private val deviceRouter = AudioDeviceRouter(context)
     private var scoStarted = false
-    private var holdModeActive = false
 
     private val silenceRunnable = Runnable {
         recognizer?.stopListening()
@@ -52,12 +57,11 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
         onPartial: (String) -> Unit,
         onFinal:   (String) -> Unit,
         onError:   (Int)    -> Unit,
-        holdMode:  Boolean
+        mode:      ListenMode
     ) {
         onPartialCallback = onPartial
         onFinalCallback = onFinal
         onErrorCallback = onError
-        holdModeActive = holdMode
 
         // Start Bluetooth SCO if user selected a Bluetooth input device
         val preferredDevice = deviceRouter.getPreferredDevice()
@@ -67,8 +71,8 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
             DebugLog.i("AndroidSTT", "Bluetooth SCO started for ${deviceRouter.deviceLabel(preferredDevice)}")
         }
 
-        val silenceMs = if (holdMode) SILENCE_HOLDMODE_MS else SILENCE_TIMEOUT_MS
-        DebugLog.i("AndroidSTT", "startListening holdMode=$holdMode silenceMs=$silenceMs")
+        val silenceMs = silenceWindowMs(mode)
+        DebugLog.i("AndroidSTT", "startListening mode=$mode silenceMs=$silenceMs")
 
         mainHandler.post {
             if (recognizer == null) createRecognizer()
@@ -86,8 +90,8 @@ class AndroidSpeechEngine(private val context: Context) : SpeechEngine {
                 putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             }
             recognizer?.startListening(intent)
-            // In holdMode, don't post the fallback watchdog — the user stops explicitly.
-            if (!holdMode) {
+            // In hold mode, don't post the fallback watchdog — the user stops explicitly.
+            if (mode != ListenMode.HOLD) {
                 mainHandler.postDelayed(silenceRunnable, silenceMs + 2000)
             }
         }

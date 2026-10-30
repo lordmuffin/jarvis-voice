@@ -82,7 +82,7 @@ class PillModel {
     fun stopListening(): Boolean =
         if (_state.value is PillState.Listening) set(PillState.Processing) else false
 
-    /** A result can arrive while still listening: the engine ends tap-mode dictation itself after a pause. */
+    /** A result can arrive while still listening: the engine ends tap-mode dictation itself after a minute of silence. */
     fun finish(done: PillState.Done): Boolean = when (_state.value) {
         PillState.Processing, is PillState.Listening -> set(done)
         else -> false

@@ -1,15 +1,12 @@
 package com.lordmuffin.jarvisvoice.speech
 
 interface SpeechEngine {
-    /**
-     * @param holdMode true = silence detection disabled, caller stops via [stopListening].
-     *                 false = auto-stop after 30 s of silence.
-     */
+    /** @param mode how the session ends: at the first pause, after a long silence, or only via [stopListening]. */
     fun startListening(
         onPartial: (String) -> Unit,
         onFinal:   (String) -> Unit,
         onError:   (Int)    -> Unit,
-        holdMode:  Boolean = false
+        mode:      ListenMode = ListenMode.CONVERSATION
     )
     fun stopListening()
     /** Stop the mic immediately without firing [onFinal]. Used to cancel a shadow barge-in
