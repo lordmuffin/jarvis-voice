@@ -8,9 +8,17 @@ import { WorkItemList, usePolling } from "./WorkItems";
 
 const VIEWS: { id: string; label: string; states: WorkItemState[] }[] = [
   { id: "open", label: "Open", states: ["draft", "approved"] },
+  { id: "done", label: "Done", states: ["done"] },
   { id: "discarded", label: "Discarded", states: ["discarded"] },
-  { id: "merged", label: "Merged", states: ["merged"] },
+  { id: "merged", label: "Combined", states: ["merged"] },
 ];
+
+const EMPTY: Record<string, string> = {
+  open: "Nothing to review.",
+  done: "Nothing done yet.",
+  discarded: "Nothing discarded.",
+  merged: "Nothing combined yet.",
+};
 
 /** Every session's work items in one queue: review, approve, copy. */
 export function WorkItemsPage() {
@@ -66,7 +74,7 @@ export function WorkItemsPage() {
         <Loading />
       ) : page.items.length === 0 ? (
         <EmptyState>
-          {view.id === "open" ? "Nothing to review." : view.id === "merged" ? "Nothing merged yet." : "Nothing discarded."}
+          {EMPTY[view.id]}
         </EmptyState>
       ) : (
         <WorkItemList page={page} onChanged={() => setReloads((n) => n + 1)} showSession />

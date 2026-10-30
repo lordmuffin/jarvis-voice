@@ -2,6 +2,7 @@
 
 import uuid
 from collections.abc import Callable
+from typing import Any
 
 import pytest
 from sqlalchemy import select
@@ -32,6 +33,10 @@ async def audit(sm: SM, item_id: uuid.UUID) -> list[tuple[str, str]]:
             .order_by(WorkItemEvent.id)
         )
         return [(e, k) for e, k in rows.all()]
+
+
+def item_ids(page: dict[str, Any]) -> list[str]:
+    return [i["id"] for i in page["items"]]
 
 
 async def test_list_shows_items_repos_and_what_blocks_approval(
@@ -191,3 +196,48 @@ async def test_work_items_off(make_server: Callable[..., ServerHandle], sm: SM) 
     async with await web_client(server, sm, OWNER_USER_ID) as web:
         assert (await web.get(f"/v1/sessions/{sid}/work-items")).json()["enabled"] is False
         assert (await web.post(f"/v1/work-items/{item}/approve")).status_code == 503
+
+
+async def test_mark_done_closes_an_approved_item_and_reopen_brings_it_back_approved(
+    wserver: ServerHandle, sm: SM
+) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(wserver, sm, OWNER_USER_ID) as web:
+        approved = (await web.post(f"/v1/work-items/{item}/approve")).json()
+
+        done = (await web.post(f"/v1/work-items/{item}/done")).json()
+        assert done["state"] == "done" and done["done_at"] and done["merged_pr_url"] is None
+        assert str(item) not in item_ids((await web.get("/v1/work-items")).json())
+        assert str(item) in item_ids((await web.get("/v1/work-items?state=done")).json())
+        assert (await web.patch(f"/v1/work-items/{item}", json={"title": "x"})).status_code == 409
+        assert (await web.post(f"/v1/work-items/{item}/discard")).status_code == 409
+
+        back = (await web.post(f"/v1/work-items/{item}/reopen")).json()
+        assert back["state"] == "approved" and back["done_at"] is None
+        assert back["prompt_sha256"] == approved["prompt_sha256"]
+    assert [e for e, _ in await audit(sm, item)][-2:] == ["done", "reopened"]
+
+
+async def test_a_draft_can_be_marked_done_and_reopens_as_a_draft(
+    wserver: ServerHandle, sm: SM
+) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(wserver, sm, OWNER_USER_ID) as web:
+        assert (await web.post(f"/v1/work-items/{item}/done")).json()["state"] == "done"
+        assert (await web.post(f"/v1/work-items/{item}/reopen")).json()["state"] == "draft"
+
+
+async def test_done_and_reopen_refuse_the_wrong_state_and_other_owners(
+    wserver: ServerHandle, sm: SM
+) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    stranger = await create_user(sm, f"s-{uuid.uuid4()}@example.com")
+    async with await web_client(wserver, sm, stranger.id) as other:
+        assert (await other.post(f"/v1/work-items/{item}/done")).status_code == 404
+    async with await web_client(wserver, sm, OWNER_USER_ID) as web:
+        assert (await web.post(f"/v1/work-items/{item}/reopen")).status_code == 409
+        await web.post(f"/v1/work-items/{item}/discard")
+        assert (await web.post(f"/v1/work-items/{item}/done")).status_code == 409

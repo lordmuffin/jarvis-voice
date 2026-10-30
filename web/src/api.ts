@@ -239,7 +239,7 @@ export function myWorkItems(states: WorkItemState[] = [], f?: typeof fetch) {
 export const editWorkItem = (id: string, fields: WorkItemEdit, f?: typeof fetch) =>
   request<WorkItem>(wi(id), { method: "PATCH", body: JSON.stringify(fields) }, f);
 
-export type WorkItemAction = "approve" | "unapprove" | "discard" | "restore";
+export type WorkItemAction = "approve" | "unapprove" | "discard" | "restore" | "done" | "reopen";
 
 export const workItemAction = (id: string, action: WorkItemAction, f?: typeof fetch) =>
   request<WorkItem>(`${wi(id)}/${action}`, { method: "POST" }, f);

@@ -32,6 +32,7 @@ from jarvis_live.stt.backend import STTBackend, WhisperBackend
 from jarvis_live.stt.tiers import TierPool, parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext, VaultIndex
 from jarvis_live.workitems.dispatch import Dispatcher
+from jarvis_live.workitems.prwatch import PrWatch
 from jarvis_live.workitems.service import WorkItemService
 
 log = logging.getLogger(__name__)
@@ -165,6 +166,13 @@ def create_app(
                 runner = dispatch
                 tasks.append(asyncio.create_task(dispatch.run_loop()))
         work = WorkItemService(cfg, sm, runner)
+        watching = cfg.forgejo_url and cfg.forgejo_token_file and cfg.work_forgejo_repo_map
+        if work.enabled and watching and cfg.work_pr_poll_s > 0:
+            if client is None:
+                client = httpx.AsyncClient()
+            tasks.append(
+                asyncio.create_task(PrWatch(cfg, sm, work, client).run_loop(cfg.work_pr_poll_s))
+            )
         if publisher.enabled and cfg.publish_reconcile_interval_s > 0:
             tasks.append(
                 asyncio.create_task(publisher.run_reconcile_loop(cfg.publish_reconcile_interval_s))

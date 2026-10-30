@@ -7,7 +7,7 @@ export function WorkCard({
   children,
   ...rest
 }: {
-  state: "draft" | "approved" | "discarded" | "merged";
+  state: "draft" | "approved" | "discarded" | "merged" | "done";
   children: ComponentChildren;
   "data-testid"?: string;
   "data-state"?: string;
@@ -15,7 +15,7 @@ export function WorkCard({
   return (
     <article
       {...rest}
-      class={cx("j-wi", state === "approved" && "j-wi--approved", (state === "discarded" || state === "merged") && "j-wi--retired")}
+      class={cx("j-wi", state === "approved" && "j-wi--approved", (state === "discarded" || state === "merged" || state === "done") && "j-wi--retired")}
     >
       {children}
     </article>

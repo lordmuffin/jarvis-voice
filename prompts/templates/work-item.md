@@ -26,6 +26,8 @@ You are working in the GitHub repository **{{repo}}**.
 
 - Keep the change scoped to this task. Use Conventional Commits.
 - Work on the branch `{{branch}}`. Never push to the default branch.
+- If you open a pull request, put this line in its description, on a line of its own:
+  `{{pr_marker}}`
 
 ## Where this came from
 

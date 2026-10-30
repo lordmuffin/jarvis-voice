@@ -24,6 +24,7 @@ CFG = Settings(public_base_url="https://live.example", timezone="America/Chicago
 SID = "3f2a9c1e-0000-4000-8000-000000000001"
 
 ITEM = PromptInput(
+    item_id="77777777-0000-4000-8000-000000000002",
     session_id=SID,
     session_title="Friday brain dump",
     started_at=datetime(2026, 10, 9, 23, 30, tzinfo=UTC),  # still the 9th in Chicago
@@ -69,6 +70,12 @@ def test_prompt_has_plan_first_tests_and_done_when() -> None:
     assert f"`{branch_name(SID, 'w1', ITEM.title)}`" in out
 
 
+def test_the_pr_description_must_name_the_work_item() -> None:
+    """How the server finds the PR when Claude Code keeps a branch of its own."""
+    prompt = render_prompt(PromptTemplate.load(REPO_TEMPLATE), ITEM, CFG)
+    assert "`Jarvis-Work-Item: 77777777-0000-4000-8000-000000000002`" in prompt
+
+
 def test_an_ambiguous_task_is_worked_through_not_stopped() -> None:
     """Dispatched runs are unattended: a run that stops to ask is a stuck run."""
     out = render_prompt(template(), ITEM, CFG)
@@ -92,7 +99,7 @@ def test_values_are_never_expanded_again() -> None:
 
 def test_defaults_for_missing_fields() -> None:
     bare = PromptInput(
-        **{**ITEM.__dict__, "repo": None, "acceptance_criteria": [], "done_when": None}
+        **{**ITEM.__dict__, "repo": None, "acceptance_criteria": [], "done_when": None},
     )
     out = render_prompt(template(), bare, CFG)
     assert "(no repository chosen yet)" in out

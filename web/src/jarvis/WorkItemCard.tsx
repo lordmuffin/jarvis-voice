@@ -54,6 +54,7 @@ const STATE_TONE: Record<WorkItem["state"], PillTone> = {
   approved: "live",
   discarded: "neutral",
   merged: "done",
+  done: "done",
 };
 
 type Busy = WorkItemAction | "save" | "copy" | "prompt" | "run" | "cancel" | "steer" | null;
@@ -212,6 +213,16 @@ export function WorkItemCard({
                 <dd>{item.done_when}</dd>
               </>
             )}
+            {item.state === "done" && item.merged_pr_url && (
+              <>
+                <dt>Pull request</dt>
+                <dd>
+                  <a href={item.merged_pr_url} target="_blank" rel="noreferrer">
+                    #{item.merged_pr_url.split("/").pop()}
+                  </a>
+                </dd>
+              </>
+            )}
             {item.sources.length > 0 && (
               <>
                 <dt>Source</dt>
@@ -307,9 +318,19 @@ export function WorkItemCard({
               Unapprove
             </Button>
           )}
+          {open && !runActive(item) && (
+            <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act("done")}>
+              {busy === "done" ? "Saving…" : "✓ Mark Done"}
+            </Button>
+          )}
           {open && (
             <Button variant="quiet" size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act("discard")}>
               ✕ Discard
+            </Button>
+          )}
+          {item.state === "done" && (
+            <Button size="sm" disabled={busy !== null} title={busy !== null ? BUSY_WHY : undefined} onClick={() => void act("reopen")}>
+              ↩ Reopen
             </Button>
           )}
           {item.state === "discarded" && (

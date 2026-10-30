@@ -151,6 +151,12 @@ class Settings(BaseSettings):
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.
     work_template: Path | None = None
+    # Close approved items whose PR merged on Forgejo. "work repo  forgejo owner/name" per line:
+    # only these are looked up. Other repos, or no URL or token: only Mark Done closes items.
+    forgejo_url: str = ""
+    forgejo_token_file: Path | None = None  # read:repository
+    work_forgejo_repos: str = ""
+    work_pr_poll_s: float = 300.0  # 0 disables
     ideas_model: str = ""  # empty: the copilot model
     ideas_timeout_s: float = 120.0
     # A pass runs after this many new final segments, or this long after the first new one.
@@ -205,6 +211,11 @@ class Settings(BaseSettings):
         return self._repo_list(self.work_repos)
 
     @property
+    def work_forgejo_repo_map(self) -> dict[str, str]:
+        """Work repo -> the same repo's ``owner/name`` on Forgejo."""
+        return self._repo_list(self.work_forgejo_repos)
+
+    @property
     def dispatch_repo_allowlist(self) -> dict[str, str]:
         return self._repo_list(self.dispatch_repos) or self.work_repo_allowlist
 
@@ -247,7 +258,7 @@ class Settings(BaseSettings):
             raise ValueError('publish_repo is "owner/name"')
         return v
 
-    @field_validator("work_repos", "dispatch_repos")
+    @field_validator("work_repos", "dispatch_repos", "work_forgejo_repos")
     @classmethod
     def _repo_lines(cls, v: str) -> str:
         for raw in v.splitlines():

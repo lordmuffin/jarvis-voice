@@ -1,4 +1,4 @@
-"""Reviewing work items: edit, approve, discard, restore, merge, copy, and the dispatch gate.
+"""Reviewing work items: edit, approve, discard, restore, merge, done, copy, and the dispatch gate.
 
 Only the session's owner sees and acts on its work items (the ideas pass runs only for the
 owner's and admins' sessions). Every change runs in a transaction holding the item's row lock,
@@ -228,6 +228,38 @@ class WorkItemService:
             log_event(db, item.id, "restored", **self._who(actor))
         return item
 
+    async def done(self, item_id: uuid.UUID, actor: Actor) -> WorkItem:
+        """The owner closes the item. A frozen prompt stays, for a reopen."""
+        async with self._sm() as db, db.begin():
+            item = await self._own(db, item_id, actor.user_id, lock=True)
+            if item.state not in ("draft", "approved"):
+                raise WorkItemError(409, f"A {item.state} work item cannot be marked done.")
+            item.state, item.done_at = "done", datetime.now(UTC)
+            _touch(item)
+            log_event(db, item.id, "done", **self._who(actor))
+        return item
+
+    async def pr_merged(self, item_id: uuid.UUID, pr_url: str) -> None:
+        """The item's PR merged on GitHub. Skipped if the item moved on since it was looked up."""
+        async with self._sm() as db, db.begin():
+            item = await db.get(WorkItem, item_id, with_for_update=True)
+            if item is None or item.state != "approved" or item.merged_pr_url == pr_url:
+                return
+            item.state, item.done_at, item.merged_pr_url = "done", datetime.now(UTC), pr_url
+            _touch(item)
+            log_event(db, item.id, "done", payload={"pr_url": pr_url})
+
+    async def reopen(self, item_id: uuid.UUID, actor: Actor) -> WorkItem:
+        async with self._sm() as db, db.begin():
+            item = await self._own(db, item_id, actor.user_id, lock=True)
+            if item.state != "done":
+                raise WorkItemError(409, "Only done work items can be reopened.")
+            item.state = "approved" if item.prompt_md else "draft"
+            item.done_at = None
+            _touch(item)
+            log_event(db, item.id, "reopened", **self._who(actor))
+        return item
+
     async def merge(
         self, into_id: uuid.UUID, from_ids: Sequence[uuid.UUID], actor: Actor
     ) -> WorkItem:
@@ -382,6 +414,7 @@ class WorkItemService:
             return render_prompt(
                 self.template,
                 PromptInput(
+                    item_id=str(item.id),
                     session_id=str(item.session_id),
                     session_title=session.title,
                     started_at=session.started_at,

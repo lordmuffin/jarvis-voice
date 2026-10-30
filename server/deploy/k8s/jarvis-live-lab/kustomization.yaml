@@ -42,6 +42,8 @@ patches:
         path: /data/JARVIS_LIVE_PUBLISH_REPO
       - op: remove
         path: /data/JARVIS_LIVE_GITHUB_TOKEN_FILE
+      - op: remove
+        path: /data/JARVIS_LIVE_FORGEJO_TOKEN_FILE
       - op: replace
         path: /data/JARVIS_LIVE_DISPATCH_ENABLED
         value: "true"

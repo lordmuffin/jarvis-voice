@@ -22,6 +22,8 @@ const item = (over: Partial<WorkItem>): WorkItem => ({
   branch: "claude/work-s1-w1-retry-gotify",
   prompt_sha256: null,
   approved_at: null,
+  done_at: null,
+  merged_pr_url: null,
   version: 1,
   created_at: "2026-10-12T10:00:00Z",
   updated_at: "2026-10-12T10:00:00Z",
@@ -249,6 +251,32 @@ describe("work item cards", () => {
       "a merged work item cannot be discarded",
     );
     expect(changed).not.toHaveBeenCalled();
+  });
+
+  it("marks an approved item done, without a confirmation", async () => {
+    serve(item({ state: "done" }));
+    const changed = show([item({ state: "approved" })]);
+    button("✓ Mark Done").click();
+    await settle();
+    expect(calls[0]).toMatchObject({ url: "/v1/work-items/i1/done", method: "POST" });
+    expect(changed).toHaveBeenCalledOnce();
+  });
+
+  it("offers no Mark Done while a run is going", () => {
+    show([item({ state: "approved", dispatch: run({ state: "running" }) })], vi.fn(), false, true);
+    expect(root.textContent).not.toContain("Mark Done");
+  });
+
+  it("shows a done item's merged PR and reopens it", async () => {
+    serve(item({}));
+    const url = "https://github.com/lordmuffin/jarvis-voice/pull/9";
+    const changed = show([item({ state: "done", merged_pr_url: url })]);
+    expect(root.textContent).toContain("Done");
+    expect(root.querySelector(`a[href="${url}"]`)?.textContent).toBe("#9");
+    button("↩ Reopen").click();
+    await settle();
+    expect(calls[0]).toMatchObject({ url: "/v1/work-items/i1/reopen", method: "POST" });
+    expect(changed).toHaveBeenCalledOnce();
   });
 
   it("restores a discarded item and links sources across sessions", async () => {

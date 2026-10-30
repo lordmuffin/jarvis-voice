@@ -246,7 +246,7 @@ class NotePublication(Base):
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
-WORK_ITEM_STATES = ("draft", "approved", "discarded", "merged")
+WORK_ITEM_STATES = ("draft", "approved", "discarded", "merged", "done")
 
 
 class WorkItem(Base):
@@ -255,7 +255,11 @@ class WorkItem(Base):
     The LLM proposes and refines drafts; the session's owner edits, approves, merges or
     discards them (``workitems/``). ``locked_fields`` are fields the owner edited, which the
     LLM no longer changes. Approval freezes the rendered prompt: ``prompt_md`` is exactly what
-    is copied or dispatched, and ``prompt_sha256`` proves it has not changed since."""
+    is copied or dispatched, and ``prompt_sha256`` proves it has not changed since.
+
+    ``merged`` means folded into the draft at ``merged_into``. ``done`` means the work shipped:
+    the owner said so, or ``merged_pr_url`` merged. That URL outlives a reopen, so the same PR
+    does not close the item again."""
 
     __tablename__ = "work_items"
     __table_args__ = (
@@ -293,6 +297,8 @@ class WorkItem(Base):
     prompt_sha256: Mapped[str | None] = mapped_column(String(64))
     approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    done_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    merged_pr_url: Mapped[str | None] = mapped_column(Text)
     version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = mapped_column(

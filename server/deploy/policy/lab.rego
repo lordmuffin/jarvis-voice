@@ -43,6 +43,19 @@ deny contains msg if {
 	msg := sprintf("Ingress/%s: lab must not route live host live.apj.dev", [input.metadata.name])
 }
 
+# Lab runs unreleased code: no read token on the private repos of Forgejo.
+deny contains msg if {
+	input.kind == "OnePasswordItem"
+	input.metadata.name == "forgejo-read-token"
+	msg := "lab must not hold live's Forgejo token forgejo-read-token"
+}
+
+deny contains msg if {
+	input.kind == "ConfigMap"
+	input.data.JARVIS_LIVE_FORGEJO_TOKEN_FILE
+	msg := sprintf("ConfigMap/%s: lab must not set JARVIS_LIVE_FORGEJO_TOKEN_FILE", [input.metadata.name])
+}
+
 # Lab runs unreleased code: it may dispatch only to the sandbox repo, named explicitly, and
 # never holds live's GitHub App (which is installed on the real repos).
 sandbox := "lordmuffin/jarvis-dispatch-sandbox"

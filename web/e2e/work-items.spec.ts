@@ -77,6 +77,14 @@ test("review work items: edit, approve, copy, merge, discard", async ({ page }) 
   await page.getByRole("tab", { name: "Open" }).click();
   await expect(card(page, "Export transcripts as SRT")).toHaveAttribute("data-state", "draft");
 
+  // Mark the draft done; it moves to the Done view, and can be reopened.
+  await srt.getByRole("button", { name: "✓ Mark Done" }).click();
+  await expect(card(page, "Export transcripts as SRT")).toHaveCount(0);
+  await page.getByRole("tab", { name: "Done" }).click();
+  await card(page, "Export transcripts as SRT").getByRole("button", { name: "↩ Reopen" }).click();
+  await page.getByRole("tab", { name: "Open" }).click();
+  await expect(card(page, "Export transcripts as SRT")).toHaveAttribute("data-state", "draft");
+
   // A source link opens the session with that moment highlighted in the transcript.
   await gotify.getByRole("link", { name: "▶ 0:21" }).click();
   await expect(page).toHaveURL(/\/sessions\/.+#t=21000$/);

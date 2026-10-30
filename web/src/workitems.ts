@@ -4,12 +4,13 @@ export const STATE_LABEL: Record<WorkItemState, string> = {
   draft: "Draft",
   approved: "Approved",
   discarded: "Discarded",
-  merged: "Merged",
+  merged: "Combined",
+  done: "Done",
 };
 
 /** Open items first (approved, then drafts), each in the order they were found. */
 export function sortItems(items: WorkItem[]): WorkItem[] {
-  const rank: Record<WorkItemState, number> = { approved: 0, draft: 1, discarded: 2, merged: 3 };
+  const rank: Record<WorkItemState, number> = { approved: 0, draft: 1, discarded: 2, merged: 3, done: 4 };
   return [...items].sort(
     (a, b) => rank[a.state] - rank[b.state] || a.created_at.localeCompare(b.created_at),
   );
