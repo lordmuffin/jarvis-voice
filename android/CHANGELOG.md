@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.20.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.19.0...android-v1.20.0) (2026-10-30)
+
+
+### Features
+
+* **android:** map a watch button to Jarvis record ([e792002](https://github.com/lordmuffin/jarvis-voice/commit/e792002f6b9d814f6ad431cef32240b072b17598))
+* **android:** map a watch button to Jarvis record to start and stop a recording ([f0326d2](https://github.com/lordmuffin/jarvis-voice/commit/f0326d203b2b9eaa54c4cc394a7524e3b227d12d))
+
 ## [1.19.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.18.1...android-v1.19.0) (2026-10-25)
 
 
