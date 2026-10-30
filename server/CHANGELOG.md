@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.27.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.26.1...server-v0.27.0) (2026-10-30)
+
+
+### Features
+
+* **server:** close work items when their PR merges on Forgejo ([c68e875](https://github.com/lordmuffin/jarvis-voice/commit/c68e8752140c5f24e0b36a0a46ddbafdb3cea6c1))
+* **server:** close work items when their PR merges on Forgejo ([af49bfb](https://github.com/lordmuffin/jarvis-voice/commit/af49bfb4bfc00c88712f65beea6643c9b513c772))
+
 ## [0.26.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.26.0...server-v0.26.1) (2026-10-30)
 
 
