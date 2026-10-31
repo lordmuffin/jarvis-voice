@@ -59,7 +59,12 @@ def _norm(payload: dict[str, Any]) -> str:
     return " ".join(json.dumps(payload, sort_keys=True, ensure_ascii=False).lower().split())
 
 
-def _build(p: ProposalIn, ctx: Context) -> dict[str, Any] | None:
+def dedupe_key(kind: str, payload: dict[str, Any]) -> str:
+    """Same proposal restated (case and spacing aside) -> same key."""
+    return hashlib.sha256(f"{kind}|{_norm(payload)}".encode()).hexdigest()
+
+
+def build_payload(p: ProposalIn, ctx: Context) -> dict[str, Any] | None:
     """The validated, canonical payload for ``p``, or None if it must not be shown."""
     if p.kind == "task.create":
         text = one_line(p.text)
@@ -122,10 +127,10 @@ class ProposalState:
                 break
             if sum(x.open for x in self.proposals) >= MAX_OPEN or not p.evidence:
                 continue
-            payload = _build(p, ctx)
+            payload = build_payload(p, ctx)
             if payload is None:
                 continue
-            key = hashlib.sha256(f"{p.kind}|{_norm(payload)}".encode()).hexdigest()
+            key = dedupe_key(p.kind, payload)
             if key in known:
                 continue
             known.add(key)

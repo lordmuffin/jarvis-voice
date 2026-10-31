@@ -381,3 +381,80 @@ class WorkItemDispatch(Base):
     continues: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("work_item_dispatches.id", ondelete="SET NULL")
     )
+
+
+ACTION_STATES = (
+    "proposed",
+    "approved",
+    "executing",
+    "succeeded",
+    "failed",
+    "rejected",
+    "expired",
+)
+
+
+class ActionProposal(Base):
+    """Something the copilot proposes to DO (a Work Tracker task, a vault append, a reminder, a
+    PR comment). It does nothing until its session's owner approves it (``actions/``).
+
+    ``payload_sha256`` is what an approval binds to: the exact content the reviewer saw. The
+    external effect of executing it is identified by ``id`` (a marker in the target), so a
+    retried execution never writes twice. ``result`` holds what happened, including a failure's
+    error text."""
+
+    __tablename__ = "action_proposals"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in ACTION_STATES) + ")",
+            name="ck_action_proposals_state",
+        ),
+        UniqueConstraint("session_id", "ref", name="uq_action_proposals_session_ref"),
+        UniqueConstraint("session_id", "dedupe_key", name="uq_action_proposals_session_dedupe"),
+        Index("ix_action_proposals_user_state", "user_id", "state"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"))
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    ref: Mapped[str] = mapped_column(String(16))  # "p1", "p2"…
+    position: Mapped[int] = mapped_column(Integer)  # execution order within the session
+    kind: Mapped[str] = mapped_column(String(24))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    payload_sha256: Mapped[str] = mapped_column(String(64))
+    dedupe_key: Mapped[str] = mapped_column(String(64))
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB, default=list, server_default=text("'[]'::jsonb")
+    )
+    state: Mapped[str] = mapped_column(String(16), default="proposed", server_default="proposed")
+    proposed_by: Mapped[str] = mapped_column(String(64))  # "copilot:<model>" | "finalizer:<model>"
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    executed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ActionProposalEvent(Base):
+    """Append-only audit log: who (``actor_user_id`` NULL is the system/LLM), how (``web``
+    sign-in, ``device`` token, ``system``), what, and the details (an approval carries the
+    payload hash, an execution its result or error)."""
+
+    __tablename__ = "action_proposal_events"
+    __table_args__ = (Index("ix_action_proposal_events_item_at", "proposal_id", "at"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    proposal_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("action_proposals.id", ondelete="CASCADE")
+    )
+    at: Mapped[datetime] = _now()
+    actor_user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
+    actor_kind: Mapped[str] = mapped_column(String(16))
+    event: Mapped[str] = mapped_column(String(32))
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )

@@ -3,13 +3,25 @@ import importlib.metadata
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import account, auth, homelab, publishing, sessions, stream, work_items
+from jarvis_live.actions.service import ActionService
+from jarvis_live.actions.state import Context
+from jarvis_live.api import (
+    account,
+    actions,
+    auth,
+    homelab,
+    publishing,
+    sessions,
+    stream,
+    work_items,
+)
 from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
@@ -81,6 +93,33 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
         if path.startswith("assets/") or Path(path).suffix:
             raise HTTPException(404)  # a missing file, not a client-side route
         return FileResponse(index, headers=no_cache)  # SPA fallback
+
+
+def _action_context(cfg: Settings) -> Context:
+    """What validating a proposal needs from this deployment: the vault clone's notes and the
+    repo allowlist."""
+    clone = cfg.vault_clone_dir
+
+    def vault_has(path: str) -> bool:
+        return clone is not None and (clone / path).is_file()
+
+    return Context(
+        now=datetime.now(UTC),
+        timezone=cfg.timezone,
+        vault_has=vault_has,
+        repos=frozenset(cfg.work_repo_allowlist),
+    )
+
+
+async def _expire_loop(service: ActionService, interval_s: float = 3600.0) -> None:
+    while True:
+        try:
+            await service.expire_stale()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("expiring action proposals failed")
+        await asyncio.sleep(interval_s)
 
 
 def create_app(
@@ -166,6 +205,11 @@ def create_app(
                 runner = dispatch
                 tasks.append(asyncio.create_task(dispatch.run_loop()))
         work = WorkItemService(cfg, sm, runner)
+        # Executors are added per kind as they ship; a kind without one fails visibly.
+        action_service = ActionService(cfg, sm, {}, lambda: _action_context(cfg))
+        if action_service.enabled:
+            await action_service.recover()
+            tasks.append(asyncio.create_task(_expire_loop(action_service)))
         watching = cfg.forgejo_url and cfg.forgejo_token_file and cfg.work_forgejo_repo_map
         if work.enabled and watching and cfg.work_pr_poll_s > 0:
             if client is None:
@@ -255,6 +299,8 @@ def create_app(
         app.state.orchestrator = orchestrator
         app.state.publishing = publisher
         app.state.work_items = work
+        app.state.actions = action_service
+        app.state.action_tasks = set()
         app.state.dispatch = dispatch
         tasks.append(
             asyncio.create_task(
@@ -284,6 +330,7 @@ def create_app(
     app.include_router(sessions.router)
     app.include_router(publishing.router)
     app.include_router(work_items.router)
+    app.include_router(actions.router)
     app.include_router(stream.router)
     app.include_router(homelab.router)
 

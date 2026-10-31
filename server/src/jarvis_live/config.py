@@ -147,6 +147,10 @@ class Settings(BaseSettings):
     # prompts to review (see workitems/). Only repos listed here can be targeted: one
     # "owner/name  description" per line; the description helps the LLM pick.
     work_items_enabled: bool = False
+    # Action proposals: things the copilot proposes to DO (a task, a vault append, a reminder, a
+    # PR comment). Every one waits for the owner's approval (see actions/).
+    actions_enabled: bool = False
+    actions_ttl_days: int = 14  # an unreviewed proposal expires (and never executes)
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.
