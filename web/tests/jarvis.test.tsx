@@ -10,6 +10,7 @@ import { JumpPill } from "../src/jarvis/JumpPill";
 import { MarkerRow } from "../src/jarvis/MarkerRow";
 import { NowDock } from "../src/jarvis/NowDock";
 import { RelatedNoteCard } from "../src/jarvis/RelatedNoteCard";
+import { SessionHeader } from "../src/jarvis/SessionHeader";
 import { SessionRow } from "../src/jarvis/SessionRow";
 import { Timeline } from "../src/jarvis/Timeline";
 import { TranscriptLine } from "../src/jarvis/TranscriptLine";
@@ -314,6 +315,34 @@ describe("JumpPill", () => {
   });
 });
 
+describe("SessionHeader", () => {
+  const base: SessionSummary = {
+    id: "s1",
+    title: "Vendor call",
+    mode: "meeting",
+    status: "done",
+    channels: ["mic"],
+    started_at: "2026-10-14T15:05:00Z",
+    ended_at: "2026-10-14T15:35:00Z",
+    local_only: false,
+    restricted: false,
+    streaming: false,
+    owner: { id: "u1", display_name: "Andrew" },
+  };
+  const label = (session: SessionSummary) => {
+    render(<SessionHeader session={session} title={<span>t</span>} />, document.body);
+    return q("[data-testid=session-head] .t-label")!.textContent ?? "";
+  };
+
+  it("says a work call is restricted", () => {
+    expect(label({ ...base, restricted: true })).toContain("Restricted");
+  });
+
+  it("says nothing for an ordinary session", () => {
+    expect(label(base)).not.toContain("Restricted");
+  });
+});
+
 describe("SessionRow", () => {
   const session: SessionSummary = {
     id: "s1",
@@ -324,6 +353,7 @@ describe("SessionRow", () => {
     started_at: "2026-10-14T15:05:00Z",
     ended_at: "2026-10-14T15:35:00Z",
     local_only: false,
+    restricted: false,
     streaming: false,
     owner: { id: "u1", display_name: "Andrew" },
   };

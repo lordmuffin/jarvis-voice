@@ -27,7 +27,8 @@ private struct Harness {
     let ticketCalls: Mutex<Int>
 
     static func make(
-        maxUnackedAudioMs: Int = 5_000
+        maxUnackedAudioMs: Int = 5_000,
+        gate: EgressGate = EgressGate()
     ) async throws -> Harness {
         let server = TestWebSocketServer()
         try await server.start()
@@ -50,7 +51,8 @@ private struct Harness {
             ticketProvider: {
                 calls.withLock { $0 += 1 }
                 return "tkt_test"
-            }
+            },
+            gate: gate
         )
         return Harness(server: server, outbox: outbox, connection: connection, root: root, ticketCalls: calls)
     }
@@ -208,6 +210,22 @@ struct LiveConnectionTests {
             let s = h.server.state()
             return s.drafts == [draft] && s.markers == [Marker(tMs: 5000, label: "decision")]
         })
+    }
+
+    @Test func shuttingTheGateCutsAnOpenConnection() async throws {
+        let gate = EgressGate()
+        let h = try await Harness.make(gate: gate)
+        defer { Task { await h.teardown() } }
+        await h.connection.start()
+        try await h.connection.enqueueAudio(channel: .mic, payload: tone(0), tMs: 0)
+        #expect(await eventually { h.server.state().received[.mic] == [0] })
+
+        gate.beginLocalSession()
+
+        #expect(await eventually { await h.connection.state == .idle })
+        try await h.connection.enqueueAudio(channel: .mic, payload: tone(1), tMs: 100)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(h.server.state().received[.mic] == [0])
     }
 
     @Test func endFlushesAudioSendsEndAndFinishes() async throws {

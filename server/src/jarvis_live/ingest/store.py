@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import IO, Literal
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.db.models import AudioChunk, MarkerRow, SegmentRow
@@ -175,5 +176,11 @@ async def save_marker(
     sessionmaker: "async_sessionmaker[AsyncSession]", session_id: uuid.UUID, msg: Marker
 ) -> None:
     async with sessionmaker() as db:
-        db.add(MarkerRow(session_id=session_id, t_ms=msg.t_ms, label=msg.label))
+        # Idempotent: a client resends markers after a reconnect, since it can't know whether the
+        # last one reached the server before the socket dropped.
+        await db.execute(
+            pg_insert(MarkerRow)
+            .values(session_id=session_id, t_ms=msg.t_ms, label=msg.label)
+            .on_conflict_do_nothing()
+        )
         await db.commit()

@@ -27,6 +27,10 @@ class AudioDeviceRouter(private val context: Context) {
         return getInputDevices().find { it.id == id }
     }
 
+    /** The phone's own microphone: no Bluetooth route, so nothing for a call to take over. */
+    fun builtInMic(): AudioDeviceInfo? =
+        getInputDevices().firstOrNull { it.type == AudioDeviceInfo.TYPE_BUILTIN_MIC }
+
     fun deviceLabel(device: AudioDeviceInfo): String = when (device.type) {
         AudioDeviceInfo.TYPE_BUILTIN_MIC      -> "Phone Microphone"
         AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> "Earpiece"
