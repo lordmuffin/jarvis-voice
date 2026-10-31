@@ -429,7 +429,9 @@ async def test_a_request_that_cannot_be_filed_is_reported_once_and_not_retried(r
 # --- in a live session --------------------------------------------------------------------------
 
 
-def orchestrator(sm: SM, tmp_path: Path, clock: FakeClock, llm: FakeLLM, **cfg: Any) -> Orchestrator:
+def orchestrator(
+    sm: SM, tmp_path: Path, clock: FakeClock, llm: FakeLLM, **cfg: Any
+) -> Orchestrator:
     settings = Settings(
         outbox_dir=tmp_path,
         voice_enabled=True,
@@ -453,7 +455,9 @@ def orchestrator(sm: SM, tmp_path: Path, clock: FakeClock, llm: FakeLLM, **cfg: 
 
 
 def live(sid: uuid.UUID) -> Any:
-    pipeline = SimpleNamespace(llm_ok=True, position_ms=lambda: 120_000, publish_status=lambda: None)
+    pipeline = SimpleNamespace(
+        llm_ok=True, position_ms=lambda: 120_000, publish_status=lambda: None
+    )
     return SimpleNamespace(session_id=sid, pipeline=pipeline)
 
 

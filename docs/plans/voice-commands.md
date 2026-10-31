@@ -51,8 +51,9 @@ repo can start. It is not Claude Code on the web.
    they are low risk. A Pi agent has `bash`, so it follows the work item rule instead.
 5. **Same eligibility as work items:** the owner's and admins' sessions, never local-only or
    restricted ones.
-6. **Lab is off for Pi.** `voice_pi_enabled` stays off on both channels until someone turns it
-   on, as dispatch did: lab runs code no release has vouched for, and there is no sandbox Pi.
+6. **No Pi sessions on lab, by policy.** `policy/lab.rego` refuses `voice_pi_enabled` there: lab
+   runs code no release has vouched for, and there is no sandbox Pi. It is off on live too until
+   someone turns it on.
 
 ## Wake phrase
 

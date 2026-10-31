@@ -19,7 +19,7 @@ from jarvis_live.db.models import OWNER_USER_ID, ActionProposal, ActionProposalE
 from jarvis_live.homelab.client import DpiClient, DpiError
 from jarvis_live.workitems.dispatch import Actor
 from tests.conftest import ServerHandle
-from tests.work_item_helpers import SM, device_client, owner_with_session, web_client
+from tests.work_item_helpers import SM, device_client, owner_with_session
 
 EV = [Evidence(start_ms=1000, text="Jarvis, start a Pi session")]
 
@@ -168,9 +168,9 @@ async def test_a_device_token_cannot_approve_a_pi_session(pi_server: ServerHandl
     assert await state_of(sm, pid) == "proposed"
     async with sm() as db:
         events = (
-            await db.scalars(select(ActionProposalEvent.event).where(
-                ActionProposalEvent.proposal_id == pid
-            ))
+            await db.scalars(
+                select(ActionProposalEvent.event).where(ActionProposalEvent.proposal_id == pid)
+            )
         ).all()
     assert "approved" not in events
 
