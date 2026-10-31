@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.30.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.29.0...server-v0.30.0) (2026-10-31)
+
+
+### Features
+
+* **scripts:** add a probe that localises LLM path stalls ([6d960bd](https://github.com/lordmuffin/jarvis-voice/commit/6d960bd9210e0a124729ee2ec82f2b358d4a58ef))
+* **scripts:** add an LLM stall probe and record the cause ([2217b2e](https://github.com/lordmuffin/jarvis-voice/commit/2217b2e39ea032857d8f90fd3da2784a9f07a786))
+
 ## [0.29.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.28.0...server-v0.29.0) (2026-10-31)
 
 
