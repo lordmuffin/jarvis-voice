@@ -175,8 +175,7 @@ final class AppModel {
             try? await Task.sleep(for: .milliseconds(750))
             guard !Task.isCancelled, let self else { return }
             guard settings.awayMode.enabled, settings.hasCredentials, let base = settings.serverBaseURL else { return }
-            let place = await NetworkPlaceDetector.detect(baseURL: base)
-            guard !Task.isCancelled else { return }
+            guard let place = await NetworkPlaceDetector.detect(baseURL: base), !Task.isCancelled else { return }
             settings.awayMode = settings.awayMode.withPlace(place)
         }
     }
@@ -239,7 +238,10 @@ final class AppModel {
         let mode = self.mode
         var built: Run?
         // Shut the network before anything else happens, so not even a failed start leaks.
-        if localOnly { EgressGate.shared.beginLocalSession() }
+        if localOnly {
+            networkCheck?.cancel()  // its answer would say nothing but that the gate is shut
+            EgressGate.shared.beginLocalSession()
+        }
         do {
             guard await AVCaptureDevice.requestAccess(for: .audio) else { throw AppError.micDenied }
             let run = try await prepare(localOnly: localOnly, mode: mode, store: freshStore)
@@ -509,9 +511,7 @@ final class AppModel {
             if let existing = session.header.serverSessionId {
                 serverId = existing
             } else {
-                serverId = try await api.createSession(
-                    SessionCreateRequest(mode: session.header.mode, channels: session.header.channels)
-                ).id
+                serverId = try await api.createSession(session.header.uploadRequest).id
                 // Written before any audio moves, so an interruption from here on can be resumed.
                 text = LocalMarkdown.settingServerSession(text, id: serverId)
                 try text.write(to: session.url, atomically: true, encoding: .utf8)

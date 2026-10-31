@@ -30,11 +30,11 @@ from jarvis_live.copilot.transcript import Line, load_lines, render_lines
 from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User, WorkItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.outbox import (
-    FINAL_NOTE_KIND,
-    note_file,
     outbox_dir,
     overwrite_atomic,
     owned_by,
+    record_final_note,
+    remove_superseded,
 )
 from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
 from jarvis_live.finalize.timing import load_timing, render_timing
@@ -190,9 +190,9 @@ class Finalizer:
         if subdir:
             written = f"{subdir}/{written}"
         if replace and replace != written:
-            await asyncio.to_thread(self._remove_old, replace, str(session_id))
+            await asyncio.to_thread(remove_superseded, self.outbox, replace, str(session_id))
 
-        await self._persist_final(session_id, written, note.title)
+        await record_final_note(self._sm, session_id, written, note.title)
         await self._fill_title(session_id, note.title)
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
@@ -222,12 +222,6 @@ class Finalizer:
         except Exception:
             log.warning("could not summarise timing for %s", session_id, exc_info=True)
             return None
-
-    def _remove_old(self, name: str, session_id: str) -> None:
-        """Drop a regenerated session's previous note, but never another session's file."""
-        path = note_file(self.outbox, name)
-        if path is not None and owned_by(path, session_id):
-            path.unlink(missing_ok=True)
 
     # --- LLM --------------------------------------------------------------------------------
 
@@ -324,17 +318,6 @@ class Finalizer:
         ]
 
     # --- persistence ------------------------------------------------------------------------
-
-    async def _persist_final(self, session_id: uuid.UUID, path: str, title: str) -> None:
-        async with self._sm() as db:
-            db.add(
-                CopilotItem(
-                    session_id=session_id,
-                    kind=FINAL_NOTE_KIND,
-                    payload={"path": path, "title": title},
-                )
-            )
-            await db.commit()
 
     async def _fill_title(self, session_id: uuid.UUID, title: str) -> None:
         """A session still untitled at the end (e.g. the copilot never ran) takes the note's

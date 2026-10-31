@@ -11,14 +11,16 @@ from typing import Any
 
 import pytest
 from sqlalchemy import update
-from sqlalchemy.ext.asyncio import async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from jarvis_live.api import sessions as sessions_api
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, User
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.orchestrator import Orchestrator
+from jarvis_live.publish.service import PublishService
 from jarvis_live.users import create_user
 from tests.audio import TWO_UTTERANCES
 from tests.conftest import ServerHandle
@@ -267,3 +269,69 @@ async def test_only_the_owner_can_lift_it_and_not_while_the_note_is_being_writte
         assert (await c.post(f"/v1/sessions/{theirs}/unrestrict")).status_code == 404
     async with client(server, other_token) as c:
         assert (await c.post(f"/v1/sessions/{theirs}/unrestrict")).status_code == 200
+
+
+async def test_a_session_still_recording_cannot_be_lifted(
+    server: ServerHandle, sm: SM, token: str
+) -> None:
+    """Its note does not exist yet: lifting now would race the finalizer for where it goes."""
+    device_id = (await new_device(sm, "mac", user_id=OWNER_USER_ID))[0]
+    live = await make_session(sm, device_id, status="live", restricted=True)
+    async with client(server, token) as c:
+        assert (await c.post(f"/v1/sessions/{live}/unrestrict")).status_code == 409
+        assert (await c.get(f"/v1/sessions/{live}")).json()["restricted"] is True
+
+
+class SpyLock:
+    def __init__(self, events: list[str], on_enter: Callable[[], Any] | None = None) -> None:
+        self.events = events
+        self.on_enter = on_enter
+
+    async def __aenter__(self) -> None:
+        self.events.append("locked")
+        if self.on_enter:
+            await self.on_enter()
+
+    async def __aexit__(self, *exc: object) -> None:
+        self.events.append("unlocked")
+
+
+async def test_lifting_runs_under_the_notes_lock(
+    server: ServerHandle, sm: SM, token: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every other note writer holds it, so an edit cannot land between the read and the move."""
+    events: list[str] = []
+
+    async def lift(*_: Any) -> None:
+        events.append("lifted")
+
+    monkeypatch.setattr(PublishService, "lock", lambda _s, _id: SpyLock(events))
+    monkeypatch.setattr(sessions_api, "lift_restriction", lift)
+    device_id = (await new_device(sm, "mac", user_id=OWNER_USER_ID))[0]
+    sid = await make_session(sm, device_id, status="done", restricted=True)
+    async with client(server, token) as c:
+        assert (await c.post(f"/v1/sessions/{sid}/unrestrict")).status_code == 200
+    assert events == ["locked", "lifted", "unlocked"]
+
+
+async def test_a_session_reopened_while_waiting_for_the_lock_is_not_lifted(
+    server: ServerHandle, sm: SM, token: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The status that counts is the one read under the lock, not the one read before it."""
+    device_id = (await new_device(sm, "mac", user_id=OWNER_USER_ID))[0]
+    sid = await make_session(sm, device_id, status="done", restricted=True)
+
+    async def regenerate_gets_there_first() -> None:
+        engine = create_async_engine(server.settings.database_url)
+        async with engine.begin() as conn:
+            await conn.execute(
+                update(SessionRow).where(SessionRow.id == sid).values(status="finalizing")
+            )
+        await engine.dispose()
+
+    monkeypatch.setattr(
+        PublishService, "lock", lambda _s, _id: SpyLock([], regenerate_gets_there_first)
+    )
+    async with client(server, token) as c:
+        assert (await c.post(f"/v1/sessions/{sid}/unrestrict")).status_code == 409
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["restricted"] is True

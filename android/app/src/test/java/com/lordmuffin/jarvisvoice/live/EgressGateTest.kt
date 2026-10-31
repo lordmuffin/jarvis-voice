@@ -68,4 +68,30 @@ class EgressGateTest {
         client.createSession(SessionMode.SOLO, listOf(Channel.MIC), null, restricted = true)
         assertTrue(server.takeRequest().body.readUtf8().contains(""""restricted":true"""))
     }
+
+    @Test fun shuttingRunsEachActionOnceAndNotForAnOverlappingSession() {
+        var cuts = 0
+        gate.whenShut { cuts += 1 }
+        gate.beginLocalSession()
+        gate.beginLocalSession()
+        assertEquals(1, cuts)
+    }
+
+    @Test fun aRemovedActionDoesNotRun() {
+        var cuts = 0
+        val remove = gate.whenShut { cuts += 1 }
+        remove()
+        gate.beginLocalSession()
+        assertEquals(0, cuts)
+    }
+
+    @Test fun blockingFollowsTheSessions() {
+        assertFalse(gate.blocking.value)
+        gate.beginLocalSession()
+        gate.beginLocalSession()
+        gate.endLocalSession()
+        assertTrue(gate.blocking.value)
+        gate.endLocalSession()
+        assertFalse(gate.blocking.value)
+    }
 }

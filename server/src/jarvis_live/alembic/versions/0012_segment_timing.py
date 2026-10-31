@@ -1,14 +1,14 @@
 """segments: how long STT took and how long the line waited, for the per-session timing summary
 
-Revision ID: 0010
-Revises: 0009
+Revision ID: 0012
+Revises: 0011
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0010"
-down_revision = "0009"
+revision = "0012"
+down_revision = "0011"
 branch_labels = None
 depends_on = None
 

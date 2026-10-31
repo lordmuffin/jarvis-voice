@@ -8,7 +8,7 @@ import uuid
 from pathlib import Path
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.config import Settings
 from jarvis_live.db.models import CopilotItem
@@ -55,6 +55,21 @@ async def latest_final_note(db: AsyncSession, session_id: uuid.UUID) -> tuple[st
     return str(payload["path"]), str(payload["title"])
 
 
+async def record_final_note(
+    sm: "async_sessionmaker[AsyncSession]", session_id: uuid.UUID, path: str, title: str
+) -> None:
+    """Make ``path`` the session's current note."""
+    async with sm() as db:
+        db.add(
+            CopilotItem(
+                session_id=session_id,
+                kind=FINAL_NOTE_KIND,
+                payload={"path": path, "title": title},
+            )
+        )
+        await db.commit()
+
+
 def overwrite_atomic(target: Path, content: str) -> None:
     """Replace ``target`` with ``content`` via tmp + fsync + rename: readers never see a torn
     file."""
@@ -77,3 +92,10 @@ def owned_by(path: Path, session_id: str) -> bool:
     except OSError:
         return False
     return f"session_id: {session_id}" in text
+
+
+def remove_superseded(outbox: Path, name: str, session_id: str) -> None:
+    """Drop a session's previous note, but never another session's file."""
+    path = note_file(outbox, name)
+    if path is not None and owned_by(path, session_id):
+        path.unlink(missing_ok=True)

@@ -16,6 +16,21 @@ enum class NetworkPlace {
     }
 }
 
+/**
+ * Where the phone is, or null when [gate] kept the probe from answering: a refused health check
+ * looks like an unreachable server but says nothing about the network, so it must not count as
+ * [NetworkPlace.AWAY].
+ */
+suspend fun probePlace(gate: EgressGate, netBird: Boolean, reachable: suspend () -> Boolean): NetworkPlace? {
+    if (gate.isBlocking) return null
+    val place = when {
+        netBird -> NetworkPlace.NETBIRD
+        reachable() -> NetworkPlace.HOME
+        else -> NetworkPlace.AWAY
+    }
+    return place.takeUnless { gate.isBlocking }
+}
+
 /** One network interface as the platform reports it. */
 data class NetInterface(val name: String?, val isTunnel: Boolean, val addresses: List<String>)
 
