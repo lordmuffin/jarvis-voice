@@ -128,6 +128,7 @@ async def test_labels_segments_stores_turns_and_publishes_a_final_update(rig: Ri
         (str(mine.id), "spk_mic_0", 2, True),
     }
     assert [s.id for s in event.speakers] == ["spk_system_0", "spk_system_1", "spk_mic_0"]
+    assert [s.ordinal for s in event.speakers] == [1, 2, 3]  # what clients call "Speaker N"
 
 
 async def test_a_segment_across_a_change_of_speaker_is_marked_mixed(rig: Rig) -> None:

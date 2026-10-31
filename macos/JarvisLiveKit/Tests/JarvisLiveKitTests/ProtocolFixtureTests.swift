@@ -35,7 +35,7 @@ private func roundTrip(schema: String, data: Data) throws -> Data {
 struct ProtocolFixtureTests {
     @Test func fixtureDirectoriesAreFound() {
         #expect(Fixtures.valid.count >= 21, "valid fixtures missing — is #filePath-relative lookup broken?")
-        #expect(Fixtures.invalid.count >= 19)
+        #expect(Fixtures.invalid.count >= 20)
     }
 
     @Test("valid fixture decodes and re-encodes to equivalent JSON", arguments: Fixtures.valid)
@@ -77,5 +77,21 @@ struct ProtocolFixtureTests {
         let resume = try #require(object["resume"] as? [String: Any])
         #expect(resume.keys.sorted() == ["mic", "system"])
         #expect(resume["mic"] is NSNull)
+    }
+
+    @Test func speakerUpdateKeepsTheServersNumbering() throws {
+        let data = try Data(contentsOf: Fixtures.root.appending(path: "valid/speaker_update.json"))
+        guard case .speakerUpdate(let update) = try JSONDecoder().decode(ServerEvent.self, from: data) else {
+            Issue.record("not a speaker_update")
+            return
+        }
+        #expect(update.speakers.map(\.ordinal) == [1, 2])
+        #expect(update.speakers.map(\.label) == ["Andrew", nil])
+        let rename = try Data(contentsOf: Fixtures.root.appending(path: "valid/speaker_update__rename.json"))
+        guard case .speakerUpdate(let renamed) = try JSONDecoder().decode(ServerEvent.self, from: rename) else {
+            Issue.record("not a speaker_update")
+            return
+        }
+        #expect(renamed.speakers.first?.ordinal == nil)  // optional: a rename need not repeat it
     }
 }

@@ -63,7 +63,9 @@ Senders MUST NOT send frames outside this range; receivers MUST reject them.
   - `related`: `{path, title, snippet, uri}`
 - `speaker_update` `{speakers[], assignments[]}` — **only if `features` includes `speaker_update`.**
   Who spoke which segments; `segment.speaker` (`me`/`them`, the channel side) is unchanged.
-  - `speakers`: `{id, label: str|null, enrolled, is_owner}`, upserts keyed by `id`; `label: null` = unnamed.
+  - `speakers`: `{id, label: str|null, enrolled, is_owner, ordinal?}`, upserts keyed by `id`; `label: null` = unnamed,
+    shown as "Speaker <ordinal>" (`ordinal` ≥ 1: the server's numbering, by first appearance, the same
+    one its notes use).
   - `assignments`: `{segment_id, speaker_id: str|null, rev, final, mixed?}`. A client keeps an
     assignment only if its `rev` is higher than the one it holds for that segment (idempotent,
     order-independent); `final: true` is the authoritative pass, lower revs are provisional.

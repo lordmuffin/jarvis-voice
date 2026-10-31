@@ -121,6 +121,7 @@ class SpeakerInfo(_Model):
     label: str | None  # None = not named: shown as "Speaker N"
     enrolled: bool
     is_owner: bool
+    ordinal: Annotated[int, Field(ge=1)] | None = None  # "Speaker <ordinal>" while unnamed
 
 
 class SpeakerAssignment(_Model):

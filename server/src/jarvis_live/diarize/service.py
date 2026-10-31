@@ -23,8 +23,9 @@ from jarvis_live.db.models import (
 from jarvis_live.diarize.align import Turn, assign
 from jarvis_live.diarize.client import Diarization, Diarizer, DiarizeUnavailable
 from jarvis_live.diarize.identify import Profile, match
+from jarvis_live.diarize.info import speaker_info
 from jarvis_live.logging_setup import session_logger
-from jarvis_live.protocol import BYTES_PER_MS, SpeakerAssignment, SpeakerInfo, SpeakerUpdate
+from jarvis_live.protocol import BYTES_PER_MS, SpeakerAssignment, SpeakerUpdate
 
 FINAL_REV = 2  # live (provisional) labels are rev 1; the authoritative pass is at least this
 
@@ -273,15 +274,7 @@ class DiarizeService:
                 .scalars()
                 .all()
             )
-            infos = [
-                SpeakerInfo(
-                    id=s.speaker_id,
-                    label=s.label,
-                    enrolled=s.profile_id is not None,
-                    is_owner=s.is_owner,
-                )
-                for s in speakers
-            ]
+            infos = [speaker_info(s) for s in speakers]
             await db.commit()
         self._bus.publish(
             str(session_id),

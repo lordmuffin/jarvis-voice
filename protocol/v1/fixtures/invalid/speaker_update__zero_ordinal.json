@@ -1,0 +1,13 @@
+{
+  "type": "speaker_update",
+  "speakers": [
+    {
+      "id": "spk_0",
+      "label": null,
+      "enrolled": false,
+      "is_owner": false,
+      "ordinal": 0
+    }
+  ],
+  "assignments": []
+}

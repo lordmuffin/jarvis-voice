@@ -383,16 +383,19 @@ public struct SpeakerInfo: Equatable, Sendable, Codable, Identifiable {
     public var label: String?
     public var enrolled: Bool
     public var isOwner: Bool
+    /// The server's numbering ("Speaker 2" while unnamed), by first appearance; at least 1.
+    public var ordinal: Int?
 
-    public init(id: String, label: String?, enrolled: Bool, isOwner: Bool) {
+    public init(id: String, label: String?, enrolled: Bool, isOwner: Bool, ordinal: Int? = nil) {
         self.id = id
         self.label = label
         self.enrolled = enrolled
         self.isOwner = isOwner
+        self.ordinal = ordinal
     }
 
     enum CodingKeys: String, CodingKey, CaseIterable {
-        case id, label, enrolled
+        case id, label, enrolled, ordinal
         case isOwner = "is_owner"
     }
 
@@ -403,6 +406,12 @@ public struct SpeakerInfo: Equatable, Sendable, Codable, Identifiable {
         label = try c.decodeRequiredNullable(String.self, forKey: .label)
         enrolled = try c.decode(Bool.self, forKey: .enrolled)
         isOwner = try c.decode(Bool.self, forKey: .isOwner)
+        ordinal = try c.decodeIfPresent(Int.self, forKey: .ordinal)
+        if let ordinal, ordinal < 1 {
+            throw DecodingError.dataCorruptedError(
+                forKey: .ordinal, in: c, debugDescription: "Expected an ordinal of at least 1"
+            )
+        }
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -411,6 +420,7 @@ public struct SpeakerInfo: Equatable, Sendable, Codable, Identifiable {
         try c.encode(label, forKey: .label)  // explicit null
         try c.encode(enrolled, forKey: .enrolled)
         try c.encode(isOwner, forKey: .isOwner)
+        try c.encodeIfPresent(ordinal, forKey: .ordinal)
     }
 }
 

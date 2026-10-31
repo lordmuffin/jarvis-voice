@@ -114,7 +114,8 @@ async def test_segments_get_provisional_voices_as_they_are_transcribed(rig: Rig)
     (a1,), (a2,) = (u.assignments for u in updates)
     assert (a1.speaker_id, a1.rev, a1.final) == ("live_mic_0", 1, False)
     assert (a2.speaker_id, a2.rev, a2.final) == ("live_mic_1", 1, False)
-    assert [s.id for s in updates[0].speakers] == ["live_mic_0"]
+    assert [(s.id, s.ordinal) for s in updates[0].speakers] == [("live_mic_0", 1)]
+    assert [(s.id, s.ordinal) for s in updates[1].speakers] == [("live_mic_1", 2)]
 
 
 async def test_an_enrolled_voice_is_named_as_it_speaks(rig: Rig) -> None:
