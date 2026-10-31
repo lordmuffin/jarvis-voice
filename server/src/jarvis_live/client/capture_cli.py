@@ -339,8 +339,12 @@ async def _tail_viewer(args: argparse.Namespace, cfg: ClientConfig) -> int:
     renderer = TailRenderer()
     detail = await fetch_session(cfg.server, cfg.token, args.session)
     seen: set[str] = set()
+    wire = Segment.model_fields.keys() - {"type"}
     for seg in detail.get("segments", []):
-        msg = parse_server_message(json.dumps({"type": "segment", **seg}))
+        # The REST segment carries more than the wire one (who spoke it, ...): keep the wire fields.
+        msg = parse_server_message(
+            json.dumps({"type": "segment", **{k: v for k, v in seg.items() if k in wire}})
+        )
         if isinstance(msg, Segment):
             seen.add(msg.id)
             _emit(renderer, msg)
