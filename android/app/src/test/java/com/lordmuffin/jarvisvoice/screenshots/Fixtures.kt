@@ -141,6 +141,20 @@ object Fixtures {
     val detailLoading = DetailUi(title = "Weekly sync")
     val detailError = DetailUi(title = "Weekly sync", loading = false, error = "Couldn't load this session: HTTP 502")
 
+    val deletedSessions = com.lordmuffin.jarvisvoice.ui.compose.SessionsUi(
+        subtitle = "Your Jarvis Live sessions on live.lab.apj.dev",
+        channel = ServerChannel.Lab,
+        list = RecentUi.Items(
+            listOf(
+                RecentRow("s2", "Weekly sync", "Deleted", Tone.Warning, "Oct 11, 2026, 9:14 AM · 42:10 · Meeting · removed for good Nov 27"),
+                RecentRow("s5", "Rack cabling walk-through", "Deleted", Tone.Warning, "Oct 8, 2026, 1:20 PM · 27:44 · Solo · removed for good Nov 20"),
+            ),
+        ),
+        showDeleted = true,
+    )
+
+    val detailDeleted = detail.copy(deleted = true, canDelete = false, trashNote = "Removed for good Nov 27, 2026")
+
     val sessions = com.lordmuffin.jarvisvoice.ui.compose.SessionsUi(
         subtitle = "Your Jarvis Live sessions on live.lab.apj.dev",
         channel = ServerChannel.Lab,
