@@ -22,7 +22,16 @@ CLIENT_SENT = {
     "marker",
     "end",
 }
-SERVER_EVENTS = {"hello_ack", "ack", "segment", "copilot", "status", "final_note", "error"}
+SERVER_EVENTS = {
+    "hello_ack",
+    "ack",
+    "segment",
+    "speaker_update",  # only sent to a client that asks (`features`); this one does not
+    "copilot",
+    "status",
+    "final_note",
+    "error",
+}
 REST_RESPONSES = {"session_create_response", "ticket_response"}
 
 

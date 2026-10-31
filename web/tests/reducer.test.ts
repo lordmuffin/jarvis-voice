@@ -73,6 +73,45 @@ describe("every server event type", () => {
     }
   });
 
+  describe("speaker_update", () => {
+    const update = (
+      assignments: { segment_id: string; speaker_id: string | null; rev: number; mixed?: boolean }[],
+      speakers: { id: string; label: string | null }[] = [],
+    ) =>
+      ({
+        type: "speaker_update",
+        speakers: speakers.map((s) => ({ ...s, enrolled: false, is_owner: false })),
+        assignments: assignments.map((a) => ({ ...a, final: a.rev > 1 })),
+      }) as unknown as Event;
+
+    it("keeps an assignment only if its rev is higher than the one held", () => {
+      const s = fold([
+        update([{ segment_id: "a", speaker_id: "spk_0", rev: 2 }]),
+        update([{ segment_id: "a", speaker_id: "spk_9", rev: 1 }]), // late provisional label
+        update([{ segment_id: "a", speaker_id: "spk_0", rev: 2 }]),
+      ]);
+      expect(s.assignments["a"]).toEqual({ speaker_id: "spk_0", rev: 2, mixed: false });
+      const revised = reduce(s, update([{ segment_id: "a", speaker_id: "spk_2", rev: 3, mixed: true }]));
+      expect(revised.assignments["a"]).toEqual({ speaker_id: "spk_2", rev: 3, mixed: true });
+    });
+
+    it("upserts speakers by id, so a rename changes only that speaker", () => {
+      const s = fold([
+        update([], [{ id: "spk_0", label: null }, { id: "spk_1", label: null }]),
+        update([], [{ id: "spk_1", label: "Dana" }]),
+      ]);
+      expect(Object.keys(s.speakers)).toEqual(["spk_0", "spk_1"]);
+      expect(s.speakers["spk_0"]!.label).toBeNull();
+      expect(s.speakers["spk_1"]!.label).toBe("Dana");
+    });
+
+    it("takes an assignment that arrives before its segment", () => {
+      const s = fold([update([{ segment_id: "seg_1", speaker_id: "spk_3", rev: 1 }]), segment]);
+      expect(s.segments).toHaveLength(1);
+      expect(s.assignments["seg_1"]!.speaker_id).toBe("spk_3");
+    });
+  });
+
   it("ignores unknown events", () => {
     const weird = { type: "future_thing" } as unknown as Event;
     expect(reduce(initialState, weird)).toBe(initialState);

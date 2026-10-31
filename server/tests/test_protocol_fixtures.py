@@ -21,6 +21,7 @@ MODELS: dict[str, type[BaseModel]] = {
     "hello_ack": p.HelloAck,
     "ack": p.Ack,
     "segment": p.Segment,
+    "speaker_update": p.SpeakerUpdate,
     "copilot": p.Copilot,
     "status": p.Status,
     "final_note": p.FinalNote,

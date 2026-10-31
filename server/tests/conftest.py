@@ -17,6 +17,7 @@ from jarvis_live.app import create_app
 from jarvis_live.config import Settings
 from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
+from jarvis_live.diarize.client import Diarizer
 from jarvis_live.dispatch.service import Kube, Tokens
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
@@ -146,6 +147,7 @@ def make_server(postgres_url: str, tmp_path: Path) -> Iterator[Callable[..., Ser
         dispatcher: Dispatcher | None = None,
         kube: Kube | None = None,
         app_tokens: Tokens | None = None,
+        diarizer: Diarizer | None = None,
         **overrides: object,
     ) -> ServerHandle:
         settings = Settings(database_url=postgres_url, data_dir=tmp_path / "data", **overrides)  # type: ignore[arg-type]
@@ -158,6 +160,7 @@ def make_server(postgres_url: str, tmp_path: Path) -> Iterator[Callable[..., Ser
             dispatcher=dispatcher,
             kube=kube,
             app_tokens=app_tokens,
+            diarizer=diarizer,
         )
         port = _serve(app, running)
         return ServerHandle(f"http://127.0.0.1:{port}", settings, stt)

@@ -335,3 +335,86 @@ async def test_a_finalizer_run_is_a_summary_job(sm: SM, tmp_path: Path) -> None:
     assert job is not None and (job.source, job.stage) == ("finalize", "summary")
     await eventually(lambda: orch.job(sid) is None)
     await orch.shutdown()
+
+
+class _Diarizer:
+    def __init__(self, turns: Any) -> None:
+        self.turns = turns
+
+    async def diarize(self, pcm: Path) -> Any:
+        if isinstance(self.turns, Exception):
+            raise self.turns
+        return self.turns
+
+
+def _with_diarizer(sm: SM, tmp_path: Path, diarizer: Any) -> tuple[Orchestrator, FakeLLM]:
+    from jarvis_live.copilot.schema import FinalNote
+
+    llm = FakeLLM().queue("FinalNote", FinalNote(title="T", summary="S"))
+    orch = Orchestrator(
+        Settings(outbox_dir=tmp_path / "outbox", data_dir=tmp_path),
+        sm,
+        Bus(),
+        FakeSTT(),
+        llm,
+        FakeVault(),
+        FakeNotifier(),
+        diarizer=diarizer,
+    )
+    return orch, llm
+
+
+async def _speaker_ids(sm: SM, sid: uuid.UUID) -> list[str | None]:
+    from sqlalchemy import select
+
+    from jarvis_live.db.models import SegmentRow
+
+    async with sm() as db:
+        q = select(SegmentRow.speaker_id).where(SegmentRow.session_id == sid)
+        return list((await db.execute(q.order_by(SegmentRow.start_ms))).scalars())
+
+
+async def test_ending_a_session_labels_speakers_before_the_note_is_written(
+    sm: SM, tmp_path: Path
+) -> None:
+    from jarvis_live.diarize.align import Turn
+
+    orch, _ = _with_diarizer(sm, tmp_path, _Diarizer([Turn(0, 5000, "X")]))
+    sid = await _finished_with_audio(sm, tmp_path)
+    orch.on_end(sid)
+    await eventually(lambda: orch.job(sid) is None)
+    await orch.shutdown()
+    assert await _status(sm, sid) == "done"
+    assert await _speaker_ids(sm, sid) == ["spk_mic_0"]
+
+
+async def test_a_failing_diarizer_does_not_stop_the_note(sm: SM, tmp_path: Path) -> None:
+    orch, _ = _with_diarizer(sm, tmp_path, _Diarizer(RuntimeError("model crashed")))
+    sid = await _finished_with_audio(sm, tmp_path)
+    orch.on_end(sid)
+    await eventually(lambda: orch.job(sid) is None)
+    await orch.shutdown()
+    assert await _status(sm, sid) == "done"
+    assert await _speaker_ids(sm, sid) == [None]
+
+
+async def test_reprocess_labels_the_new_transcript_from_the_stored_turns(
+    sm: SM, tmp_path: Path
+) -> None:
+    from jarvis_live.db.models import SpeakerTurn
+
+    orch, _ = _with_diarizer(sm, tmp_path, None)
+    sid = await _finished_with_audio(sm, tmp_path)
+    async with sm() as db:
+        db.add(
+            SpeakerTurn(
+                session_id=sid, channel="mic", start_ms=0, end_ms=600_000, speaker_id="spk_mic_0"
+            )
+        )
+        await db.commit()
+    orch.reprocess(sid, None, restore="done")
+    await eventually(lambda: orch.job(sid) is None)
+    await orch.shutdown()
+    assert await _status(sm, sid) == "done"
+    ids = await _speaker_ids(sm, sid)
+    assert ids and set(ids) == {"spk_mic_0"}

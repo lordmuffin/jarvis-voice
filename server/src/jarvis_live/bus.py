@@ -6,15 +6,24 @@ from collections import defaultdict
 
 from pydantic import BaseModel
 
+from jarvis_live.protocol import SpeakerUpdate
+
 log = logging.getLogger(__name__)
 
 _CLOSED = object()
 
+# Events a client receives only if it asked for them (``features`` on the stream URL): clients
+# that predate them reject unknown message types.
+FEATURE_OF: dict[type[BaseModel], str] = {SpeakerUpdate: "speaker_update"}
+
 
 class Subscription:
-    def __init__(self, bus: "Bus", session_id: str, maxsize: int) -> None:
+    def __init__(
+        self, bus: "Bus", session_id: str, maxsize: int, features: frozenset[str] = frozenset()
+    ) -> None:
         self._bus = bus
         self.session_id = session_id
+        self.features = features
         self._queue: asyncio.Queue[object] = asyncio.Queue(maxsize)
 
     def put(self, item: BaseModel) -> bool:
@@ -52,13 +61,16 @@ class Bus:
         self._queue_size = queue_size
         self._subs: dict[str, set[Subscription]] = defaultdict(set)
 
-    def subscribe(self, session_id: str) -> Subscription:
-        sub = Subscription(self, session_id, self._queue_size)
+    def subscribe(self, session_id: str, features: frozenset[str] = frozenset()) -> Subscription:
+        sub = Subscription(self, session_id, self._queue_size, features)
         self._subs[session_id].add(sub)
         return sub
 
     def publish(self, session_id: str, event: BaseModel) -> None:
+        feature = FEATURE_OF.get(type(event))
         for sub in list(self._subs.get(session_id, ())):
+            if feature is not None and feature not in sub.features:
+                continue
             if not sub.put(event):
                 log.warning(
                     "subscriber queue full, dropping event",
