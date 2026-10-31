@@ -182,6 +182,11 @@ async def test_a_soft_deleted_session_is_restored_from_a_backup(
     other = await env.make_session(audio={"mic": os.urandom(1000)})
     result = env.backup()
 
+    # What Velero holds: a copy of the volumes as they were when the backup ran.
+    audio_copy, outbox_copy = tmp_path / "velero-data", tmp_path / "velero-outbox"
+    shutil.copytree(env.data, audio_copy)
+    shutil.copytree(env.outbox, outbox_copy)
+
     # Disk loss: the trash purge takes the session's rows, audio and note for good.
     purged, failed = await purge_trash(env.sm, env.data, env.outbox, 0, now=NOW)
     assert (purged, failed) == (1, 0)
@@ -189,17 +194,6 @@ async def test_a_soft_deleted_session_is_restored_from_a_backup(
     assert not (env.outbox / f"{wanted.hex[:6]}.md").exists()
     async with env.sm() as db:
         assert await db.get(SessionRow, wanted) is None
-
-    # The audio copy is the one Velero keeps: here, a copy of the directory taken at backup time.
-    audio_copy, outbox_copy = tmp_path / "velero-data", tmp_path / "velero-outbox"
-    # (the backup ran before the purge, so rebuild what that copy held)
-    (audio_copy / "sessions" / str(wanted)).mkdir(parents=True)
-    (audio_copy / "sessions" / str(wanted) / "mic.pcm").write_bytes(MIC)
-    (audio_copy / "sessions" / str(wanted) / "system.pcm").write_bytes(SYSTEM)
-    outbox_copy.mkdir()
-    (outbox_copy / f"{wanted.hex[:6]}.md").write_text(
-        f"---\nsession_id: {wanted}\n---\n\nnote of {wanted}\n"
-    )
 
     restored_data, restored_outbox = tmp_path / "restored-data", tmp_path / "restored-outbox"
     report = await bk.restore_session(
