@@ -56,6 +56,39 @@ struct EgressGateTests {
         #expect(!gate.isBlocking)
     }
 
+    @Test func shuttingRunsEachActionOnceAndNotForAnOverlappingSession() {
+        let gate = EgressGate()
+        let cuts = Mutex(0)
+        gate.whenShut { cuts.withLock { $0 += 1 } }
+        gate.beginLocalSession()
+        gate.beginLocalSession()
+        #expect(cuts.withLock { $0 } == 1)
+    }
+
+    @Test func aRemovedActionDoesNotRun() {
+        let gate = EgressGate()
+        let cuts = Mutex(0)
+        let remove = gate.whenShut { cuts.withLock { $0 += 1 } }
+        remove()
+        gate.beginLocalSession()
+        #expect(cuts.withLock { $0 } == 0)
+    }
+
+    @Test func aGatedSessionIsRefusedWhileBlocked() async throws {
+        CountingURLProtocol.requests = 0
+        let gate = EgressGate()
+        let gated = GatedSession(countingSession(), gate: gate)
+        let request = URLRequest(url: base.appending(path: "healthz"))
+        gate.beginLocalSession()
+        await #expect(throws: EgressBlocked.self) { _ = try await gated.data(for: request) }
+        #expect(throws: EgressBlocked.self) { _ = try gated.webSocketTask(with: base) }
+        #expect(CountingURLProtocol.requests == 0)
+
+        gate.endLocalSession()
+        _ = try await gated.data(for: request)
+        #expect(CountingURLProtocol.requests == 1)
+    }
+
     @Test func theAPIClientSendsNothingWhileBlocked() async throws {
         CountingURLProtocol.requests = 0
         let gate = EgressGate()

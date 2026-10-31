@@ -14,6 +14,13 @@ enum LocalMarkdown {
         /// The server session an upload is sending this recording to, written before any audio moves
         /// so an interrupted upload resumes it. Nil until an upload has started.
         var serverSessionId: String?
+
+        /// A session kept local-only is a work call until you say otherwise: the server files its
+        /// note apart and never publishes or pushes it. One recorded here because the server was
+        /// down was meant to stream.
+        var uploadRequest: SessionCreateRequest {
+            SessionCreateRequest(mode: mode, channels: channels, restricted: autoUpload ? nil : true)
+        }
     }
 
     struct Line: Equatable {
