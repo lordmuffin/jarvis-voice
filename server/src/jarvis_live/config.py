@@ -110,6 +110,9 @@ class Settings(BaseSettings):
     public_base_url: str = ""
     stt_outage_notify_s: float = 120.0
 
+    # Prometheus scrape port, separate from the app port (which the Ingress routes). 0: off.
+    metrics_port: int = 0
+
     # Sign-in with Pocket-ID (OIDC). Unset issuer: no web sign-in; device tokens still work.
     # The redirect URI is <public_base_url>/auth/callback.
     oidc_issuer: str = ""

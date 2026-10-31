@@ -38,7 +38,7 @@ class StubHub:
 def _state(clock: FakeClock, idle_for: float = 0.0, uploading: bool = False) -> Any:
     return SimpleNamespace(
         session_id=uuid.uuid4(),
-        pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for),
+        pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for, lag_ms=lambda: 0),
         uploading=uploading,
     )
 

@@ -11,6 +11,7 @@ from typing import Protocol
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live import metrics
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.prompts import COPILOT_SYSTEM, copilot_user
@@ -97,19 +98,20 @@ class CopilotLoop:
         now = self._clock.monotonic()
         if new > 0 and self._pending_since is None:
             self._pending_since = now
+        waiting_since = self._pending_since
         due = new >= self._cfg.copilot_min_segments or (
             new >= 1
             and self._pending_since is not None
             and now - self._pending_since >= self._cfg.copilot_max_wait_s
         )
         if due:
-            await self._cycle(total)
+            await self._cycle(total, waiting_since)
         elif changed:
             await self._publish()
 
     # --- one cycle --------------------------------------------------------------------------
 
-    async def _cycle(self, total: int) -> None:
+    async def _cycle(self, total: int, waiting_since: float | None = None) -> None:
         self._seen, self._pending_since = total, None
         now_ms = self._now_ms()
         async with self._sm() as db:
@@ -126,6 +128,7 @@ class CopilotLoop:
             related="\n".join(f"- {r.title}: {r.snippet}" for r in self.state.related),
             transcript=render_lines(lines),
         )
+        asked = self._clock.monotonic()
         try:
             delta = await self._llm.complete_json(
                 model=self._cfg.copilot_model,
@@ -136,8 +139,10 @@ class CopilotLoop:
             )
         except LLMError as e:
             self._log.warning("copilot cycle skipped: %s", e)
+            metrics.copilot_roundtrip("error", self._clock.monotonic() - asked)
             self._mark_llm(False)
             return
+        metrics.copilot_roundtrip("ok", self._clock.monotonic() - asked)
         self._mark_llm(True)
 
         if title is None and delta.title:
@@ -152,6 +157,8 @@ class CopilotLoop:
                 changed = self.state.set_related(hits) or changed
         if changed:
             await self._publish()
+            if waiting_since is not None:
+                metrics.copilot_staleness(self._clock.monotonic() - waiting_since)
 
     async def _name_session(self, title: str) -> None:
         """Auto-name an untitled session. Never overwrites a title, including one the user set
