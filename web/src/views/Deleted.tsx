@@ -1,8 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 import { ApiError, listSessions, restoreSession } from "../api";
-import { Banner, Button, EmptyState, List, Loading, PageTitle, Section, Text } from "../ds/components";
-import { duration, titleOf, when } from "../format";
-import { OwnerLabel } from "../jarvis/OwnerLabel";
+import { Banner, EmptyState, List, Loading, PageTitle, Section } from "../ds/components";
+import { titleOf } from "../format";
+import { DeletedRow } from "../jarvis/DeletedRow";
 import { navigate } from "../store";
 import type { SessionSummary } from "../types";
 
@@ -54,29 +54,13 @@ export function DeletedView() {
       )}
       <List>
         {(rows ?? []).map((s) => (
-          <li key={s.id} data-testid="deleted-row" class="i-row">
-            <a
-              class="d-item-main"
-              href={`/sessions/${s.id}`}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(`/sessions/${s.id}`);
-              }}
-            >
-              <span class={s.title?.trim() ? "ti" : "ti ti--none"}>{titleOf(s)}</span>
-              <span class="mt">
-                <OwnerLabel owner={s.owner} after=" · " />
-                {when(s.started_at)}
-                {duration(s.started_at, s.ended_at) && ` · ${duration(s.started_at, s.ended_at)}`}
-              </span>
-              <Text size="caption" tone="muted">
-                {s.deleted_at && `Deleted ${when(s.deleted_at)}`}
-                {s.trash_expires_at && ` · Removed for good ${when(s.trash_expires_at)}`}
-              </Text>
-            </a>
-            <Button size="sm" disabled={busy === s.id} onClick={() => void restore(s)}>
-              Restore
-            </Button>
+          <li key={s.id}>
+            <DeletedRow
+              session={s}
+              busy={busy === s.id}
+              onOpen={(id) => navigate(`/sessions/${id}`)}
+              onRestore={(row) => void restore(row)}
+            />
           </li>
         ))}
       </List>
