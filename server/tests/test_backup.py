@@ -9,7 +9,9 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shutil
+import subprocess
 import uuid
 from collections.abc import AsyncIterator, Callable
 from datetime import UTC, datetime, timedelta
@@ -39,11 +41,23 @@ NOW = datetime(2026, 11, 20, 3, 0, tzinfo=UTC)
 PG_IMAGE = os.environ.get("JARVIS_LIVE_TEST_POSTGRES_IMAGE", "postgres:16-alpine")
 
 
+def _major(binary: str) -> int | None:
+    try:
+        out = subprocess.run(
+            [binary, "--version"], capture_output=True, text=True, check=True
+        ).stdout
+        return int(re.search(r"(\d+)(?:\.\d+)*\s*(?:\(|$)", out.strip()).group(1))  # type: ignore[union-attr]
+    except (OSError, subprocess.CalledProcessError, AttributeError, ValueError):
+        return None
+
+
 @pytest.fixture(scope="session")
 def pg_tools() -> PgTools:
-    """The host's pg_dump/pg_restore when there are some, else the ones in the Postgres image
-    (the same major version as the test database, over the host network)."""
-    if shutil.which("pg_dump") and shutil.which("pg_restore"):
+    """The host's pg_dump/pg_restore when they are at least the test database's version (a
+    pg_dump refuses a newer server), else the ones in the Postgres image over the host network."""
+    wanted = int(re.search(r":(\d+)", PG_IMAGE).group(1))  # type: ignore[union-attr]
+    dump, restore = _major("pg_dump"), _major("pg_restore")
+    if dump and restore and dump >= wanted and restore >= wanted:
         return PgTools()
     docker = ("docker", "run", "--rm", "-i", "--network", "host", PG_IMAGE)
     return PgTools(dump=(*docker, "pg_dump"), restore=(*docker, "pg_restore"))
