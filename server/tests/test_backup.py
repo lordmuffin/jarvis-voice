@@ -53,11 +53,12 @@ def _major(binary: str) -> int | None:
 
 @pytest.fixture(scope="session")
 def pg_tools() -> PgTools:
-    """The host's pg_dump/pg_restore when they are at least the test database's version (a
-    pg_dump refuses a newer server), else the ones in the Postgres image over the host network."""
+    """The host's pg_dump/pg_restore when they are the test database's exact major version (an
+    older pg_dump refuses a newer server, a newer one writes SQL such as ``SET transaction_timeout``
+    that an older server rejects), else the ones in the Postgres image over the host network."""
     wanted = int(re.search(r":(\d+)", PG_IMAGE).group(1))  # type: ignore[union-attr]
     dump, restore = _major("pg_dump"), _major("pg_restore")
-    if dump and restore and dump >= wanted and restore >= wanted:
+    if dump and restore and dump == wanted and restore == wanted:
         return PgTools()
     docker = ("docker", "run", "--rm", "-i", "--network", "host", PG_IMAGE)
     return PgTools(dump=(*docker, "pg_dump"), restore=(*docker, "pg_restore"))
