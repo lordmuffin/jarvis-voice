@@ -25,6 +25,38 @@ def test_shared_session_and_raw_connections_are_flagged(tmp_path):
     assert scan(tmp_path, SWIFT_APP, text) == ["url-session", "raw-connection"]
 
 
+def test_the_shared_session_as_a_default_argument_is_flagged(tmp_path):
+    assert scan(tmp_path, SWIFT_APP, "init(session: URLSession = .shared) {}") == ["url-session"]
+
+
+def test_an_optional_session_parameter_is_not_a_connection(tmp_path):
+    assert scan(tmp_path, SWIFT_APP, "func f(session: URLSession? = nil) {}") == []
+
+
+def test_kotlin_urls_sockets_and_web_views_are_flagged(tmp_path):
+    text = (
+        'val a = URL(u).readText()\n'
+        'val b = URL(u).openStream()\n'
+        'val c = Socket(host, 443)\n'
+        'val d = WebView(context)\n'
+    )
+    assert scan(tmp_path, KOTLIN_APP, text) == ["http-client"] * 2 + ["raw-connection", "web-view"]
+
+
+def test_a_local_socket_is_not_a_connection(tmp_path):
+    assert scan(tmp_path, KOTLIN_APP, "val s = LocalSocket()") == []
+
+
+def test_every_allowed_file_exists():
+    root = Path(__file__).resolve().parents[2]
+    assert [f for f in chk.ALLOWED if not (root / f).exists()] == []
+
+
+def test_the_watch_uploader_is_listed_as_ungated():
+    assert any(f.endswith("RecordingUploader.kt") for f in chk.UNGATED_BY_DECISION)
+    assert not any(f.endswith("RecordingUploader.kt") for f in chk.GATED)
+
+
 def test_the_gated_transport_files_may_open_connections(tmp_path):
     kit = "macos/JarvisLiveKit/Sources/JarvisLiveKit/Transport/LiveConnection.swift"
     assert scan(tmp_path, kit, "URLSession(configuration: .ephemeral)") == []
