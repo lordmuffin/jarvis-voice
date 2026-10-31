@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live import metrics
+from jarvis_live.actions.intake import ActionIntake, SessionProposals
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import Clock, CopilotLoop, RealClock
@@ -45,6 +46,7 @@ class Orchestrator:
         *,
         clock: Clock | None = None,
         on_final: Callable[[uuid.UUID], Awaitable[None]] | None = None,
+        intake: ActionIntake | None = None,
     ) -> None:
         self._cfg = settings
         self._sm = sessionmaker
@@ -52,7 +54,8 @@ class Orchestrator:
         self._notifier = notifier
         self._clock = clock or RealClock()
         self._bus, self._llm, self._vault = bus, llm, vault
-        self._finalizer = Finalizer(settings, sessionmaker, bus, llm, vault, notifier)
+        self._intake = intake
+        self._finalizer = Finalizer(settings, sessionmaker, bus, llm, vault, notifier, intake)
         self._hub: IngestHub | None = None
         self._copilots: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._ideas: dict[uuid.UUID, asyncio.Task[None]] = {}
@@ -168,8 +171,18 @@ class Orchestrator:
             stream_ms=pipeline.position_ms,
             set_llm_ok=set_llm_ok,
             clock=self._clock,
+            proposals=await self._proposals_for(row),
         )
         await loop.run()
+
+    async def _proposals_for(self, row: SessionRow) -> SessionProposals | None:
+        """Action proposals are reviewed by the vault's owner: only the owner's and admins'
+        sessions get them, and only where the feature is on."""
+        if self._intake is None or not self._cfg.actions_enabled:
+            return None
+        if not await self._ideas_eligible(row):
+            return None
+        return self._intake.for_session(row.id, row.user_id)
 
     async def _ideas_eligible(self, row: SessionRow) -> bool:
         """Work items target the owner's repositories: only the owner's and admins' sessions
