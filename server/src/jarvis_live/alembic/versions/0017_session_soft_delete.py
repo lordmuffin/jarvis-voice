@@ -1,14 +1,14 @@
 """sessions.deleted_at and sessions.purge_after: reversible deletes, per-session retention
 
-Revision ID: 0013
-Revises: 0012
+Revision ID: 0017
+Revises: 0016
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0013"
-down_revision = "0012"
+revision = "0017"
+down_revision = "0016"
 branch_labels = None
 depends_on = None
 
