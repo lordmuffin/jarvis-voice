@@ -16,7 +16,7 @@ Any change under `protocol/` needs fixtures plus updated server **and** Swift te
 
 | Request | Body | Response |
 |---|---|---|
-| `POST /v1/sessions` | `session_create_request`: `{title?, mode: "meeting"\|"solo", channels: ["mic"] \| ["mic","system"]}` | `session_create_response`: `{id: uuid}` |
+| `POST /v1/sessions` | `session_create_request`: `{title?, mode: "meeting"\|"solo", channels: ["mic"] \| ["mic","system"], restricted?: boolean}` | `session_create_response`: `{id: uuid}` |
 | `POST /v1/sessions/{id}/ticket` | `ticket_request`: `{role: "producer"\|"viewer"}` | `ticket_response`: `{ticket, expires_in: 60}` |
 
 A ticket is a short-lived (60 s) credential for the WebSocket below.

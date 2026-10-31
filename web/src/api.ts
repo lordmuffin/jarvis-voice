@@ -146,6 +146,10 @@ export async function uploadRecording(
 export const renameSession = (id: string, title: string, f?: typeof fetch) =>
   request<SessionSummary>(sid(id), { method: "PATCH", body: JSON.stringify({ title }) }, f);
 
+/** Lift a session's restriction (owner only): its note leaves `Restricted/` and can be published. */
+export const unrestrictSession = (id: string, f?: typeof fetch) =>
+  request<SessionSummary>(`${sid(id)}/unrestrict`, { method: "POST" }, f);
+
 /** A channel's recording as WAV; the cookie authenticates `<audio src>` too. */
 export const audioUrl = (id: string, channel: Channel) => `${sid(id)}/audio/${channel}.wav`;
 

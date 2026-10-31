@@ -106,6 +106,26 @@
             android:theme="@style/Theme.Jarvis"
             android:label="Record" />
 
+        <!-- Launcher shortcut and Quick Settings tile target: starts or marks a session, no UI. -->
+        <activity
+            android:name=".live.DrivingActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:label="@string/driving_shortcut_long" />
+
+        <service
+            android:name=".live.DrivingTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_car_mic"
+            android:label="@string/driving_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <activity
             android:name=".live.SessionsActivity"
             android:exported="false"
@@ -151,6 +171,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
         </activity>
 
         <activity

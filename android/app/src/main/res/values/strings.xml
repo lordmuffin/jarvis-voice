@@ -4,4 +4,12 @@
     <string name="accessibility_service_label">Jarvis Voice Overlay</string>
     <string name="settings_desc">Open settings</string>
     <string name="notif_channel_name">Jarvis Voice Overlay</string>
+
+    <string name="live_notif_muted">Muted, microphone released</string>
+    <string name="live_mute">Mute</string>
+    <string name="live_unmute">Unmute</string>
+    <string name="live_notif_interrupted">Microphone interrupted, recording resumes automatically</string>
+    <string name="driving_shortcut_short">Drive record</string>
+    <string name="driving_shortcut_long">Record while driving</string>
+    <string name="driving_tile_label">Drive record</string>
 </resources>

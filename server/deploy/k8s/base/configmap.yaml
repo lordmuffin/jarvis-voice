@@ -58,6 +58,11 @@ data:
   # The ▦ family switcher's apps list; see deployment.yaml (volume family-apps).
   JARVIS_LIVE_APPS_LIST_PATH: "/config/family/apps.json"
 
+  # Prometheus scrape port. Separate from the app port because each channel's Ingress
+  # routes the app port to the internet; only the Service exposes this one, in-cluster.
+  # Scraped by the PodMonitor in np-home-homelab apps/observability/jarvis-live.
+  JARVIS_LIVE_METRICS_PORT: "9100"
+
   JARVIS_LIVE_DATA_DIR: "/data"
   JARVIS_LIVE_INDEX_DIR: "/index"
   # Finished notes. The owner's go to the outbox root, other users' to
