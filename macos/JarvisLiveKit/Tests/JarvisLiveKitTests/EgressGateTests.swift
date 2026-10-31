@@ -13,7 +13,11 @@ private final class CountingURLProtocol: URLProtocol, @unchecked Sendable {
         Self.requests += 1
         let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: nil)!
         client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
-        client?.urlProtocol(self, didLoad: Data(#"{"id":"3f2b8c1e-7a4d-4e6b-9c0a-1d2e3f4a5b6c","status":"ok"}"#.utf8))
+        // The strict response types reject unknown keys, so each path gets exactly its own body.
+        let body = request.url?.path == "/healthz"
+            ? #"{"status":"ok"}"#
+            : #"{"id":"3f2b8c1e-7a4d-4e6b-9c0a-1d2e3f4a5b6c"}"#
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
         client?.urlProtocolDidFinishLoading(self)
     }
 
