@@ -80,7 +80,7 @@ class FakeTokens:
     minted: list[str] = field(default_factory=list)
     error: Exception | None = None
 
-    async def mint(self, repo: str) -> str:
+    async def mint(self, repo: str, permissions: dict[str, str] | None = None) -> str:
         if self.error is not None:
             raise self.error
         self.minted.append(repo)

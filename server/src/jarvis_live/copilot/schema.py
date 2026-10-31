@@ -5,6 +5,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from jarvis_live.actions.schema import Proposals
+
 MAX_TOPICS = 5
 MAX_TITLE_CHARS = 80
 
@@ -37,6 +39,7 @@ class CopilotDelta(_LLMModel):
     decisions_upsert: list[NoteUpsert] = Field(default_factory=list)
     remove_ids: list[str] = Field(default_factory=list)
     suggestions: list[SuggestionIn] = Field(default_factory=list)
+    proposals: Proposals = Field(default_factory=list)
     topics: list[str] = Field(default_factory=list)
     title: str | None = None  # only asked for while the session is untitled
 
@@ -67,3 +70,4 @@ class FinalNote(_LLMModel):
     follow_ups: list[str] = Field(default_factory=list)
     # Names of existing vault notes. The finalizer drops anything it cannot resolve in the index.
     related: list[str] = Field(default_factory=list)
+    proposals: Proposals = Field(default_factory=list)

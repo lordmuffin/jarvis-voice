@@ -149,7 +149,13 @@ class FakeGitHub:
             files = self.files(ref) if ref in self.branches else {}
             if path not in files:
                 raise err(404, "Not Found")
-            return {"type": "file", "path": path, "sha": blob_sha(files[path])}
+            return {
+                "type": "file",
+                "path": path,
+                "sha": blob_sha(files[path]),
+                "encoding": "base64",
+                "content": base64.encodebytes(files[path].encode()).decode(),
+            }
 
         @app.put(prefix + "/contents/{path:path}")
         async def put_contents(path: str, body: dict[str, Any]) -> dict[str, Any]:
@@ -193,6 +199,12 @@ class FakeGitHub:
             if number not in self.pulls:
                 raise err(404, "Not Found")
             return self._pull_json(self.pulls[number])
+
+        @app.get(prefix + "/pulls/{number}/files")
+        async def pull_files(number: int) -> list[dict[str, Any]]:
+            pr = self.pulls[number]
+            base, head = self.files(pr.base), self.files(pr.head)
+            return [{"filename": f} for f in sorted(head) if head[f] != base.get(f)]
 
         @app.patch(prefix + "/pulls/{number}")
         async def update_pull(number: int, body: dict[str, str]) -> dict[str, Any]:

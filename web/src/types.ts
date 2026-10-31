@@ -268,6 +268,8 @@ export interface Me {
   auto_publish: boolean;
   /** The copilot finds work items in this user's sessions. */
   work_items: boolean;
+  /** The copilot proposes actions (tasks, reminders…) in this user's sessions, for approval. */
+  actions: boolean;
 }
 
 export interface Device {
@@ -403,4 +405,62 @@ export interface FamilyApp {
   available: boolean;
   current: boolean;
   glance_url: string | null;
+}
+
+// --- Action proposals ---
+
+export type ActionKind = "task.create" | "vault.append" | "reminder.schedule" | "git.pr_comment";
+export type ActionState =
+  | "proposed"
+  | "approved"
+  | "executing"
+  | "succeeded"
+  | "failed"
+  | "rejected"
+  | "expired";
+
+export interface ActionEvidence {
+  start_ms: number;
+  text: string;
+}
+
+/** Something the copilot proposes to do. It does nothing until its owner approves it. */
+export interface ActionItem {
+  id: string;
+  session_id: string;
+  ref: string;
+  position: number;
+  kind: ActionKind;
+  state: ActionState;
+  payload: Record<string, unknown>;
+  /** What an approval binds to: the exact content on screen. */
+  payload_sha256: string;
+  evidence: ActionEvidence[];
+  proposed_by: string;
+  approved_by: string | null;
+  approved_at: string | null;
+  result: Record<string, unknown> | null;
+  executed_at: string | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ActionPage {
+  enabled: boolean;
+  items: ActionItem[];
+}
+
+export type ApprovalOutcome = "approved" | "already" | "stale" | "not_open" | "not_found";
+
+export interface ApproveResult {
+  results: { id: string; outcome: ApprovalOutcome }[];
+}
+
+export interface ActionEvent {
+  at: string;
+  actor_user_id: string | null;
+  actor_kind: "web" | "device" | "system";
+  event: string;
+  payload: Record<string, unknown>;
 }

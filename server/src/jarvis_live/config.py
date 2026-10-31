@@ -186,6 +186,16 @@ class Settings(BaseSettings):
     # prompts to review (see workitems/). Only repos listed here can be targeted: one
     # "owner/name  description" per line; the description helps the LLM pick.
     work_items_enabled: bool = False
+    # Action proposals: things the copilot proposes to DO (a task, a vault append, a reminder, a
+    # PR comment). Every one waits for the owner's approval (see actions/).
+    actions_enabled: bool = False
+    actions_ttl_days: int = 14  # an unreviewed proposal expires (and never executes)
+    # Approving a task or append opens a PR on the vault repo (publish_*). True also merges it,
+    # when it changes only the approved file; False stops at the open PR.
+    actions_vault_merge: bool = True
+    actions_work_tracker_path: str = "20 Areas/Personal/Work Tracker.md"
+    reminder_poll_s: float = 15.0  # how often due reminders are looked for
+    actions_tracker_section: str = "Needs Triage"  # where proposed tasks land on the board
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.

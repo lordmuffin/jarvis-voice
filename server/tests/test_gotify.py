@@ -91,3 +91,40 @@ async def test_title_prefix_marks_the_channel(tmp_path: Path) -> None:
     )
     await n.notify("Session finished", "m", 5)
     assert json.loads(seen[0].content)["title"] == "[LAB] Session finished"
+
+
+# --- send: the variant that reports ---------------------------------------------------------
+
+
+async def test_send_reports_what_notify_swallows(tmp_path: Path) -> None:
+    import pytest
+
+    from jarvis_live.notify.gotify import NotifyError
+
+    def boom(req: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("down")
+
+    with pytest.raises(NotifyError, match="500"):
+        await _notifier(tmp_path, lambda r: httpx.Response(500)).send("T", "m", 5)
+    with pytest.raises(NotifyError, match="down"):
+        await _notifier(tmp_path, boom).send("T", "m", 5)
+    (tmp_path / "token").unlink()  # the earlier calls wrote it
+    with pytest.raises(NotifyError, match="token"):
+        await _notifier(tmp_path, lambda r: httpx.Response(200), token=None).send("T", "m", 5)
+    c = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200)))
+    with pytest.raises(NotifyError, match="not configured"):
+        await GotifyNotifier("", None, c).send("T", "m", 5)
+    assert GotifyNotifier("", None, c).configured is False
+
+
+async def test_send_posts_the_same_message_as_notify(tmp_path: Path) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(200)
+
+    n = _notifier(tmp_path, handler)
+    await n.send("T", "m", 6, url="https://j.example/s")
+    await n.notify("T", "m", 6, url="https://j.example/s")
+    assert seen[0].content == seen[1].content and n.configured is True

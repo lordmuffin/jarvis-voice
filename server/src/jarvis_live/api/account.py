@@ -38,6 +38,8 @@ class MeOut(BaseModel):
     auto_publish: bool  # new notes open their PR without asking
     # The copilot finds work items in this user's sessions (owner and admins, if turned on).
     work_items: bool
+    # The copilot proposes actions (tasks, reminders…) to approve in this user's sessions.
+    actions: bool
 
 
 def _me(principal: Principal, request: Request) -> MeOut:
@@ -51,6 +53,7 @@ def _me(principal: Principal, request: Request) -> MeOut:
         can_publish=request.app.state.publishing.can_publish(u),
         auto_publish=u.auto_publish,
         work_items=request.app.state.work_items.enabled and may_publish_for(u),
+        actions=request.app.state.actions.enabled and may_publish_for(u),
     )
 
 

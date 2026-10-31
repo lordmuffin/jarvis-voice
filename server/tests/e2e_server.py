@@ -11,9 +11,10 @@ alice's, so the browser test can stream a session as her.
 
 Publishing goes to a fake GitHub (``tests.fake_github``) on ``port + 2``. Each start seeds a
 finished session titled ``E2E publish me`` for root (an admin, so it may be published), with
-its note in the outbox, and one titled ``E2E work items`` with a short transcript and three
-work items to review. Dispatch runs against an in-memory cluster whose runs open a PR at
-once. Test doubles only, never for real deployments.
+its note in the outbox, and one titled ``E2E work items`` with a short transcript, three
+work items to review and four action proposals to approve (the Work Tracker is on the fake
+GitHub; the reminder fails, as root is not the owner). Dispatch runs against an in-memory
+cluster whose runs open a PR at once. Test doubles only, never for real deployments.
 """
 
 import argparse
@@ -25,13 +26,14 @@ import threading
 import wave
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import uvicorn
 from sqlalchemy import select
 
+from jarvis_live.actions.state import dedupe_key, payload_sha256
 from jarvis_live.app import create_app
 from jarvis_live.auth import hash_token
 from jarvis_live.config import Settings
@@ -43,7 +45,15 @@ from jarvis_live.copilot.schema import (
     NoteUpsert,
     SuggestionIn,
 )
-from jarvis_live.db.models import CopilotItem, Device, SegmentRow, User, WorkItem
+from jarvis_live.db.models import (
+    ActionProposal,
+    ActionProposalEvent,
+    CopilotItem,
+    Device,
+    SegmentRow,
+    User,
+    WorkItem,
+)
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
 from jarvis_live.users import create_user
@@ -235,14 +245,61 @@ async def seed_publishable(url: str, outbox: Path) -> None:
                         sources=sources,
                     )
                 )
+            for position, (kind, payload, seg) in enumerate(
+                (
+                    ("task.create", {"text": "Call the vendor about the quote"}, src[0]),
+                    ("task.create", {"text": "Send the revised invoice"}, src[1]),
+                    ("task.create", {"text": "Look into SRT export"}, src[1]),
+                    (
+                        "reminder.schedule",
+                        {
+                            "title": "Check the Gotify retries",
+                            "at": (now + timedelta(days=3)).isoformat(),
+                        },
+                        src[2],
+                    ),
+                ),
+                start=1,
+            ):  # fmt: skip
+                proposal = ActionProposal(
+                    session_id=work.id,
+                    user_id=root.id,
+                    ref=f"p{position}",
+                    position=position,
+                    kind=kind,
+                    payload=payload,
+                    payload_sha256=payload_sha256(kind, payload),
+                    dedupe_key=dedupe_key(kind, payload),
+                    evidence=[{"start_ms": seg["start_ms"], "text": seg["text"]}],
+                    proposed_by="copilot:e2e",
+                )
+                db.add(proposal)
+                await db.flush()
+                db.add(  # as ActionService.admit records it
+                    ActionProposalEvent(
+                        proposal_id=proposal.id,
+                        actor_kind="system",
+                        event="proposed",
+                        payload={"proposed_by": "copilot:e2e"},
+                    )
+                )
             await db.commit()
     finally:
         await engine.dispose()
 
 
+TRACKER = "20 Areas/Personal/Work Tracker.md"
+BOARD = (
+    "---\nkanban-plugin: board\n---\n\n## Active\n\n- [ ] keep this\n\n"
+    "## Needs Triage\n*Ambiguous captures: decide keep-or-kill.*\n\n"
+    "- [ ] old one\n\n## Done\n\n- [x] shipped\n"
+)
+
+
 def start_github(port: int) -> None:
     """The fake GitHub API, in a daemon thread."""
     fake = FakeGitHub(f"http://127.0.0.1:{port}")
+    fake.files("main")[TRACKER] = BOARD  # the vault's Work Tracker, for approved tasks
     server = uvicorn.Server(
         uvicorn.Config(fake.app(), host="127.0.0.1", port=port, log_level="warning")
     )
@@ -313,6 +370,7 @@ def serve(port: int, web_dist: Path) -> int:
             github_token_file=github_token,
             publish_reconcile_interval_s=0,
             work_items_enabled=True,
+            actions_enabled=True,
             work_repos=WORK_REPOS,
             dispatch_enabled=True,
             git_sha="e2e0000",
