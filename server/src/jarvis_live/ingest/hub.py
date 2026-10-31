@@ -16,6 +16,7 @@ from starlette.websockets import WebSocketDisconnect
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import Session
+from jarvis_live.diarize.client import Embedder
 from jarvis_live.ingest.pipeline import SessionPipeline
 from jarvis_live.ingest.store import AudioStore
 from jarvis_live.logging_setup import session_logger
@@ -52,6 +53,7 @@ class IngestHub:
         bus: Bus,
         stt: STTBackend,
         *,
+        embedder: Embedder | None = None,
         on_start: Callable[[SessionIngest], None] | None = None,
         on_end: Callable[[uuid.UUID], None] | None = None,
     ) -> None:
@@ -64,6 +66,7 @@ class IngestHub:
         self._sm = sessionmaker
         self._bus = bus
         self._stt = stt
+        self._embedder = embedder
         self._states: dict[uuid.UUID, SessionIngest] = {}
         self._draining: dict[uuid.UUID, datetime] = {}  # end() in progress: since when
         self._drained: dict[uuid.UUID, SessionPipeline] = {}  # the pipeline end() drains
@@ -84,6 +87,7 @@ class IngestHub:
                     sessionmaker=self._sm,
                     bus=self._bus,
                     stt=self._stt,
+                    embedder=self._embedder,
                 )
                 pipeline.start()
                 state = self._states[session_id] = SessionIngest(

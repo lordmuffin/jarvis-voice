@@ -4,7 +4,7 @@ import asyncio
 import math
 import time
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -12,6 +12,8 @@ from jarvis_live import metrics
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import SegmentRow
+from jarvis_live.diarize.client import Embedder
+from jarvis_live.diarize.livelabel import LiveLabeler
 from jarvis_live.ingest.segmenter import Segmenter, SegmenterConfig, SpeechSegment
 from jarvis_live.ingest.store import SPEAKER
 from jarvis_live.logging_setup import session_logger
@@ -30,6 +32,8 @@ class _Final:
     cut_at: float = 0.0  # when the segment was cut; 0: unknown, not timed
     held_at: float | None = None  # when a mic segment began waiting for the system channel
     stt_ms: int | None = None
+    pcm: bytes = b""  # what was transcribed, for a provisional speaker label
+    speech_ms: int = 0
 
 
 class SessionPipeline:
@@ -42,6 +46,7 @@ class SessionPipeline:
         sessionmaker: "async_sessionmaker[AsyncSession]",
         bus: Bus,
         stt: STTBackend,
+        embedder: Embedder | None = None,
     ) -> None:
         self.session_id = session_id
         self.channels = channels
@@ -50,6 +55,11 @@ class SessionPipeline:
         self._bus = bus
         self._stt = stt
         self._log = session_logger(__name__, session_id)
+        self._labeler = (
+            LiveLabeler(session_id, settings, sessionmaker, bus, embedder)
+            if embedder is not None
+            else None
+        )
         seg_cfg = SegmenterConfig(
             aggressiveness=settings.vad_aggressiveness,
             frame_ms=settings.vad_frame_ms,
@@ -82,12 +92,16 @@ class SessionPipeline:
         self._tasks = [asyncio.create_task(self._worker(c)) for c in self.channels]
         self._tasks.append(asyncio.create_task(self._releaser()))
         self._tasks.append(asyncio.create_task(self._status_loop()))
+        if self._labeler is not None:
+            self._labeler.start()
 
     async def close(self) -> None:
         for t in self._tasks:
             t.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = []
+        if self._labeler is not None:
+            await self._labeler.close()
 
     # --- input ------------------------------------------------------------------------------
 
@@ -112,6 +126,8 @@ class SessionPipeline:
             await q.join()
         async with self._lock:
             await self._release_held()
+        if self._labeler is not None:
+            await self._labeler.drain()  # before the authoritative pass reads or replaces them
 
     def pending_segments(self) -> int:
         """Speech segments cut but not yet through STT, across channels."""
@@ -187,7 +203,17 @@ class SessionPipeline:
             return
         self._prev_text[channel] = text
         stt_ms = int((time.monotonic() - began) * 1000)
-        final = _Final(channel, seg.start_ms, seg.end_ms, text, result.tier, cut_at, stt_ms=stt_ms)
+        final = _Final(
+            channel,
+            seg.start_ms,
+            seg.end_ms,
+            text,
+            result.tier,
+            cut_at,
+            stt_ms=stt_ms,
+            pcm=seg.pcm,
+            speech_ms=seg.speech_ms,
+        )
         async with self._lock:
             if channel == "system" or "system" not in self.channels:
                 await self._emit(final)
@@ -257,7 +283,7 @@ class SessionPipeline:
             )
             await db.commit()
         if f.channel == "system":
-            self._system_finals.append(f)
+            self._system_finals.append(replace(f, pcm=b""))  # kept all session: not the audio
         self._last_final_end_ms = max(self._last_final_end_ms, f.end_ms)
         self._bus.publish(
             str(self.session_id),
@@ -273,6 +299,8 @@ class SessionPipeline:
         )
         if f.cut_at:
             metrics.authoritative(f.channel, time.monotonic() - f.cut_at, waited)
+        if self._labeler is not None:
+            self._labeler.submit(seg_id, f.channel, f.pcm, f.speech_ms)
 
     # --- drafts -----------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@ from sqlalchemy import (
     BigInteger,
     CheckConstraint,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -205,6 +206,40 @@ class SessionSpeaker(Base):
     ordinal: Mapped[int] = mapped_column(Integer)
     label: Mapped[str | None] = mapped_column(Text)
     is_owner: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # This voice's print from the diarizer, and the enrolled voice it was recognised as (or
+    # named after). The print never leaves the server.
+    embedding: Mapped[list[float] | None] = mapped_column(ARRAY(Float))
+    model_id: Mapped[str | None] = mapped_column(Text)
+    profile_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("speaker_profiles.id", ondelete="SET NULL")
+    )
+
+
+class SpeakerProfile(Base):
+    """A voice a user has enrolled: "this is Andrew". Biometric data: per user, deletable, and
+    never returned by the API."""
+
+    __tablename__ = "speaker_profiles"
+    __table_args__ = (
+        UniqueConstraint("user_id", "label", name="uq_speaker_profiles_user_label"),
+        Index(
+            "uq_speaker_profiles_one_owner",
+            "user_id",
+            unique=True,
+            postgresql_where=text("is_owner"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    label: Mapped[str] = mapped_column(Text)
+    # The user themselves: their lines read "me".
+    is_owner: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    model_id: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[list[float]] = mapped_column(ARRAY(Float))
+    n_samples: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
 
 
 class SpeakerTurn(Base):

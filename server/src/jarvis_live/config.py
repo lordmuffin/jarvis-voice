@@ -71,6 +71,18 @@ class Settings(BaseSettings):
     # that the session goes on with the undiarized transcript.
     diarize_timeout_min_s: float = 60.0
     diarize_timeout_ratio: float = 0.3
+    # An enrolled voice is recognised at this cosine similarity, and only if it beats the next
+    # best enrolled voice by the margin. Depends on the embedding model: tune in Phase 0.
+    speaker_match_threshold: float = 0.6
+    speaker_match_margin: float = 0.05
+    # Provisional speakers while a session streams (needs the sidecar). A clip shorter than the
+    # minimum is not embedded: short speech gives unreliable prints. Voices closer than the
+    # cluster threshold are one speaker. Labels wait in a queue of at most `queue` clips (more
+    # are dropped), and the end of a session waits `drain_s` for them.
+    speaker_live_min_ms: int = 1000
+    speaker_live_cluster_threshold: float = 0.5
+    speaker_live_queue: int = 16
+    speaker_live_drain_s: float = 5.0
 
     # LLM (LiteLLM's OpenAI-compatible API). Empty base URL disables the copilot and finalizer.
     litellm_base_url: str = ""
