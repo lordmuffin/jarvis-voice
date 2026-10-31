@@ -183,6 +183,9 @@ class Capturer:
                 except TimeoutError:
                     proc.kill()
                     await proc.wait()
+            # A cancel can interrupt the read loop before EOF; drain so the transport closes itself.
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(proc.stdout.read(), 1)
             await asyncio.gather(err_task, return_exceptions=True)
         return produced, " | ".join(x for x in err_lines if x)
 
