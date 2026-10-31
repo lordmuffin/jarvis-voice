@@ -20,6 +20,7 @@ import { initialState, reduce, transcriptLines, type Event } from "../reducer";
 import type { SessionDetail, WorkItemPage } from "../types";
 import { watchSession } from "../ws";
 import { SessionTitle } from "./SessionTitle";
+import { SessionActions } from "./SessionActions";
 import { SessionWorkItems } from "./WorkItems";
 
 export function LiveSession({
@@ -182,6 +183,7 @@ export function LiveSession({
           onUndo={onUndo}
         />
       </Section>
+      <SessionActions sessionId={detail.id} ownerId={detail.owner.id} live />
       <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live onPage={setWork} />
       {ending !== "idle" && (
         <Dialog

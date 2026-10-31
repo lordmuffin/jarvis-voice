@@ -13,6 +13,7 @@ from jarvis_live.auth import create_device
 from jarvis_live.db.models import Device, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLMError
+from jarvis_live.notify.gotify import NotifyError
 from jarvis_live.users import create_user
 
 T = TypeVar("T", bound=BaseModel)
@@ -108,10 +109,18 @@ class Sent:
 
 
 class FakeNotifier:
+    configured = True
+
     def __init__(self) -> None:
         self.sent: list[Sent] = []
+        self.fail: str | None = None  # make ``send`` fail with this message
 
     async def notify(self, title: str, message: str, priority: int, url: str | None = None) -> None:
+        self.sent.append(Sent(title, message, priority, url))
+
+    async def send(self, title: str, message: str, priority: int, url: str | None = None) -> None:
+        if self.fail:
+            raise NotifyError(self.fail)
         self.sent.append(Sent(title, message, priority, url))
 
 

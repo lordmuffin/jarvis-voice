@@ -5,11 +5,10 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from jarvis_live.config import get_settings
-
 
 def _with_db(fn: Callable[[Any], Awaitable[int]]) -> int:
     """Run ``fn(sessionmaker)`` against the configured database."""
+    from jarvis_live.config import get_settings
     from jarvis_live.db.session import make_engine, make_sessionmaker
 
     async def go() -> int:
@@ -108,6 +107,43 @@ def _replay(args: argparse.Namespace) -> int:
     return 0
 
 
+def _actions_report(user_ref: str | None, days: int | None, as_json: bool) -> int:
+    from datetime import UTC, datetime, timedelta
+
+    from jarvis_live.actions.report import dump, production_rows, summarize
+    from jarvis_live.users import find_user
+
+    async def go(sm: Any) -> int:
+        user_id = None
+        if user_ref is not None:
+            async with sm() as db:
+                user = await find_user(db, user_ref)
+            if user is None:
+                print(f"no user {user_ref!r}", file=sys.stderr)
+                return 1
+            user_id = user.id
+        since = datetime.now(UTC) - timedelta(days=days) if days else None
+        report = summarize(await production_rows(sm, user_id=user_id, since=since))
+        print(dump(report) if as_json else "\n".join(report.render()))
+        return 0
+
+    return _with_db(go)
+
+
+def _export_transcript(session_id: str) -> int:
+    import uuid
+
+    from jarvis_live.copilot.transcript import load_lines, render_lines
+
+    async def go(sm: Any) -> int:
+        async with sm() as db:
+            lines = await load_lines(db, uuid.UUID(session_id))
+        print(render_lines(lines))
+        return 0
+
+    return _with_db(go)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jarvis-live")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -134,6 +170,20 @@ def main(argv: list[str] | None = None) -> int:
 
     sub.add_parser("migrate", help="apply database migrations")
 
+    p = sub.add_parser(
+        "actions-report",
+        help="how many proposed actions you accepted (reported, never enforced)",
+    )
+    p.add_argument("--user", help="email or id (default: everyone)")
+    p.add_argument("--days", type=int, help="only proposals from the last N days")
+    p.add_argument("--json", action="store_true")
+
+    p = sub.add_parser(
+        "export-transcript",
+        help="print a session's transcript as the action eval reads it (for tests/evals/private)",
+    )
+    p.add_argument("session_id")
+
     p = sub.add_parser("replay", help="stream a WAV file to a server as a producer")
     p.add_argument("--server", required=True)
     p.add_argument("--token", required=True)
@@ -144,7 +194,13 @@ def main(argv: list[str] | None = None) -> int:
         "--drafts", action="store_true", help="also send partial drafts, like a client does"
     )
 
+    from jarvis_live.client import capture_cli
+
+    capture_cli.add_parser(sub)
+
     args = parser.parse_args(argv)
+    if args.cmd == "capture":
+        return capture_cli.run(args)
     if args.cmd == "create-device":
         return _create_device(args.name, args.user)
     if args.cmd == "list-users":
@@ -153,7 +209,12 @@ def main(argv: list[str] | None = None) -> int:
         return _set_admin(args.user, not args.off)
     if args.cmd == "claim-owner":
         return _claim_owner(args.email)
+    if args.cmd == "actions-report":
+        return _actions_report(args.user, args.days, args.json)
+    if args.cmd == "export-transcript":
+        return _export_transcript(args.session_id)
     if args.cmd == "migrate":
+        from jarvis_live.config import get_settings
         from jarvis_live.db.session import run_migrations
 
         run_migrations(get_settings().database_url)
@@ -161,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "serve":
         import uvicorn
 
+        from jarvis_live.config import get_settings
         from jarvis_live.logging_setup import configure_logging
 
         configure_logging(get_settings().log_level)

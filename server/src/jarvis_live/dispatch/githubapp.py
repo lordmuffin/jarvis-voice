@@ -41,12 +41,13 @@ class AppTokens:
         claims = {"iat": now - 60, "exp": now + 540, "iss": self._app_id}
         return jwt.encode(claims, self._key_file.read_text(), algorithm="RS256")
 
-    async def mint(self, repo: str) -> str:
+    async def mint(self, repo: str, permissions: dict[str, str] | None = None) -> str:
+        """A token for ``repo`` alone; ``permissions`` narrows it below a dispatch run's."""
         name = repo.split("/", 1)[1]
         try:
             r = await self._client.post(
                 f"{self._api}/app/installations/{self._installation}/access_tokens",
-                json={"repositories": [name], "permissions": PERMISSIONS},
+                json={"repositories": [name], "permissions": permissions or PERMISSIONS},
                 headers={
                     "Authorization": f"Bearer {self._app_jwt()}",
                     "Accept": "application/vnd.github+json",

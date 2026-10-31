@@ -835,10 +835,16 @@ name = "jarvis-live"
 version = "0.27.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "websockets" },
+]
+
+[package.optional-dependencies]
+server = [
     { name = "alembic" },
     { name = "asyncpg" },
     { name = "fastapi" },
-    { name = "httpx" },
     { name = "numpy" },
     { name = "prometheus-client" },
     { name = "pydantic" },
@@ -847,11 +853,11 @@ dependencies = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
     { name = "webrtcvad-wheels" },
-    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "jarvis-live", extra = ["server"] },
     { name = "jsonschema" },
     { name = "mypy" },
     { name = "pytest" },
@@ -863,23 +869,25 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "alembic" },
-    { name = "asyncpg" },
-    { name = "fastapi" },
+    { name = "alembic", marker = "extra == 'server'" },
+    { name = "asyncpg", marker = "extra == 'server'" },
+    { name = "fastapi", marker = "extra == 'server'" },
     { name = "httpx" },
     { name = "numpy" },
     { name = "prometheus-client", specifier = ">=0.26.0" },
     { name = "pydantic", specifier = ">=2" },
-    { name = "pydantic-settings" },
-    { name = "pyjwt", extras = ["crypto"], specifier = ">=2.15.1" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2" },
-    { name = "uvicorn", extras = ["standard"] },
-    { name = "webrtcvad-wheels" },
+    { name = "pydantic-settings", marker = "extra == 'server'" },
+    { name = "pyjwt", extras = ["crypto"], marker = "extra == 'server'", specifier = ">=2.15.1" },
+    { name = "sqlalchemy", extras = ["asyncio"], marker = "extra == 'server'", specifier = ">=2" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'" },
+    { name = "webrtcvad-wheels", marker = "extra == 'server'" },
     { name = "websockets" },
 ]
+provides-extras = ["server"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "jarvis-live", extras = ["server"] },
     { name = "jsonschema" },
     { name = "mypy" },
     { name = "pytest" },

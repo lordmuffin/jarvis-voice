@@ -439,6 +439,7 @@ describe("polling", () => {
       can_publish: true,
       auto_publish: false,
       work_items: true,
+      actions: false,
     };
     POLL.ms = 20;
     const pages = [
