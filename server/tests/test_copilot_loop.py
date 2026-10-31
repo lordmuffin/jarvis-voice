@@ -127,7 +127,9 @@ async def test_never_concurrent_and_cancels_on_session_end(rig: Rig) -> None:
     for _ in range(3):
         await rig.clock.advance(1)
     assert rig.llm.max_active == 1 and rig.llm.calls
-    # cancel mid-LLM-call
+    # cancel mid-LLM-call: hold the next call open instead of racing its delay
+    rig.llm.gate = asyncio.Event()
+    rig.llm.started.clear()
     await rig.segs(3)
     await rig.clock.advance(1)
     for _ in range(100):  # the cycle reads the DB first; on a slow runner that outlasts a fixed nap
