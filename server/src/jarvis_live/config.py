@@ -110,6 +110,19 @@ class Settings(BaseSettings):
     public_base_url: str = ""
     stt_outage_notify_s: float = 120.0
 
+    # SLOs on the live path (see slo.py). A breach is sustained when the signal's p95 over
+    # `slo_window_s` exceeds its limit with at least `slo_min_samples` samples; it re-arms after
+    # `slo_clear_s` without one. Limits are the 2026-10-09 handoff's latency budget.
+    slo_enabled: bool = True
+    slo_window_s: float = 300.0
+    slo_min_samples: int = 8
+    slo_clear_s: float = 600.0
+    slo_authoritative_p95_s: float = 5.0  # segment cut -> published (dup-guard hold excluded)
+    slo_stt_p95_s: float = 4.0  # one Whisper request, per tier
+    slo_copilot_roundtrip_p95_s: float = 8.0
+    slo_copilot_staleness_p95_s: float = 35.0  # handoff: notes refresh in 25-35 s
+    slo_finalize_s: float = 120.0  # handoff: final note within 2 min of stop
+
     # Prometheus scrape port, separate from the app port (which the Ingress routes). 0: off.
     metrics_port: int = 0
 

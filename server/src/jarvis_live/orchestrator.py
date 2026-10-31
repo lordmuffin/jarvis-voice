@@ -24,6 +24,7 @@ from jarvis_live.ingest.retranscribe import RetranscribeFailed, retranscribe
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.processing import Job, JobSource, Stage
+from jarvis_live.slo import SloMonitor
 from jarvis_live.stt.backend import STTBackend
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.ideas import IdeasLoop, IdeasPass
@@ -64,6 +65,8 @@ class Orchestrator:
         self._transcription_failed: set[uuid.UUID] = set()  # the last reprocess could not
         self._on_final = on_final  # after a note is written (auto-publish)
         self._orphans: dict[uuid.UUID, float] = {}  # live in the DB, no ingest state: first seen
+        self._slo = SloMonitor(settings, notifier, self._clock)
+        metrics.add_observer(self._slo.observe)
         self._outage_since: float | None = None
         self._outage_notified = False
 
@@ -290,6 +293,7 @@ class Orchestrator:
         live = self._hub.live_sessions()
         metrics.sessions(len(live), max((st.pipeline.lag_ms() for st in live), default=0))
         await self._check_stt_outage(now, bool(live))
+        await self._slo.check(now, any_live=bool(live), stt_up=self._stt.current_tier() is not None)
         for st in live:
             if not st.uploading and now - st.pipeline.last_audio_at > self._cfg.idle_end_s:
                 log.info("ending idle session %s", st.session_id)
@@ -332,6 +336,7 @@ class Orchestrator:
     # --- shutdown ---------------------------------------------------------------------------
 
     async def shutdown(self) -> None:
+        metrics.remove_observer(self._slo.observe)
         tasks = [*self._copilots.values(), *self._ideas.values(), *self._finals]
         for t in tasks:
             t.cancel()
