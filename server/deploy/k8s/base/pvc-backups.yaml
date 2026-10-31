@@ -1,0 +1,23 @@
+# Nightly dumps of the database and the recordings manifest (cronjob-backup.yaml writes,
+# the app reads last_success.json). Small: a few dumps and a JSON file per night.
+#
+# It lives in the jarvis-live namespace so Velero's offsite-data schedule carries it to B2
+# with the audio: that is what gives the database an offsite copy (barman's bucket is on the
+# same NAS). Lab is excluded from Velero, so lab's backups are on-NAS only and disposable.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jarvis-live-backups
+  annotations:
+    # Never pruned by Flux: freenas-nfs-csi is reclaimPolicy Delete, so removing
+    # this object would destroy the backups.
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    app: jarvis-live
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: freenas-nfs-csi
+  resources:
+    requests:
+      storage: 10Gi
