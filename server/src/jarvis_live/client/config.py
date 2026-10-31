@@ -32,10 +32,18 @@ def state_dir(env: Mapping[str, str] = os.environ) -> Path:
     return Path(base) / "jarvis-live"
 
 
+SOCKET_PATH_LIMIT = 100  # AF_UNIX paths are limited to about 108 bytes
+
+
 def runtime_dir(env: Mapping[str, str] = os.environ) -> Path:
-    """Control socket and pid file. Plain SSH sessions on some hosts have no XDG_RUNTIME_DIR."""
+    """Control socket and pid file. Plain SSH sessions on some hosts have no XDG_RUNTIME_DIR, and
+    a very long one would not fit a unix socket path."""
+    fallback = Path(f"/tmp/jarvis-live-{os.getuid()}")  # noqa: S108
     base = env.get("XDG_RUNTIME_DIR")
-    return Path(base) / "jarvis-live" if base else Path(f"/tmp/jarvis-live-{os.getuid()}")  # noqa: S108
+    if not base:
+        return fallback
+    chosen = Path(base) / "jarvis-live"
+    return chosen if len(str(chosen / "ctl.sock")) < SOCKET_PATH_LIMIT else fallback
 
 
 @dataclass

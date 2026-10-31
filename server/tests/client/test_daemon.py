@@ -332,3 +332,52 @@ async def test_interactive_session_stays_up_after_a_recorder_failure_so_status_c
     assert "no such source" in (await _status(env))["problem"]
     await control.request(runtime_dir(env) / "ctl.sock", {"cmd": "stop"}, timeout=30)
     assert await asyncio.wait_for(task, 10) == 0
+
+
+async def test_status_says_no_audio_instead_of_recording_when_the_recorder_produces_nothing(
+    tmp_path: Path, no_network: list[str]
+) -> None:
+    from jarvis_live.client.capture import RestartPolicy
+
+    bad = script(tmp_path / "bad", "echo 'Connection refused' >&2\nexit 1\n")
+
+    async def recorder(channel: str) -> list[str]:
+        return [str(bad)]
+
+    env = _env(tmp_path)
+    d = Daemon(
+        ClientConfig(mode="local"),
+        env,
+        SessionOptions(),
+        recorder=recorder,
+        stall_s=0.3,
+        restart=RestartPolicy(initial_delay=0.05, max_delay=0.05, max_rapid=1000),
+    )
+    task = asyncio.create_task(d.run())
+
+    async def stalled() -> bool:
+        try:
+            return (await _status(env)).get("state") == "no audio"
+        except (OSError, control.ControlError):
+            return False
+
+    await _until(stalled)
+    st = await _status(env)
+    assert "Connection refused" in st["problem"]
+    await control.request(runtime_dir(env) / "ctl.sock", {"cmd": "stop"}, timeout=30)
+    await asyncio.wait_for(task, 10)
+
+
+async def test_status_is_recording_once_audio_flows(tmp_path: Path, no_network: list[str]) -> None:
+    d, env = _daemon(tmp_path, ClientConfig(mode="local"))
+    task = asyncio.create_task(d.run())
+
+    async def recording() -> bool:
+        try:
+            return (await _status(env)).get("state") == "recording"
+        except (OSError, control.ControlError):
+            return False
+
+    await _until(recording)
+    await control.request(runtime_dir(env) / "ctl.sock", {"cmd": "stop"}, timeout=30)
+    await asyncio.wait_for(task, 10)

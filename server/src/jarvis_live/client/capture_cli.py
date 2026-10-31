@@ -173,12 +173,13 @@ def _start(args: argparse.Namespace, env: Mapping[str, str]) -> int:
             print(_tail_log(log_path), file=sys.stderr)
             return EXIT_FAIL
         st = _ask(env, "status", timeout=2.0)
-        if st is not None and st.get("state") not in (None, "starting"):
-            if st["state"] == "failed":
-                print(f"jarvis-live: {st.get('problem')}", file=sys.stderr)
-                return EXIT_FAIL
+        if st is not None and st.get("state") == "recording":
             _print_started(st)
             return EXIT_OK
+        if st is not None and st.get("state") in ("failed", "no audio"):
+            print(f"jarvis-live: {st['state']}: {st.get('problem')}", file=sys.stderr)
+            _ask(env, "stop", timeout=30.0)  # don't leave a daemon running that records nothing
+            return EXIT_FAIL
         time.sleep(0.2)
     print(f"jarvis-live: timed out starting; see {log_path}", file=sys.stderr)
     return EXIT_FAIL

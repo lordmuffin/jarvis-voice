@@ -84,6 +84,7 @@ class _Run:
         self.state = "recording"
         self.error: str | None = None
         self.restarts = 0
+        self.capturers: list[capture.Capturer] = []
         self.history: collections.deque[dict[str, Any]] = collections.deque(maxlen=HISTORY)
         self.subscribers: set[asyncio.Queue[dict[str, Any] | None]] = set()
 
@@ -100,6 +101,7 @@ class Daemon:
         max_outbox_bytes: int | None = None,
         max_session_s: float | None = None,
         restart: capture.RestartPolicy = capture.RestartPolicy(),  # noqa: B008
+        stall_s: float = 5.0,
     ) -> None:
         self.cfg = cfg
         self.env = env
@@ -107,6 +109,7 @@ class Daemon:
         self._recorder = recorder
         self.end_timeout = end_timeout
         self._restart = restart
+        self.stall_s = stall_s
         self.exit_code = 0
         self.max_outbox_bytes = max_outbox_bytes or cfg.max_outbox_mb * 1024 * 1024
         self.max_session_s = max_session_s or cfg.max_session_hours * 3600
@@ -232,6 +235,7 @@ class Daemon:
             )
             for c in channels
         ]
+        run.capturers = capturers
         cap_tasks = [asyncio.create_task(c.run()) for c in capturers]
         sink.start()
         pump = asyncio.create_task(self._pump(run))
@@ -322,11 +326,12 @@ class Daemon:
         if run is None:
             return {**base, "state": "starting", "session": None}
         sid = run.meta["id"]
+        state, problem = self._audio_state(run)
         unacked = sum(run.outbox.unacked_duration_ms(c) for c in CHANNELS)
         return {
             **base,
-            "state": run.state,
-            "problem": run.error,
+            "state": state,
+            "problem": problem,
             "session": sid,
             "title": run.meta.get("title"),
             "started_at": run.meta["started_at"],
@@ -337,6 +342,20 @@ class Daemon:
             "dashboard_url": None if local else f"{self.cfg.server}/sessions/{sid}",
             "restarts": run.restarts,
         }
+
+    def _audio_state(self, run: _Run) -> tuple[str, str | None]:
+        """``recording`` only while audio is actually arriving; otherwise say why not."""
+        if run.state != "recording":
+            return run.state, run.error
+        now = time.monotonic()
+        newest = max((c.last_frame_at for c in run.capturers if c.last_frame_at), default=None)
+        if newest is not None and now - newest <= self.stall_s:
+            return "recording", None
+        since_start = time.time() - run.meta["started_at"]
+        if newest is None and since_start <= self.stall_s:
+            return "waiting for audio", None
+        problem = next((c.last_error for c in run.capturers if c.last_error), None)
+        return "no audio", problem or "the recorder is not producing audio"
 
     async def _handle(self, msg: dict[str, Any], send: control.Send) -> None:
         cmd = msg.get("cmd")

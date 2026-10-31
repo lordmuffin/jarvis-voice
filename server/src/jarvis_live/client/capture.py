@@ -122,6 +122,7 @@ class Capturer:
         self._on_frame = on_frame
         self.restarts = 0
         self.last_error: str | None = None
+        self.last_frame_at: float | None = None  # time.monotonic() of the newest stored frame
 
     async def run(self) -> None:
         t0 = self._clock() - self._start_ms / 1000
@@ -187,6 +188,7 @@ class Capturer:
 
     def _store(self, pcm: bytes, t_ms: int) -> int:
         frame = self.outbox.append(self.channel, pcm, t_ms=t_ms)
+        self.last_frame_at = time.monotonic()
         if self._on_frame:
             self._on_frame(frame)
         return frame.duration_ms

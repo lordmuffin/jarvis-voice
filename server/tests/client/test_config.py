@@ -70,3 +70,11 @@ def test_paths_follow_xdg_with_a_tmp_fallback_for_the_runtime_dir(tmp_path: Path
     bare = {"HOME": str(tmp_path)}
     assert cfg.runtime_dir(bare) == Path(f"/tmp/jarvis-live-{os.getuid()}")
     assert cfg.state_dir(bare) == tmp_path / ".local" / "state" / "jarvis-live"
+
+
+def test_runtime_dir_falls_back_when_the_socket_path_would_be_too_long(tmp_path: Path) -> None:
+    deep = tmp_path / ("x" * 90)
+    env = {"HOME": str(tmp_path), "XDG_RUNTIME_DIR": str(deep)}
+    chosen = cfg.runtime_dir(env)
+    assert chosen == Path(f"/tmp/jarvis-live-{os.getuid()}")
+    assert len(str(chosen / "ctl.sock")) < 100  # AF_UNIX allows about 108 bytes

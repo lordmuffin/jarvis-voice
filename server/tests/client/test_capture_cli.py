@@ -172,3 +172,14 @@ async def test_configure_does_not_persist_environment_overrides(box: Box) -> Non
     assert res.returncode == 0
     saved = (box.root / "cfg" / "jarvis-live" / "client.toml").read_text()
     assert "from-the-environment" not in saved
+
+
+async def test_start_reports_a_dead_audio_source_instead_of_claiming_to_capture(box: Box) -> None:
+    script(box.root / "bin" / "parec", "echo 'pa_context_connect() failed' >&2\nexit 1\n")
+    try:
+        res = await box.jl("capture", "start", "--local-only", timeout=60)
+        assert res.returncode == 1
+        assert "no audio" in res.stderr and "pa_context_connect() failed" in res.stderr
+        assert "capturing" not in res.stdout
+    finally:
+        await _cleanup(box)
