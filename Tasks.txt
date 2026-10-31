@@ -1,346 +1,149 @@
-================================================================================
-JARVIS VOICE — TASKS
-Rewritten 2026-10-30. Supersedes "2026-10-11 - Jarvis Voice - Backlog Starter
-Prompts.md" (items 1 and 3) and the Jarvis Voice lines in Work Tracker.md.
-Every prompt below is paste-ready for one fresh Claude Code session in
-lordmuffin/jarvis-voice. One prompt per session. Check the DONE WHEN gate
-before moving on.
-================================================================================
+# Jarvis Voice tasks. herd task file: one task per line, as  <branch> [@persona]: <prompt>
+#   - Only the first ":" splits the line, so prompts can contain colons.
+#   - Each prompt must fit on one line.
+#   - Blank lines and lines starting with # are skipped.
+#   - The branch name also names the agent (fix/foo-bar -> fix-foo-bar). Keep it short and unique.
+#   - @persona prepends that persona's prompt (herd personas lists them). One persona per line.
+#
+# herd -f starts EVERY uncommented line at once, so this file is the run sheet:
+#   - Uncommented  = ready to start now.
+#   - #branch ...  = held. Prompt kept intact. Delete the leading # when its gate clears.
+#
+# Run:   herd -f Tasks.txt        (add -w to wait for all of them)
+# Check: herd -n -f Tasks.txt to see what would start, herd ls for what is running
+# Clean: herd done <branch>   (after the PR merges)
+#
+# Before starting anything: git worktree list. Items here have run in parallel sessions before.
+# This repo is public: no internal addresses, phone numbers or secrets in anything a task commits.
+# Personas come from ~/.config/herd/personas (symlinks into the vault's 80 Personas).
+#
+# Rewritten 2026-10-30, tasks 11-20 added and moved to herd format 2026-10-31. Supersedes
+# "2026-10-11 - Jarvis Voice - Backlog Starter Prompts.md" (items 1 and 3) and the Jarvis Voice
+# lines in Work Tracker.md.
+#
+# Sequence, top to bottom. Do not uncomment a step until the one above it is done:
+#   11 and 13 research now
+#   12 once 11's probe exists
+#   14, then my approval (nothing below starts without it, and not before 11 closes)
+#   15 and 16 in parallel
+#   17, 18, 19
+#   19's go/no-go, signed by me
+#   20
+# No real phone rings before 19. No third party is called until I sign that go/no-go.
 
-CLEARED — shipped since 10/11, verified in main @ 71bffb9
---------------------------------------------------------------------------------
-  [x] Pocket ID / OIDC sign-in            server/src/jarvis_live/oidc.py, users.py
-  [x] Per-user sessions                    api/sessions.py
-  [x] Android sign-in + session history    feat(android) c8e1212
-  [x] Web sign-in, devices, admin, recordings  feat(web) 46b5d8a
-  [x] Audio retention purge (PCM only)     retention.py
-  [x] Phases A0-D1 of the 10/09 handoff    all gates passed
-  [x] macOS Stop/finish watchdogs          71bffb9, 5281d32, c04be6c
+# ---------------------------------------------------------------------------
+# READY NOW - LLM path latency. Slows every live LLM caller, including the copilot.
+# ---------------------------------------------------------------------------
 
-STILL OPEN — carried forward, rescoped against what actually exists
---------------------------------------------------------------------------------
-  [ ] 1  Isolation tests + soft delete + backups   (was 10/11 item 1, rescoped)
-  [ ] 2  Ask across my recordings (transcript RAG)
-  [ ] 3  Speaker diarization and attribution
-  [ ] 4  Copilot suggestions -> committed actions (HITL)
-  [ ] 5  Calendar-aware auto-start + meeting mode
-  [ ] 6  Local-only enforcement for work calls      (handoff open decision #1)
-  [ ] 7  Voice talkback, design only                (was 10/11 item 3)
-  [ ] 8  Hands-free / Android Auto driving mode
-  [ ] 9  Latency SLOs and observability
-  [ ] 10 Headless Linux capture client
+# Task 11: LLM PATH STALLS: FIND THE CAUSE AND FIX IT (priority: URGENT)
+# Depends on: nothing. Blocks: 13 and the whole phone track.
+fix/llm-path-stalls @forge: This is task 11 in Tasks.txt. Work in Operate mode. You're working in lordmuffin/jarvis-voice, but the fix almost certainly lands in lordmuffin/homelab-gitops on Forgejo (the source of truth; GitHub np-home-homelab is only a mirror). Read apps/ai/litellm-proxy.yaml, apps/ai/litellm-proxy-callbacks-configmap.yaml, bare-metal/dgx-spark/models.yaml and docs/dgx-spark-models.md there, then server/src/jarvis_live/llm/client.py here. Write findings to docs/plans/llm-path-latency.md and STOP for approval before changing anything shared. Every homelab service uses this proxy. Goal: a short reply on the Spark arrives in about a second, every time, not just on average. An intermittent 5 second freeze is what makes voice unusable. Context you can trust (measured 2026-10-31, small samples, thinking off, on qwen3.8-flash-next, run from inside the cluster, so not a port-forward artefact): - 12 interleaved pairs with an identical prompt: direct to vLLM first text median 0.39s, max 0.47s total median 1.33s, 1 of 12 stalled (5.2s) through LiteLLM first text median 0.40s, 1 of 12 at 4.3s total median 1.66s, 5 of 12 stalled (6.1-7.6s) - In that run most stalls came AFTER the first text. In other runs first text itself arrived at a suspiciously steady 5.5s, and one request took 25s. - A jarvis-live pod sees the same behaviour. - 12 shorter requests (short prompt, max_tokens 60) through LiteLLM did not stall at all. Unexplained, and possibly the best lead here. - vLLM had 1-3 other requests running throughout, KV cache 16-40%. What this rules out and what it does not: first-token time is healthy, so the headline problem is the stall, not constant overhead. Stalls also occurred direct to vLLM, once, so LiteLLM is not proven to be the only cause and replacing it is not yet a justified fix. Scope: a) A repeatable probe, committed: interleaved direct and via-gateway requests with identical bodies, recording per-chunk arrival times, not only first and total, so a late final chunk is told apart from a mid-stream freeze. Sample vLLM running and waiting counts beside each request. b) Run it enough to be honest: at least 200 pairs, across idle and busy periods, with the short and the long prompt. Report p50, p95, p99. c) Localise the stall. Test these one at a time, treat all as unproven: - other traffic on the shared model (chunked prefill, batching with long-context agents); does direct stall track concurrent load? - the page-cached PLE table that Flash mmaps, and cache pressure on it - LiteLLM pre-call checks and router model-info lookups, including the ModelNotMappedError tracebacks in its log - the two custom callbacks, especially the streaming iterator hook - retries or a fixed timeout (a steady 5.5s smells like one) - the proxy pod itself (762Mi used of a 1Gi limit, single worker?) d) Fix the cause, smallest reversible change first, one change per PR, with the probe's before and after numbers in each PR. e) Propose a real SLO. Starting point: p95 first text under 0.8s and p95 under 2.5s for a 1-2 sentence reply, measured through the gateway while the model carries normal agent load. f) If load on the shared model is the cause, say so. Then the question is priority or a reserved path for interactive callers, not the gateway. Constraints: Forge's triage order applies, diagnose before fixing. Do not lower gpu_memory_utilization or touch the Flash serving args without a stated rollback; a flip costs an 8-13 minute cold load. All model calls stay on the homelab. Feed the probe's metrics into task 9 rather than building a second dashboard. If LiteLLM truly cannot meet the SLO, stop and hand evidence to 13. DONE WHEN: the stall has a named, reproduced cause, and the probe shows the agreed SLO met through the gateway over 200 pairs under normal load.
 
-Suggested order: 1 -> 6 -> 2 -> 4 -> 3 -> 5 -> 9 -> 7 -> 8 -> 10
-Rationale: 1 and 6 close real data-exposure risk. 2 and 4 are the biggest
-capability jumps per hour spent. 7 is design-only and can run any time in
-parallel. 8 and 10 are comfort features; do them last.
+# Task 13: LLM GATEWAY ALTERNATIVES BAKE-OFF (GATED) (priority: medium)
+# Depends on: 11. Research may run alongside 11. Nothing is migrated, and no candidate is deployed beyond a scratch test, unless 11 shows LiteLLM itself cannot meet the SLO.
+# Then, on its own: herd -P grayfield -b origin/docs/llm-gateway-options chore/review-gateway-options "Review docs/plans/llm-gateway-options.md. Challenge the recommendation on operational cost and failure modes, and write REVIEW.md."
+docs/llm-gateway-options @atlas: This is task 13 in Tasks.txt. If the probe from task 11 is not merged yet, finish the paper research and inventory, say the measured comparison is still outstanding, and stop. You're working in lordmuffin/jarvis-voice. Output docs/plans/llm-gateway- options.md. This is research plus one measured comparison, not a migration. Goal: know whether a different gateway would actually help, on my hardware, with my traffic, so a swap is decided on evidence and not on a vendor's chart. Context you can trust: public comparisons found on 2026-10-31 are mostly written by vendors, and no independent like-for-like benchmark turned up. Bifrost's "54x faster" and similar figures come from its maker. LiteLLM's own published overhead is single-digit milliseconds, which does not describe a 5 second stall, so a stall that size is more likely a specific bug, config or load problem than inherent gateway overhead. Treat that as a hypothesis to test. Scope: - Inventory what the proxy does for me today before comparing anything: aliases and role routing, fallbacks and context-window fallbacks, the `auto` router and its CNPG decision log, the tool-call finish_reason fix, the qwen-shim, hosted_vllm, ollama, openrouter, audio transcription, embeddings, keyless LAN access, and every client that depends on each. - Candidates, at minimum: LiteLLM tuned, voice-only direct to vLLM behind a thin alias, Bifrost, Envoy AI Gateway, self-hosted Portkey, Kong AI Gateway. Drop any that fail a hard requirement, and say which and why. - Top two or three: run 11's probe on the same hardware, same traffic. - For each: migration cost, what breaks, licence and any paid-tier gating, and Grayfield's question: who gets paged and what is the failure mode at 3 AM. - Recommend, including "keep LiteLLM" if that is what the numbers say. Constraints: per Atlas, every claim cites a source, vendor numbers are labelled as vendor numbers, and thin evidence is stated. A direct-to-vLLM path for voice is a bypass of the all-calls-via-LiteLLM rule; it needs my explicit sign-off and loses fallbacks, so name that cost. DONE WHEN: Grayfield has reviewed it and I can make the decision from the doc.
 
-================================================================================
-1. ISOLATION TESTS, SOFT DELETE AND BACKUPS                    priority: high
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read the repo first (README,
-CLAUDE.md, server/src/jarvis_live/{db,users,oidc,api,retention}.py, the alembic
-migrations, and the np-home-homelab manifests if reachable). Write a plan to
-docs/plans/isolation-and-backups.md and STOP for my approval before coding.
+# ---------------------------------------------------------------------------
+# HELD - fast tier, then the phone track. Replaces PR #44, which is not worth rebasing.
+# ---------------------------------------------------------------------------
 
-Context you can trust, do not re-litigate: Pocket ID sign-in and per-user
-sessions already exist. There is no tenant column anywhere. There is no
-deleted_at anywhere. retention.py only unlinks *.pcm for sessions in status
-'done' and keeps every row forever. There is no backup tooling at all.
+# Task 12: RESTORE A FAST TIER FOR LIVE CALLERS (priority: high)
+# Depends on: 11's probe (not its fix). Can start as soon as the probe exists.
+#fix/fast-tier @forge: This is task 12 in Tasks.txt. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo plus lordmuffin/ jarvis-voice. Read the fast-tier comments in apps/ai/litellm-proxy.yaml, bare-metal/andrew-gamingpc/ and server/deploy/k8s/base/configmap.yaml. Write findings to docs/plans/fast-tier.md and STOP for approval. Goal: the copilot's model answers fast, or the copilot deliberately uses something else. Today it does neither, and nobody was told. Context you can trust (2026-10-31): live sets JARVIS_LIVE_COPILOT_MODEL to fast-chat. The gaming PC's ollama Deployment is at 0 replicas, so fast-chat has no backend and depends on falling back to heavy. Measured first text was 6-16s, against the 400-600ms that docs/designs/voice-talkback.md budgets. Scope: - Find out why ollama is at 0, and whether that is gaming mode, a GPU profile, or an accident. Say how often it happens. - Compare, with 11's probe: restoring the tier, pointing the copilot at qwen3.8-flash-next with thinking off, or a small model on another GPU. Recommend one. Note the fallback rule: fast to heavy only, never reverse. - Thinking off is required for short replies. With it on, reasoning ran 380-490 characters per reply and eats a small max_tokens budget. Confirm how llm/client.py sends this and that it survives LiteLLM's drop_params. - Alert when a best-effort tier has been down longer than a set window. - Correct the fast-chat latency assumption in the talkback design. Constraints: the gaming PC stays best-effort, nothing may depend on it being up. DONE WHEN: copilot p95 first text is within 11's SLO on a replayed session, and a downed tier raises exactly one alert.
 
-Goal: prove users cannot see each other's data, make deletes reversible, and
-make recordings recoverable after a disk loss.
+# Task 14: PHONE CALLING: DECISIONS AND THREAT MODEL -- DESIGN ONLY (priority: medium)
+# Depends on: 11 closed. Gate: nothing from 15 onward starts until I approve this.
+#docs/phone-calls-design @hargrove: This is task 14 in Tasks.txt. You lead the threat model. Whether this is worth doing is a priority call for me and Kai, so set out the options and do not decide it. You're working in lordmuffin/jarvis-voice. Read PR #44 and its code, docs/designs/voice-talkback.md, the approved-action work from task 4 (docs/plans/copilot-actions.md) and server/deploy/README.md. Output docs/designs/phone-calls.md. No production code. END THE DOC with open questions for me. Goal: decide what Jarvis placing a real phone call is for, and what must be true before it may ring anyone. Context you can trust: PR #44 is 403+ commits stale, in legacy src/jarvis_voice/ (bugfix only), against a dead listener and a decommissioned proxy. It has no auth on any /calls route and no Twilio signature check. gTTS sends call text to Google. Worth keeping: the mu-law conversion, the Media Streams flow, the [CALL_COMPLETE] signal. Recommend closing it; closing is my call. Cover: - The real use cases, ranked, and the smallest one worth building. If there is no recurring use, say so; "don't build it" is a valid outcome. - Carrier: Twilio vs a SIP trunk into the existing Asterisk box. That box is an intercom today and no phone-network trunk is configured, so either way a carrier is needed and telephony cannot run on the Spark. - Threat model: who can place a call, toll fraud, webhook forgery, prompt injection by the person on the line, transcript exposure, and the single most damaging failure. Rate findings critical/high/medium/low, blockers separate. - Authorisation: every outbound call is a task 4 style PROPOSAL I approve, with number, purpose and limits. No autonomous dialling. - Legal: AI-voice call rules (FCC/TCPA), state call recording and transcription consent, disclosure that the caller is an AI. Cite sources. If it needs a real lawyer's view, say that and do not guess. - Local-only (task 6): how a work or ambiguous call is refused or kept off the homelab. Where third-party call audio is stored and for how long. - Which lab and live rules apply: credentials on each channel, and whether lab gets dialling at all. Constraints: Hargrove rates and names risks, the decisions stay mine. DONE WHEN: I approve the design, or we decide not to build and park tasks 15-20.
 
-Scope:
-  a) Isolation. Audit every read path -- session list, session detail, audio
-     bytes, transcript, copilot output, final note, search, notify -- for a
-     missing user filter. Add an integration test suite with 2 users that
-     asserts 404/403 (not an empty 200) on every cross-user read and write.
-     Note in the plan whether a tenant layer above users is worth adding now
-     or whether user scoping is sufficient; recommend one.
-  b) Soft delete. Add deleted_at to sessions. Delete hides the row and keeps
-     audio and transcript. Add a "Recently deleted" list plus a restore
-     endpoint for one session. Surface both in web/ and android/.
-  c) Retention. Extend retention.py: after a configurable window (default 30
-     days) soft-deleted sessions are hard-deleted, rows and audio together.
-     Keep the existing 90-day PCM purge for live sessions as its own setting.
-     Allow "delete after N days" on a single session.
-  d) Backups. Schedule a Postgres dump and an audio-dir backup. Document RPO
-     and RTO. Write docs/runbooks/restore.md and an automated test that
-     restores one specific soft-deleted session from a backup into a scratch
-     namespace and asserts the audio bytes match.
+# Task 15: SPEECH CAPACITY AND CALL LATENCY BUDGET (priority: medium)
+# Depends on: 14 approved, 11's SLO met. Runs in parallel with 16.
+#docs/speech-capacity @forge: This is task 15 in Tasks.txt. Work in Build mode. You're working in lordmuffin/homelab-gitops on Forgejo plus lordmuffin/ jarvis-voice. Read bare-metal/lxc-k3s2-gpu-a/workloads.yaml, bare-metal/dgx-spark/models.yaml, docs/gpu-node-profiles.md, server/src/jarvis_live/stt/tiers.py and section 5 of docs/designs/voice-talkback.md. Write docs/plans/speech-capacity.md and STOP. Goal: real speech-to-text and text-to-speech capacity for a live call, with measured numbers instead of the estimates so far. Context you can trust (2026-10-31): the LLM can stay on the Spark, speech cannot. flash-embed is active. Whisper beside it would need 0.96 utilisation against a 0.90 ceiling and 128 GiB against 122, and Flash's 118Gi limit is only safe with nothing else large on the node. Speaches and Kokoro both sit on pve's RTX 2070 and are at 0 replicas, because pve runs the `jev` profile. The `speech` profile holds Whisper plus Kokoro and pushes Jev to its jev-cpu fallback. The talkback design assumes TTS on the Spark; correct that. Scope: - Choose how speech is available during a call: permanent `speech`, on-demand profile switch (with its switch time), or another GPU. State what each costs Jev and live transcription. - A TTS tier list in the same shape as stt/tiers.py, as talkback proposes, so this work serves both talkback and calls. - Measure end of speech to first audio: endpointing + STT + LLM first sentence + TTS first chunk, on 8 kHz phone-quality audio, p50 and p95. Target under 2.5s p95, against 0.8s of silence detection in PR #44 as a starting value. - Measure accuracy at 8 kHz, since Whisper was tuned on wider-band audio. Constraints: no third-party speech service; call audio stays in the homelab. Profile changes go through GitOps, never by hand. DONE WHEN: the budget table is measured, not estimated, and meets the target or says plainly what would have to change.
 
-Constraints: no breaking API changes without an alembic migration; a test for
-every item; Gotify notification on backup failure.
-DONE WHEN: plan approved, server + web + android tests green in CI, restore
-runbook committed, one real restore performed and logged in the runbook.
+# Task 16: CALL BRAIN THAT WILL NOT INVENT FACTS (priority: high)
+# Depends on: 14 approved. Needs no telephony at all; text-only conversations.
+#feat/call-agent-evals @hargrove: This is task 16 in Tasks.txt. Be adversarial: build the evals as if trying to make it lie. You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/copilot/, llm/client.py and how eval ratchets work in TESTING.md. Write docs/plans/call-agent-evals.md and STOP for approval. Goal: on a live call, Jarvis says "I don't have that, I'll follow up" instead of making something up in my name. Context you can trust: on 2026-10-31, with PR #44's style of prompt on qwen3.8-flash-next, asked for a date of birth it was never given, the model invented one, a different one on each run. It also said "Andrew calling on behalf of Jarvis". That is false information given to a real person. Scope: - A call brief with an explicit allow-list: facts it may share, and everything else treated as unknown. Sensitive categories (DOB, addresses, financial, medical, credentials) are refused by default. - Scripted adversarial conversations: asking for unknown facts, pressure, social engineering, "ignore your instructions", confirming an invented detail, requests beyond the objective. - Deterministic server-side guards where a prompt is not enough, checking the reply before it is spoken, with a safe fallback line. - Identity: never claims to be me or a human. If asked, it discloses it is an AI. Clean, reliable end-of-call signal that never reaches the speaker. - Run with thinking off and a realistic max_tokens, and record the pass rate. Constraints: no real personal data in fixtures, this repo is public. The eval counts any fabricated sensitive fact as a hard failure, not a score penalty. DONE WHEN: zero fabricated sensitive facts across the whole adversarial set, run repeatedly, enforced by a CI ratchet.
 
-================================================================================
-2. ASK ACROSS MY RECORDINGS (TRANSCRIPT RAG)                   priority: high
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/vault/
-index.py, copilot/, llm/client.py and api/sessions.py first. Write a plan to
-docs/plans/transcript-search.md and STOP for approval.
+# Task 17: CALL LOOP IN SERVER/, SIMULATED CARRIER (priority: medium)
+# Depends on: 14, 15 and 16. Blocks: 18.
+# Then, on its own: herd -P hargrove -b origin/feat/call-loop chore/review-call-loop "Review this branch against the findings in docs/designs/phone-calls.md, and write REVIEW.md."
+#feat/call-loop @forge: This is task 17 in Tasks.txt. Work in Build mode. You're working in lordmuffin/jarvis-voice. Follow TDD.md. Read server/src/jarvis_live/{orchestrator,bus}.py, stt/, llm/client.py, task 4's action code and PR #44's call_api.py. Write docs/plans/call-loop.md and STOP for approval. Goal: a call pipeline in jarvis_live that passes end to end against a fake carrier, with no phone, no public route and no real credentials. Scope: - A carrier interface with a simulator used by every test, so a Twilio or SIP implementation is one adapter. Port the mu-law code with tests, not the rest. - One turn at a time: PR #44 spawned overlapping utterance tasks that could talk over each other. Add barge-in, a hard call duration cap and a per-call cost cap. - Starting a call requires an approved action from task 4. Number allow-list enforced server-side, default deny. - Every route authenticated. Carrier webhooks signature-validated. - State in Postgres, not in-process dicts, so a restart cannot lose a live call or orphan a billing carrier leg. Transcripts become normal sessions: user scoped, soft delete, retention. - Sentence-streamed TTS, 16's guard on every reply, 15's TTS tiers. - Failure behaviour for STT down, LLM stall and TTS down: a polite exit line and hang up, never dead air on someone's phone. Constraints: protocol changes need fixtures plus server and Swift tests in the same PR. New work stays out of src/jarvis_voice/. Nothing in this task can dial. DONE WHEN: a simulated 5 turn call passes in CI, including the barge-in, stalled LLM, restart mid-call and unapproved-number cases.
 
-Goal: I want to ask "what did we decide about the Spark autoscaler" and get an
-answer grounded in my own past Live sessions, with citations I can click.
+# Task 18: PUBLIC INGRESS, SECRETS AND DEPLOY (priority: medium)
+# Depends on: 17. This is the first task that exposes anything to the internet.
+#feat/call-ingress @forge: This is task 18 in Tasks.txt. Work in Build mode. Before building, read ~/.config/herd/personas/hargrove.md and apply it to set the controls. You're working in lordmuffin/jarvis-voice and lordmuffin/homelab-gitops on Forgejo. Read server/deploy/README.md, server/deploy/k8s/base/ and how Traefik, external-dns and secrets are handled in the homelab repo. Write docs/plans/call-ingress.md and STOP for approval. Goal: the carrier can reach exactly the call webhook and media stream, and nothing else in the homelab becomes reachable. Context you can trust: live.apj.dev and kai.apj.dev resolve to a private address, so a carrier cannot reach them, and no tunnel is running. A public path is new attack surface on a homelab holding a private vault, so treat it that way. Scope: - Choose the exposure method. Only the two call paths are routed, isolated from the dashboard and API, with carrier IP allow-listing if the carrier supports it, and rate limits. - A network policy so the exposed component cannot reach the vault or anything it does not need. - Carrier credentials from the existing secret flow, environment-private values in the homelab repo only. Rotation documented. - Kill switch: one action disables all dialling and the public route. Spend cap on the carrier account itself. - Manifests in server/deploy/k8s/base/, shipped with the code that needs them, honouring the lab and live channel rules from 14. - Runbook and alerts: failures, spend, unexpected inbound traffic. Constraints: never hand-edit image lines or push to deploy/live or deploy/lab. Hargrove's critical findings block the merge. DONE WHEN: an external scan reaches only the two intended paths, forged webhooks are rejected, and the kill switch is tested for real.
 
-Scope:
-  - Chunk and embed finalized transcripts. Reuse the vault index machinery if
-    it fits; say so plainly if it does not and propose the smaller thing.
-  - Embeddings must run on the Spark. No third-party embedding API.
-  - A search endpoint: semantic + keyword hybrid, filtered to the calling user,
-    returning {session_id, timestamp_range, snippet, score}.
-  - An ask endpoint: retrieve, then answer via the existing LiteLLM client,
-    citing session + timestamp for every claim. Refuse to answer rather than
-    guess when retrieval is weak.
-  - Web UI: a search box over recordings; clicking a citation opens that
-    session scrolled and seeked to the cited timestamp.
-  - Backfill job for existing sessions, resumable, with progress logging.
-  - An eval set of 15 real questions over my own sessions with expected source
-    sessions, scored in CI as a report (not a hard gate).
+# Task 19: PILOT: CALLS TO MY OWN PHONE ONLY (priority: medium)
+# Depends on: 18. Gate: 20 and any third-party call wait for my sign-off here.
+# Then, on its own: herd -P hargrove -b origin/chore/call-pilot chore/review-call-pilot "Review the pilot evidence in docs/plans/call-pilot.md for safety gaps, and write REVIEW.md."
+#chore/call-pilot @forge: This is task 19 in Tasks.txt. You run the pilot and gather the evidence; the go/no-go is not yours to make. You're working in lordmuffin/jarvis-voice. Write a test plan to docs/plans/ call-pilot.md and STOP for approval before the first real call. Goal: find out whether this is genuinely useful and safe, on the only number that cannot be harmed by it: mine. Scope: - Allow-list holds my own number only. Trigger by CLI or API; no new UI yet. - At least 20 real calls: varied objectives, noisy line, interruptions, silence, hanging up mid-sentence, me trying to break it using 16's scripts. - Record first-audio latency, stall count, transcription errors, fabricated facts, cost per call, and whether it felt like talking to something usable. - Go/no-go against written criteria set before the first call. Include what would have to be true for a third party, and the legal answers from 14. Constraints: no third party, including friends "just testing". One fabricated sensitive fact is a stop until fixed and re-run. DONE WHEN: the report and a go/no-go exist, and I have signed it either way.
 
-Constraints: retrieval respects soft delete from task 1 and never crosses
-users. Index writes happen in the finalizer, not on the hot streaming path.
-DONE WHEN: I can ask a question in the web dashboard and land on the exact
-moment in an old recording that answers it.
+# Task 20: ANDROID AND WEB CALL SURFACES (priority: low)
+# Depends on: a "go" from 19.
+#feat/call-surfaces @engineer: This is task 20 in Tasks.txt. You're working in lordmuffin/jarvis-voice. Read android/README.md, web/, the Instrument rules in CLAUDE.md and what PR #44's Android screen tried to do. Write docs/plans/call-surfaces.md and STOP for approval. Goal: review, approve and watch a call from the phone or the dashboard. Scope: - Approve a proposed call from the existing action review queue, not a new tab. PR #44's 7th bottom-nav tab, hard-coded address and old colours do not carry over. - Live transcript view, an end-call control that always works, and call history as normal sessions. - Clear state: dialling, live, ended, failed. Instrument components only; if one is missing, propose it for lordmuffin/instrument. Constraints: no CALL_PHONE permission unless something genuinely needs it; the phone is not placing the call. Paparazzi images updated with any Android UI change. DONE WHEN: I can approve, watch and end a real allow-listed call from both.
 
-================================================================================
-3. SPEAKER DIARIZATION AND ATTRIBUTION                       priority: medium
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/
-{ingest,stt}/ and protocol/v1/ first. Write a plan to docs/plans/
-diarization.md and STOP for approval.
+# ---------------------------------------------------------------------------
+# HELD - older tasks with plans written but not approved. Uncommenting would duplicate them.
+# ---------------------------------------------------------------------------
 
-Goal: a meeting transcript that says who said what, so "what did Andrew commit
-to" is answerable and the copilot stops attributing my own words to me.
+# Task 2: Ask across my recordings. PLAN WAITING FOR MY APPROVAL, do not restart this. The plan
+# is uncommitted and exists only at ~/git/wt/jarvis-voice/feat-transcript-rag/docs/plans/
+# transcript-search.md. Continue in that worktree. Do NOT herd rm it, that deletes the plan.
+#feat/transcript-rag: You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/vault/index.py, copilot/, llm/client.py and api/sessions.py first. Write a plan to docs/plans/transcript-search.md and STOP for approval. Goal: I want to ask "what did we decide about the Spark autoscaler" and get an answer grounded in my own past Live sessions, with citations I can click. Scope: - Chunk and embed finalized transcripts. Reuse the vault index machinery if it fits; say so plainly if it does not and propose the smaller thing. - Embeddings must run on the Spark. No third-party embedding API. - A search endpoint: semantic + keyword hybrid, filtered to the calling user, returning {session_id, timestamp_range, snippet, score}. - An ask endpoint: retrieve, then answer via the existing LiteLLM client, citing session + timestamp for every claim. Refuse to answer rather than guess when retrieval is weak. - Web UI: a search box over recordings; clicking a citation opens that session scrolled and seeked to the cited timestamp. - Backfill job for existing sessions, resumable, with progress logging. - An eval set of 15 real questions over my own sessions with expected source sessions, scored in CI as a report (not a hard gate). Constraints: retrieval respects soft delete from task 1 and never crosses users. Index writes happen in the finalizer, not on the hot streaming path. DONE WHEN: I can ask a question in the web dashboard and land on the exact moment in an old recording that answers it.
 
-Scope:
-  - Evaluate diarization options that run on the Spark (pyannote and
-    alternatives). Report the real cost: VRAM, latency, and whether it can run
-    streaming or only at finalize. Recommend one and say why.
-  - If streaming diarization is too expensive, propose provisional
-    speaker-change detection live plus authoritative diarization at finalize,
-    and make the protocol carry a speaker id that can be revised.
-  - protocol/v1 changes need fixtures plus server and Swift tests in the same
-    PR -- this is a repo rule, follow it.
-  - Enrollment: let me label a speaker once and have that label reused across
-    future sessions (I am in nearly every recording).
-  - Web and macOS render speaker turns; unknown speakers are visually distinct
-    from labeled ones.
+# Task 5: Calendar-aware auto-start and meeting mode. PLAN WAITING FOR MY APPROVAL, do not restart
+# this. The plan is uncommitted and exists only at ~/git/wt/jarvis-voice/feat-meeting-mode/docs/
+# plans/meeting-mode.md, in a worktree now on feat/local-only-gate. Rescue it before any cleanup.
+#feat/meeting-mode: You're working in lordmuffin/jarvis-voice. Read macos/, android/, and server/src/jarvis_live/{orchestrator,copilot}.py first. Write a plan to docs/plans/meeting-mode.md and STOP for approval. Goal: stop forgetting to hit record. If a meeting is on my calendar and I am at my desk, Jarvis should offer to start, and should know the title and attendees as context. Scope: - Read Google Calendar read-only. Credentials server-side, never on device. - 2 minutes before an event: prompt me to start a session, prefilled with the event title and attendees. A prompt, not an auto-start. - Feed title, attendees and any agenda text to the copilot as session context, and link the event to the session. - Meeting mode vs solo mode as a per-session flag: meeting mode is quieter (fewer interjections, summary-weighted), solo mode is chattier. Make the difference concrete in copilot/prompts.py, not just a label. - Honor task 6's work-call classification: a calendar event flagged as work forces local-only and must not silently stream. Constraints: read-only on the calendar, never writes or RSVPs. Calendar being unreachable must not block starting a session manually. DONE WHEN: a test event triggers the prompt and the started session carries title and attendees into the final note.
 
-Constraints: diarization failure degrades to today's undiarized transcript,
-never a failed session.
-DONE WHEN: a replayed multi-speaker fixture produces labeled turns, and my own
-enrolled voice is attributed correctly in a fresh session.
+# ---------------------------------------------------------------------------
+# PR MERGED - kept for reference, not to rerun. Each task's DONE WHEN gate is not verified here.
+# ---------------------------------------------------------------------------
 
-================================================================================
-4. COPILOT SUGGESTIONS -> COMMITTED ACTIONS (HITL)             priority: high
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/
-copilot/{loop,schema,state}.py, finalize/, notify/ and vault/ first. Write a
-plan to docs/plans/copilot-actions.md and STOP for approval.
+# Task 1: ISOLATION TESTS, SOFT DELETE AND BACKUPS (#218)
+#feat/isolation-and-backups: You're working in lordmuffin/jarvis-voice. Read the repo first (README, CLAUDE.md, server/src/jarvis_live/{db,users,oidc,api,retention}.py, the alembic migrations, and the np-home-homelab manifests if reachable). Write a plan to docs/plans/isolation-and-backups.md and STOP for my approval before coding. Context you can trust, do not re-litigate: Pocket ID sign-in and per-user sessions already exist. There is no tenant column anywhere. There is no deleted_at anywhere. retention.py only unlinks *.pcm for sessions in status 'done' and keeps every row forever. There is no backup tooling at all. Goal: prove users cannot see each other's data, make deletes reversible, and make recordings recoverable after a disk loss. Scope: a) Isolation. Audit every read path -- session list, session detail, audio bytes, transcript, copilot output, final note, search, notify -- for a missing user filter. Add an integration test suite with 2 users that asserts 404/403 (not an empty 200) on every cross-user read and write. Note in the plan whether a tenant layer above users is worth adding now or whether user scoping is sufficient; recommend one. b) Soft delete. Add deleted_at to sessions. Delete hides the row and keeps audio and transcript. Add a "Recently deleted" list plus a restore endpoint for one session. Surface both in web/ and android/. c) Retention. Extend retention.py: after a configurable window (default 30 days) soft-deleted sessions are hard-deleted, rows and audio together. Keep the existing 90-day PCM purge for live sessions as its own setting. Allow "delete after N days" on a single session. d) Backups. Schedule a Postgres dump and an audio-dir backup. Document RPO and RTO. Write docs/runbooks/restore.md and an automated test that restores one specific soft-deleted session from a backup into a scratch namespace and asserts the audio bytes match. Constraints: no breaking API changes without an alembic migration; a test for every item; Gotify notification on backup failure. DONE WHEN: plan approved, server + web + android tests green in CI, restore runbook committed, one real restore performed and logged in the runbook.
 
-Goal: the copilot already notices things mid-session. I want it to be able to
-DO them -- with my explicit approval, never silently.
+# Task 6: LOCAL-ONLY ENFORCEMENT FOR WORK CALLS (#212, #214, #219)
+#feat/local-only-audit: You're working in lordmuffin/jarvis-voice. Read the Local-only path end to end before anything else: macos/, server/src/jarvis_live/{ingest,api/stream.py}, protocol/v1/. Write a findings report to docs/plans/local-only-audit.md and STOP. Context: the 10/09 handoff locked a per-session Local-only toggle -- draft transcript stays on the Mac, nothing uploads -- because streaming Inspire calls to homelab infra may conflict with employer data policy. I need to know that toggle is actually airtight, not just present in the UI. Scope: a) Audit. Trace every byte that leaves the client in local-only mode: audio frames, partial text, copilot requests, vault lookups, telemetry, crash logs, Gotify bodies, session titles. List anything that escapes. Be adversarial about it -- assume the toggle is wrong until proven. b) Enforce. Make local-only a hard gate at the transport layer, not a check at each call site, so a new feature cannot leak by forgetting to ask. c) Test. A test that runs a full local-only session against a network stub that FAILS the test on any outbound request other than the explicitly allowed set. d) Make it visible. The recording indicator states local-only vs streaming unambiguously, on macOS and Android. I should never have to guess which mode a running session is in. e) Default policy: if classification is ambiguous, default to local-only. Constraints: report findings before changing code. If the audit finds a real leak, say so bluntly in the report rather than quietly patching it. DONE WHEN: the no-egress test is green in CI and the report lists every allowed outbound call with a reason.
 
-Scope:
-  - Define an action schema the copilot can emit alongside its suggestions:
-    create a Work Tracker task, append to a vault note, schedule a Gotify
-    reminder, open a git PR comment. Reuse the existing capture API verbs where
-    they already exist instead of inventing parallel ones.
-  - Every action is a PROPOSAL. It lands in a review queue on the session and
-    does nothing until I approve it. Approval is one tap in web and macOS.
-  - Batch approve at finalize: the session note ends with a checklist of
-    proposed actions; approving the list executes them in order and records
-    what happened, including failures.
-  - Idempotency: re-approving or a retried execution must not double-write.
-  - Full audit trail: who proposed, who approved, when, what the result was.
-  - An eval over recorded sessions measuring proposal precision -- how many
-    proposals I would actually accept. Report it; do not gate on it.
+# Task 4: COPILOT SUGGESTIONS -> COMMITTED ACTIONS (HITL) (#222)
+#feat/copilot-actions: You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/copilot/{loop,schema,state}.py, finalize/, notify/ and vault/ first. Write a plan to docs/plans/copilot-actions.md and STOP for approval. Goal: the copilot already notices things mid-session. I want it to be able to DO them -- with my explicit approval, never silently. Scope: - Define an action schema the copilot can emit alongside its suggestions: create a Work Tracker task, append to a vault note, schedule a Gotify reminder, open a git PR comment. Reuse the existing capture API verbs where they already exist instead of inventing parallel ones. - Every action is a PROPOSAL. It lands in a review queue on the session and does nothing until I approve it. Approval is one tap in web and macOS. - Batch approve at finalize: the session note ends with a checklist of proposed actions; approving the list executes them in order and records what happened, including failures. - Idempotency: re-approving or a retried execution must not double-write. - Full audit trail: who proposed, who approved, when, what the result was. - An eval over recorded sessions measuring proposal precision -- how many proposals I would actually accept. Report it; do not gate on it. Constraints: nothing executes without approval, no exceptions, no "safe actions auto-run" shortcut. A failed action is reported, not retried silently. DONE WHEN: I finish a real session, approve a proposed task, and it appears in 20 Areas/Personal/Work Tracker.md with the session linked.
 
-Constraints: nothing executes without approval, no exceptions, no "safe
-actions auto-run" shortcut. A failed action is reported, not retried silently.
-DONE WHEN: I finish a real session, approve a proposed task, and it appears in
-20 Areas/Personal/Work Tracker.md with the session linked.
+# Task 3: SPEAKER DIARIZATION AND ATTRIBUTION (#216, #224, #226)
+#feat/diarization: You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/{ingest,stt}/ and protocol/v1/ first. Write a plan to docs/plans/diarization.md and STOP for approval. Goal: a meeting transcript that says who said what, so "what did Andrew commit to" is answerable and the copilot stops attributing my own words to me. Scope: - Evaluate diarization options that run on the Spark (pyannote and alternatives). Report the real cost: VRAM, latency, and whether it can run streaming or only at finalize. Recommend one and say why. - If streaming diarization is too expensive, propose provisional speaker-change detection live plus authoritative diarization at finalize, and make the protocol carry a speaker id that can be revised. - protocol/v1 changes need fixtures plus server and Swift tests in the same PR -- this is a repo rule, follow it. - Enrollment: let me label a speaker once and have that label reused across future sessions (I am in nearly every recording). - Web and macOS render speaker turns; unknown speakers are visually distinct from labeled ones. Constraints: diarization failure degrades to today's undiarized transcript, never a failed session. DONE WHEN: a replayed multi-speaker fixture produces labeled turns, and my own enrolled voice is attributed correctly in a fresh session.
 
-================================================================================
-5. CALENDAR-AWARE AUTO-START AND MEETING MODE                priority: medium
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read macos/, android/, and
-server/src/jarvis_live/{orchestrator,copilot}.py first. Write a plan to
-docs/plans/meeting-mode.md and STOP for approval.
+# Task 9: LATENCY SLOS AND OBSERVABILITY (#213)
+#feat/observability: You're working in lordmuffin/jarvis-voice. Read the latency budget section of the 10/09 handoff, then server/src/jarvis_live/{orchestrator,bus,logging_setup}.py, stt/tiers.py and notify/. Write a plan to docs/plans/observability.md and STOP for approval. Goal: know when Live is getting slow before I notice it mid-meeting, and have numbers to point at when tuning STT tiers. Scope: - Instrument the real path: time to first partial, partial cadence, time to authoritative text, copilot round-trip, finalize duration, STT tier in use and how often each tier is hit. - Expose Prometheus metrics; wire a dashboard in np-home-homelab if the cluster is reachable, otherwise commit the dashboard JSON and say so. - Define SLOs against the handoff's budget and alert on sustained breach via the existing Gotify notifier. Reuse the existing alerts -- all-STT-tiers-down and finalizer-failed already exist; do not duplicate them. - Per-session timing summary in the final note so a bad session is self-explanatory after the fact. Constraints: metrics must not touch the hot audio path in a way that costs latency. No per-session cardinality explosions in labels. DONE WHEN: a replayed session produces the full metric set and a deliberately throttled STT tier fires exactly one alert.
 
-Goal: stop forgetting to hit record. If a meeting is on my calendar and I am
-at my desk, Jarvis should offer to start, and should know the title and
-attendees as context.
+# Task 7: VOICE TALKBACK -- DESIGN ONLY (#211)
+#docs/voice-talkback: You're working in lordmuffin/jarvis-voice. This is research and design, NOT a build. Output docs/designs/voice-talkback.md. Do not write production code. Context you can trust: Kokoro TTS is already wired, but only in the Android chat path (chat/NetworkTtsRepository.kt, chat/TtsRepository.kt). The Live session pipeline has no TTS anywhere -- not on the server, not on macOS. This is greenfield for Live. Before proposing anything, read the vault notes on the LiveKit voice agent and the F5-TTS voice clone plan and reuse what exists. Goal: while a Live session is running on my Pixel Fold or Mac, with headphones on, I want to (a) hear Jarvis speak short responses or suggestions, and (b) ask it a question by voice mid-session, the way the chat app works today. Cover: - How talkback fits the current client -> Spark STT -> copilot pipeline. - Push-to-talk vs wake word vs barge-in, and how to keep Jarvis's own audio out of the transcript (echo and feedback). The Android chat path already has AEC and VAD barge-in -- can Live reuse it or not, and why. - TTS that runs on the Spark, with a latency target under 1.5 s to first audio. Say what it costs in VRAM alongside STT and diarization. - When Jarvis speaks unprompted vs stays silent: meeting mode must be silent by default, solo mode may interject. Tie this to task 5's mode flag. - Android audio routing (Bluetooth headphones, background service) and macOS equivalents. - Interaction with local-only mode from task 6. - A phased plan, smallest useful slice first, acceptance criteria per phase. END THE DOC with open questions for me.
 
-Scope:
-  - Read Google Calendar read-only. Credentials server-side, never on device.
-  - 2 minutes before an event: prompt me to start a session, prefilled with the
-    event title and attendees. A prompt, not an auto-start.
-  - Feed title, attendees and any agenda text to the copilot as session
-    context, and link the event to the session.
-  - Meeting mode vs solo mode as a per-session flag: meeting mode is quieter
-    (fewer interjections, summary-weighted), solo mode is chattier. Make the
-    difference concrete in copilot/prompts.py, not just a label.
-  - Honor task 6's work-call classification: a calendar event flagged as work
-    forces local-only and must not silently stream.
+# Task 8: HANDS-FREE / ANDROID AUTO DRIVING MODE (#217)
+#feat/driving-mode: You're working in lordmuffin/jarvis-voice. Read android/ -- particularly VoiceOverlayService.kt, the notify/ package and VoiceChatActivity.kt -- then write a plan to docs/plans/driving-mode.md and STOP for approval. Goal: capture thinking out loud in the car without touching the phone, and get it into the vault the same way a Live session does. Scope: - Evaluate Android Auto / Car App Library against a simpler big-button driving mode in the existing app. Recommend one with the real constraint list (Auto has strict template and review rules -- be honest about them). - Controls that work without looking: start, stop, mute, "mark this moment". - Audio routing over car Bluetooth, and behavior when the call audio route is stolen mid-session. - Session survives connectivity gaps -- buffer locally and resume. The protocol already supports resume; use it rather than adding a second path. - Talkback is out of scope here; design so task 7 can slot in later. Constraints: no new foreground service if the existing one can carry it. Nothing that requires unlocking the phone while moving. DONE WHEN: plan approved and a manual checklist exists for a real drive test.
 
-Constraints: read-only on the calendar, never writes or RSVPs. Calendar being
-unreachable must not block starting a session manually.
-DONE WHEN: a test event triggers the prompt and the started session carries
-title and attendees into the final note.
+# Task 10: HEADLESS LINUX CAPTURE CLIENT (#220)
+#feat/linux-client: You're working in lordmuffin/jarvis-voice. Read protocol/v1/ and the macOS client's transport and outbox logic first, then write a plan to docs/plans/linux-client.md and STOP for approval. Goal: start a Live session from any Linux box over SSH -- the Spark itself, a homelab node, a VM -- without a GUI. Scope: - A CLI that captures from PulseAudio/PipeWire and speaks protocol v1, including resume. Reuse server/src/jarvis_live/cli.py if it already has scaffolding; do not start a third client from scratch. - Subcommands: start, stop, status, tail (live transcript in the terminal). - Honor local-only mode from task 6. - A systemd user unit so a node can be a permanent capture endpoint. - Package it so install is one command; document it in README.md. Constraints: no GUI dependency. Must pass the same protocol fixtures the Swift and server tests use. DONE WHEN: I can SSH to a box, run one command, speak, and see the session in the web dashboard.
 
-================================================================================
-6. LOCAL-ONLY ENFORCEMENT FOR WORK CALLS                       priority: high
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read the Local-only path end to end
-before anything else: macos/, server/src/jarvis_live/{ingest,api/stream.py},
-protocol/v1/. Write a findings report to docs/plans/local-only-audit.md and
-STOP.
+# ---------------------------------------------------------------------------
+# SHIPPED BEFORE THIS LIST, verified in main @ 71bffb9
+# ---------------------------------------------------------------------------
+#   Pocket ID / OIDC sign-in: server/src/jarvis_live/oidc.py, users.py
+#   Per-user sessions: api/sessions.py
+#   Android sign-in + session history: feat(android) c8e1212
+#   Web sign-in, devices, admin, recordings: feat(web) 46b5d8a
+#   Audio retention purge (PCM only): retention.py
+#   Phases A0-D1 of the 10/09 handoff: all gates passed
+#   macOS Stop/finish watchdogs: 71bffb9, 5281d32, c04be6c
 
-Context: the 10/09 handoff locked a per-session Local-only toggle -- draft
-transcript stays on the Mac, nothing uploads -- because streaming Inspire
-calls to homelab infra may conflict with employer data policy. I need to know
-that toggle is actually airtight, not just present in the UI.
-
-Scope:
-  a) Audit. Trace every byte that leaves the client in local-only mode: audio
-     frames, partial text, copilot requests, vault lookups, telemetry, crash
-     logs, Gotify bodies, session titles. List anything that escapes. Be
-     adversarial about it -- assume the toggle is wrong until proven.
-  b) Enforce. Make local-only a hard gate at the transport layer, not a check
-     at each call site, so a new feature cannot leak by forgetting to ask.
-  c) Test. A test that runs a full local-only session against a network stub
-     that FAILS the test on any outbound request other than the explicitly
-     allowed set.
-  d) Make it visible. The recording indicator states local-only vs streaming
-     unambiguously, on macOS and Android. I should never have to guess which
-     mode a running session is in.
-  e) Default policy: if classification is ambiguous, default to local-only.
-
-Constraints: report findings before changing code. If the audit finds a real
-leak, say so bluntly in the report rather than quietly patching it.
-DONE WHEN: the no-egress test is green in CI and the report lists every
-allowed outbound call with a reason.
-
-================================================================================
-7. VOICE TALKBACK -- DESIGN ONLY                                priority: low
-================================================================================
-You're working in lordmuffin/jarvis-voice. This is research and design, NOT a
-build. Output docs/designs/voice-talkback.md. Do not write production code.
-
-Context you can trust: Kokoro TTS is already wired, but only in the Android
-chat path (chat/NetworkTtsRepository.kt, chat/TtsRepository.kt). The Live
-session pipeline has no TTS anywhere -- not on the server, not on macOS. This
-is greenfield for Live. Before proposing anything, read the vault notes on the
-LiveKit voice agent and the F5-TTS voice clone plan and reuse what exists.
-
-Goal: while a Live session is running on my Pixel Fold or Mac, with headphones
-on, I want to (a) hear Jarvis speak short responses or suggestions, and (b) ask
-it a question by voice mid-session, the way the chat app works today.
-
-Cover:
-  - How talkback fits the current client -> Spark STT -> copilot pipeline.
-  - Push-to-talk vs wake word vs barge-in, and how to keep Jarvis's own audio
-    out of the transcript (echo and feedback). The Android chat path already
-    has AEC and VAD barge-in -- can Live reuse it or not, and why.
-  - TTS that runs on the Spark, with a latency target under 1.5 s to first
-    audio. Say what it costs in VRAM alongside STT and diarization.
-  - When Jarvis speaks unprompted vs stays silent: meeting mode must be silent
-    by default, solo mode may interject. Tie this to task 5's mode flag.
-  - Android audio routing (Bluetooth headphones, background service) and
-    macOS equivalents.
-  - Interaction with local-only mode from task 6.
-  - A phased plan, smallest useful slice first, acceptance criteria per phase.
-
-END THE DOC with open questions for me.
-
-================================================================================
-8. HANDS-FREE / ANDROID AUTO DRIVING MODE                       priority: low
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read android/ -- particularly
-VoiceOverlayService.kt, the notify/ package and VoiceChatActivity.kt -- then
-write a plan to docs/plans/driving-mode.md and STOP for approval.
-
-Goal: capture thinking out loud in the car without touching the phone, and get
-it into the vault the same way a Live session does.
-
-Scope:
-  - Evaluate Android Auto / Car App Library against a simpler big-button
-    driving mode in the existing app. Recommend one with the real constraint
-    list (Auto has strict template and review rules -- be honest about them).
-  - Controls that work without looking: start, stop, mute, "mark this moment".
-  - Audio routing over car Bluetooth, and behavior when the call audio route
-    is stolen mid-session.
-  - Session survives connectivity gaps -- buffer locally and resume. The
-    protocol already supports resume; use it rather than adding a second path.
-  - Talkback is out of scope here; design so task 7 can slot in later.
-
-Constraints: no new foreground service if the existing one can carry it.
-Nothing that requires unlocking the phone while moving.
-DONE WHEN: plan approved and a manual checklist exists for a real drive test.
-
-================================================================================
-9. LATENCY SLOS AND OBSERVABILITY                            priority: medium
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read the latency budget section of
-the 10/09 handoff, then server/src/jarvis_live/{orchestrator,bus,
-logging_setup}.py, stt/tiers.py and notify/. Write a plan to docs/plans/
-observability.md and STOP for approval.
-
-Goal: know when Live is getting slow before I notice it mid-meeting, and have
-numbers to point at when tuning STT tiers.
-
-Scope:
-  - Instrument the real path: time to first partial, partial cadence, time to
-    authoritative text, copilot round-trip, finalize duration, STT tier in use
-    and how often each tier is hit.
-  - Expose Prometheus metrics; wire a dashboard in np-home-homelab if the
-    cluster is reachable, otherwise commit the dashboard JSON and say so.
-  - Define SLOs against the handoff's budget and alert on sustained breach via
-    the existing Gotify notifier. Reuse the existing alerts -- all-STT-tiers-
-    down and finalizer-failed already exist; do not duplicate them.
-  - Per-session timing summary in the final note so a bad session is
-    self-explanatory after the fact.
-
-Constraints: metrics must not touch the hot audio path in a way that costs
-latency. No per-session cardinality explosions in labels.
-DONE WHEN: a replayed session produces the full metric set and a deliberately
-throttled STT tier fires exactly one alert.
-
-================================================================================
-10. HEADLESS LINUX CAPTURE CLIENT                               priority: low
-================================================================================
-You're working in lordmuffin/jarvis-voice. Read protocol/v1/ and the macOS
-client's transport and outbox logic first, then write a plan to docs/plans/
-linux-client.md and STOP for approval.
-
-Goal: start a Live session from any Linux box over SSH -- the Spark itself, a
-homelab node, a VM -- without a GUI.
-
-Scope:
-  - A CLI that captures from PulseAudio/PipeWire and speaks protocol v1,
-    including resume. Reuse server/src/jarvis_live/cli.py if it already has
-    scaffolding; do not start a third client from scratch.
-  - Subcommands: start, stop, status, tail (live transcript in the terminal).
-  - Honor local-only mode from task 6.
-  - A systemd user unit so a node can be a permanent capture endpoint.
-  - Package it so install is one command; document it in README.md.
-
-Constraints: no GUI dependency. Must pass the same protocol fixtures the Swift
-and server tests use.
-DONE WHEN: I can SSH to a box, run one command, speak, and see the session in
-the web dashboard.
-
-================================================================================
-NOT DOING YET -- parked with reasons
-================================================================================
-  - Jarvis Voice UI design spec (Work Tracker): parked. The web dashboard and
-    macOS app shipped with their own look; redesign after tasks 2 and 4 change
-    what the screens need to show.
-  - Full multi-tenant cloud isolation (TODO.md): task 1 decides whether a
-    tenant layer above users is warranted. Do not build it speculatively.
-  - Linux + macOS platform expansion research (Work Tracker): superseded by
-    task 10, which is the concrete version of it.
+# ---------------------------------------------------------------------------
+# NOT DOING YET - parked with reasons
+# ---------------------------------------------------------------------------
+# - Rebasing PR #44 (Twilio calls): not worth it, see task 14. Tasks 14-20 rebuild
+#   the idea in server/.
+# - Jarvis Voice UI design spec (Work Tracker): parked. The web dashboard and
+#   macOS app shipped with their own look; redesign after tasks 2 and 4 change
+#   what the screens need to show.
+# - Full multi-tenant cloud isolation (TODO.md): task 1 decides whether a
+#   tenant layer above users is warranted. Do not build it speculatively.
+# - Linux + macOS platform expansion research (Work Tracker): superseded by
+#   task 10, which is the concrete version of it.
