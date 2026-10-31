@@ -107,6 +107,7 @@ class Capturer:
         outbox: Outbox,
         *,
         frame_ms: int = FRAME_MS,
+        start_ms: int = 0,
         clock: Callable[[], float] = time.monotonic,
         restart: RestartPolicy = RestartPolicy(),  # noqa: B008
         on_frame: Callable[[StoredFrame], None] | None = None,
@@ -115,6 +116,7 @@ class Capturer:
         self.channel = channel
         self.outbox = outbox
         self.frame_ms = frame_ms
+        self._start_ms = start_ms
         self._clock = clock
         self._restart = restart
         self._on_frame = on_frame
@@ -122,12 +124,12 @@ class Capturer:
         self.last_error: str | None = None
 
     async def run(self) -> None:
-        t0 = self._clock()
-        timeline_end = 0
+        t0 = self._clock() - self._start_ms / 1000
+        timeline_end = self._start_ms
         rapid = 0
         first = True
         while True:
-            base = 0 if first else max(timeline_end, int((self._clock() - t0) * 1000))
+            base = self._start_ms if first else max(timeline_end, int((self._clock() - t0) * 1000))
             first = False
             started = time.monotonic()
             produced_ms, stderr = 0, ""
@@ -180,6 +182,7 @@ class Capturer:
                 except TimeoutError:
                     proc.kill()
                     await proc.wait()
+            await asyncio.gather(err_task, return_exceptions=True)
         return produced, " | ".join(x for x in err_lines if x)
 
     def _store(self, pcm: bytes, t_ms: int) -> int:

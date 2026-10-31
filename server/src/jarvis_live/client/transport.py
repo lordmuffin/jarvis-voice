@@ -133,6 +133,10 @@ class ProducerConnection:
             return False
         return self.state == "ended"
 
+    async def wait_closed(self) -> None:
+        """Returns when the connection ended, failed, or was stopped."""
+        await self._done.wait()
+
     async def stop(self) -> None:
         """Drop the connection without ending the session; the outbox stays resumable."""
         if self._task is not None:
@@ -327,6 +331,16 @@ def session_create_body(title: str | None, *, meeting: bool, system: bool) -> di
     return body
 
 
+async def create_session(server: str, token: str, body: dict[str, object]) -> str:
+    """``POST /v1/sessions``; returns the new session id."""
+    async with httpx.AsyncClient(
+        base_url=server.rstrip("/"), headers={"Authorization": f"Bearer {token}"}, timeout=15
+    ) as c:
+        r = await c.post("/v1/sessions", json=body)
+    r.raise_for_status()
+    return str(r.json()["id"])
+
+
 def _after(acked: int | None) -> int:
     return 0 if acked is None else acked + 1
 
@@ -346,6 +360,7 @@ __all__ = [
     "ProducerConnection",
     "ReconnectPolicy",
     "State",
+    "create_session",
     "make_hello",
     "parse_server_message",
     "session_create_body",

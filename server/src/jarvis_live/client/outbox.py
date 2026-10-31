@@ -54,6 +54,8 @@ class _Channel:
         self.index = index
         self.entries = entries
         self.pcm_end = pcm_end
+        self.acked_idx = 0  # entries[:acked_idx] are acked
+        self.unacked_bytes = sum(e.len for e in entries)
 
 
 class Outbox:
@@ -78,6 +80,8 @@ class Outbox:
             loaded = json.loads(acked_file.read_text())
             self._acked = {c: loaded.get(c) for c in CHANNELS}
         self._channels = {c: self._open_channel(c) for c in CHANNELS}
+        for c in CHANNELS:
+            self._advance_acked(c)
 
     @classmethod
     def reopen(cls, session_id: str, root: Path, **kwargs: int) -> "Outbox":
@@ -130,9 +134,7 @@ class Outbox:
         return total // BYTES_PER_MS
 
     def unacked_bytes(self) -> int:
-        return sum(
-            e.len for c in CHANNELS for e in self._channels[c].entries if e.seq >= self._floor(c)
-        )
+        return sum(self._channels[c].unacked_bytes for c in CHANNELS)
 
     # --- writes ---------------------------------------------------------------------------
 
@@ -162,6 +164,7 @@ class Outbox:
         )
         state.index.flush()
         state.pcm_end += len(pcm)
+        state.unacked_bytes += len(pcm)
         state.entries.append(entry)
         return StoredFrame(channel, seq, t_ms, pcm)
 
@@ -172,6 +175,7 @@ class Outbox:
         if current is not None and seq <= current:
             return
         self._acked[channel] = seq
+        self._advance_acked(channel)
         tmp = self.directory / "acked.json.tmp"
         tmp.write_text(json.dumps(self._acked))
         tmp.replace(self.directory / "acked.json")
@@ -189,6 +193,16 @@ class Outbox:
             raise OutboxError(f"unknown channel {channel!r}")
         return self._channels[channel]
 
+    def _advance_acked(self, channel: str) -> None:
+        state, acked = self._channels[channel], self._acked[channel]
+        while (
+            acked is not None
+            and state.acked_idx < len(state.entries)
+            and state.entries[state.acked_idx].seq <= acked
+        ):
+            state.unacked_bytes -= state.entries[state.acked_idx].len
+            state.acked_idx += 1
+
     def _floor(self, channel: str) -> int:
         acked = self._acked[channel]
         return 0 if acked is None else acked + 1
@@ -204,6 +218,8 @@ class Outbox:
         state.index.truncate(0)
         state.entries = []
         state.pcm_end = 0
+        state.acked_idx = 0
+        state.unacked_bytes = 0
 
     def _open_channel(self, channel: str) -> _Channel:
         pcm_path = self.directory / f"{channel}.pcm"
