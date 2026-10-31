@@ -39,6 +39,10 @@ class FakeLLM:
     delay_s: float = 0.0
     active: int = 0
     max_active: int = 0
+    # Set a ``gate`` to hold every new call until it is set (or the call is cancelled);
+    # ``started`` fires as each call begins, so tests can wait on it instead of sleeping.
+    gate: asyncio.Event | None = None
+    started: asyncio.Event = field(default_factory=asyncio.Event)
 
     def queue(self, schema: str, *items: Any) -> "FakeLLM":
         self.responses.setdefault(schema, []).extend(items)
@@ -57,7 +61,10 @@ class FakeLLM:
         self.calls.append(LLMCall(model, system, user, schema.__name__, think))
         self.active += 1
         self.max_active = max(self.max_active, self.active)
+        self.started.set()
         try:
+            if self.gate is not None:
+                await self.gate.wait()
             if self.delay_s:
                 await asyncio.sleep(self.delay_s)
             q = self.responses.get(schema.__name__)
