@@ -10,7 +10,7 @@ from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import CopilotLoop
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta, NoteUpsert, SuggestionIn
-from jarvis_live.db.models import CopilotItem
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLMError
 from jarvis_live.protocol import Copilot, Related, Status
@@ -78,7 +78,8 @@ class Rig:
 
 @pytest.fixture
 async def rig(sm: SM) -> Rig:
-    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}")
+    # The owner's session: only it sees the owner's vault (see test_related_only_for_the_owner).
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
     sid = await make_session(sm, device_id)
     llm = FakeLLM().queue("CopilotDelta", CopilotDelta())
     r = Rig(sm, sid, llm, FakeVault())
