@@ -1,13 +1,16 @@
 # LLM path stalls: findings and proposed changes
 
-Status: **cause named and reproduced. Stopped for approval before any Flash change.**
-Task 11 in `Tasks.txt`. Measured 2026-10-31 on `qwen3.8-flash-next`, from inside the cluster.
+Status: **cause named and reproduced. Normal load measured: the SLO is missed by a wide margin.
+Stopped for approval before any Flash change.**
+Task 11 in `Tasks.herd`. Measured 2026-10-31 on `qwen3.8-flash-next`, from inside the cluster.
 
-The task is not done: the SLO is met on an idle engine, not under normal load.
+The task is not done: the SLO is met on an idle engine only.
 
 ## Answer
 
-There are two causes. Only the first is reproduced.
+There are two stall causes, and only the first is reproduced. Under normal load, a third wait is
+larger than either: **new requests queue for a place on a full engine.** See
+[Normal load](#normal-load).
 
 **1. A long prompt freezes every stream on the model (reproduced).** The engine prefills at a steady
 2,420 tokens/s. With `--max-num-batched-tokens 8192`, one chunk takes 3.4 s, and every request on
@@ -91,8 +94,55 @@ measure of load:
 | Direct | 50 | 4.94 / 19.82 / 34.16 | 10.57 / 29.34 / 38.24 |
 | Gateway | 50 (3 errors) | 6.70 / 14.10 / 19.67 | 14.44 / 39.07 / 53.02 |
 
-**Not yet measured: normal agent load since the move.** That is the number that decides how much of
-the old stall is gone, and the first thing to run.
+The normal-load run below supports this: with agents running, 1 of 59 long gaps ended in a burst.
+
+## Normal load
+
+Run 14:15 to 16:15, agents running, probe and LiteLLM both on `agent-d`. It reached the 2-hour cap
+with 97 gateway and 96 direct requests, so **it falls short of the 200 pairs asked for.** Each
+request took so long that the sample could not grow. Seconds:
+
+| Prompt | Path | n | Timed out | First text p50 / p95 / p99 | Total p50 / p95 / p99 |
+|---|---|---|---|---|---|
+| Short, 60 | Direct | 50 | 1 | 20.55 / 71.78 / 117.82 | 26.85 / 145.78 / 147.88 |
+| Short, 60 | Gateway | 50 | 4 | 18.05 / 96.73 / 98.31 | 20.87 / 110.33 / 134.05 |
+| Long, 200 | Direct | 46 | 0 | 6.02 / 104.47 / 110.17 | 14.96 / 107.64 / 113.50 |
+| Long, 200 | Gateway | 47 | 0 | 13.51 / 74.46 / 119.92 | 18.99 / 82.46 / 153.97 |
+
+These percentiles understate the wait. They leave out the 5 requests that hit the probe's 120 s read
+timeout, and no request could show a first text later than that.
+
+- **The SLO failed on every measure.** Gateway short: first text p95 96.73 s against 0.8 s, total
+  p95 110.33 s against 2.5 s, worst gap p99 20.01 s against 1 s, errors 4 of 97 (4.1%) against 0.5%.
+  None of the 193 requests met the first text, total and gap targets together.
+- **The queue is the largest part.** Gateway short requests wait a median 18.05 s for first text,
+  then a median 2.96 s for the rest. 75 of 97 gateway requests saw a request waiting (`waiting_max`
+  above 0) while they ran.
+- **The engine was full, not just busy.** Over 2 hours of 10 s samples: 7.4 requests running on
+  average, against `--max-num-seqs 8`, with requests waiting in 90% of samples and KV cache above
+  90% in 59%.
+- **With no queue, it still misses.** Gateway requests that saw no waiting: first text p50 1.21 s and
+  p95 4.20 s, total p50 4.61 s (long, n=18). Short had only n=4 (first text p50 0.53 s, worst 3.00 s).
+- **Load varies.** First text p50 was 17 to 69 s for 105 minutes, then 1.27 s in the last 15, with
+  nothing waiting. Any before-and-after comparison must note which of these it landed in.
+- **A 60 s client timeout would fail often.** 43 of 193 requests took 60 s or more, including the
+  timeouts. 60 s is the default in `LiteLLMClient`.
+
+Gateway against direct, the condition for reopening a LiteLLM replacement:
+
+| Measure | Gateway | Direct | Difference, 95% CI | Fisher p |
+|---|---|---|---|---|
+| Errors | 4 of 97 | 1 of 96 | -2.2 to +9.1 points | 0.37 |
+| Any stall | 84 of 97 | 77 of 96 | -4.2 to +16.9 points | 0.25 |
+| Mid-stream gap | 32 of 97 | 25 of 96 | -5.9 to +19.5 points | 0.34 |
+| First text stall | 73 of 97 | 73 of 96 | -12.8 to +11.3 points | 1.00 |
+
+All four intervals include zero, so the condition is not met. They are wide: this sample cannot rule
+out a gateway error rate several points worse than direct.
+
+**Not covered: the voice-shaped arm.** This run was streaming, thinking off, on Flash. Voice sends
+`fast-chat`, non-streaming, with a JSON schema and thinking as sent today. That arm was not run, so
+step 1 is only part done, and this clears nothing about the `fast-chat` route.
 
 ## Hypotheses
 
@@ -119,6 +169,8 @@ Through the gateway, per 200 pairs, under normal agent load:
 
 Worst gap is my addition, because p95 alone can hide the freeze that makes voice unusable.
 
+Under normal load today, none of these targets is met. See [Normal load](#normal-load).
+
 A catch: a 1,800-token prompt idles at first text p95 0.86 s and total 1.91 s, so it misses the first
 target with nothing else running. If voice sends that much context, either the target or the
 prompt has to change.
@@ -139,29 +191,38 @@ speed, by an unknown amount, and agents will slow down. Chunks may also be const
 hybrid model's block alignment. So tuning may reach the SLO only near its edge, and only for requests
 already running.
 
+**Step 3 alone cannot reach the SLO under this load.** It shortens the gaps, but the median 18 s
+wait for first text is the queue, and a smaller chunk does not give a queued request a place.
+
 ## Proposed next steps, for approval
 
-Nothing here has been done. One change per PR, with probe numbers before and after.
+Nothing here has been changed. One change per PR, with probe numbers before and after. Step numbers
+match `Tasks.herd`.
 
 | # | Change | Restarts Flash? | Rollback |
 |---|---|---|---|
-| 1 | Measure normal load now: 200 pairs with agents running, probe off `server-d` | No | None needed |
+| 1 | Normal load. **Part done:** the streaming arm ran, 97 of 200 gateway requests. The voice-shaped arm did not | No | None needed |
 | 2 | Scrape vLLM into Prometheus and feed Task 9 (no `vllm:*` series exist) | No | Revert the scrape config |
 | 3 | Lower `--max-num-batched-tokens` to 1024, then measure agents and voice | **Yes, 8-13 min** | Restore 8192, with a second cold load |
 | 4 | `--scheduling-policy priority`, for the capacity queue | **Yes, 8-13 min** | Remove the flag, with a second cold load |
 | 5 | Reserved path for interactive callers (Task 12) | Depends on the profile | Task 12's plan |
+| 6 | Cap agent concurrency below the engine's limit, to hold a place for interactive calls | No, if the cap lives in `pi-durable` | Restore the old limit. Whether such a limit exists there is unchecked |
 
 Step 4 is unverified: the gateway has `drop_params: true`, which may strip the priority field, and
 priority is untested with chunked prefill and MTP here. It also cannot help a request that is already
 running, since those all share the same steps.
 
-**This is the question from point (f): the cause is load on a shared model, not the gateway.** If
-step 3 does not reach the SLO, or costs agents too much, a reserved path is the real answer.
+**This is the question from point (f): the cause is load on a shared model, not the gateway.** The
+engine has to fix two things for a voice reply: get it a place at once, and keep steps short once it
+has one. Step 3 only does the second. Step 6 only does the first, since one client still freezes a
+stream, and KV cache near full may block it. Together they might reach the SLO, near its edge.
 
-Capping `pi-durable` concurrency is no longer proposed as a fix: one client is enough to freeze a
-stream. It may still shorten the capacity queue.
+**My recommendation: decide the reserved path now rather than after step 3.** The normal-load numbers
+already show step 3 cannot close the gap alone, so an 8-13 minute cold load is not needed to learn
+that. Step 3 may still be worth it for agents and for the worst gap, but it no longer decides Task 12.
 
-For Task 13: this evidence does not support replacing LiteLLM.
+For Task 13: this evidence does not support replacing LiteLLM, and the condition for reopening that
+is not met.
 
 ## Other things found
 
@@ -198,5 +259,5 @@ run `load` beside `run`.
 - `engine_api_beat_s` times `/metrics`, which is not a clean measure of the API event loop. Trust
   `gateway_api_beat_s`.
 - vLLM sends SSE keep-alives, so the read timeout may not bound a queued request. Under load, one
-  row took over 10 minutes.
+  row took over 10 minutes. In the normal-load run, 5 requests did stop at the 120 s read timeout.
 - Stall thresholds: 2 s for first text, 1 s between chunks.
