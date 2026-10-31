@@ -34,7 +34,7 @@ struct MenuBarContent: View {
         .disabled(model.phase != .idle)
         .help(model.phase != .idle ? "Available while idle." : "")
 
-        Toggle("Local-only (no network)", isOn: $model.localOnly)
+        Toggle("Local-only (record here, upload later)", isOn: $model.localOnly)
             .disabled(model.phase != .idle)
             .help(model.phase != .idle ? "Available while idle." : "")
         if model.phase != .idle { Text("Available while idle.") }
