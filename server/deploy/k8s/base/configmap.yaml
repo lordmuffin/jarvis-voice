@@ -102,6 +102,12 @@ data:
   # copilot; see server/tests/evals/test_ideas_evals.py before switching to heavy.
   JARVIS_LIVE_IDEAS_MODEL: ""
 
+  # Copilot actions: the copilot proposes a task, a note append, a reminder or a PR comment,
+  # and nothing runs until the owner approves it (docs/plans/copilot-actions.md). Both
+  # channels run it. Lab has no vault credential, so there the vault kinds have no executor
+  # and fail visibly when approved; reminders work, and PR comments reach the dispatch repos.
+  JARVIS_LIVE_ACTIONS_ENABLED: "true"
+
   # Dispatch: approved work items run as headless Claude Code (Sonnet), one Job and one git
   # worktree each, and open a draft PR (dispatch.yaml; docs/plans/copilot-to-claude-code.md).
   # Off here: a channel turns it on with its own GitHub App and repo allowlist (lab: the
