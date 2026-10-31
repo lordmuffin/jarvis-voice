@@ -11,8 +11,9 @@ import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.NoiseSuppressor
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.SystemClock
-import androidx.core.content.ContextCompat
 import com.lordmuffin.jarvisvoice.AudioDeviceRouter
 import com.lordmuffin.jarvisvoice.DebugLog
 import com.lordmuffin.jarvisvoice.live.protocol.AudioFrame
@@ -224,7 +225,7 @@ class AudioCapture(context: Context, private val builtInMicOnly: Boolean = false
         }
         recordingCallback = callback
         appContext.getSystemService(AudioManager::class.java)
-            .registerAudioRecordingCallback(ContextCompat.getMainExecutor(appContext), callback)
+            .registerAudioRecordingCallback(callback, Handler(Looper.getMainLooper()))
     }
 
     private fun publishInterrupted() {

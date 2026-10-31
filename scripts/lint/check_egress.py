@@ -6,13 +6,14 @@ one place (`EgressGate`): `LiveAPIClient`, `LiveConnection`, `NetworkPlaceDetect
 `ServerInfo` ask it before they send. A new feature that builds its own `URLSession` would bypass
 it, so this check lists the files allowed to open connections and fails on any other.
 
-  Swift    URLSession(...), URLSession.shared, NWConnection(...)
-  Kotlin   OkHttpClient, HttpURLConnection, openConnection(...)
+  Swift    URLSession(...), URLSession.shared, URLSession = .shared, NWConnection(...)
+  Kotlin   OkHttpClient, HttpURLConnection, openConnection(...), URL(...).readText(), openStream(...),
+           Socket(...), WebView(...)
 
-Add a file to the allow-list only after it checks the gate. Android's gate is not built yet, so
-its Live files are listed as pending, and the files that carry no Live session content (chat,
-model downloads, notifications) are listed as outside the toggle. Escape hatch for one line:
-`egress-lint:ignore <reason>`.
+Add a file to GATED only after it goes through the gate: on the Mac a `GatedSession`, on Android
+the client from `LiveApiClient.defaultClient`. UNGATED_BY_DECISION is for what stays outside it on
+purpose, and the rest of the allow-list for files that carry no Live session content (chat, model
+downloads, notifications). Escape hatch for one line: `egress-lint:ignore <reason>`.
 """
 
 from __future__ import annotations
@@ -25,24 +26,37 @@ from pathlib import Path
 IGNORE = "egress-lint:ignore"
 
 SWIFT_RULES = (
-    ("url-session", re.compile(r"\bURLSession\s*\(|\bURLSession\.shared\b")),
+    ("url-session", re.compile(r"\bURLSession\s*\(|\bURLSession\.shared\b|\bURLSession\s*=\s*\.shared\b")),
     ("raw-connection", re.compile(r"\bNWConnection\s*\(")),
 )
 KOTLIN_RULES = (
-    ("http-client", re.compile(r"\bOkHttpClient\b|\bHttpURLConnection\b|\.openConnection\s*\(")),
+    (
+        "http-client",
+        re.compile(
+            r"\bOkHttpClient\b|\bHttpURLConnection\b|\.openConnection\s*\(|\.openStream\s*\("
+            r"|\bURL\s*\([^)]*\)\s*\.\s*read(Text|Bytes)\s*\("
+        ),
+    ),
+    ("raw-connection", re.compile(r"\bSocket\s*\(")),
+    ("web-view", re.compile(r"\bWebView\s*\(")),
 )
 
-ALLOWED = {
-    # Mac: these ask EgressGate before they send.
+GATED = {
+    # Mac: these reach the network through a GatedSession.
     "macos/JarvisLiveKit/Sources/JarvisLiveKit/Transport/LiveConnection.swift",
     "macos/JarvisLiveKit/Sources/JarvisLiveKit/Transport/LiveAPIClient.swift",
     "macos/JarvisLiveKit/Sources/JarvisLiveKit/Network/NetworkPlaceDetector.swift",
     "macos/JarvisLiveKit/Sources/JarvisLiveKit/Network/ServerChannel.swift",
-    # Android Live path: gate pending (docs/plans/local-only-audit.md).
+    # Android: every Live connection uses the client with the gate's interceptor.
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/live/LiveConnection.kt",
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/live/LiveApiClient.kt",
+}
+UNGATED_BY_DECISION = {
+    # Watch uploads run on their own client (docs/plans/local-only-audit.md).
     "android/wearcommon/src/main/java/com/lordmuffin/jarvisvoice/wearcommon/RecordingUploader.kt",
-    # Android, outside the Live local-only toggle (audit finding F10).
+}
+OUTSIDE_THE_TOGGLE = {
+    # Android, no Live session content (audit finding F10).
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/ModelDownloadWorker.kt",
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/chat/AgentTaskRepository.kt",
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/chat/LlmRepository.kt",
@@ -51,6 +65,7 @@ ALLOWED = {
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/speech/ModelDownloader.kt",
     "android/app/src/main/java/com/lordmuffin/jarvisvoice/speech/SttDownloadWorker.kt",
 }
+ALLOWED = GATED | UNGATED_BY_DECISION | OUTSIDE_THE_TOGGLE
 SKIP_PARTS = {"build", ".build", "Tests", "test", "androidTest", "Instrument", "instrument"}
 
 
@@ -92,7 +107,7 @@ def main(argv: list[str]) -> int:
     if bad:
         print(
             f"\n{len(bad)} network connection(s) opened outside the local-only gate. Go through "
-            "EgressGate (see scripts/lint/check_egress.py), or add a justified "
+            "the gate (see scripts/lint/check_egress.py), or add a justified "
             f"`{IGNORE} <reason>`.",
             file=sys.stderr,
         )

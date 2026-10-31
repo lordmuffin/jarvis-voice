@@ -45,4 +45,9 @@ class SessionMetaTest {
         val old = meta(localOnly = true).toJson().apply { remove("fell_back") }
         assertEquals(false, SessionMeta.fromJson(JSONObject(old.toString())).fellBack)
     }
+
+    @Test fun aSessionKeptLocalUploadsRestrictedAndAServerOutageDoesNot() {
+        assertTrue(meta(localOnly = true).uploadsRestricted)
+        assertFalse(meta(localOnly = true, fellBack = true).uploadsRestricted)
+    }
 }

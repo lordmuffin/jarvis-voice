@@ -30,6 +30,13 @@ data class SessionMeta(
     val autoUploads: Boolean
         get() = state != State.FAILED && state != State.DONE && (serverId != null || fellBack)
 
+    /**
+     * A session kept local-only is a work call until you say otherwise: the server files its note
+     * apart and never publishes or pushes it. One that is only local because the server was down
+     * was meant to stream.
+     */
+    val uploadsRestricted: Boolean get() = !fellBack
+
     enum class State {
         /** Capture running (or the process died mid-session). */
         RECORDING,
