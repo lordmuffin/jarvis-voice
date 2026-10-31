@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
     text,
 )
@@ -181,7 +182,38 @@ class SegmentRow(Base):
     text: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(8))
     stt_tier: Mapped[str | None] = mapped_column(String(100))
+    # Who spoke it, from diarization (see diarize/); ``speaker`` above stays the channel side.
+    speaker_id: Mapped[str | None] = mapped_column(String(32))
+    speaker_rev: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    mixed: Mapped[bool] = mapped_column(default=False, server_default=false())
     created_at: Mapped[datetime] = _now()
+
+
+class SessionSpeaker(Base):
+    """A voice heard in a session. ``label`` None = not named: shown as "Speaker <ordinal>"."""
+
+    __tablename__ = "session_speakers"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sessions.id"), primary_key=True)
+    speaker_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    channel: Mapped[str] = mapped_column(String(8))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    label: Mapped[str | None] = mapped_column(Text)
+    is_owner: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+
+
+class SpeakerTurn(Base):
+    """Diarization output, kept by time so segments can be aligned again (retranscribe)."""
+
+    __tablename__ = "speaker_turns"
+    __table_args__ = (Index("ix_speaker_turns_session_start", "session_id", "start_ms"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sessions.id"))
+    channel: Mapped[str] = mapped_column(String(8))
+    start_ms: Mapped[int] = mapped_column(BigInteger)
+    end_ms: Mapped[int] = mapped_column(BigInteger)
+    speaker_id: Mapped[str] = mapped_column(String(32))
 
 
 class MarkerRow(Base):

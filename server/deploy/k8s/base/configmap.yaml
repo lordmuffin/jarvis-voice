@@ -21,6 +21,10 @@ data:
     pve       http://speaches.speech.svc.cluster.local:8000/v1               Systran/faster-whisper-large-v3
     gamingpc  http://whisper-cpp.jarvis.svc.cluster.local:8080/v1            whisper-large-v3
 
+  # Speaker diarization sidecar (pyannote on the Spark, docs/plans/diarization.md). Unset: no speaker
+  # pass, transcripts stay me/them. A down or slow sidecar never fails a session either way.
+  # JARVIS_LIVE_DIARIZE_URL: "http://diarizer.jarvis-ai.svc.cluster.local:8000"
+
   # LiteLLM fronts every chat model; aliases are defined in np-home-homelab apps/ai/litellm-proxy.yaml.
   # The app reads LITELLM_BASE_URL; unset, the copilot and the final note never run.
   JARVIS_LIVE_LITELLM_BASE_URL: "http://litellm-proxy-service.open-webui.svc.cluster.local:4000/v1"

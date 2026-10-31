@@ -12,7 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from jarvis_live.api.audio import audio_available, wav_response
 from jarvis_live.auth import Principal, current_principal
-from jarvis_live.db.models import CopilotItem, MarkerRow, NotePublication, SegmentRow, User
+from jarvis_live.db.models import (
+    CopilotItem,
+    MarkerRow,
+    NotePublication,
+    SegmentRow,
+    SessionSpeaker,
+    User,
+)
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.note_items import merge_note_items
 from jarvis_live.finalize.outbox import latest_final_note, outbox_dir, read_note
@@ -104,6 +111,19 @@ class SegmentOut(BaseModel):
     end_ms: int
     text: str
     stt_tier: str | None
+    # Who spoke it, once diarization ran: an id into the session's ``speakers``. ``speaker``
+    # above stays the channel side.
+    speaker_id: str | None = None
+    speaker_rev: int = 0
+    mixed: bool = False
+
+
+class SpeakerOut(BaseModel):
+    id: str
+    label: str | None  # None: not named, shown as "Speaker <ordinal>"
+    ordinal: int
+    enrolled: bool
+    is_owner: bool
 
 
 class MarkerOut(BaseModel):
@@ -151,6 +171,7 @@ class PublicationOut(BaseModel):
 
 class SessionDetail(SessionOut):
     segments: list[SegmentOut]
+    speakers: list[SpeakerOut]
     copilot: Copilot
     markers: list[MarkerOut]
     final_note: FinalNoteOut | None
@@ -382,6 +403,17 @@ async def get_session(
         .scalars()
         .all()
     )
+    speakers = (
+        (
+            await db.execute(
+                select(SessionSpeaker)
+                .where(SessionSpeaker.session_id == session_id)
+                .order_by(SessionSpeaker.ordinal)
+            )
+        )
+        .scalars()
+        .all()
+    )
     latest = (
         await db.execute(
             select(CopilotItem.payload)
@@ -438,8 +470,21 @@ async def get_session(
                 end_ms=s.end_ms,
                 text=s.text,
                 stt_tier=s.stt_tier,
+                speaker_id=s.speaker_id,
+                speaker_rev=s.speaker_rev,
+                mixed=s.mixed,
             )
             for s in segments
+        ],
+        speakers=[
+            SpeakerOut(
+                id=sp.speaker_id,
+                label=sp.label,
+                ordinal=sp.ordinal,
+                enrolled=False,
+                is_owner=sp.is_owner,
+            )
+            for sp in speakers
         ],
         copilot=copilot,
     )

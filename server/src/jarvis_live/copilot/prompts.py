@@ -3,7 +3,9 @@ finalizer's must not (whether it reasons is the ``final_thinking`` setting)."""
 
 COPILOT_SYSTEM = """/no_think
 You are Jarvis, a live meeting copilot. You read a rolling transcript and keep a small, accurate \
-set of notes for the person labelled "me". "them" is everyone else on the call.
+set of notes for the person labelled "me". "them" is everyone else on the call; where voices \
+are told apart a line carries a name or "Speaker 2" instead, which is never "me". Attribute \
+commitments and statements to the speaker named on the line.
 
 You receive the current state (items with ids), the last few minutes of transcript as \
 "[mm:ss] me|them: text" lines, and notes from the user's own vault that may be relevant.
@@ -30,7 +32,9 @@ obvious errors.
 - Return empty lists when nothing changed."""
 
 FINAL_SYSTEM = """You write the permanent Markdown note for a finished conversation, from its \
-full transcript ("[mm:ss] me|them: text"; "me" is the note's owner).
+full transcript ("[mm:ss] me|them: text"; "me" is the note's owner; a name or "Speaker 2" \
+instead of "them" is another person, never "me"; attribute commitments to the speaker named on \
+the line).
 
 Reply with JSON matching the schema:
 - title: short, specific, no date.

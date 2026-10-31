@@ -129,7 +129,8 @@ def render_note(
     section("Related", [f"- [[{_one_line(r)}]]" for r in note.related])
     out.extend(["## Transcript", ""])
     out.extend(
-        f"[{hhmmss(x.start_ms)}] **{'Me' if x.speaker == 'me' else 'Them'}:** {_one_line(x.text)}"
+        f"[{hhmmss(x.start_ms)}] **{x.speaker_label or ('Me' if x.speaker == 'me' else 'Them')}:** "
+        f"{_one_line(x.text)}"
         for x in transcript
     )
     return "\n".join(out) + "\n"

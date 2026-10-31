@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     # duplicate guard is applied anyway.
     duplicate_hold_ms: int = 20_000
 
+    # Diarization sidecar (pyannote on the Spark). Empty URL: no speaker pass, as before.
+    diarize_url: str = ""
+    # The pass after a session ends may take max(min, ratio x recording length) seconds; past
+    # that the session goes on with the undiarized transcript.
+    diarize_timeout_min_s: float = 60.0
+    diarize_timeout_ratio: float = 0.3
+
     # LLM (LiteLLM's OpenAI-compatible API). Empty base URL disables the copilot and finalizer.
     litellm_base_url: str = ""
     litellm_api_key_file: Path | None = None

@@ -15,6 +15,7 @@ from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
+from jarvis_live.diarize.client import Diarizer, HttpDiarizer
 from jarvis_live.dispatch.githubapp import AppTokens
 from jarvis_live.dispatch.kube import KubeClient
 from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
@@ -94,9 +95,10 @@ def create_app(
     kube: Kube | None = None,
     app_tokens: Tokens | None = None,
     dpi: DpiClient | None = None,
+    diarizer: Diarizer | None = None,
 ) -> FastAPI:
-    """``stt``, ``llm``, ``notifier``, ``github`` and ``dispatcher`` override what is built
-    from settings (tests). The copilot and finalizer run only if an LLM is configured or
+    """``stt``, ``llm``, ``notifier``, ``github``, ``dispatcher`` and ``diarizer`` override what
+    is built from settings (tests). The copilot and finalizer run only if an LLM is configured or
     injected; notes are published only if ``publish_repo`` and ``github_token_file`` are set.
     Work items are found only with ``work_items_enabled`` and an LLM. With
     ``dispatch_enabled``, approved items run as Kubernetes Jobs (``kube`` and ``app_tokens``
@@ -213,6 +215,12 @@ def create_app(
                     title_prefix=cfg.notify_title_prefix,
                 ),
                 on_final=publisher.on_note_ready,
+                diarizer=diarizer
+                or (
+                    HttpDiarizer(cfg.diarize_url, client, timeout_s=None)
+                    if cfg.diarize_url
+                    else None
+                ),
             )
         hub = IngestHub(
             cfg,
