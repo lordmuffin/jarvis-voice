@@ -1,9 +1,10 @@
-import { audioUrl } from "../api";
+import { audioUrl, getSession } from "../api";
 import { Column, Player, Recordings as RecordingList } from "../ds/components";
 import { duration } from "../format";
 import { NoNote } from "../jarvis/NoNote";
 import { ProcessControl } from "../jarvis/ProcessControl";
 import { SessionHeader } from "../jarvis/SessionHeader";
+import { useNaming } from "../jarvis/useNaming";
 import { Timeline } from "../jarvis/Timeline";
 import { UnrestrictControl } from "../jarvis/UnrestrictControl";
 import { initialState, reduce, transcriptLines } from "../reducer";
@@ -45,6 +46,9 @@ export function PastSession({
   const state = reduce(initialState, { type: "snapshot", detail });
   const lines = transcriptLines(state);
   const note = detail.final_note;
+  const { onName, dialog } = useNaming(detail.id, detail.owner.id, state.speakers, () =>
+    void getSession(detail.id).then(onChanged),
+  );
 
   const noteContent = note ? (
     <NotePane detail={detail} onChanged={onChanged} />
@@ -74,10 +78,11 @@ export function PastSession({
           {
             id: "transcript",
             label: "Transcript",
-            content: <Timeline label="Transcript text" lines={lines} markers={state.markers} />,
+            content: <Timeline label="Transcript text" lines={lines} markers={state.markers} onName={onName} />,
           },
         ]}
       />
+      {dialog}
     </Column>
   );
 }

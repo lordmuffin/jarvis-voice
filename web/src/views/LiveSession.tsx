@@ -1,6 +1,6 @@
 import { signal } from "@preact/signals";
 import { useEffect, useMemo, useState } from "preact/hooks";
-import { endSession, ApiError } from "../api";
+import { endSession, getSession, ApiError } from "../api";
 import { Banner, Button, Column, Dialog, Section, Text } from "../ds/components";
 import { copilotInsights, workInsights, type Filter } from "../feed";
 import { clock } from "../format";
@@ -13,6 +13,7 @@ import { isMine } from "../jarvis/OwnerLabel";
 import { NowDock } from "../jarvis/NowDock";
 import { ProcessControl } from "../jarvis/ProcessControl";
 import { Timeline } from "../jarvis/Timeline";
+import { useNaming } from "../jarvis/useNaming";
 import { useArrivals } from "../jarvis/useArrivals";
 import { useLookMarker } from "../look";
 import { showsProcessingWhileLive } from "../processing";
@@ -49,6 +50,9 @@ export function LiveSession({
 
   const s = state.value;
   const lines = transcriptLines(s);
+  const { onName, dialog } = useNaming(detail.id, detail.owner.id, s.speakers, () =>
+    void getSession(detail.id).then((d) => dispatch({ type: "snapshot", detail: d })),
+  );
   // Title, status and streaming follow the REST polls in watchSession, not the first load.
   const session = s.session ?? detail;
 
@@ -174,6 +178,7 @@ export function LiveSession({
           filter={filter}
           look={look}
           toolbar={<FeedFilter insights={insights} value={filter} onChange={setFilter} />}
+          onName={onName}
         />
         <NowDock
           view={dock}
@@ -207,6 +212,7 @@ export function LiveSession({
           <Text tone="muted">Recording stops on the Mac. Jarvis writes the note from the transcript.</Text>
         </Dialog>
       )}
+      {dialog}
     </Column>
   );
 }

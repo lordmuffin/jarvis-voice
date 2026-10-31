@@ -16,6 +16,7 @@ import type {
   SessionDetail,
   SessionPage,
   SessionSummary,
+  SpeakerInfo,
   WorkItem,
   WorkItemEdit,
   WorkItemPage,
@@ -184,6 +185,22 @@ export const regenerateNote = (id: string, f?: typeof fetch) =>
  */
 export const processSession = (id: string, f?: typeof fetch) =>
   request<{ started: boolean; processing: Processing }>(`${sid(id)}/process`, { method: "POST" }, f);
+
+/**
+ * Name a voice of a session. The server also remembers the voice for future sessions, and with
+ * `is_owner` takes it to be the signed-in user (whose lines then read "Me").
+ */
+export const nameSpeaker = (
+  id: string,
+  speakerId: string,
+  body: { label: string; is_owner: boolean },
+  f?: typeof fetch,
+) =>
+  request<SpeakerInfo>(
+    `${sid(id)}/speakers/${encodeURIComponent(speakerId)}`,
+    { method: "PUT", body: JSON.stringify(body) },
+    f,
+  );
 
 /** Just the processing state, to poll while a job runs. */
 export const getProcessing = (id: string, f?: typeof fetch) => request<Processing>(`${sid(id)}/processing`, {}, f);

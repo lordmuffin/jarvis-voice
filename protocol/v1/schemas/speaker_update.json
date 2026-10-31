@@ -26,6 +26,10 @@
           },
           "is_owner": {
             "type": "boolean"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [

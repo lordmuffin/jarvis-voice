@@ -18,8 +18,9 @@ from jarvis_live.auth import Principal, current_principal
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.db.models import SessionSpeaker, SpeakerProfile
 from jarvis_live.diarize.identify import merge
+from jarvis_live.diarize.info import speaker_info
 from jarvis_live.logging_setup import session_logger
-from jarvis_live.protocol import SpeakerInfo, SpeakerUpdate
+from jarvis_live.protocol import SpeakerUpdate
 
 router = APIRouter(prefix="/v1")
 
@@ -146,15 +147,7 @@ async def name_speaker(
     request.app.state.bus.publish(
         str(session_id),
         SpeakerUpdate(
-            speakers=[
-                SpeakerInfo(
-                    id=s.speaker_id,
-                    label=s.label,
-                    enrolled=s.profile_id is not None,
-                    is_owner=s.is_owner,
-                )
-                for s in changed
-            ],
+            speakers=[speaker_info(s) for s in changed],
             assignments=[],
         ),
     )

@@ -2,7 +2,7 @@
 
 Status: **approved**. PR 1 (protocol) and PR 2 (finalize-time diarization, fake diarizer) are
 written and uncommitted; Phase 0 (Spark benchmark) waits on a Hugging Face token and Spark access.
-PRs 3-5 not started. Scope: `protocol/v1/`, `server/`, `web/`, `macos/` (plus a
+PRs 3-5 are written locally (not pushed). Scope: `protocol/v1/`, `server/`, `web/`, `macos/` (plus a
 minimal parse change in `android/`, see §6). Legacy `src/jarvis_voice/` is not touched.
 
 Goal: a transcript that says who said what, so "what did Andrew commit to" is answerable and the
@@ -242,6 +242,20 @@ Each PR follows `TDD.md`, uses Conventional Commits, runs `make test` first.
   The final pass replaces the channel's speaker rows, which removes the `live_*` voices; if it
   fails, the provisional labels stay as the best available.
 - `finish()` waits `speaker_live_drain_s` (5 s) for queued labels before the stream is handed on.
+
+### Decisions made in PR 5
+
+- `speaker_update`'s speakers gained an optional `ordinal`, so every client says "Speaker 3" the way
+  the server's notes do instead of numbering voices itself.
+- One label rule everywhere (server notes, web, macOS): the owner is Me; a named voice shows its
+  name; an unnamed one is "Speaker N" only where its side holds several voices.
+- Unnamed vs named: an unnamed web tag is outlined (the vendored `i-spk--draft` look) and a named
+  one filled; on macOS an unnamed tag is italic and muted. Both also read differently in words.
+  A dedicated `i-spk--unknown` style belongs in lordmuffin/instrument; reusing the outlined draft
+  look avoids a local component until then.
+- Naming a voice is web-only for now (click its tag, session owner only). macOS shows labels and
+  opts in to `speaker_update`, but has no naming UI: it needs an API call and a prompt that I
+  could not compile or try here.
 
 ## 9. Failure behaviour (hard requirement: never a failed session)
 

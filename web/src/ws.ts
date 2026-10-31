@@ -15,9 +15,11 @@ const BACKOFF_MS = [500, 1000, 2000, 4000];
 // The server keeps a viewer socket open after the session ends, so poll the status too.
 const STATUS_POLL_MS = 3000;
 
-function streamUrl(sessionId: string, ticket: string): string {
+/** `features` opts in to messages older clients cannot read: who is speaking. */
+export function streamUrl(sessionId: string, ticket: string): string {
   const scheme = location.protocol === "https:" ? "wss" : "ws";
-  return `${scheme}://${location.host}/v1/sessions/${encodeURIComponent(sessionId)}/stream?ticket=${encodeURIComponent(ticket)}`;
+  const path = `/v1/sessions/${encodeURIComponent(sessionId)}/stream`;
+  return `${scheme}://${location.host}${path}?ticket=${encodeURIComponent(ticket)}&features=speaker_update`;
 }
 
 function openSocket(url: string, onMessage: (e: ServerEvent) => void): Promise<WebSocket> {

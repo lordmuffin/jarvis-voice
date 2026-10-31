@@ -133,7 +133,7 @@ class LiveLabeler:
             if not done.rowcount:  # type: ignore[attr-defined]
                 await db.rollback()
                 return
-            await self._save_voice(db, voice, is_new)
+            ordinal = await self._save_voice(db, voice, is_new)
             await db.commit()
         self._bus.publish(
             str(self._session_id),
@@ -144,6 +144,7 @@ class LiveLabeler:
                         label=voice.label,
                         enrolled=voice.profile_id is not None,
                         is_owner=voice.is_owner,
+                        ordinal=ordinal,
                     )
                 ]
                 if is_new
@@ -159,7 +160,8 @@ class LiveLabeler:
             ),
         )
 
-    async def _save_voice(self, db: AsyncSession, voice: LiveVoice, is_new: bool) -> None:
+    async def _save_voice(self, db: AsyncSession, voice: LiveVoice, is_new: bool) -> int:
+        """Store the voice. Returns its ordinal ("Speaker N") if new, else 0."""
         if is_new:
             ordinal = (
                 await db.scalar(
@@ -189,12 +191,13 @@ class LiveLabeler:
                     set_={k: v for k, v in row.items() if k not in ("session_id", "speaker_id")},
                 )
             )
-        else:
-            await db.execute(
-                update(SessionSpeaker)
-                .where(
-                    SessionSpeaker.session_id == self._session_id,
-                    SessionSpeaker.speaker_id == voice.id,
-                )
-                .values(embedding=voice.embedding)
+            return ordinal
+        await db.execute(
+            update(SessionSpeaker)
+            .where(
+                SessionSpeaker.session_id == self._session_id,
+                SessionSpeaker.speaker_id == voice.id,
             )
+            .values(embedding=voice.embedding)
+        )
+        return 0  # only a new voice is announced, with its ordinal

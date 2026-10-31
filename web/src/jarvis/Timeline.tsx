@@ -38,6 +38,7 @@ export function Timeline({
   stack,
   label,
   toolbar,
+  onName,
 }: {
   lines: Line[];
   markers: Marker[];
@@ -54,6 +55,8 @@ export function Timeline({
   label: string;
   /** The filter, shown above the log with the follow state beside it. */
   toolbar?: preact.ComponentChildren;
+  /** Naming a voice from its tag; omitted where the viewer may not (not their session). */
+  onName?: (speakerId: string) => void;
 }) {
   // `#t=<ms>` (a work item's source link) highlights the line spoken then.
   const [target, setTarget] = useState<number | null>(() => hashTime(location.hash));
@@ -137,7 +140,7 @@ export function Timeline({
                   </div>
                 )}
                 {e.kind === "line" ? (
-                  <TranscriptLine line={e.line} target={e.line.id === hit?.id} stack={stack} />
+                  <TranscriptLine line={e.line} target={e.line.id === hit?.id} stack={stack} onName={onName} />
                 ) : e.kind === "marker" ? (
                   <MarkerRow marker={e.marker} />
                 ) : (

@@ -12,6 +12,7 @@ import {
   loginUrl,
   logout,
   me,
+  nameSpeaker,
   onUnauthorized,
   publicationAction,
   publicationRequest,
@@ -42,6 +43,16 @@ function fakeFetch(status: number, body?: unknown) {
 afterEach(() => onUnauthorized(() => undefined));
 
 describe("api", () => {
+  it("names a speaker with a PUT, and says whether it is me", async () => {
+    const reply = { id: "spk_mic_0", label: "Dana", ordinal: 1, enrolled: true, is_owner: false };
+    const { f, calls } = fakeFetch(200, reply);
+    expect(await nameSpeaker("s 1", "spk_mic_0", { label: "Dana", is_owner: false }, f)).toEqual(reply);
+    expect(calls[0]).toMatchObject({
+      url: "/v1/sessions/s%201/speakers/spk_mic_0",
+      init: { method: "PUT", body: JSON.stringify({ label: "Dana", is_owner: false }) },
+    });
+  });
+
   it("sends the cookie, never a bearer token", async () => {
     const { f, calls } = fakeFetch(200, { id: "u1", display_name: "Alice" });
     expect(await me(f)).toMatchObject({ display_name: "Alice" });

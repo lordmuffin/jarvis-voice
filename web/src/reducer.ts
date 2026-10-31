@@ -12,6 +12,7 @@ import type {
   SpeakerUpdateMsg,
   Status,
 } from "./types";
+import { whoIs, type Who } from "./speakers";
 
 /** A client-side draft transcript line (not authoritative; replaced by a final segment). */
 export interface Draft {
@@ -205,6 +206,19 @@ export function reduce(state: LiveState, event: Event): LiveState {
     case "snapshot": {
       const d = event.detail;
       let next = mergeSegments(state, d.segments);
+      next = applySpeakers(next, {
+        type: "speaker_update",
+        speakers: d.speakers ?? [],
+        assignments: d.segments
+          .filter((s) => s.speaker_id)
+          .map((s) => ({
+            segment_id: s.id,
+            speaker_id: s.speaker_id ?? null,
+            rev: s.speaker_rev ?? 0,
+            final: (s.speaker_rev ?? 0) >= 2,
+            mixed: s.mixed,
+          })),
+      });
       next = applyCopilot(next, d.copilot);
       let markers = next.markers;
       for (const m of d.markers) markers = addMarker(markers, m);
@@ -231,20 +245,41 @@ export type Line = {
   speaker: "me" | "them";
   text: string;
   id: string;
+  /** Who, once voices were told apart; absent for a draft or an unidentified line. */
+  who?: Who;
+  speaker_id?: string | null;
+  /** The line spans a change of speaker. */
+  mixed?: boolean;
 };
 
-export function transcriptLines(state: Pick<LiveState, "segments" | "drafts"> & Partial<Pick<LiveState, "slots">>): Line[] {
+export function transcriptLines(
+  state: Pick<LiveState, "segments" | "drafts"> & Partial<Pick<LiveState, "slots" | "speakers" | "assignments">>,
+): Line[] {
   const slots = state.slots ?? {};
-  const lines: Line[] = state.segments.map((s) => ({
-    kind: "segment",
-    id: s.id,
-    key: slots[s.id]?.key ?? s.id,
-    sortMs: slots[s.id]?.sortMs ?? s.start_ms,
-    start_ms: s.start_ms,
-    end_ms: s.end_ms,
-    speaker: s.speaker,
-    text: s.text,
-  }));
+  const speakers = state.speakers ?? {};
+  const assignments = state.assignments ?? {};
+  const heard: Record<"me" | "them", Set<string>> = { me: new Set(), them: new Set() };
+  for (const s of state.segments) {
+    const id = assignments[s.id]?.speaker_id;
+    if (id) heard[s.speaker].add(id);
+  }
+  const voices = { me: heard.me.size, them: heard.them.size };
+  const lines: Line[] = state.segments.map((s) => {
+    const a = assignments[s.id];
+    return {
+      kind: "segment",
+      id: s.id,
+      key: slots[s.id]?.key ?? s.id,
+      sortMs: slots[s.id]?.sortMs ?? s.start_ms,
+      start_ms: s.start_ms,
+      end_ms: s.end_ms,
+      speaker: s.speaker,
+      text: s.text,
+      who: whoIs(s.speaker, a?.speaker_id, speakers, voices),
+      speaker_id: a?.speaker_id ?? null,
+      mixed: a?.mixed ?? false,
+    };
+  });
   for (const d of state.drafts) {
     lines.push({
       kind: "draft",

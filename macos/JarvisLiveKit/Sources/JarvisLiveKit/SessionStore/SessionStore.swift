@@ -40,6 +40,19 @@ public struct TranscriptLine: Identifiable, Equatable, Sendable {
     }
 }
 
+/// How a transcript line is labelled, and so how it looks.
+public struct Who: Equatable, Sendable {
+    public enum Kind: Sendable { case me, them, named, unknown }
+
+    public var text: String
+    public var kind: Kind
+
+    public init(text: String, kind: Kind) {
+        self.text = text
+        self.kind = kind
+    }
+}
+
 /// UI-facing state for one live session. All mutation happens on the main actor.
 @MainActor
 @Observable
@@ -108,6 +121,19 @@ public final class SessionStore {
         // A newer draft supersedes earlier drafts of the same utterance.
         lines.removeAll { $0.isDraft && $0.overlaps(line) }
         insert(line)
+    }
+
+    /// Who spoke a line, by the same rule as the server's notes: the owner is Me; a named voice
+    /// shows its name; an unnamed one is "Speaker N" only where its side holds several voices
+    /// (with one, the side says enough).
+    public func who(for line: TranscriptLine) -> Who {
+        let side = line.speaker == .me ? Who(text: "Me", kind: .me) : Who(text: "Them", kind: .them)
+        guard let id = line.speakerId, let voice = speakers[id] else { return side }
+        if voice.isOwner { return Who(text: "Me", kind: .me) }
+        if let label = voice.label { return Who(text: label, kind: .named) }
+        let heard = Set(lines.filter { !$0.isDraft && $0.speaker == line.speaker }.compactMap(\.speakerId))
+        if heard.count > 1, let n = voice.ordinal { return Who(text: "Speaker \(n)", kind: .unknown) }
+        return side
     }
 
     public func setConnection(_ state: ConnectionState) {

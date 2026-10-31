@@ -294,11 +294,17 @@ struct CopilotPanelView: View {
     }
 
     private func speechRow(_ line: TranscriptLine, layout: PanelLayout, isNew: Bool) -> some View {
-        let me = line.speaker == .me
+        let who = model.store.who(for: line)
+        let me = who.kind == .me
         // Local-only drafts are never replaced, so they read as normal text.
         let ghost = line.isDraft && !model.sessionIsLocalOnly
-        let tag = Text(me ? "Me" : "Them")
-            .instStyle(InstType.tag).foregroundStyle(me ? Color.inst.accent : Color.inst.themText)
+        // An unnamed voice is muted and italic, a named one coloured: the words differ as well.
+        let unknown = who.kind == .unknown
+        let tag = Text(who.text)
+            .instStyle(InstType.tag).italic(unknown).lineLimit(1)
+            .foregroundStyle(me ? Color.inst.accent : unknown ? Color.inst.text2 : Color.inst.themText)
+        // Names are longer than Me / Them, so the column widens once voices have been told apart.
+        let tagWidth: CGFloat = model.store.speakers.isEmpty ? 32 : 72
         let time = Text(ClockFormat.stamp(ms: line.startMs))
             .font(InstType.meta.font).fontDesign(.monospaced).foregroundStyle(Color.inst.text2)
         let newMark = Text("NEW").instStyle(InstType.tag).foregroundStyle(Color.inst.accent)
@@ -307,7 +313,7 @@ struct CopilotPanelView: View {
             .italic(ghost)
             .foregroundStyle(ghost ? Color.inst.text2 : Color.inst.text)
         return HStack(alignment: .top, spacing: 8) {
-            Rectangle().fill(me ? Color.inst.accent : Color.inst.them).frame(width: 3)
+            Rectangle().fill(me ? Color.inst.accent : unknown ? Color.inst.text2 : Color.inst.them).frame(width: 3)
             if layout == .strip {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) { tag; time; if isNew { newMark } }
@@ -316,7 +322,7 @@ struct CopilotPanelView: View {
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     time.frame(width: 40, alignment: .leading)
-                    tag.frame(width: 32, alignment: .leading)
+                    tag.frame(width: tagWidth, alignment: .leading)
                     text
                     if isNew { newMark }
                 }
@@ -326,6 +332,7 @@ struct CopilotPanelView: View {
         .padding(.vertical, 5).padding(.trailing, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(isNew ? Color.inst.accentTint : Color.inst.surface)
+        .help(line.mixed ? "This line includes a change of speaker" : "")
         .accessibilityElement(children: .combine)
     }
 
