@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from jarvis_live.copilot.schema import CopilotDelta
@@ -157,16 +158,16 @@ class CopilotState:
 
     # --- prompt view ------------------------------------------------------------------------
 
-    def prompt_json(self) -> str:
+    def prompt_json(self, proposals: Sequence[str] = ()) -> str:
         def item(x: Note | Action) -> dict[str, str]:
             return x.model_dump(exclude_none=True)
 
-        return json.dumps(
-            {
-                "notes": [item(x) for x in self.notes],
-                "decisions": [item(x) for x in self.decisions],
-                "actions": [item(x) for x in self.actions],
-                "active_suggestions": [s.text for s in self.suggestions],
-            },
-            ensure_ascii=False,
-        )
+        view: dict[str, object] = {
+            "notes": [item(x) for x in self.notes],
+            "decisions": [item(x) for x in self.decisions],
+            "actions": [item(x) for x in self.actions],
+            "active_suggestions": [s.text for s in self.suggestions],
+        }
+        if proposals:
+            view["proposals_already_made"] = list(proposals)
+        return json.dumps(view, ensure_ascii=False)

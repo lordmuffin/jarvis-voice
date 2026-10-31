@@ -117,4 +117,53 @@ struct SessionStoreTests {
         #expect(store.finalNote?.title == "A")
         #expect(store.lastError?.code == "x")
     }
+
+    // MARK: - speaker_update
+
+    private func assign(
+        _ id: String, _ speaker: String?, rev: Int, mixed: Bool? = nil
+    ) -> SpeakerAssignment {
+        SpeakerAssignment(segmentId: id, speakerId: speaker, rev: rev, final: rev > 1, mixed: mixed)
+    }
+
+    @Test func assignmentLabelsTheLineAndNamesTheSpeaker() {
+        let store = SessionStore()
+        store.apply(segment("a", 0, 1000))
+        store.apply(.speakerUpdate(SpeakerUpdate(
+            speakers: [SpeakerInfo(id: "spk_1", label: nil, enrolled: false, isOwner: false)],
+            assignments: [assign("a", "spk_1", rev: 1)]
+        )))
+        #expect(store.lines[0].speakerId == "spk_1")
+        #expect(store.speakers["spk_1"]?.label == nil)
+
+        store.apply(.speakerUpdate(SpeakerUpdate(
+            speakers: [SpeakerInfo(id: "spk_1", label: "Dana", enrolled: true, isOwner: false)],
+            assignments: []
+        )))
+        #expect(store.speakers["spk_1"]?.label == "Dana")
+        #expect(store.lines[0].speakerId == "spk_1")
+    }
+
+    @Test func onlyAHigherRevReplacesAnAssignment() {
+        let store = SessionStore()
+        store.apply(segment("a", 0, 1000))
+        store.apply(.speakerUpdate(SpeakerUpdate(speakers: [], assignments: [assign("a", "spk_0", rev: 2)])))
+        store.apply(.speakerUpdate(SpeakerUpdate(speakers: [], assignments: [assign("a", "spk_9", rev: 1)])))
+        #expect(store.lines[0].speakerId == "spk_0")  // late provisional label ignored
+        store.apply(.speakerUpdate(SpeakerUpdate(speakers: [], assignments: [assign("a", "spk_0", rev: 2)])))
+        #expect(store.lines[0].speakerId == "spk_0")  // same rev is a no-op
+        store.apply(.speakerUpdate(SpeakerUpdate(speakers: [], assignments: [assign("a", "spk_2", rev: 3, mixed: true)])))
+        #expect(store.lines[0].speakerId == "spk_2")
+        #expect(store.lines[0].mixed)
+    }
+
+    @Test func assignmentArrivingBeforeItsSegmentStillApplies() {
+        let store = SessionStore()
+        store.apply(.speakerUpdate(SpeakerUpdate(speakers: [], assignments: [assign("a", "spk_3", rev: 1)])))
+        store.apply(segment("a", 0, 1000))
+        #expect(store.lines[0].speakerId == "spk_3")
+        store.apply(segment("a", 0, 1000, text: "again"))  // redelivered segment keeps its label
+        #expect(store.lines.count == 1)
+        #expect(store.lines[0].speakerId == "spk_3")
+    }
 }

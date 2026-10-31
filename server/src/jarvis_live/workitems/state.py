@@ -101,7 +101,7 @@ def number_lines(lines: list[Line]) -> tuple[str, dict[str, Source]]:
     out: list[str] = []
     refs: dict[str, Source] = {}
     for i, x in enumerate(lines, 1):
-        out.append(f"L{i} [{mmss(x.start_ms)}] {x.speaker}: {x.text}")
+        out.append(f"L{i} [{mmss(x.start_ms)}] {x.who}: {x.text}")
         refs[f"L{i}"] = Source.of(x)
     return "\n".join(out), refs
 

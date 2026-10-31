@@ -12,6 +12,11 @@ public struct TranscriptLine: Identifiable, Equatable, Sendable {
     /// `true` for client-side drafts; `false` once the server's authoritative segment arrived.
     public var isDraft: Bool
     public var sttTier: String?
+    /// Who spoke it, once a `speaker_update` said so; `nil` = not identified (the `speaker` side
+    /// still applies).
+    public var speakerId: String?
+    /// The segment spans a change of speaker; `speakerId` is the one who spoke most of it.
+    public var mixed: Bool = false
 
     public init(
         id: String, channel: Channel, speaker: Speaker, startMs: Int, endMs: Int,
@@ -50,7 +55,12 @@ public final class SessionStore {
     public private(set) var llmOk: Bool = true
     public private(set) var finalNote: FinalNote?
     public private(set) var lastError: ServerError?
+    /// Voices named so far, by id.
+    public private(set) var speakers: [String: SpeakerInfo] = [:]
 
+    /// Newest accepted assignment per segment id. Kept apart from `lines` so an update that
+    /// arrives before its segment, or a segment delivered again, does not lose it.
+    @ObservationIgnored private var assignments: [String: SpeakerAssignment] = [:]
     @ObservationIgnored private var draftCounter = 0
     @ObservationIgnored private var consumers: [Task<Void, Never>] = []
 
@@ -63,6 +73,8 @@ public final class SessionStore {
         switch event {
         case .segment(let segment):
             applyFinal(segment)
+        case .speakerUpdate(let update):
+            applySpeakers(update)
         case .copilot(let snapshot):
             if copilot.map({ snapshot.version > $0.version }) ?? true { copilot = snapshot }
         case .status(let status):
@@ -124,8 +136,19 @@ public final class SessionStore {
 
     // MARK: - Internals
 
+    private func applySpeakers(_ update: SpeakerUpdate) {
+        for speaker in update.speakers { speakers[speaker.id] = speaker }
+        for a in update.assignments where a.rev > (assignments[a.segmentId]?.rev ?? -1) {
+            assignments[a.segmentId] = a
+            if let i = lines.firstIndex(where: { $0.id == a.segmentId }) {
+                lines[i].speakerId = a.speakerId
+                lines[i].mixed = a.mixed ?? false
+            }
+        }
+    }
+
     private func applyFinal(_ segment: Segment) {
-        let line = TranscriptLine(
+        var line = TranscriptLine(
             id: segment.id,
             channel: segment.channel,
             speaker: segment.speaker,
@@ -135,6 +158,8 @@ public final class SessionStore {
             isDraft: false,
             sttTier: segment.sttTier
         )
+        line.speakerId = assignments[segment.id]?.speakerId
+        line.mixed = assignments[segment.id]?.mixed ?? false
         lines.removeAll { $0.id == line.id || ($0.isDraft && $0.overlaps(line)) }
         insert(line)
     }

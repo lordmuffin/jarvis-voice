@@ -15,6 +15,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live import metrics
+from jarvis_live.actions.intake import ActionIntake
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import RELATED
@@ -36,12 +37,19 @@ from jarvis_live.finalize.outbox import (
     record_final_note,
     remove_superseded,
 )
-from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
+from jarvis_live.finalize.render import (
+    NoteMeta,
+    NoteProposal,
+    NoteWorkItem,
+    render_filename,
+    render_note,
+)
 from jarvis_live.finalize.timing import load_timing, render_timing
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
+from jarvis_live.publish.service import may_publish_for
 from jarvis_live.stt.tiers import parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.template import session_url
@@ -79,7 +87,9 @@ class Finalizer:
         llm: LLM,
         vault: VaultContext,
         notifier: Notifier,
+        intake: ActionIntake | None = None,
     ) -> None:
+        self._intake = intake
         self._cfg = settings
         self._sm = sessionmaker
         self._bus = bus
@@ -171,8 +181,18 @@ class Finalizer:
             restricted=row.restricted,
             duration_minutes=max(1, round(duration_s / 60)),
         )
+        proposals = await self._file_proposals(row, user, note, lines)
+        pending = sum(p.state == "proposed" for p in proposals)
         timing = await self._timing(session_id, row.ended_at if source == "finalize" else None)
-        markdown = render_note(note, meta, lines, work_items, timing)
+        markdown = render_note(
+            note,
+            meta,
+            lines,
+            work_items,
+            timing,
+            proposals,
+            review_url=self._session_url(session_id) or "",
+        )
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
@@ -198,13 +218,47 @@ class Finalizer:
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
         if notify:
             # A restricted note's title and summary stay off the phone: Gotify is a push relay.
+            waiting = (
+                f"\n\n{pending} action{'s' * (pending != 1)} waiting for your approval."
+                if pending
+                else ""
+            )
             title, body = (
                 ("Jarvis: restricted note ready", "A restricted note is ready.")
                 if row.restricted
-                else ("Jarvis: note ready", f"**{note.title}**\n\n{note.summary.strip()}")
+                else ("Jarvis: note ready", f"**{note.title}**\n\n{note.summary.strip()}{waiting}")
             )
             await self._notify_owner(session_id, title, body, 5, self._session_url(session_id))
         return FinalResult(written, note.title)
+
+    async def _file_proposals(
+        self, row: SessionRow, user: User | None, note: FinalNote, lines: list[Line]
+    ) -> list[NoteProposal]:
+        """File the end-of-session pass's proposals for review and list the session's queue for
+        the note. Only for sessions whose owner can review them; a failure here never costs the
+        note."""
+        if self._intake is None or not self._cfg.actions_enabled or row.restricted:
+            return []  # a restricted work call is never pushed, published or written to the vault
+        if user is None or not may_publish_for(user):
+            return []
+        mine = self._intake.for_session(row.id, row.user_id)
+        try:
+            await mine.propose(
+                note.proposals, lines, proposed_by=f"finalizer:{self._cfg.final_model}"
+            )
+            return [
+                NoteProposal(
+                    r.ref,
+                    r.kind,
+                    dict(r.payload),
+                    r.state,
+                    (r.result or {}).get("error"),
+                )
+                for r in await mine.listing()
+            ]
+        except Exception:
+            session_logger(__name__, row.id).exception("filing action proposals failed")
+            return []
 
     async def _timing(self, session_id: uuid.UUID, stopped_at: datetime | None) -> list[str] | None:
         """The note's "Session timing" section. Never blocks the note."""

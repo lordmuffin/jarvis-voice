@@ -1,0 +1,7 @@
+{
+  "type": "speaker_update",
+  "speakers": [
+    {"id": "spk_0", "label": "A", "enrolled": true, "is_owner": true, "voiceprint": [0.1]}
+  ],
+  "assignments": []
+}

@@ -1,4 +1,8 @@
 import type {
+  ActionEvent,
+  ActionItem,
+  ActionPage,
+  ApproveResult,
   AdminUser,
   Health,
   Channel,
@@ -294,3 +298,36 @@ export const continueDispatch = (id: string, guidance: string, f?: typeof fetch)
 /** Stop the item's queued or running run. */
 export const cancelDispatch = (id: string, f?: typeof fetch) =>
   request<WorkItem>(`${wi(id)}/dispatch/cancel`, { method: "POST" }, f);
+
+// --- Action proposals ---
+
+const act = (id: string) => `/v1/actions/${encodeURIComponent(id)}`;
+
+/** A session's proposed actions and what became of them. */
+export const sessionActions = (id: string, f?: typeof fetch) =>
+  request<ActionPage>(`${sid(id)}/actions`, {}, f);
+
+/** Approve actions, each bound to the `payload_sha256` the reviewer was shown. They run in order. */
+export const approveActions = (
+  sessionId: string,
+  items: { id: string; payload_sha256: string }[],
+  f?: typeof fetch,
+) =>
+  request<ApproveResult>(
+    `${sid(sessionId)}/actions/approve`,
+    { method: "POST", body: JSON.stringify({ items }) },
+    f,
+  );
+
+export const editAction = (id: string, changes: Record<string, string | null>, f?: typeof fetch) =>
+  request<ActionItem>(act(id), { method: "PATCH", body: JSON.stringify({ changes }) }, f);
+
+export const rejectAction = (id: string, f?: typeof fetch) =>
+  request<ActionItem>(`${act(id)}/reject`, { method: "POST" }, f);
+
+/** Run a failed action again: the owner's explicit request, never automatic. */
+export const retryAction = (id: string, f?: typeof fetch) =>
+  request<ActionItem>(`${act(id)}/retry`, { method: "POST" }, f);
+
+export const actionEvents = (id: string, f?: typeof fetch) =>
+  request<{ events: ActionEvent[] }>(`${act(id)}/events`, {}, f);

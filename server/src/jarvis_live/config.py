@@ -65,6 +65,13 @@ class Settings(BaseSettings):
     # duplicate guard is applied anyway.
     duplicate_hold_ms: int = 20_000
 
+    # Diarization sidecar (pyannote on the Spark). Empty URL: no speaker pass, as before.
+    diarize_url: str = ""
+    # The pass after a session ends may take max(min, ratio x recording length) seconds; past
+    # that the session goes on with the undiarized transcript.
+    diarize_timeout_min_s: float = 60.0
+    diarize_timeout_ratio: float = 0.3
+
     # LLM (LiteLLM's OpenAI-compatible API). Empty base URL disables the copilot and finalizer.
     litellm_base_url: str = ""
     litellm_api_key_file: Path | None = None
@@ -176,6 +183,16 @@ class Settings(BaseSettings):
     # prompts to review (see workitems/). Only repos listed here can be targeted: one
     # "owner/name  description" per line; the description helps the LLM pick.
     work_items_enabled: bool = False
+    # Action proposals: things the copilot proposes to DO (a task, a vault append, a reminder, a
+    # PR comment). Every one waits for the owner's approval (see actions/).
+    actions_enabled: bool = False
+    actions_ttl_days: int = 14  # an unreviewed proposal expires (and never executes)
+    # Approving a task or append opens a PR on the vault repo (publish_*). True also merges it,
+    # when it changes only the approved file; False stops at the open PR.
+    actions_vault_merge: bool = True
+    actions_work_tracker_path: str = "20 Areas/Personal/Work Tracker.md"
+    reminder_poll_s: float = 15.0  # how often due reminders are looked for
+    actions_tracker_section: str = "Needs Triage"  # where proposed tasks land on the board
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.

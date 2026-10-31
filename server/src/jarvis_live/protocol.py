@@ -119,6 +119,29 @@ class Segment(_Model):
     stt_tier: str
 
 
+class SpeakerInfo(_Model):
+    id: str
+    label: str | None  # None = not named: shown as "Speaker N"
+    enrolled: bool
+    is_owner: bool
+
+
+class SpeakerAssignment(_Model):
+    segment_id: str
+    speaker_id: str | None
+    rev: NonNegInt  # a client keeps an assignment only if its rev is higher than the one it holds
+    final: bool
+    mixed: bool | None = None
+
+
+class SpeakerUpdate(_Model):
+    """Who spoke a segment. Sent only to clients that opted in with ``features=speaker_update``."""
+
+    type: Literal["speaker_update"] = "speaker_update"
+    speakers: list[SpeakerInfo]
+    assignments: list[SpeakerAssignment]
+
+
 class Note(_Model):
     id: str
     text: str
@@ -175,7 +198,8 @@ class Error(_Model):
 
 
 ServerMessage = Annotated[
-    HelloAck | Ack | Segment | Copilot | Status | FinalNote | Error, Field(discriminator="type")
+    HelloAck | Ack | Segment | SpeakerUpdate | Copilot | Status | FinalNote | Error,
+    Field(discriminator="type"),
 ]
 server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)
 

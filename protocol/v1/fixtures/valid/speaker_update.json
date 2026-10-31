@@ -1,0 +1,12 @@
+{
+  "type": "speaker_update",
+  "speakers": [
+    {"id": "spk_0", "label": "Andrew", "enrolled": true, "is_owner": true},
+    {"id": "spk_1", "label": null, "enrolled": false, "is_owner": false}
+  ],
+  "assignments": [
+    {"segment_id": "seg_1", "speaker_id": "spk_1", "rev": 1, "final": false},
+    {"segment_id": "seg_2", "speaker_id": "spk_0", "rev": 2, "final": true, "mixed": true},
+    {"segment_id": "seg_3", "speaker_id": null, "rev": 1, "final": false}
+  ]
+}
