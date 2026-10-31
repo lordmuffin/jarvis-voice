@@ -86,12 +86,15 @@ export interface ListOptions {
   all?: boolean;
   /** Admins only: one user's sessions. */
   userId?: string;
+  /** The trash ("Recently deleted") instead of the live list. */
+  deleted?: boolean;
 }
 
-export function sessionsPath({ limit = 100, offset = 0, all, userId }: ListOptions = {}): string {
+export function sessionsPath({ limit = 100, offset = 0, all, userId, deleted }: ListOptions = {}): string {
   const q = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (userId) q.set("user_id", userId);
   else if (all) q.set("all", "true");
+  if (deleted) q.set("deleted", "true");
   return `/v1/sessions?${q}`;
 }
 
@@ -113,7 +116,9 @@ export const loginUrl = (returnTo: string) =>
 export const listSessions = (opts: ListOptions = {}, f?: typeof fetch) =>
   request<SessionPage>(sessionsPath(opts), {}, f);
 
-export const getSession = (id: string, f?: typeof fetch) => request<SessionDetail>(sid(id), {}, f);
+/** A session in the trash is returned too, so its page can offer Restore. */
+export const getSession = (id: string, f?: typeof fetch) =>
+  request<SessionDetail>(`${sid(id)}?include_deleted=true`, {}, f);
 
 export const viewerTicket = async (id: string, f?: typeof fetch) =>
   (
@@ -149,6 +154,17 @@ export async function uploadRecording(
 /** Set a session's title; a blank title clears it. */
 export const renameSession = (id: string, title: string, f?: typeof fetch) =>
   request<SessionSummary>(sid(id), { method: "PATCH", body: JSON.stringify({ title }) }, f);
+
+/** Move a session to "Recently deleted"; its audio and transcript are kept. */
+export const deleteSession = (id: string, f?: typeof fetch) => send(sid(id), { method: "DELETE" }, f);
+
+/** Bring a session back from "Recently deleted". */
+export const restoreSession = (id: string, f?: typeof fetch) =>
+  request<SessionSummary>(`${sid(id)}/restore`, { method: "POST" }, f);
+
+/** Delete the session (to the trash) this many days from now; null cancels. */
+export const setDeleteAfter = (id: string, days: number | null, f?: typeof fetch) =>
+  request<SessionSummary>(sid(id), { method: "PATCH", body: JSON.stringify({ delete_after_days: days }) }, f);
 
 /** Lift a session's restriction (owner only): its note leaves `Restricted/` and can be published. */
 export const unrestrictSession = (id: string, f?: typeof fetch) =>

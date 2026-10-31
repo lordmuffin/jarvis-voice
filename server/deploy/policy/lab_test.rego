@@ -97,3 +97,18 @@ test_lab_must_not_read_prs_with_a_token_file if {
 	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_FORGEJO_TOKEN_FILE": "/x"})
 	contains(msg, "JARVIS_LIVE_FORGEJO_TOKEN_FILE")
 }
+
+backup_job(suspended) := {
+	"kind": "CronJob",
+	"metadata": {"name": "jarvis-live-backup", "namespace": "jarvis-live-lab"},
+	"spec": {"suspend": suspended},
+}
+
+test_lab_backup_job_must_be_suspended if {
+	some msg in deny with input as backup_job(false)
+	contains(msg, "suspended")
+}
+
+test_lab_backup_job_suspended_is_fine if {
+	count(deny) == 0 with input as backup_job(true)
+}

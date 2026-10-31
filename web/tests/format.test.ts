@@ -22,6 +22,7 @@ describe("format", () => {
 describe("routes", () => {
   it("parses session paths", () => {
     expect(parseRoute("/")).toEqual({ name: "sessions" });
+    expect(parseRoute("/deleted")).toEqual({ name: "deleted" });
     expect(parseRoute("/sessions/abc-123")).toEqual({ name: "session", id: "abc-123" });
     expect(parseRoute("/nope")).toEqual({ name: "sessions" });
   });

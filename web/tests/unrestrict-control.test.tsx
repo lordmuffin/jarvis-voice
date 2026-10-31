@@ -56,7 +56,7 @@ describe("UnrestrictControl", () => {
 
     button()!.click();
     await vi.waitFor(() => expect(changed).toHaveBeenCalledWith(after));
-    expect(calls).toEqual(["POST /v1/sessions/s1/unrestrict", "GET /v1/sessions/s1"]);
+    expect(calls).toEqual(["POST /v1/sessions/s1/unrestrict", "GET /v1/sessions/s1?include_deleted=true"]);
   });
 
   it("says why when the server refuses", async () => {

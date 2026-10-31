@@ -18,6 +18,7 @@ from jarvis_live.api.sessions import (
     PublicationOut,
     SessionDetail,
     _visible,
+    _writable,
     get_session,
     processing_of,
 )
@@ -55,7 +56,7 @@ async def edit_note(
     session_id: uuid.UUID, body: NoteEdit, principal: PrincipalDep, db: Db, request: Request
 ) -> SessionDetail:
     """Replace the note's Markdown. If its PR is open, the edit is pushed to the PR too."""
-    await _visible(db, principal, session_id)
+    await _writable(db, principal, session_id)
     try:
         await _service(request).edit_note(session_id, body.markdown)
     except PublishError as e:
@@ -104,7 +105,7 @@ async def regenerate(
     session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
 ) -> SessionDetail:
     """Write the note again from the transcript. The session is ``finalizing`` meanwhile."""
-    row, _ = await _visible(db, principal, session_id)
+    row, _ = await _writable(db, principal, session_id)
     orchestrator = _orchestrator(row, request)
     async with _service(request).lock(session_id):
         await _reopen(db, orchestrator, session_id)
@@ -128,7 +129,7 @@ async def process(
     Never starts a second job: if the session is already being transcribed or summarized (a
     live or uploaded recording, an ending session, a regeneration, an earlier call), nothing is
     started and the 202 carries that job's state."""
-    row, _ = await _visible(db, principal, session_id)
+    row, _ = await _writable(db, principal, session_id)
     orchestrator = _orchestrator(row, request)
     async with _service(request).lock(session_id):
         await db.refresh(row)
@@ -172,6 +173,8 @@ Action = Literal["publish", "merge", "close", "skip", "unskip"]
 async def _act(
     action: Action, session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
 ) -> SessionDetail:
+    # Publishing is the publisher's job (owner and admins; the service checks whose note it is),
+    # not a note edit: an admin may publish the owner's notes.
     await _visible(db, principal, session_id)
     service, user = _service(request), principal.user
     try:

@@ -341,3 +341,19 @@ async def test_regenerate_needs_an_llm(server: ServerHandle, sm: SM, token: str)
     async with client(server, token) as c:
         assert (await c.get(f"/v1/sessions/{sid}")).json()["can_regenerate"] is False
         assert (await c.post(f"/v1/sessions/{sid}/regenerate")).status_code == 503
+
+
+async def test_a_deleted_session_leaves_the_queue_and_cannot_be_published(
+    pub_server: Callable[..., ServerHandle], sm: SM, token: str
+) -> None:
+    server = pub_server()
+    device = (await new_device(sm, "mac", user_id=OWNER_USER_ID))[0]
+    sid = await finished(sm, outbox_of(server), device)
+    async with client(server, token) as c:
+        ready = lambda q: [i["session_id"] for i in q["ready"]]  # noqa: E731
+        assert str(sid) in ready((await c.get("/v1/publishing")).json())
+        assert (await c.delete(f"/v1/sessions/{sid}")).status_code == 204
+        assert str(sid) not in ready((await c.get("/v1/publishing")).json())
+        assert (await c.post(f"/v1/sessions/{sid}/publication")).status_code == 404
+        await c.post(f"/v1/sessions/{sid}/restore")
+        assert str(sid) in ready((await c.get("/v1/publishing")).json())

@@ -10,7 +10,7 @@ from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import CopilotLoop
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta, NoteUpsert, SuggestionIn
-from jarvis_live.db.models import CopilotItem
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLMError
 from jarvis_live.protocol import Copilot, Related, Status
@@ -78,7 +78,8 @@ class Rig:
 
 @pytest.fixture
 async def rig(sm: SM) -> Rig:
-    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}")
+    # The owner's session: only it sees the owner's vault (see test_related_only_for_the_owner).
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=OWNER_USER_ID)
     sid = await make_session(sm, device_id)
     llm = FakeLLM().queue("CopilotDelta", CopilotDelta())
     r = Rig(sm, sid, llm, FakeVault())
@@ -322,3 +323,28 @@ def test_delta_title_is_tidied() -> None:
 
 def test_status_model_still_valid() -> None:
     assert Status(stt_tier=None, llm_ok=True, lag_ms=0).llm_ok
+
+
+async def test_related_only_for_the_owner(sm: SM) -> None:
+    """The vault is the owner's personal notes: another user's session never searches it, so
+    none of its paths or snippets reach that user's copilot output."""
+    device_id, _ = await new_device(sm, "stranger-phone")  # a user of their own
+    sid = await make_session(sm, device_id)
+    llm = FakeLLM().queue("CopilotDelta", CopilotDelta(topics=["qa ownership"]))
+    r = Rig(sm, sid, llm, FakeVault([Related(path="Private.md", title="P", snippet="s", uri="u")]))
+    await r.loop.tick()
+    r.stream_ms = 10_000
+    await r.segs(3, start=10_000)
+    await r.loop.tick()
+
+    assert len(llm.calls) == 1  # the cycle ran...
+    assert r.vault.searches == []  # ...without touching the vault
+    snaps = [e for e in r.published() if isinstance(e, Copilot)]
+    assert all(s.related == [] for s in snaps)
+    async with sm() as db:
+        kinds = (
+            (await db.execute(select(CopilotItem.kind).where(CopilotItem.session_id == sid)))
+            .scalars()
+            .all()
+        )
+    assert "related" not in [k.lower() for k in kinds]

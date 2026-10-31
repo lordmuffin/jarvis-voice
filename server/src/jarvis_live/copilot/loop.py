@@ -19,7 +19,7 @@ from jarvis_live.copilot.prompts import COPILOT_SYSTEM, copilot_user
 from jarvis_live.copilot.schema import CopilotDelta
 from jarvis_live.copilot.state import CopilotState
 from jarvis_live.copilot.transcript import load_lines, render_lines
-from jarvis_live.db.models import CopilotItem, SegmentRow
+from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
@@ -164,7 +164,7 @@ class CopilotLoop:
         if title is None and delta.title:
             await self._name_session(delta.title)
         changed = self.state.apply(delta, now_ms, self._cfg.suggestion_default_ttl_s)
-        if delta.topics:
+        if delta.topics and await self._owns_vault():
             hits = await self._vault.search(
                 delta.topics, self.state.shown, self._cfg.copilot_max_related
             )
@@ -185,6 +185,14 @@ class CopilotLoop:
             await self._persist("timing", {"ok": ok, "rt_s": rt_s, "stale_s": stale_s})
         except Exception:
             self._log.warning("could not record copilot timing", exc_info=True)
+
+    async def _owns_vault(self) -> bool:
+        """The vault is the deployment owner's personal notes: only their sessions search it."""
+        async with self._sm() as db:
+            user_id = await db.scalar(
+                select(SessionRow.user_id).where(SessionRow.id == self.session_id)
+            )
+        return user_id == OWNER_USER_ID
 
     async def _name_session(self, title: str) -> None:
         """Auto-name an untitled session. Never overwrites a title, including one the user set

@@ -72,6 +72,12 @@ data:
   JARVIS_LIVE_OUTBOX_DIR: "/capture/outbox"
   JARVIS_LIVE_VAULT_CLONE_DIR: "/vault/repo"
   JARVIS_LIVE_AUDIO_RETENTION_DAYS: "90"
+  # A deleted session stays recoverable ("Recently deleted") this long, then its rows,
+  # audio and note are deleted together. Separate from the audio purge above.
+  JARVIS_LIVE_TRASH_RETENTION_DAYS: "30"
+  # Where the backup CronJob writes (and the app reads last_success.json). A backup older
+  # than 36 h shows on /healthz and sends a Gotify notice.
+  JARVIS_LIVE_BACKUP_DIR: "/backups"
 
   # Publishing notes to the vault (needs a server image with publishing; older
   # images ignore these). The app opens one branch + PR per session against main

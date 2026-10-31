@@ -39,6 +39,8 @@ data class SessionsUi(
     val list: RecentUi = RecentUi.Loading,
     val footer: ListFooter = ListFooter.NONE,
     val selectedId: String? = null,
+    /** "Recently deleted" instead of the live list. */
+    val showDeleted: Boolean = false,
 )
 
 class SessionsActions(
@@ -48,6 +50,7 @@ class SessionsActions(
     val onOpenSettings: () -> Unit = {},
     val onGoToRecord: () -> Unit = {},
     val onNav: (BottomNav.Tab) -> Unit = {},
+    val onToggleDeleted: () -> Unit = {},
 )
 
 /**
@@ -84,6 +87,10 @@ private fun HistoryList(ui: SessionsUi, actions: SessionsActions, modifier: Modi
             horizontalArrangement = Arrangement.spacedBy(sp.s8),
         ) {
             InstText(ui.subtitle, InstUi.type.caption, Modifier.weight(1f), maxLines = 2)
+            InstButton(
+                stringResource(if (ui.showDeleted) R.string.history_back_to_sessions else R.string.history_recently_deleted),
+                actions.onToggleDeleted, kind = ButtonKind.Quiet,
+            )
             InstButton(stringResource(R.string.ui_refresh), actions.onRefresh)
         }
         when (val list = ui.list) {
@@ -103,10 +110,14 @@ private fun HistoryList(ui: SessionsUi, actions: SessionsActions, modifier: Modi
                 )
             }
             RecentUi.Empty -> Box(Modifier.padding(sp.s16)) {
-                StatePanel(
-                    stringResource(R.string.ui_history_empty_title), stringResource(R.string.ui_history_empty_line),
-                    actionText = stringResource(R.string.ui_history_empty_action), onAction = actions.onGoToRecord,
-                )
+                if (ui.showDeleted) {
+                    StatePanel(stringResource(R.string.history_deleted_empty_title), stringResource(R.string.history_deleted_empty_line))
+                } else {
+                    StatePanel(
+                        stringResource(R.string.ui_history_empty_title), stringResource(R.string.ui_history_empty_line),
+                        actionText = stringResource(R.string.ui_history_empty_action), onAction = actions.onGoToRecord,
+                    )
+                }
             }
             is RecentUi.Error -> Box(Modifier.padding(sp.s16)) {
                 StatePanel(

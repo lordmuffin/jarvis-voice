@@ -1,0 +1,124 @@
+# jarvis-live-backup: `jarvis-live backup` every night at 03:00 UTC.
+#
+# Writes a pg_dump and a manifest of every recording and note (size, sha256) to the
+# jarvis-live-backups PVC. The audio bytes are not copied: Velero already backs up the data
+# volume offsite (np-home-homelab apps/storage/velero, offsite-data at 04:00), and so the
+# backups PVC too, which is why this runs first. The manifest is what lets one session be
+# restored from a dump plus a Velero copy, verified byte for byte (docs/runbooks/restore.md).
+#
+# Any failure sends a Gotify notice (JARVIS_LIVE_GOTIFY_*). Lab's copy is suspended (the lab
+# overlay): lab data is disposable and not backed up.
+#
+# The image is the Deployment's, copied in by the `replacements` in kustomization.yaml, so a
+# release moves both together; the tag below is a placeholder that is never deployed.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: jarvis-live-backup
+  labels:
+    app: jarvis-live-backup
+spec:
+  schedule: "0 3 * * *"
+  timeZone: Etc/UTC
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    metadata:
+      labels:
+        app: jarvis-live-backup
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200
+      template:
+        metadata:
+          labels:
+            app: jarvis-live-backup
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          # The data volumes are RWO NFS: run beside the app, on the same eligible nodes.
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: homelab.apj.dev/critical-stateful
+                        operator: In
+                        values: ["true"]
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values: ["amd64"]
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: ghcr.io/lordmuffin/jarvis-live:0.0.0 # replaced by the Deployment's image
+              command: ["jarvis-live", "backup"]
+              envFrom:
+                - configMapRef:
+                    name: jarvis-live-config
+              env:
+                - name: JARVIS_LIVE_DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: jarvis-live-db-app
+                      key: connection
+                - name: JARVIS_LIVE_GOTIFY_TOKEN_FILE
+                  value: /secrets/gotify/password
+                - name: JARVIS_LIVE_BACKUP_DIR
+                  value: /backups
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: "1"
+                  memory: 1Gi
+              volumeMounts:
+                # Read-only: a backup never touches what it protects.
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: outbox
+                  mountPath: /capture
+                  readOnly: true
+                - name: backups
+                  mountPath: /backups
+                - name: gotify-token
+                  mountPath: /secrets/gotify
+                  readOnly: true
+                - name: scratch
+                  mountPath: /tmp
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: jarvis-live-data
+                readOnly: true
+            - name: outbox
+              persistentVolumeClaim:
+                claimName: jarvis-live-outbox
+                readOnly: true
+            - name: backups
+              persistentVolumeClaim:
+                claimName: jarvis-live-backups
+            - name: gotify-token
+              secret:
+                secretName: jarvis-live-gotify-token
+                defaultMode: 0400
+            - name: scratch
+              emptyDir:
+                sizeLimit: 256Mi
