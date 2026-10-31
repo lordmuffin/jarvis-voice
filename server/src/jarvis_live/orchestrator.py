@@ -49,6 +49,7 @@ class Orchestrator:
         clock: Clock | None = None,
         on_final: Callable[[uuid.UUID], Awaitable[None]] | None = None,
         intake: ActionIntake | None = None,
+        diarizer: Diarizer | None = None,
     ) -> None:
         self._cfg = settings
         self._sm = sessionmaker
@@ -57,6 +58,7 @@ class Orchestrator:
         self._clock = clock or RealClock()
         self._bus, self._llm, self._vault = bus, llm, vault
         self._intake = intake
+        self._diarize = DiarizeService(settings, sessionmaker, bus, diarizer)
         self._finalizer = Finalizer(settings, sessionmaker, bus, llm, vault, notifier, intake)
         self._hub: IngestHub | None = None
         self._copilots: dict[uuid.UUID, asyncio.Task[None]] = {}
