@@ -11,8 +11,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from jarvis_live.actions.intake import ActionIntake
-from jarvis_live.actions.service import ActionService
+from jarvis_live.actions.service import ActionService, Executor
 from jarvis_live.actions.state import Context
+from jarvis_live.actions.vault import VaultExecutor
 from jarvis_live.api import (
     account,
     actions,
@@ -206,8 +207,13 @@ def create_app(
                 runner = dispatch
                 tasks.append(asyncio.create_task(dispatch.run_loop()))
         work = WorkItemService(cfg, sm, runner)
-        # Executors are added per kind as they ship; a kind without one fails visibly.
-        action_service = ActionService(cfg, sm, {}, lambda: _action_context(cfg))
+        # Vault writes need the vault repo's write credential: where there is none (lab), those
+        # kinds have no executor and fail visibly when approved.
+        executors: dict[str, Executor] = {}
+        if gh is not None:
+            vault_writer = VaultExecutor(cfg, sm, gh)
+            executors = {"task.create": vault_writer, "vault.append": vault_writer}
+        action_service = ActionService(cfg, sm, executors, lambda: _action_context(cfg))
         intake = ActionIntake(action_service, lambda: _action_context(cfg))
         if action_service.enabled:
             await action_service.recover()

@@ -250,7 +250,7 @@ REST, owner-scoped (404 for anyone else), under `/v1`: `GET /sessions/{id}/actio
    REST. Fake executors. Tests include the audit trail and the no-auto-run test.
 3. `feat(server)`: copilot + finalizer emit proposals (prompts, `CopilotDelta`/`FinalNote`,
    golden `final_note.md` update, `## Proposed actions` rendering).
-4. `feat(server)`: `task.create`/`vault.append` executor on `fake_github`: marker idempotency,
+4. **Done** (`actions/vault.py`). `feat(server)`: `task.create`/`vault.append` executor on `fake_github`: marker idempotency,
    crash-reconcile, conflict, merge-diff guard. **First time "done when" can be checked locally.**
 5. `feat(server)`: `Notifier.send()`, `scheduled_reminders`, `ReminderLoop`.
 6. D6 spike, then `git.pr_comment`.
