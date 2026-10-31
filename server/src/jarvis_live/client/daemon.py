@@ -99,12 +99,15 @@ class Daemon:
         end_timeout: float = 30.0,
         max_outbox_bytes: int | None = None,
         max_session_s: float | None = None,
+        restart: capture.RestartPolicy = capture.RestartPolicy(),  # noqa: B008
     ) -> None:
         self.cfg = cfg
         self.env = env
         self.opts = opts
         self._recorder = recorder
         self.end_timeout = end_timeout
+        self._restart = restart
+        self.exit_code = 0
         self.max_outbox_bytes = max_outbox_bytes or cfg.max_outbox_mb * 1024 * 1024
         self.max_session_s = max_session_s or cfg.max_session_hours * 3600
         self._stop = asyncio.Event()
@@ -130,7 +133,7 @@ class Daemon:
                 rolled = await self._session(resume)
                 resume = False
                 if not rolled:
-                    return 0
+                    return self.exit_code
         finally:
             self._finished.set()
             if self._control is not None:
@@ -219,7 +222,14 @@ class Daemon:
                 )
 
         capturers = [
-            capture.Capturer(await recorder(c), c, outbox, start_ms=start_ms, on_frame=on_frame)
+            capture.Capturer(
+                await recorder(c),
+                c,
+                outbox,
+                start_ms=start_ms,
+                on_frame=on_frame,
+                restart=self._restart,
+            )
             for c in channels
         ]
         cap_tasks = [asyncio.create_task(c.run()) for c in capturers]
@@ -245,6 +255,9 @@ class Daemon:
                     watched.discard(t)
                     exc = t.exception()
                     run.state, run.error = "failed", str(exc) if exc else "recorder exited"
+                if run.state == "failed" and self.opts.roll:
+                    self.exit_code = 1  # standing endpoint: exit so the service manager retries
+                    break
                 if run.state == "failed" and stop_wait not in done:
                     for t in cap_tasks:
                         t.cancel()

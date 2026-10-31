@@ -12,8 +12,9 @@ This is the only module in ``jarvis_live.client`` allowed to touch the network.
 import asyncio
 import contextlib
 import random
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 import httpx
 import websockets
@@ -341,6 +342,33 @@ async def create_session(server: str, token: str, body: dict[str, object]) -> st
     return str(r.json()["id"])
 
 
+async def fetch_session(server: str, token: str, session_id: str) -> dict[str, Any]:
+    """``GET /v1/sessions/{id}``: the stored detail, including final segments."""
+    async with httpx.AsyncClient(
+        base_url=server.rstrip("/"), headers={"Authorization": f"Bearer {token}"}, timeout=15
+    ) as c:
+        r = await c.get(f"/v1/sessions/{session_id}")
+    r.raise_for_status()
+    detail: dict[str, Any] = r.json()
+    return detail
+
+
+async def viewer_events(server: str, token: str, session_id: str) -> AsyncIterator[ServerMessage]:
+    """Live events of any session the token's user may see, as a ``viewer``."""
+    base = server.rstrip("/")
+    async with httpx.AsyncClient(
+        base_url=base, headers={"Authorization": f"Bearer {token}"}, timeout=15
+    ) as c:
+        r = await c.post(f"/v1/sessions/{session_id}/ticket", json=ticket_body("viewer"))
+    r.raise_for_status()
+    ws_base = base.replace("http://", "ws://", 1).replace("https://", "wss://", 1)
+    url = f"{ws_base}/v1/sessions/{session_id}/stream?ticket={r.json()['ticket']}"
+    async with websockets.connect(url, max_size=None) as ws:
+        async for raw in ws:
+            if (msg := parse_server_message(raw)) is not None:
+                yield msg
+
+
 def _after(acked: int | None) -> int:
     return 0 if acked is None else acked + 1
 
@@ -361,8 +389,10 @@ __all__ = [
     "ReconnectPolicy",
     "State",
     "create_session",
+    "fetch_session",
     "make_hello",
     "parse_server_message",
     "session_create_body",
     "ticket_body",
+    "viewer_events",
 ]

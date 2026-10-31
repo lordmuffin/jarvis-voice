@@ -62,7 +62,7 @@ class ClientConfig:
                 raise ConfigError("no device token configured: use `capture configure --token T`")
 
 
-def load_config(env: Mapping[str, str] = os.environ) -> ClientConfig:
+def load_config(env: Mapping[str, str] = os.environ, *, include_env: bool = True) -> ClientConfig:
     cfg = ClientConfig()
     path = config_dir(env) / "client.toml"
     if path.exists():
@@ -70,6 +70,8 @@ def load_config(env: Mapping[str, str] = os.environ) -> ClientConfig:
         for f in fields(ClientConfig):
             if f.name in data:
                 setattr(cfg, f.name, data[f.name])
+    if not include_env:
+        return cfg
     if (v := env.get(ENV_PREFIX + "SERVER")) is not None:
         cfg.server = v
     if (v := env.get(ENV_PREFIX + "TOKEN")) is not None:

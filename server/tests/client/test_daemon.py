@@ -277,3 +277,58 @@ async def test_roll_starts_a_new_session_after_the_maximum_length(
         json.loads(p.read_text()) for p in (state_dir(env) / "sessions").glob("*/session.json")
     ]
     assert len(metas) >= 2 and all(m["ended"] for m in metas)
+
+
+async def test_standing_endpoint_exits_nonzero_when_the_recorder_keeps_failing(
+    tmp_path: Path, no_network: list[str]
+) -> None:
+    """Under systemd a dead audio source must end the process so Restart= retries."""
+    from jarvis_live.client.capture import RestartPolicy
+
+    bad = script(tmp_path / "bad", "echo 'no such source' >&2\nexit 1\n")
+
+    async def recorder(channel: str) -> list[str]:
+        return [str(bad)]
+
+    env = _env(tmp_path)
+    d = Daemon(
+        ClientConfig(mode="local"),
+        env,
+        SessionOptions(resume=True, roll=True),
+        recorder=recorder,
+        restart=RestartPolicy(initial_delay=0.01, max_delay=0.02, max_rapid=3),
+    )
+    assert await asyncio.wait_for(d.run(), 15) == 1
+    assert not (runtime_dir(env) / "ctl.sock").exists()
+
+
+async def test_interactive_session_stays_up_after_a_recorder_failure_so_status_can_say_why(
+    tmp_path: Path, no_network: list[str]
+) -> None:
+    from jarvis_live.client.capture import RestartPolicy
+
+    bad = script(tmp_path / "bad", "echo 'no such source' >&2\nexit 1\n")
+
+    async def recorder(channel: str) -> list[str]:
+        return [str(bad)]
+
+    env = _env(tmp_path)
+    d = Daemon(
+        ClientConfig(mode="local"),
+        env,
+        SessionOptions(),
+        recorder=recorder,
+        restart=RestartPolicy(initial_delay=0.01, max_delay=0.02, max_rapid=3),
+    )
+    task = asyncio.create_task(d.run())
+
+    async def failed() -> bool:
+        try:
+            return (await _status(env)).get("state") == "failed"
+        except (OSError, control.ControlError):
+            return False
+
+    await _until(failed)
+    assert "no such source" in (await _status(env))["problem"]
+    await control.request(runtime_dir(env) / "ctl.sock", {"cmd": "stop"}, timeout=30)
+    assert await asyncio.wait_for(task, 10) == 0

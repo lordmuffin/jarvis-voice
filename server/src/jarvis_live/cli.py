@@ -138,7 +138,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--channel", choices=["mic", "system"], default="mic")
     p.add_argument("--speed", type=float, default=4.0)
 
+    from jarvis_live.client import capture_cli
+
+    capture_cli.add_parser(sub)
+
     args = parser.parse_args(argv)
+    if args.cmd == "capture":
+        return capture_cli.run(args)
     if args.cmd == "create-device":
         return _create_device(args.name, args.user)
     if args.cmd == "list-users":
