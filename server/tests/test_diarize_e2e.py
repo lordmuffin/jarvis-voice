@@ -8,7 +8,7 @@ import httpx
 
 from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.diarize.align import Turn
-from jarvis_live.diarize.client import Diarization
+from jarvis_live.diarize.client import Diarization, Embedding
 from tests.audio import TWO_UTTERANCES
 from tests.conftest import ServerHandle
 from tests.fakes import FakeLLM
@@ -83,3 +83,44 @@ async def test_a_broken_diarizer_gives_todays_undiarized_transcript(
     ]
     assert d["speakers"] == []
     assert "me: seg-1" in llm.calls[-1].user
+
+
+class Sidecar(ScriptedDiarizer):
+    """The whole sidecar: live voiceprints per segment, and the final diarization."""
+
+    def __init__(self, fail: bool = False) -> None:
+        super().__init__(fail)
+        self.prints = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]
+
+    async def embed(self, pcm: bytes) -> Embedding:
+        return Embedding(self.prints.pop(0), "m1")
+
+
+async def test_the_final_pass_replaces_the_live_labels(
+    make_server: Callable[..., ServerHandle], token: str
+) -> None:
+    server = make_server(llm=_llm(), diarizer=Sidecar(), speaker_live_min_ms=1000)
+    async with client(server, token) as c:
+        d = await _replay(c)
+
+    assert [(s["speaker_id"], s["speaker_rev"]) for s in d["segments"]] == [
+        ("spk_mic_0", 2),
+        ("spk_mic_1", 2),
+    ]
+    # the provisional voices are gone, not left beside the real ones
+    assert [s["id"] for s in d["speakers"]] == ["spk_mic_0", "spk_mic_1"]
+
+
+async def test_if_the_final_pass_fails_the_live_labels_stay(
+    make_server: Callable[..., ServerHandle], token: str
+) -> None:
+    server = make_server(llm=_llm(), diarizer=Sidecar(fail=True), speaker_live_min_ms=1000)
+    async with client(server, token) as c:
+        d = await _replay(c)
+
+    assert d["status"] == "done"
+    assert [(s["speaker_id"], s["speaker_rev"]) for s in d["segments"]] == [
+        ("live_mic_0", 1),
+        ("live_mic_1", 1),
+    ]
+    assert [s["id"] for s in d["speakers"]] == ["live_mic_0", "live_mic_1"]
