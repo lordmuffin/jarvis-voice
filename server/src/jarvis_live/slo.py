@@ -43,7 +43,7 @@ class _State:
     last_bad: float = float("-inf")
 
 
-def _quantile(values: list[float], q: float) -> float:
+def quantile(values: list[float], q: float) -> float:
     ordered = sorted(values)
     return ordered[max(0, math.ceil(q * len(ordered)) - 1)]  # nearest rank
 
@@ -111,16 +111,14 @@ class SloMonitor:
         while window and window[0][0] < now - spec.window_s:
             window.popleft()
         values = [v for _, v in window]
-        bad = (
-            len(values) >= spec.min_samples and _quantile(values, spec.quantile) > spec.threshold_s
-        )
+        bad = len(values) >= spec.min_samples and quantile(values, spec.quantile) > spec.threshold_s
         state = self._state[(spec.slo, key)]
         if bad:
             state.last_bad = now
             if not state.breached:
                 state.breached = True
                 if not self._explained(spec):
-                    await self._alert(spec, key, _quantile(values, spec.quantile), len(values))
+                    await self._alert(spec, key, quantile(values, spec.quantile), len(values))
         elif state.breached and now - state.last_bad >= self._cfg.slo_clear_s:
             state.breached = False
         metrics.slo_breach(spec.slo, key, state.breached)

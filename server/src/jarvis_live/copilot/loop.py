@@ -139,10 +139,13 @@ class CopilotLoop:
             )
         except LLMError as e:
             self._log.warning("copilot cycle skipped: %s", e)
-            metrics.copilot_roundtrip("error", self._clock.monotonic() - asked)
+            rt = self._clock.monotonic() - asked
+            metrics.copilot_roundtrip("error", rt)
+            await self._record_timing(ok=False, rt_s=rt, stale_s=None)
             self._mark_llm(False)
             return
-        metrics.copilot_roundtrip("ok", self._clock.monotonic() - asked)
+        rt = self._clock.monotonic() - asked
+        metrics.copilot_roundtrip("ok", rt)
         self._mark_llm(True)
 
         if title is None and delta.title:
@@ -155,10 +158,20 @@ class CopilotLoop:
             if hits:
                 await self._persist(RELATED, {"hits": [h.model_dump() for h in hits]})
                 changed = self.state.set_related(hits) or changed
+        stale = None
         if changed:
             await self._publish()
             if waiting_since is not None:
-                metrics.copilot_staleness(self._clock.monotonic() - waiting_since)
+                stale = self._clock.monotonic() - waiting_since
+                metrics.copilot_staleness(stale)
+        await self._record_timing(ok=True, rt_s=rt, stale_s=stale)
+
+    async def _record_timing(self, *, ok: bool, rt_s: float, stale_s: float | None) -> None:
+        """One row per cycle, for the session's timing summary. Never fails a cycle."""
+        try:
+            await self._persist("timing", {"ok": ok, "rt_s": rt_s, "stale_s": stale_s})
+        except Exception:
+            self._log.warning("could not record copilot timing", exc_info=True)
 
     async def _name_session(self, title: str) -> None:
         """Auto-name an untitled session. Never overwrites a title, including one the user set

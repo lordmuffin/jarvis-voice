@@ -37,10 +37,12 @@ from jarvis_live.finalize.outbox import (
     owned_by,
 )
 from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
+from jarvis_live.finalize.timing import load_timing, render_timing
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
+from jarvis_live.stt.tiers import parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.template import session_url
 
@@ -107,7 +109,7 @@ class Finalizer:
         slog = session_logger(__name__, session_id)
         began = time.monotonic() if since is None else since
         try:
-            result = await self._finalize(session_id, replace=replace, notify=notify)
+            result = await self._finalize(session_id, replace=replace, notify=notify, source=source)
         except asyncio.CancelledError:
             raise  # shutdown: stays ``finalizing`` and is retried on the next start
         except Exception:
@@ -127,7 +129,7 @@ class Finalizer:
         return result
 
     async def _finalize(
-        self, session_id: uuid.UUID, *, replace: str | None, notify: bool
+        self, session_id: uuid.UUID, *, replace: str | None, notify: bool, source: str = "finalize"
     ) -> FinalResult | None:
         async with self._sm() as db:
             row = await db.get(SessionRow, session_id)
@@ -167,7 +169,8 @@ class Finalizer:
             source=row.source,
             duration_minutes=max(1, round(duration_s / 60)),
         )
-        markdown = render_note(note, meta, lines, work_items)
+        timing = await self._timing(session_id, row.ended_at if source == "finalize" else None)
+        markdown = render_note(note, meta, lines, work_items, timing)
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
@@ -198,6 +201,23 @@ class Finalizer:
                 self._session_url(session_id),
             )
         return FinalResult(written, note.title)
+
+    async def _timing(self, session_id: uuid.UUID, stopped_at: datetime | None) -> list[str] | None:
+        """The note's "Session timing" section. Never blocks the note."""
+        try:
+            async with self._sm() as db:
+                summary = await load_timing(db, session_id)
+            if summary is None:
+                return None
+            try:
+                primary = parse_tiers(self._cfg.whisper_tiers)[0].name
+            except (ValueError, IndexError):
+                primary = None
+            waited = (datetime.now(UTC) - stopped_at).total_seconds() if stopped_at else None
+            return render_timing(summary, self._cfg, primary_tier=primary, stop_to_note_s=waited)
+        except Exception:
+            log.warning("could not summarise timing for %s", session_id, exc_info=True)
+            return None
 
     def _remove_old(self, name: str, session_id: str) -> None:
         """Drop a regenerated session's previous note, but never another session's file."""

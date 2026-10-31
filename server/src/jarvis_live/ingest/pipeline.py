@@ -29,6 +29,7 @@ class _Final:
     tier: str
     cut_at: float = 0.0  # when the segment was cut; 0: unknown, not timed
     held_at: float | None = None  # when a mic segment began waiting for the system channel
+    stt_ms: int | None = None
 
 
 class SessionPipeline:
@@ -163,6 +164,7 @@ class SessionPipeline:
         cut_at = self._cut_at.pop((channel, seg.start_ms), 0.0)
         metrics.segment_length(channel, (seg.end_ms - seg.start_ms) / 1000)
         prompt = self._prev_text[channel][-self._cfg.stt_prompt_chars :]
+        began = time.monotonic()
         try:
             result = await self._stt.transcribe(seg.pcm, prompt)
         except STTUnavailable:
@@ -184,7 +186,8 @@ class SessionPipeline:
             self._log.info("dropped hallucination", extra={"channel": channel, "text": text})
             return
         self._prev_text[channel] = text
-        final = _Final(channel, seg.start_ms, seg.end_ms, text, result.tier, cut_at)
+        stt_ms = int((time.monotonic() - began) * 1000)
+        final = _Final(channel, seg.start_ms, seg.end_ms, text, result.tier, cut_at, stt_ms=stt_ms)
         async with self._lock:
             if channel == "system" or "system" not in self.channels:
                 await self._emit(final)
@@ -234,6 +237,8 @@ class SessionPipeline:
 
     async def _emit(self, f: _Final) -> None:
         seg_id = uuid.uuid4()
+        waited = time.monotonic() - f.held_at if f.held_at is not None else 0.0
+        latency_ms = int((time.monotonic() - f.cut_at - waited) * 1000) if f.cut_at else None
         async with self._sm() as db:
             db.add(
                 SegmentRow(
@@ -246,6 +251,8 @@ class SessionPipeline:
                     text=f.text,
                     source="final",
                     stt_tier=f.tier,
+                    stt_ms=f.stt_ms,
+                    latency_ms=latency_ms,
                 )
             )
             await db.commit()
@@ -265,9 +272,7 @@ class SessionPipeline:
             ),
         )
         if f.cut_at:
-            now = time.monotonic()
-            hold = now - f.held_at if f.held_at is not None else 0.0
-            metrics.authoritative(f.channel, now - f.cut_at, hold)
+            metrics.authoritative(f.channel, time.monotonic() - f.cut_at, waited)
 
     # --- drafts -----------------------------------------------------------------------------
 
