@@ -59,11 +59,13 @@ public actor LiveConnection {
     private let configuration: Configuration
     private let outbox: Outbox
     private let ticketProvider: @Sendable () async throws -> String
-    private let urlSession: URLSession
+    private let urlSession: GatedSession
+    private let gate: EgressGate
     private let eventContinuation: AsyncStream<ServerEvent>.Continuation
     private let stateContinuation: AsyncStream<ConnectionState>.Continuation
 
     private var runTask: Task<Void, Never>?
+    private var releaseGate: (@Sendable () -> Void)?
     private var failureCount = 0
     private var pendingControl: [ClientMessage] = []
     private var endRequested = false
@@ -79,12 +81,14 @@ public actor LiveConnection {
         configuration: Configuration,
         outbox: Outbox,
         ticketProvider: @escaping @Sendable () async throws -> String,
-        urlSession: URLSession = URLSession(configuration: .ephemeral)
+        urlSession: URLSession = URLSession(configuration: .ephemeral),
+        gate: EgressGate = .shared
     ) {
         self.configuration = configuration
         self.outbox = outbox
         self.ticketProvider = ticketProvider
-        self.urlSession = urlSession
+        self.urlSession = GatedSession(urlSession, gate: gate)
+        self.gate = gate
         (events, eventContinuation) = AsyncStream.makeStream(of: ServerEvent.self, bufferingPolicy: .unbounded)
         (states, stateContinuation) = AsyncStream.makeStream(of: ConnectionState.self, bufferingPolicy: .unbounded)
     }
@@ -94,6 +98,10 @@ public actor LiveConnection {
     /// Starts connecting. Idempotent.
     public func start() {
         guard runTask == nil, !finished else { return }
+        // A local-only session began: drop the connection. The outbox stays resumable.
+        releaseGate = gate.whenShut { [weak self] in
+            Task { await self?.stop() }
+        }
         runTask = Task { await self.run() }
     }
 
@@ -172,7 +180,7 @@ public actor LiveConnection {
 
     private func runOnce() async throws {
         let ticket = try await ticketProvider()
-        let task = urlSession.webSocketTask(with: streamURL(ticket: ticket))
+        let task = try urlSession.webSocketTask(with: streamURL(ticket: ticket))
         task.resume()
         endSent = false  // `end` is re-sent on a new connection if it was not fully acked.
         try await withTaskCancellationHandler {
@@ -360,6 +368,7 @@ public actor LiveConnection {
     }
 
     private func send(_ message: ClientMessage, on task: URLSessionWebSocketTask) async throws {
+        try gate.check()  // `whenShut` stops this connection a moment after the gate shuts
         let data = try JSONEncoder().encode(message)
         try await task.send(.string(String(decoding: data, as: UTF8.self)))
     }
@@ -390,6 +399,8 @@ public actor LiveConnection {
 
     private func finish(_ terminal: ConnectionState) {
         finished = true
+        releaseGate?()
+        releaseGate = nil
         setState(terminal)
         eventContinuation.finish()
         stateContinuation.finish()

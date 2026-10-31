@@ -148,8 +148,8 @@ function addMarker(markers: Marker[], m: Marker): Marker[] {
 }
 
 function summaryOf(s: SessionSummary): SessionSummary {
-  const { id, title, mode, status, channels, started_at, ended_at, local_only, streaming, owner } = s;
-  return { id, title, mode, status, channels, started_at, ended_at, local_only, streaming, owner };
+  const { id, title, mode, status, channels, started_at, ended_at, local_only, restricted, streaming, owner } = s;
+  return { id, title, mode, status, channels, started_at, ended_at, local_only, restricted, streaming, owner };
 }
 
 /** Pure: `(state, event) => state`. Unknown events return the state unchanged. */

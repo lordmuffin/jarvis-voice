@@ -22,7 +22,7 @@ path-filtered workflows (`server-ci`, `web-ci`, `python-ci`, `macos-ci`, `deploy
    Component tests render views into a DOM with `happy-dom`, opted in per file (`// @vitest-environment happy-dom`;
    the rest stay on `node`). First user: `web/tests/workitems-view.test.ts` (the work item review cards).
    Server tests that need Postgres are marked `integration` automatically (`server/tests/conftest.py`), so `-m "not integration"` is the Docker-free fast suite.
-3. **Integration / e2e:** server tests against Postgres (testcontainers), Playwright against the real app serving `web/dist`.
+3. **Integration / e2e:** server tests against Postgres (testcontainers), Playwright against the real app serving `web/dist`. `server/tests/test_observability_e2e.py` replays a session through the real app, asserts the full metric set from the scrape port, throttles a Whisper tier and asserts exactly one Gotify alert.
    The dispatch runner (`server/dispatch-runner/runner.py`) is tested with real git (`server/tests/test_dispatch_runner.py`):
    local repos over `file://` play GitHub, with a fake `claude` binary and a fake pull-request API. The tests cover the
    mirror plus worktree, the patch, the draft PR, the refusal of `.github/workflows` changes, and that nothing planted in

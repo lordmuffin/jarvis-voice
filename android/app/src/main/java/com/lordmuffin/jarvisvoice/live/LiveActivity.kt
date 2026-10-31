@@ -43,6 +43,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 /**
@@ -124,6 +126,13 @@ class LiveActivity : AppCompatActivity() {
                     }
                 }
                 launch {
+                    // Nothing was checked during a local-only session: look again when it ends.
+                    EgressGate.shared.blocking.drop(1).filter { !it }.collect {
+                        refreshServerChannel()
+                        checkNetwork()
+                    }
+                }
+                launch {
                     // Timer and pending list (upload workers update metadata in the background).
                     while (true) {
                         val state = LiveSessionService.ui.value
@@ -174,11 +183,13 @@ class LiveActivity : AppCompatActivity() {
     /** Asks the server which release channel it is, for the tag beside its address. */
     private fun refreshServerChannel() {
         channelJob?.cancel()
-        if (!settings.isConfigured) return
+        if (!settings.isConfigured || EgressGate.shared.isBlocking) return
         val url = settings.serverUrl
         val client = runCatching { LiveApiClient(url, "") }.getOrNull() ?: return
         channelJob = lifecycleScope.launch {
-            serverChannel = client.channel()?.let { url to it }
+            val channel = client.channel()
+            // A refused check says nothing about the server: keep the last answer.
+            if (channel != null || !EgressGate.shared.isBlocking) serverChannel = channel?.let { url to it }
             render(LiveSessionService.ui.value)
         }
     }
@@ -221,8 +232,7 @@ class LiveActivity : AppCompatActivity() {
         checkingNetwork = true
         renderAwayMode()
         try {
-            val place = networkMonitor.check(settings.apiClient())
-            settings.awayMode = settings.awayMode.withPlace(place)
+            networkMonitor.check(settings.apiClient())?.let { settings.awayMode = settings.awayMode.withPlace(it) }
         } finally {
             checkingNetwork = false
             renderAwayMode()
