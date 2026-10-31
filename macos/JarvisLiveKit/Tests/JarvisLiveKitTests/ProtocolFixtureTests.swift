@@ -4,7 +4,7 @@ import Testing
 
 private let clientTypes: Set<String> = ["hello", "draft_segment", "marker", "end"]
 private let serverTypes: Set<String> = [
-    "hello_ack", "ack", "segment", "copilot", "status", "final_note", "error",
+    "hello_ack", "ack", "segment", "speaker_update", "copilot", "status", "final_note", "error",
 ]
 
 private struct UnknownSchema: Error { let name: String }
@@ -34,8 +34,8 @@ private func roundTrip(schema: String, data: Data) throws -> Data {
 @Suite("Protocol fixtures")
 struct ProtocolFixtureTests {
     @Test func fixtureDirectoriesAreFound() {
-        #expect(Fixtures.valid.count >= 19, "valid fixtures missing — is #filePath-relative lookup broken?")
-        #expect(Fixtures.invalid.count >= 17)
+        #expect(Fixtures.valid.count >= 21, "valid fixtures missing — is #filePath-relative lookup broken?")
+        #expect(Fixtures.invalid.count >= 19)
     }
 
     @Test("valid fixture decodes and re-encodes to equivalent JSON", arguments: Fixtures.valid)

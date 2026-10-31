@@ -58,7 +58,9 @@ def _error(code: str, message: str) -> Error:
 
 
 @router.websocket("/v1/sessions/{session_id}/stream")
-async def stream(ws: WebSocket, session_id: uuid.UUID, ticket: str = "") -> None:
+async def stream(
+    ws: WebSocket, session_id: uuid.UUID, ticket: str = "", features: str = ""
+) -> None:
     state = ws.app.state
     t = state.tickets.redeem(ticket, session_id)
     if t is None:
@@ -72,7 +74,7 @@ async def stream(ws: WebSocket, session_id: uuid.UUID, ticket: str = "") -> None
     log = session_logger(__name__, session_id)
     # Subscribe before accepting so a client that connects and immediately publishes cannot
     # miss events.
-    sub = state.bus.subscribe(str(session_id))
+    sub = state.bus.subscribe(str(session_id), frozenset(f for f in features.split(",") if f))
     sender = asyncio.create_task(_sender(ws, sub))
     try:
         await ws.accept()

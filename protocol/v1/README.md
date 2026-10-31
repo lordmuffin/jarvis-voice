@@ -23,7 +23,10 @@ A ticket is a short-lived (60 s) credential for the WebSocket below.
 
 ## WebSocket
 
-`/v1/sessions/{id}/stream?ticket=…`
+`/v1/sessions/{id}/stream?ticket=…[&features=a,b]`
+
+`features` is an optional comma-separated list of server messages the client can handle and wants
+in addition to the base set. Unknown names are ignored. Currently: `speaker_update`.
 
 ### Binary frames (client → server)
 
@@ -58,6 +61,12 @@ Senders MUST NOT send frames outside this range; receivers MUST reject them.
   - `notes`/`decisions`: `{id, text}`; `actions`: `{id, text, owner?, due?}`
   - `suggestions`: `{id, kind: "question"|"gap"|"counterpoint"|"fact_check", text, expires_at_ms}`
   - `related`: `{path, title, snippet, uri}`
+- `speaker_update` `{speakers[], assignments[]}` — **only if `features` includes `speaker_update`.**
+  Who spoke which segments; `segment.speaker` (`me`/`them`, the channel side) is unchanged.
+  - `speakers`: `{id, label: str|null, enrolled, is_owner}`, upserts keyed by `id`; `label: null` = unnamed.
+  - `assignments`: `{segment_id, speaker_id: str|null, rev, final, mixed?}`. A client keeps an
+    assignment only if its `rev` is higher than the one it holds for that segment (idempotent,
+    order-independent); `final: true` is the authoritative pass, lower revs are provisional.
 - `status` `{stt_tier: str|null, llm_ok, lag_ms}`
 - `final_note` `{path, title}`
 - `error` `{code, message}`

@@ -377,11 +377,124 @@ public struct ServerError: Equatable, Sendable, Codable, TaggedMessage, Error {
     }
 }
 
+/// A voice in the session, as named so far. `label == nil` means not named yet ("Speaker N").
+public struct SpeakerInfo: Equatable, Sendable, Codable, Identifiable {
+    public var id: String
+    public var label: String?
+    public var enrolled: Bool
+    public var isOwner: Bool
+
+    public init(id: String, label: String?, enrolled: Bool, isOwner: Bool) {
+        self.id = id
+        self.label = label
+        self.enrolled = enrolled
+        self.isOwner = isOwner
+    }
+
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case id, label, enrolled
+        case isOwner = "is_owner"
+    }
+
+    public init(from decoder: Decoder) throws {
+        try decoder.rejectUnknownKeys(CodingKeys.self)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        label = try c.decodeRequiredNullable(String.self, forKey: .label)
+        enrolled = try c.decode(Bool.self, forKey: .enrolled)
+        isOwner = try c.decode(Bool.self, forKey: .isOwner)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(label, forKey: .label)  // explicit null
+        try c.encode(enrolled, forKey: .enrolled)
+        try c.encode(isOwner, forKey: .isOwner)
+    }
+}
+
+/// Who spoke one segment. Kept only if `rev` is higher than the one already held.
+public struct SpeakerAssignment: Equatable, Sendable, Codable {
+    public var segmentId: String
+    public var speakerId: String?
+    public var rev: Int
+    public var final: Bool
+    public var mixed: Bool?
+
+    public init(segmentId: String, speakerId: String?, rev: Int, final: Bool, mixed: Bool? = nil) {
+        self.segmentId = segmentId
+        self.speakerId = speakerId
+        self.rev = rev
+        self.final = final
+        self.mixed = mixed
+    }
+
+    enum CodingKeys: String, CodingKey, CaseIterable {
+        case rev, final, mixed
+        case segmentId = "segment_id"
+        case speakerId = "speaker_id"
+    }
+
+    public init(from decoder: Decoder) throws {
+        try decoder.rejectUnknownKeys(CodingKeys.self)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        segmentId = try c.decode(String.self, forKey: .segmentId)
+        speakerId = try c.decodeRequiredNullable(String.self, forKey: .speakerId)
+        rev = try c.decodeNonNegative(forKey: .rev)
+        final = try c.decode(Bool.self, forKey: .final)
+        mixed = try c.decodeIfPresent(Bool.self, forKey: .mixed)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(segmentId, forKey: .segmentId)
+        try c.encode(speakerId, forKey: .speakerId)  // explicit null
+        try c.encode(rev, forKey: .rev)
+        try c.encode(final, forKey: .final)
+        try c.encodeIfPresent(mixed, forKey: .mixed)
+    }
+}
+
+/// `speaker_update` — who spoke which segments. The server sends it only to connections that
+/// opened the stream with `features=speaker_update`. This app does not ask for it until it
+/// renders speakers.
+public struct SpeakerUpdate: Equatable, Sendable, Codable, TaggedMessage {
+    public static let typeTag = "speaker_update"
+    /// Value of the stream URL's `features` parameter that asks for this message.
+    public static let feature = "speaker_update"
+
+    public var speakers: [SpeakerInfo]
+    public var assignments: [SpeakerAssignment]
+
+    public init(speakers: [SpeakerInfo], assignments: [SpeakerAssignment]) {
+        self.speakers = speakers
+        self.assignments = assignments
+    }
+
+    enum CodingKeys: String, CodingKey, CaseIterable { case type, speakers, assignments }
+
+    public init(from decoder: Decoder) throws {
+        try decoder.expectType(Self.typeTag, keys: CodingKeys.self)
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        speakers = try c.decode([SpeakerInfo].self, forKey: .speakers)
+        assignments = try c.decode([SpeakerAssignment].self, forKey: .assignments)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(Self.typeTag, forKey: .type)
+        try c.encode(speakers, forKey: .speakers)
+        try c.encode(assignments, forKey: .assignments)
+    }
+}
+
 /// Any JSON message the server sends over the WebSocket, discriminated by `type`.
 public enum ServerEvent: Equatable, Sendable, Codable {
     case helloAck(HelloAck)
     case ack(Ack)
     case segment(Segment)
+    case speakerUpdate(SpeakerUpdate)
     case copilot(CopilotSnapshot)
     case status(Status)
     case finalNote(FinalNote)
@@ -394,6 +507,7 @@ public enum ServerEvent: Equatable, Sendable, Codable {
         case HelloAck.typeTag: self = .helloAck(try HelloAck(from: decoder))
         case Ack.typeTag: self = .ack(try Ack(from: decoder))
         case Segment.typeTag: self = .segment(try Segment(from: decoder))
+        case SpeakerUpdate.typeTag: self = .speakerUpdate(try SpeakerUpdate(from: decoder))
         case CopilotSnapshot.typeTag: self = .copilot(try CopilotSnapshot(from: decoder))
         case Status.typeTag: self = .status(try Status(from: decoder))
         case FinalNote.typeTag: self = .finalNote(try FinalNote(from: decoder))
@@ -410,6 +524,7 @@ public enum ServerEvent: Equatable, Sendable, Codable {
         case .helloAck(let m): try m.encode(to: encoder)
         case .ack(let m): try m.encode(to: encoder)
         case .segment(let m): try m.encode(to: encoder)
+        case .speakerUpdate(let m): try m.encode(to: encoder)
         case .copilot(let m): try m.encode(to: encoder)
         case .status(let m): try m.encode(to: encoder)
         case .finalNote(let m): try m.encode(to: encoder)
