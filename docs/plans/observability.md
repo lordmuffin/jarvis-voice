@@ -1,6 +1,6 @@
 # Plan: Live observability (latency metrics, SLOs, alerts, per-session timing)
 
-Status: **draft, awaiting approval. No code written.**
+Status: **approved 2026-10-30 (all five recommendations), implemented on `feat/observability`; see "As built" at the end.**
 Branch: `feat/observability`. Budget source: vault note `10 Projects/Jarvis/2026-10-09 - Handoff - Jarvis Live.md`, "Latency budget" table (it is not in this repo).
 
 ## Goal
@@ -44,7 +44,7 @@ Labels are drawn only from small closed sets: `channel` (mic|system), `tier` (na
 | `live_sessions` | gauge | – | for the dashboard |
 | `slo_breach` | gauge | slo (+ tier where relevant) | 1 while the monitor considers it breached (state only; see Alerting) |
 
-Bucket sets are chosen around the budget edges (for example authoritative: 0.5, 1, 2, 3, 5, 8, 12, 15, 20, 30, 60 s; finalize up to 600 s). Series count is about 150 per instance with 3 tiers. The cluster's Prometheus remote-writes to Mimir, which has a per-user series limit (comment at `kube-prometheus-stack/release.yaml:~149`), so I'll check the headroom before merging.
+Bucket sets are chosen around the budget edges (for example authoritative: 0.5, 1, 2, 3, 5, 8, 12, 15, 20, 30, 60 s; finalize up to 600 s). Series count is at most 385 per instance with the 3 real tiers (counted from the registry). The cluster's Prometheus remote-writes to Mimir, which has a per-user series limit (comment at `kube-prometheus-stack/release.yaml:~149`), so I'll check the headroom before merging.
 
 ### Keeping it off the hot audio path
 
@@ -132,3 +132,13 @@ Then a manual run against lab after the lab deploy: replay a WAV, confirm the da
 3. Per-session timing: DB-backed (migration, recommended) or in-memory only?
 4. In-process Gotify alerts (as scoped) vs Alertmanager rules?
 5. Out of scope: client timestamp on drafts (protocol change). Agree?
+
+## As built (differences from the plan above)
+
+- **Metrics are on their own port (`JARVIS_LIVE_METRICS_PORT`, 9100), not `GET /metrics` on the app port.** Both channels' Ingress routes `/` (Prefix) to port 8080, so a route there would have been public. The Service exposes `metrics`; the Ingress does not.
+- **The note shows "Stop to note rendered", not the finalize duration**: a note cannot contain the time it took to write itself. The exact `finalize_seconds` stays on the dashboard. Draft first-partial/cadence and fall-through counts are in the metrics, not in the note (they are not persisted); the note carries tier mix, per-tier STT p95, line latency, copilot cycles/round trip/staleness.
+- **Alert de-duplication is by cause**: a breached tier SLO silences the transcript SLO's push (its gauge still shows), and a slow copilot round trip silences copilot staleness. Without this, one throttled tier produced two pushes.
+- **Finalize SLO** uses the median of the last runs over six hours with at least two, i.e. two slow notes in a row, because there are too few events for a rolling p95.
+- **Test seams added**: `watchdog_interval_s` setting; `jarvis-live replay --drafts` (synthetic partial drafts).
+- Verified here: `server/` ruff, mypy and the full pytest suite (596 passed, Postgres included); the acceptance test fails if the tier is not throttled; every dashboard PromQL expression parses against the cluster's Prometheus; homelab `tests/tdd`, kubeconform (0 invalid), `make lint`.
+- **Not verified**: anything on a running lab (nothing is pushed or deployed), so the PodMonitor scrape and the populated dashboard are untested live. `make test` at the jarvis-voice root could not complete on this machine (legacy tests need `faster_whisper`, `lint-android` needs a system `pytest`); the homelab `make test` unit step fails on `jev` for a missing `prometheus_client` in the shared venv, unrelated to this change.
