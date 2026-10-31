@@ -25,7 +25,7 @@ from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
-from jarvis_live.diarize.client import Diarizer, HttpDiarizer
+from jarvis_live.diarize.client import Diarizer, HttpDiarizer, embedder_of
 from jarvis_live.dispatch.githubapp import AppTokens
 from jarvis_live.dispatch.kube import KubeClient
 from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
@@ -189,6 +189,11 @@ def create_app(
             tasks.append(
                 asyncio.create_task(publisher.run_reconcile_loop(cfg.publish_reconcile_interval_s))
             )
+        sidecar: Diarizer | None = diarizer
+        if sidecar is None and cfg.diarize_url:
+            if client is None:
+                client = httpx.AsyncClient()
+            sidecar = HttpDiarizer(cfg.diarize_url, client, timeout_s=None)
         orchestrator: Orchestrator | None = None
         if (
             llm is not None or cfg.litellm_base_url
@@ -225,18 +230,14 @@ def create_app(
                     title_prefix=cfg.notify_title_prefix,
                 ),
                 on_final=publisher.on_note_ready,
-                diarizer=diarizer
-                or (
-                    HttpDiarizer(cfg.diarize_url, client, timeout_s=None)
-                    if cfg.diarize_url
-                    else None
-                ),
+                diarizer=sidecar,
             )
         hub = IngestHub(
             cfg,
             sm,
             bus,
             backend,
+            embedder=embedder_of(sidecar),
             on_start=orchestrator.on_start if orchestrator else None,
             on_end=orchestrator.on_end if orchestrator else None,
         )
