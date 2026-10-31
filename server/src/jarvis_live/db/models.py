@@ -185,12 +185,12 @@ class SegmentRow(Base):
     text: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(8))
     stt_tier: Mapped[str | None] = mapped_column(String(100))
-    stt_ms: Mapped[int | None] = mapped_column(Integer)  # the STT call, fall-throughs included
-    latency_ms: Mapped[int | None] = mapped_column(Integer)  # cut to emitted, dup-guard hold out
     # Who spoke it, from diarization (see diarize/); ``speaker`` above stays the channel side.
     speaker_id: Mapped[str | None] = mapped_column(String(32))
     speaker_rev: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     mixed: Mapped[bool] = mapped_column(default=False, server_default=false())
+    stt_ms: Mapped[int | None] = mapped_column(Integer)  # the STT call, fall-throughs included
+    latency_ms: Mapped[int | None] = mapped_column(Integer)  # cut to emitted, dup-guard hold out
     created_at: Mapped[datetime] = _now()
 
 
