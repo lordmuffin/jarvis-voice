@@ -21,6 +21,7 @@ server = [
     "numpy",
     "webrtcvad-wheels",
     "pyjwt[crypto]>=2.15.1",
+    "prometheus-client>=0.26.0",
 ]
 
 [project.scripts]

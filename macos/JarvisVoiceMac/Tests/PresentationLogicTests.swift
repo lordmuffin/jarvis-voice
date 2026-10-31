@@ -20,10 +20,52 @@ final class PresentationLogicTests: XCTestCase {
         XCTAssertEqual(spec.badge, "LIVE")
     }
 
+    func testLocalOnlyRecordingSaysLocalNotTheServerChannel() {
+        let spec = MenuBarIconSpec.make(
+            isRecording: true, isDictating: false, elapsedSeconds: 65, channel: .live, localOnly: true
+        )
+        XCTAssertEqual(spec.badge, "LOCAL")
+        XCTAssertTrue(spec.badgeFilled)
+        XCTAssertEqual(spec.accessibilityLabel, "Jarvis, recording 01:05, local only, nothing is sent")
+    }
+
+    func testLocalOnlyOnlyMattersWhileRecording() {
+        let spec = MenuBarIconSpec.make(
+            isRecording: false, isDictating: false, elapsedSeconds: 0, channel: .live, localOnly: true
+        )
+        XCTAssertEqual(spec.badge, "LIVE")
+    }
+
     func testRecordingWinsOverDictationAndShowsElapsed() {
         let spec = MenuBarIconSpec.make(isRecording: true, isDictating: true, elapsedSeconds: 1122, channel: .live)
         XCTAssertEqual(spec.glyph, .recording(elapsed: "18:42"))
         XCTAssertEqual(spec.accessibilityLabel, "Jarvis, recording 18:42, LIVE")
+    }
+
+    /// The badge says which server a streaming session talks to; a local session talks to none, so
+    /// it must never wear LIVE or LAB.
+    func testLocalSessionShowsLocalNotTheServerChannel() {
+        let spec = MenuBarIconSpec.make(
+            isRecording: true, isDictating: false, elapsedSeconds: 65, channel: .live, localOnly: true
+        )
+        XCTAssertEqual(spec.glyph, .recording(elapsed: "01:05"))
+        XCTAssertEqual(spec.badge, "LOCAL")
+        XCTAssertTrue(spec.badgeFilled)
+        XCTAssertEqual(spec.accessibilityLabel, "Jarvis, recording 01:05, local only, not streaming")
+    }
+
+    func testLocalSessionShowsLocalEvenWithoutAServerAddress() {
+        let spec = MenuBarIconSpec.make(
+            isRecording: true, isDictating: false, elapsedSeconds: 0, channel: nil, localOnly: true
+        )
+        XCTAssertEqual(spec.badge, "LOCAL")
+    }
+
+    func testLocalFlagIsIgnoredWhenNotRecording() {
+        let spec = MenuBarIconSpec.make(
+            isRecording: false, isDictating: false, elapsedSeconds: 0, channel: .live, localOnly: true
+        )
+        XCTAssertEqual(spec.badge, "LIVE")
     }
 
     func testDictatingAndNoServer() {

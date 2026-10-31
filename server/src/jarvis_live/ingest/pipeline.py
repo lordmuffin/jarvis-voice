@@ -8,13 +8,14 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live import metrics
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import SegmentRow
 from jarvis_live.ingest.segmenter import Segmenter, SegmenterConfig, SpeechSegment
 from jarvis_live.ingest.store import SPEAKER
 from jarvis_live.logging_setup import session_logger
-from jarvis_live.protocol import BYTES_PER_MS, Error, Segment, Status
+from jarvis_live.protocol import BYTES_PER_MS, DraftSegment, Error, Segment, Status
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
 from jarvis_live.stt.guards import is_duplicate_of, is_hallucination, rms_level
 
@@ -26,6 +27,9 @@ class _Final:
     end_ms: int
     text: str
     tier: str
+    cut_at: float = 0.0  # when the segment was cut; 0: unknown, not timed
+    held_at: float | None = None  # when a mic segment began waiting for the system channel
+    stt_ms: int | None = None
 
 
 class SessionPipeline:
@@ -68,6 +72,10 @@ class SessionPipeline:
         self._last_final_end_ms = 0
         self.llm_ok = False  # set by the copilot loop; False until an LLM cycle has succeeded
         self.last_audio_at = time.monotonic()
+        self.first_audio_at: float | None = None
+        self._cut_at: dict[tuple[str, int], float] = {}  # (channel, start_ms) -> monotonic
+        self._last_partial_at: dict[str, float] = {}
+        self._first_partial_seen = False
         self._tasks: list[asyncio.Task[None]] = []
 
     def start(self) -> None:
@@ -87,6 +95,8 @@ class SessionPipeline:
         if self._finishing:
             return
         self.last_audio_at = time.monotonic()
+        if self.first_audio_at is None:
+            self.first_audio_at = self.last_audio_at
         for seg in self._segmenters[channel].feed(pcm):
             self._enqueue(channel, seg)
         if channel == "system":
@@ -131,6 +141,7 @@ class SessionPipeline:
 
     def _enqueue(self, channel: str, seg: SpeechSegment) -> None:
         self._inflight[channel].add(seg.start_ms)
+        self._cut_at[(channel, seg.start_ms)] = time.monotonic()
         self._queues[channel].put_nowait(seg)
 
     # --- STT --------------------------------------------------------------------------------
@@ -150,7 +161,10 @@ class SessionPipeline:
                 self._wake.set()
 
     async def _process(self, channel: str, seg: SpeechSegment) -> None:
+        cut_at = self._cut_at.pop((channel, seg.start_ms), 0.0)
+        metrics.segment_length(channel, (seg.end_ms - seg.start_ms) / 1000)
         prompt = self._prev_text[channel][-self._cfg.stt_prompt_chars :]
+        began = time.monotonic()
         try:
             result = await self._stt.transcribe(seg.pcm, prompt)
         except STTUnavailable:
@@ -172,11 +186,13 @@ class SessionPipeline:
             self._log.info("dropped hallucination", extra={"channel": channel, "text": text})
             return
         self._prev_text[channel] = text
-        final = _Final(channel, seg.start_ms, seg.end_ms, text, result.tier)
+        stt_ms = int((time.monotonic() - began) * 1000)
+        final = _Final(channel, seg.start_ms, seg.end_ms, text, result.tier, cut_at, stt_ms=stt_ms)
         async with self._lock:
             if channel == "system" or "system" not in self.channels:
                 await self._emit(final)
             else:
+                final.held_at = time.monotonic()
                 self._held_mic.append(final)
             await self._release_held()
 
@@ -221,6 +237,8 @@ class SessionPipeline:
 
     async def _emit(self, f: _Final) -> None:
         seg_id = uuid.uuid4()
+        waited = time.monotonic() - f.held_at if f.held_at is not None else 0.0
+        latency_ms = int((time.monotonic() - f.cut_at - waited) * 1000) if f.cut_at else None
         async with self._sm() as db:
             db.add(
                 SegmentRow(
@@ -233,6 +251,8 @@ class SessionPipeline:
                     text=f.text,
                     source="final",
                     stt_tier=f.tier,
+                    stt_ms=f.stt_ms,
+                    latency_ms=latency_ms,
                 )
             )
             await db.commit()
@@ -251,6 +271,24 @@ class SessionPipeline:
                 stt_tier=f.tier,
             ),
         )
+        if f.cut_at:
+            metrics.authoritative(f.channel, time.monotonic() - f.cut_at, waited)
+
+    # --- drafts -----------------------------------------------------------------------------
+
+    def on_draft(self, draft: DraftSegment) -> None:
+        """A client's partial transcript arrived (text path, never the audio path): record how
+        soon the first one came, how often they come, and how far behind the stream they are."""
+        if draft.final:
+            return
+        now = time.monotonic()
+        if not self._first_partial_seen and self.first_audio_at is not None:
+            self._first_partial_seen = True
+            metrics.draft_first(now - self.first_audio_at)
+        if (last := self._last_partial_at.get(draft.channel)) is not None:
+            metrics.draft_interval(draft.channel, now - last)
+        self._last_partial_at[draft.channel] = now
+        metrics.draft_lag(draft.channel, (self.position_ms() - draft.end_ms) / 1000)
 
     # --- status -----------------------------------------------------------------------------
 

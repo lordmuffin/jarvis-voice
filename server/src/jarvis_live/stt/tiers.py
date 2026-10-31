@@ -2,9 +2,13 @@
 
 import asyncio
 import logging
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import httpx
+
+from jarvis_live import metrics
 
 log = logging.getLogger(__name__)
 
@@ -53,12 +57,14 @@ class TierPool:
         probe_interval_s: float = 30.0,
         probe_timeout_s: float = 5.0,
         request_timeout_s: float = 60.0,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.tiers = tiers
         self._client = client
         self._probe_interval = probe_interval_s
         self._probe_timeout = probe_timeout_s
         self._request_timeout = request_timeout_s
+        self._clock = clock
         self._healthy: dict[str, bool] = {t.name: False for t in tiers}
         self._probed = False
 
@@ -73,6 +79,7 @@ class TierPool:
                 log.info("stt tier %s is now %s", tier.name, "healthy" if ok else "unhealthy")
             self._healthy[tier.name] = ok
         self._probed = True
+        metrics.stt_tiers(self._healthy, self.current_tier())
 
     async def run_probe_loop(self) -> None:
         while True:
@@ -97,11 +104,20 @@ class TierPool:
             await self.probe_all()
         candidates = [t for t in self.tiers if self._healthy[t.name]] or self.tiers
         for tier in candidates:
+            started = self._clock()
             try:
-                return await self._request(tier, wav, prompt), tier.name
+                text = await self._request(tier, wav, prompt)
             except (httpx.HTTPError, ValueError, KeyError) as e:
                 log.warning("stt tier %s failed: %r", tier.name, e)
                 self._healthy[tier.name] = False
+                outcome = "timeout" if isinstance(e, httpx.TimeoutException) else "error"
+                metrics.stt_request(tier.name, outcome, self._clock() - started)
+                metrics.stt_fallthrough(tier.name)
+                metrics.stt_tiers(self._healthy, self.current_tier())
+                continue
+            metrics.stt_request(tier.name, "ok", self._clock() - started)
+            metrics.stt_served(tier.name)
+            return text, tier.name
         raise STTUnavailable("no STT tier could transcribe the segment")
 
     async def _request(self, tier: Tier, wav: bytes, prompt: str) -> str:

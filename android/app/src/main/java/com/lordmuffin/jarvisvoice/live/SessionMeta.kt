@@ -19,7 +19,24 @@ data class SessionMeta(
     /** Where the local Markdown transcript was written (file path or SAF uri). */
     val notePath: String? = null,
     val error: String? = null,
+    /** Started as a streaming session but the server was unreachable, so it was recorded locally instead. */
+    val fellBack: Boolean = false,
 ) {
+    /**
+     * Whether the background worker uploads this session by itself: online sessions that were
+     * interrupted, and fallback recordings (made for processing, not for keeping local). A session
+     * the user chose to keep local waits for their tap.
+     */
+    val autoUploads: Boolean
+        get() = state != State.FAILED && state != State.DONE && (serverId != null || fellBack)
+
+    /**
+     * A session kept local-only is a work call until you say otherwise: the server files its note
+     * apart and never publishes or pushes it. One that is only local because the server was down
+     * was meant to stream.
+     */
+    val uploadsRestricted: Boolean get() = !fellBack
+
     enum class State {
         /** Capture running (or the process died mid-session). */
         RECORDING,
@@ -41,6 +58,7 @@ data class SessionMeta(
         put("state", state.name)
         put("note_path", notePath ?: JSONObject.NULL)
         put("error", error ?: JSONObject.NULL)
+        put("fell_back", fellBack)
     }
 
     companion object {
@@ -54,6 +72,7 @@ data class SessionMeta(
             state = runCatching { State.valueOf(o.getString("state")) }.getOrDefault(State.PENDING),
             notePath = o.optStringOrNull("note_path"),
             error = o.optStringOrNull("error"),
+            fellBack = o.optBoolean("fell_back", false),
         )
 
         private fun JSONObject.optStringOrNull(key: String): String? =
