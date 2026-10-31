@@ -14,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.config import Settings
-from jarvis_live.db.models import Device, LoginSession, User
+from jarvis_live.db.models import OWNER_USER_ID, Device, LoginSession, User
 
 Role = Literal["producer", "viewer"]
 
@@ -202,4 +202,13 @@ async def require_admin(
 ) -> Principal:
     if not principal.is_admin:
         raise HTTPException(403, "Admin only.")
+    return principal
+
+
+async def require_owner_or_admin(
+    principal: Annotated[Principal, Depends(current_principal)],
+) -> Principal:
+    """The deployment owner and admins: whoever may use the homelab and the vault."""
+    if principal.user.id != OWNER_USER_ID and not principal.is_admin:
+        raise HTTPException(403, "Only the owner and admins can do this.")
     return principal

@@ -174,7 +174,8 @@ async def test_a_ticket_for_another_session_does_not_open_the_stream(world: Worl
 
 async def test_admins_read_everything_but_write_only_their_own(world: World) -> None:
     """The documented admin power is to read (and rename); the note, the LLM jobs and the
-    publication of someone else's session stay with its owner."""
+    jobs of someone else's session stay with its owner. (Publishing is the publisher's job,
+    gated by the service: see test_publish.)"""
     admin = (await create_user(world.sm, "Root", is_admin=True)).id
     async with await web_client(world.server, world.sm, admin) as c:
         for path in (
@@ -191,9 +192,6 @@ async def test_admins_read_everything_but_write_only_their_own(world: World) -> 
             ("PUT", "/v1/sessions/{sid}/note", {"markdown": "# taken"}),
             ("POST", "/v1/sessions/{sid}/regenerate", None),
             ("POST", "/v1/sessions/{sid}/process", None),
-            ("POST", "/v1/sessions/{sid}/publication", None),
-            ("POST", "/v1/sessions/{sid}/publication/skip", None),
-            ("DELETE", "/v1/sessions/{sid}/publication/skip", None),
         ):
             r = await call(c, world, method, path, body)
             assert r.status_code == 403, f"{method} {path} -> {r.status_code}"

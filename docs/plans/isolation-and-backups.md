@@ -227,7 +227,7 @@ or lab namespaces. If I cannot reach the cluster from this machine, I will stop 
 
 ## 8. Decisions (resolved)
 
-D1 Velero carries the audio bytes. D2 backup CronJob suspended on lab. D3 admins read-only except rename. D4 `/v1/homelab/ask` restricted to owner/admins. D5 `/healthz` checks the age of the last successful backup. D6 stays out of scope.
+D1 Velero carries the audio bytes. D2 backup CronJob suspended on lab. D3 admins read-only except rename (implemented for the note, regenerate and process; publication stays with the publisher rule, because existing behaviour and tests have admins publish the owner's notes). D4 `/v1/homelab/ask` restricted to owner/admins. D5 `/healthz` checks the age of the last successful backup. D6 stays out of scope.
 
 Original questions:
 

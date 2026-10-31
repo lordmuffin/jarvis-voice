@@ -215,6 +215,18 @@ async def _owned(db: AsyncSession, principal: Principal, session_id: uuid.UUID) 
     return row
 
 
+async def _writable(
+    db: AsyncSession, principal: Principal, session_id: uuid.UUID
+) -> tuple[SessionRow, User]:
+    """Read access is not write access: an admin can see another user's session (and rename it),
+    but its note, its jobs and its publication are its owner's. 404 if not visible at all, 403
+    if visible but not theirs."""
+    row, owner = await _visible(db, principal, session_id)
+    if row.user_id != principal.user.id:
+        raise HTTPException(403, "Only the session's owner can do this.")
+    return row, owner
+
+
 @router.post("", status_code=201)
 async def create_session(
     body: SessionCreateRequest, principal: PrincipalDep, db: Db
