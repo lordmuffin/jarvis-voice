@@ -166,4 +166,48 @@ struct SessionStoreTests {
         #expect(store.lines.count == 1)
         #expect(store.lines[0].speakerId == "spk_3")
     }
+
+    // MARK: - who spoke a line
+
+    private func identify(_ store: SessionStore, _ voices: [SpeakerInfo], _ assignments: [String: String]) {
+        store.apply(.speakerUpdate(SpeakerUpdate(
+            speakers: voices,
+            assignments: assignments.map { SpeakerAssignment(segmentId: $0.key, speakerId: $0.value, rev: 2, final: true) }
+        )))
+    }
+
+    @Test func theOwnerReadsMeAndANamedVoiceReadsItsName() {
+        let store = SessionStore()
+        store.apply(segment("a", 0, 1000, channel: .mic))
+        store.apply(segment("b", 2000, 3000, channel: .system))
+        identify(store, [
+            SpeakerInfo(id: "m0", label: "Andrew", enrolled: true, isOwner: true, ordinal: 1),
+            SpeakerInfo(id: "s0", label: "Dana", enrolled: true, isOwner: false, ordinal: 2),
+        ], ["a": "m0", "b": "s0"])
+        #expect(store.who(for: store.lines[0]) == Who(text: "Me", kind: .me))
+        #expect(store.who(for: store.lines[1]) == Who(text: "Dana", kind: .named))
+    }
+
+    @Test func unnamedVoicesAreNumberedOnlyWhereASideHoldsSeveral() {
+        let store = SessionStore()
+        store.apply(segment("a", 0, 1000, channel: .system))
+        store.apply(segment("b", 2000, 3000, channel: .system))
+        store.apply(segment("c", 4000, 5000, channel: .mic))
+        identify(store, [
+            SpeakerInfo(id: "s0", label: nil, enrolled: false, isOwner: false, ordinal: 2),
+            SpeakerInfo(id: "s1", label: nil, enrolled: false, isOwner: false, ordinal: 3),
+            SpeakerInfo(id: "m0", label: nil, enrolled: false, isOwner: false, ordinal: 1),
+        ], ["a": "s0", "b": "s1", "c": "m0"])
+        #expect(store.who(for: store.lines[0]) == Who(text: "Speaker 2", kind: .unknown))
+        #expect(store.who(for: store.lines[1]) == Who(text: "Speaker 3", kind: .unknown))
+        #expect(store.who(for: store.lines[2]) == Who(text: "Me", kind: .me))  // one voice on the mic
+    }
+
+    @Test func aLineNobodyIdentifiedKeepsItsSideAndADraftToo() {
+        let store = SessionStore()
+        store.apply(segment("a", 0, 1000, channel: .system))
+        store.applyDraft(draft(5000, 6000, channel: .mic))
+        #expect(store.who(for: store.lines[0]) == Who(text: "Them", kind: .them))
+        #expect(store.who(for: store.lines[1]) == Who(text: "Me", kind: .me))
+    }
 }

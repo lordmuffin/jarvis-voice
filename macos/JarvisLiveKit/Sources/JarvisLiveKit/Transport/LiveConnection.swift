@@ -226,8 +226,13 @@ public actor LiveConnection {
     }
 
     private func streamURL(ticket: String) -> URL {
+        Self.streamURL(base: configuration.apiBaseURL, sessionId: configuration.sessionId, ticket: ticket)
+    }
+
+    /// The WebSocket URL. `features` opts in to server messages older clients cannot read.
+    static func streamURL(base: URL, sessionId: String, ticket: String) -> URL {
         var components = URLComponents(
-            url: configuration.apiBaseURL.appending(path: "v1/sessions/\(configuration.sessionId)/stream"),
+            url: base.appending(path: "v1/sessions/\(sessionId)/stream"),
             resolvingAgainstBaseURL: false
         )!
         switch components.scheme {
@@ -235,7 +240,10 @@ public actor LiveConnection {
         case "http": components.scheme = "ws"
         default: break
         }
-        components.queryItems = [URLQueryItem(name: "ticket", value: ticket)]
+        components.queryItems = [
+            URLQueryItem(name: "ticket", value: ticket),
+            URLQueryItem(name: "features", value: SpeakerUpdate.feature),
+        ]
         return components.url!
     }
 
