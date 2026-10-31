@@ -91,7 +91,7 @@ class Kube(Protocol):
 
 
 class Tokens(Protocol):
-    async def mint(self, repo: str) -> str: ...
+    async def mint(self, repo: str, permissions: dict[str, str] | None = None) -> str: ...
 
 
 def _node_selector(text: str) -> dict[str, str]:
