@@ -96,3 +96,34 @@ async def test_malformed_embeddings_are_diarize_unavailable(
     d = _diarizer(httpx.MockTransport(lambda req: httpx.Response(200, json=body)))
     with pytest.raises(DiarizeUnavailable):
         await d.diarize(pcm)
+
+
+async def test_embed_posts_the_segment_as_wav_and_returns_the_print() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["url"], seen["body"] = str(req.url), req.content
+        return httpx.Response(200, json={"embedding": [0.25, 0.5, 1], "model_id": "wespeaker"})
+
+    got = await _diarizer(httpx.MockTransport(handler)).embed(PCM)
+
+    assert (got.vector, got.model_id) == ([0.25, 0.5, 1.0], "wespeaker")
+    assert seen["url"] == "http://diarize:8000/embed"
+    with wave.open(BytesIO(seen["body"]), "rb") as w:  # type: ignore[arg-type]
+        assert w.readframes(w.getnframes()) == PCM
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(500),
+        httpx.Response(200, text="nope"),
+        httpx.Response(200, json={"embedding": "x", "model_id": "m"}),
+        httpx.Response(200, json={"embedding": [1.0]}),
+        httpx.Response(200, json={"embedding": [], "model_id": "m"}),
+    ],
+    ids=["http_error", "bad_json", "bad_vector", "no_model", "empty"],
+)
+async def test_embed_failures_are_diarize_unavailable(response: httpx.Response) -> None:
+    with pytest.raises(DiarizeUnavailable):
+        await _diarizer(httpx.MockTransport(lambda req: response)).embed(PCM)

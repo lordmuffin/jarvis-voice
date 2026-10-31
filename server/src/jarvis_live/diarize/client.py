@@ -26,6 +26,18 @@ class Diarization:
     model_id: str | None = None
 
 
+@dataclass(frozen=True)
+class Embedding:
+    vector: list[float]
+    model_id: str
+
+
+class Embedder(Protocol):
+    async def embed(self, pcm: bytes) -> Embedding:
+        """The voiceprint of one short 16 kHz mono PCM16LE clip. Raises ``DiarizeUnavailable``."""
+        ...
+
+
 class Diarizer(Protocol):
     async def diarize(self, pcm: Path) -> Diarization:
         """Turns (and voiceprints) for a raw 16 kHz mono PCM16LE file. Raises
@@ -50,10 +62,18 @@ class HttpDiarizer:
     ``{"turns": [{start_ms, end_ms, speaker}], "embeddings"?: {speaker: [float]},
     "model_id"?: str}`` (speaker: any string, stable within the recording)."""
 
-    def __init__(self, url: str, client: httpx.AsyncClient, *, timeout_s: float | None) -> None:
+    def __init__(
+        self,
+        url: str,
+        client: httpx.AsyncClient,
+        *,
+        timeout_s: float | None,
+        embed_timeout_s: float = 10.0,
+    ) -> None:
         self._url = url.rstrip("/")
         self._client = client
         self._timeout_s = timeout_s
+        self._embed_timeout_s = embed_timeout_s
 
     async def diarize(self, pcm: Path) -> Diarization:
         try:
@@ -80,6 +100,31 @@ class HttpDiarizer:
         if any(t.end_ms < t.start_ms for t in turns):
             raise DiarizeUnavailable("turn ends before it starts")
         return Diarization(turns, embeddings, model_id)
+
+    async def embed(self, pcm: bytes) -> Embedding:
+        """``POST <url>/embed`` with a WAV body; answers
+        ``{"embedding": [float], "model_id": str}``."""
+        try:
+            r = await self._client.post(
+                self._url + "/embed",
+                content=wav_header(len(pcm)) + pcm,
+                headers={"Content-Type": "audio/wav"},
+                timeout=self._embed_timeout_s,
+            )
+            r.raise_for_status()
+            body = r.json()
+            vector = [float(x) for x in body["embedding"]]
+            model_id = body["model_id"]
+            if not vector or not isinstance(model_id, str):
+                raise ValueError("no voiceprint")
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as e:
+            raise DiarizeUnavailable(repr(e)) from e
+        return Embedding(vector, model_id)
+
+
+def embedder_of(sidecar: Diarizer | None) -> Embedder | None:
+    """The same sidecar as an ``Embedder``, if it can embed (the live labels need that)."""
+    return sidecar if isinstance(sidecar, HttpDiarizer) or hasattr(sidecar, "embed") else None  # type: ignore[return-value]
 
 
 def audio_ms(pcm: Path) -> int:

@@ -228,6 +228,21 @@ Each PR follows `TDD.md`, uses Conventional Commits, runs `make test` first.
 - The DONE-WHEN "my enrolled voice is attributed correctly in a fresh session" is tested here with
   scripted embeddings; with the real model it is still the Phase 0 check on the Spark.
 
+### Decisions made in PR 4
+
+- Live labels are **off to the side**: a segment is saved and published first, then queued (one
+  worker, at most `speaker_live_queue` clips, extra ones dropped) for `POST <sidecar>/embed`. A
+  slow or dead sidecar means fewer labels, never a later transcript or acks.
+- Clips with less than `speaker_live_min_ms` of speech (1 s) are not embedded.
+- Matching: an enrolled voice first (same rule as the final pass), else the nearest voice heard
+  so far in the channel (`speaker_live_cluster_threshold`, 0.5, a placeholder for Phase 0), else a
+  new voice `live_<channel>_<n>`. Voices are written to `session_speakers` too, so a running
+  session's transcript already reads "Speaker 2" and the owner "me" for the copilot.
+- Writes only where `speaker_rev < 1`, so a provisional label can never overwrite the final pass.
+  The final pass replaces the channel's speaker rows, which removes the `live_*` voices; if it
+  fails, the provisional labels stay as the best available.
+- `finish()` waits `speaker_live_drain_s` (5 s) for queued labels before the stream is handed on.
+
 ## 9. Failure behaviour (hard requirement: never a failed session)
 
 | Failure | Result |
