@@ -9,6 +9,18 @@ enum LocalMarkdown {
         var channels: [Channel]
         var started: Date
         var uploadedAs: String?
+        /// Recorded here because the server was down: upload it by itself once the server is back.
+        var autoUpload = false
+        /// The server session an upload is sending this recording to, written before any audio moves
+        /// so an interrupted upload resumes it. Nil until an upload has started.
+        var serverSessionId: String?
+
+        /// A session kept local-only is a work call until you say otherwise: the server files its
+        /// note apart and never publishes or pushes it. One recorded here because the server was
+        /// down was meant to stream.
+        var uploadRequest: SessionCreateRequest {
+            SessionCreateRequest(mode: mode, channels: channels, restricted: autoUpload ? nil : true)
+        }
     }
 
     struct Line: Equatable {
@@ -30,7 +42,7 @@ enum LocalMarkdown {
         channels: \(header.channels.map(\.rawValue).joined(separator: ","))
         started: \(iso)
         uploaded: \(header.uploadedAs ?? "false")
-        ---
+        \(header.autoUpload ? "upload: auto\n" : "")\(header.serverSessionId.map { "server_session: \($0)\n" } ?? "")---
 
         # Jarvis Live \u{2014} \(title(for: header.started))
 
@@ -63,7 +75,16 @@ enum LocalMarkdown {
               let started = ISO8601DateFormatter().date(from: startedRaw) else { return nil }
         let channels = (fields["channels"] ?? "mic").split(separator: ",").compactMap { Channel(rawValue: String($0)) }
         let uploaded = fields["uploaded"].flatMap { $0 == "false" ? nil : $0 }
-        return Header(sessionId: id, mode: mode, channels: channels, started: started, uploadedAs: uploaded)
+        return Header(
+            sessionId: id, mode: mode, channels: channels, started: started, uploadedAs: uploaded,
+            autoUpload: fields["upload"] == "auto", serverSessionId: fields["server_session"]
+        )
+    }
+
+    /// Records the server session an upload targets; a no-op if it is already recorded.
+    static func settingServerSession(_ text: String, id: String) -> String {
+        guard parseHeader(text)?.serverSessionId == nil else { return text }
+        return text.replacingOccurrences(of: "\nuploaded: false\n", with: "\nuploaded: false\nserver_session: \(id)\n")
     }
 
     static func markUploaded(_ text: String, serverSessionId: String) -> String {

@@ -23,6 +23,7 @@ class NoteMeta:
     duration_minutes: int
     user: str | None = None
     source: str | None = None  # where an uploaded recording was made, e.g. "watch"
+    restricted: bool = False  # a work call: tagged, and filed apart by the finalizer
 
 
 @dataclass(frozen=True)
@@ -119,8 +120,7 @@ def render_note(
     meta: NoteMeta,
     transcript: list[Line],
     work_items: list[NoteWorkItem] | None = None,
-    proposals: list[NoteProposal] | None = None,
-    review_url: str = "",
+    timing: list[str] | None = None,
 ) -> str:
     # The vault's AI Output template (Notes: 30 Resources/Templates/AI Output Template.md),
     # then this session's details.
@@ -136,8 +136,9 @@ def render_note(
         *([f"user: {_yaml(meta.user)}"] if meta.user else []),
         f"mode: {meta.mode}",
         *([f"source: {_yaml(meta.source)}"] if meta.source else []),
+        *(["restricted: true"] if meta.restricted else []),
         f"duration_minutes: {meta.duration_minutes}",
-        "tags: [ai-output, jarvis-live, inbox]",
+        f"tags: [ai-output, jarvis-live, inbox{', restricted' if meta.restricted else ''}]",
         "---",
         "",
         f"# {_one_line(note.title)}",
@@ -161,11 +162,8 @@ def render_note(
         for w in work_items:
             out.extend(_work_item(w))
     section("Related", [f"- [[{_one_line(r)}]]" for r in note.related])
-    lines = [x for p in proposals or [] if (x := _proposal(p, meta.created.tzinfo))]
-    if lines:
-        out.extend(["## Proposed actions", "", *lines, ""])
-        if review_url:
-            out.extend([f"[Review and approve in Jarvis]({review_url})", ""])
+    if timing:
+        out.extend([*timing])
     out.extend(["## Transcript", ""])
     out.extend(
         f"[{hhmmss(x.start_ms)}] **{'Me' if x.speaker == 'me' else 'Them'}:** {_one_line(x.text)}"

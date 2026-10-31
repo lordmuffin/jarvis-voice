@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.lordmuffin.jarvisvoice.DebugLog
 import com.lordmuffin.jarvisvoice.live.protocol.Channel
+import com.lordmuffin.jarvisvoice.live.protocol.ClientMessage
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.coroutineScope
@@ -43,7 +44,7 @@ class LiveUploader(private val context: Context) {
 
         try {
             if (meta.serverId == null) {
-                val serverId = api.createSession(meta.mode, listOf(Channel.MIC), meta.title)
+                val serverId = api.createSession(meta.mode, listOf(Channel.MIC), meta.title, meta.uploadsRestricted)
                 meta = repo.rename(meta, serverId).copy(serverId = serverId, state = SessionMeta.State.PENDING)
                 repo.write(meta)
             }
@@ -56,7 +57,12 @@ class LiveUploader(private val context: Context) {
         val outbox = Outbox.reopen(settings.sessionsRoot, meta.id)
         val terminal = try {
             coroutineScope {
-                val connection = LiveConnection(api, meta.id, settings.deviceName, outbox, this)
+                val connection = LiveConnection(
+                    api, meta.id, settings.deviceName, outbox, this,
+                    markers = {
+                        MarkerLog.inDir(outbox.directory).read().map { ClientMessage.Marker(it.tMs, it.label) }
+                    },
+                )
                 // Stay inside WorkManager's 10-minute window; unfinished work resumes on retry.
                 withTimeoutOrNull(UPLOAD_TIMEOUT_MS) { connection.end() }
                     ?: ConnState.Idle.also { connection.stop() }
@@ -120,11 +126,11 @@ class LiveUploadWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 .enqueueUniqueWork(workName(sessionId), ExistingWorkPolicy.KEEP, req)
         }
 
-        /** Resumes online sessions that never finished (local-only ones wait for the user). */
+        /** Resumes online sessions that never finished, and fallback recordings (sessions chosen local wait for the user). */
         fun enqueueInterrupted(context: Context, activeId: String?) {
             val repo = SessionRepository(LiveSettings(context).sessionsRoot)
             for (meta in repo.pending(activeId)) {
-                if (meta.serverId != null && meta.state != SessionMeta.State.FAILED) enqueue(context, meta.id)
+                if (meta.autoUploads) enqueue(context, meta.id)
             }
         }
     }

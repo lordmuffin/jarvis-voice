@@ -4,18 +4,24 @@ version = "0.27.0"
 description = "Jarvis Live backend service"
 requires-python = ">=3.12"
 dependencies = [
+    "httpx",
+    "pydantic>=2",
+    "websockets",
+]
+
+[project.optional-dependencies]
+# Everything the server needs; the capture client (`pip install jarvis-live`) does not.
+server = [
     "fastapi",
     "uvicorn[standard]",
-    "pydantic>=2",
     "pydantic-settings",
     "sqlalchemy[asyncio]>=2",
     "asyncpg",
     "alembic",
-    "httpx",
     "numpy",
     "webrtcvad-wheels",
-    "websockets",
     "pyjwt[crypto]>=2.15.1",
+    "prometheus-client>=0.26.0",
 ]
 
 [project.scripts]
@@ -23,6 +29,7 @@ jarvis-live = "jarvis_live.cli:main"
 
 [dependency-groups]
 dev = [
+    "jarvis-live[server]",
     "pytest",
     "pytest-asyncio",
     "ruff",

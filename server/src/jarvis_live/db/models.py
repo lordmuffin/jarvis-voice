@@ -134,6 +134,9 @@ class Session(Base):
     started_at: Mapped[datetime] = _now()
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     local_only: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # A work call. Never set by the server itself: the client says so when it creates or uploads
+    # the session. The note is tagged and filed apart, and nothing leaves the homelab.
+    restricted: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Not in the A2 column list, but the duplicate guard must know up front whether a system
     # channel exists (it comes from the create request).
     channels: Mapped[list[str]] = mapped_column(
@@ -181,12 +184,18 @@ class SegmentRow(Base):
     text: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(8))
     stt_tier: Mapped[str | None] = mapped_column(String(100))
+    stt_ms: Mapped[int | None] = mapped_column(Integer)  # the STT call, fall-throughs included
+    latency_ms: Mapped[int | None] = mapped_column(Integer)  # cut to emitted, dup-guard hold out
     created_at: Mapped[datetime] = _now()
 
 
 class MarkerRow(Base):
     __tablename__ = "markers"
-    __table_args__ = (Index("ix_markers_session_t", "session_id", "t_ms"),)
+    __table_args__ = (
+        Index("ix_markers_session_t", "session_id", "t_ms"),
+        # One marker per (session, time, label); md5 keeps long labels inside the btree limit.
+        Index("uq_markers_session_t_label", "session_id", "t_ms", text("md5(label)"), unique=True),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sessions.id"))

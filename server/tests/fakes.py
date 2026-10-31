@@ -143,6 +143,7 @@ async def make_session(
     status: str = "live",
     mode: str = "meeting",
     local_only: bool = False,
+    restricted: bool = False,
     started_at: datetime | None = None,
     ended_at: datetime | None = None,
 ) -> uuid.UUID:
@@ -157,6 +158,7 @@ async def make_session(
             status=status,
             channels=["mic", "system"],
             local_only=local_only,
+            restricted=restricted,
             started_at=started_at or datetime(2026, 10, 9, 14, 30, tzinfo=UTC),
             ended_at=ended_at,
         )

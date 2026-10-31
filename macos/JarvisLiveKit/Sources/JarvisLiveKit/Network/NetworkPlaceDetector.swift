@@ -5,20 +5,29 @@ public enum NetworkPlaceDetector {
     /// Away, the server's address usually times out rather than refusing; don't wait long.
     public static let probeTimeout: TimeInterval = 4
 
+    /// Nil when `gate` kept the probe from answering: a refused health check looks like an
+    /// unreachable server but says nothing about the network, so it must not count as `.away`.
     public static func detect(
         baseURL: URL,
         interfaces: [NetInterface] = currentInterfaces(),
-        session: URLSession? = nil
-    ) async -> NetworkPlace {
-        if NetBird.detect(interfaces) { return .netbird }
-        return await isReachable(baseURL: baseURL, session: session) ? .home : .away
+        session: URLSession? = nil,
+        gate: EgressGate = .shared
+    ) async -> NetworkPlace? {
+        guard !gate.isBlocking else { return nil }
+        let place: NetworkPlace
+        if NetBird.detect(interfaces) {
+            place = .netbird
+        } else {
+            place = await isReachable(baseURL: baseURL, session: session, gate: gate) ? .home : .away
+        }
+        return gate.isBlocking ? nil : place
     }
 
     /// `GET /healthz`: can this network reach the server at all? Any failure is false. Checks the
     /// body so a captive portal answering 200 doesn't count.
-    public static func isReachable(baseURL: URL, session: URLSession? = nil) async -> Bool {
+    public static func isReachable(baseURL: URL, session: URLSession? = nil, gate: EgressGate = .shared) async -> Bool {
         let request = URLRequest(url: baseURL.appending(path: "healthz"), timeoutInterval: probeTimeout)
-        let result = try? await (session ?? probeSession).data(for: request)
+        let result = try? await GatedSession(session ?? probeSession, gate: gate).data(for: request)
         guard let data = result?.0, let http = result?.1 as? HTTPURLResponse, (200..<300).contains(http.statusCode)
         else { return false }
         struct Health: Decodable { let status: String }

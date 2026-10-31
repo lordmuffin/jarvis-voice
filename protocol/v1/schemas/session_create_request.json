@@ -23,6 +23,9 @@
           "system"
         ]
       ]
+    },
+    "restricted": {
+      "type": "boolean"
     }
   },
   "required": [
