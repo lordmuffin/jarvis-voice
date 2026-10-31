@@ -18,11 +18,13 @@ private func sentence(_ text: String) -> String {
     text.hasSuffix(".") ? text : text + "."
 }
 
-enum AppError: LocalizedError {
+enum AppError: LocalizedError, Equatable {
     case micDenied
     case noCredentials
     case speechUnavailable(String)
     case audioMissing
+    case uploadIncomplete
+    case uploadRejected(String)
 
     var errorDescription: String? {
         switch self {
@@ -34,6 +36,10 @@ enum AppError: LocalizedError {
             "On-device transcription is unavailable: \(why)"
         case .audioMissing:
             "The recorded audio for this session is no longer on disk."
+        case .uploadIncomplete:
+            "The upload was interrupted. It will resume when the server is reachable."
+        case .uploadRejected(let why):
+            "The server refused the upload: \(why)"
         }
     }
 }
@@ -69,6 +75,8 @@ final class AppModel {
     private(set) var uploadingSessionId: String?
     private(set) var sessionClock: SessionClock?
     private(set) var sessionIsLocalOnly = false
+    /// The running session is local because the server couldn't be reached at the start.
+    private(set) var sessionFellBack = false
     /// What the server at `serverInfoURL` said about itself in `/healthz`.
     private var serverInfo: ServerInfo?
     private var serverInfoURL: URL?
@@ -85,6 +93,7 @@ final class AppModel {
     @ObservationIgnored private var networkCheck: Task<Void, Never>?
     @ObservationIgnored private var serverInfoCheck: Task<Void, Never>?
     @ObservationIgnored private var elapsedTicker: Task<Void, Never>?
+    @ObservationIgnored private var autoUploadTask: Task<Void, Never>?
 
     init() {
         let settings = SettingsModel()
@@ -183,6 +192,27 @@ final class AppModel {
                   !Task.isCancelled, settings.serverBaseURL == base else { return }
             serverInfoURL = base
             serverInfo = info
+            // The server answered: recordings made while it was down can go now.
+            startAutoUpload()
+        }
+    }
+
+    /// Uploads fallback recordings one at a time; stops at the first failure so a flaky server
+    /// isn't hammered on every network change.
+    private func startAutoUpload() {
+        guard autoUploadTask == nil, settings.hasCredentials else { return }
+        autoUploadTask = Task { [weak self] in
+            await self?.uploadFallbackSessions()
+            self?.autoUploadTask = nil
+        }
+    }
+
+    private func uploadFallbackSessions() async {
+        refreshLocalSessions()
+        for session in localSessions where session.header.autoUpload && !session.isUploaded {
+            guard phase == .idle else { return }
+            await upload(session)
+            guard localSessions.first(where: { $0.id == session.id })?.isUploaded == true else { return }
         }
     }
 
@@ -214,10 +244,12 @@ final class AppModel {
             guard await AVCaptureDevice.requestAccess(for: .audio) else { throw AppError.micDenied }
             let run = try await prepare(localOnly: localOnly, mode: mode, store: freshStore)
             built = run
+            // Before capture starts, from the session itself, so the indicator never shows the last one's mode.
+            sessionIsLocalOnly = run.localOnly
+            sessionFellBack = run.fellBack
             try await begin(run)
             self.run = run
             sessionClock = run.clock
-            sessionIsLocalOnly = localOnly
             phase = .recording
             startElapsedTicker()
             panel.show()
@@ -227,6 +259,8 @@ final class AppModel {
             notice = error.localizedDescription
             phase = .idle
             sessionClock = nil
+            sessionIsLocalOnly = false
+            sessionFellBack = false
         }
     }
 
@@ -272,21 +306,29 @@ final class AppModel {
 
     // MARK: Setup
 
-    private func prepare(localOnly: Bool, mode: Mode, store: SessionStore) async throws -> Run {
+    private func prepare(localOnly requestedLocalOnly: Bool, mode: Mode, store: SessionStore) async throws -> Run {
         let channels: [Channel] = mode == .meeting ? [.mic, .system] : [.mic]
         var sessionId = UUID().uuidString.lowercased()
         var api: LiveAPIClient?
         var base: URL?
+        var localOnly = requestedLocalOnly
+        var fellBack = false
         if !localOnly {
             guard settings.hasCredentials, let url = settings.serverBaseURL else { throw AppError.noCredentials }
             let token = settings.deviceToken
             let client = LiveAPIClient(baseURL: url, bearerToken: { token })
-            let created = try await client.createSession(
-                SessionCreateRequest(mode: mode == .meeting ? .meeting : .solo, channels: channels)
-            )
-            sessionId = created.id
-            api = client
-            base = url
+            do {
+                let created = try await client.createSession(
+                    SessionCreateRequest(mode: mode == .meeting ? .meeting : .solo, channels: channels)
+                )
+                sessionId = created.id
+                api = client
+                base = url
+            } catch where StartFallback.shouldFallBack(error) {
+                // The server is down: still record the meeting, and upload it when the server is back.
+                localOnly = true
+                fellBack = true
+            }
         }
 
         let outbox = try Outbox(sessionId: sessionId)
@@ -303,7 +345,7 @@ final class AppModel {
         }
         return Run(
             sessionId: sessionId, channels: channels, mode: mode, localOnly: localOnly,
-            outbox: outbox, connection: connection, store: store
+            fellBack: fellBack, outbox: outbox, connection: connection, store: store
         )
     }
 
@@ -319,7 +361,8 @@ final class AppModel {
         } catch {
             assetProgress = nil
             sttAvailable = false
-            if run.localOnly { throw AppError.speechUnavailable(error.localizedDescription) }
+            // A fallback recording is uploaded and transcribed by the server later, so it needs no drafts.
+            if run.localOnly && !run.fellBack { throw AppError.speechUnavailable(error.localizedDescription) }
             notice = "On-device drafts are off: \(sentence(error.localizedDescription)) The server still transcribes."
         }
 
@@ -420,7 +463,7 @@ final class AppModel {
         let header = LocalMarkdown.Header(
             sessionId: run.sessionId,
             mode: run.mode == .meeting ? .meeting : .solo,
-            channels: run.channels, started: run.startedAt, uploadedAs: nil
+            channels: run.channels, started: run.startedAt, uploadedAs: nil, autoUpload: run.fellBack
         )
         let lines = run.finals.map { LocalMarkdown.Line(channel: $0.channel, startMs: $0.startMs, text: $0.text) }
         let text = LocalMarkdown.render(header: header, lines: lines, markers: markers)
@@ -459,32 +502,43 @@ final class AppModel {
         do {
             let token = settings.deviceToken
             let api = LiveAPIClient(baseURL: base, bearerToken: { token })
-            let created = try await api.createSession(
-                // A session kept local-only is a work call until you say otherwise: the server
-                // files its note apart and never publishes or pushes it.
-                SessionCreateRequest(mode: session.header.mode, channels: session.header.channels, restricted: true)
-            )
-            // The outbox is keyed by session id: move the recorded audio under the server's id.
             let root = Outbox.defaultRoot
-            let source = root.appending(path: session.header.sessionId, directoryHint: .isDirectory)
-            let destination = root.appending(path: created.id, directoryHint: .isDirectory)
-            guard FileManager.default.fileExists(atPath: source.path) else { throw AppError.audioMissing }
-            try FileManager.default.moveItem(at: source, to: destination)
+            var text = try String(contentsOf: session.url, encoding: .utf8)
+            // A retry resumes the server session an earlier attempt made; only the first attempt creates one.
+            let serverId: String
+            if let existing = session.header.serverSessionId {
+                serverId = existing
+            } else {
+                serverId = try await api.createSession(
+                    SessionCreateRequest(mode: session.header.mode, channels: session.header.channels)
+                ).id
+                // Written before any audio moves, so an interruption from here on can be resumed.
+                text = LocalMarkdown.settingServerSession(text, id: serverId)
+                try text.write(to: session.url, atomically: true, encoding: .utf8)
+            }
+            try UploadHandoff.relocate(root: root, from: session.header.sessionId, to: serverId)
 
-            let outbox = try Outbox(sessionId: created.id, root: root)
+            let outbox = try Outbox(sessionId: serverId, root: root)
             let connection = LiveConnection(
                 configuration: .init(
-                    apiBaseURL: base, sessionId: created.id, device: "mac:\(ProcessInfo.processInfo.hostName)"
+                    apiBaseURL: base, sessionId: serverId, device: "mac:\(ProcessInfo.processInfo.hostName)"
                 ),
                 outbox: outbox,
-                ticketProvider: api.producerTicketProvider(sessionId: created.id)
+                ticketProvider: api.producerTicketProvider(sessionId: serverId)
             )
             await connection.start()
             await connection.end()
+            let finished = await connection.state
             await outbox.close()
 
-            let text = try String(contentsOf: session.url, encoding: .utf8)
-            try LocalMarkdown.markUploaded(text, serverSessionId: created.id)
+            // `end()` also returns when it times out or the server is gone; only a connection that
+            // ended means the server has all of it. Anything else stays pending and resumes.
+            switch finished {
+            case .ended: break
+            case .failed(let why): throw AppError.uploadRejected(why)
+            default: throw AppError.uploadIncomplete
+            }
+            try LocalMarkdown.markUploaded(text, serverSessionId: serverId)
                 .write(to: session.url, atomically: true, encoding: .utf8)
             notice = "Uploaded \(session.url.lastPathComponent) for full processing."
         } catch {
@@ -512,6 +566,8 @@ private final class Run {
     let channels: [Channel]
     let mode: AppModel.Mode
     let localOnly: Bool
+    /// Local because the server couldn't be reached at the start (see `StartFallback`).
+    let fellBack: Bool
     let outbox: Outbox
     let connection: LiveConnection?
     let store: SessionStore
@@ -529,13 +585,14 @@ private final class Run {
     var activity: NSObjectProtocol?
 
     init(
-        sessionId: String, channels: [Channel], mode: AppModel.Mode, localOnly: Bool,
+        sessionId: String, channels: [Channel], mode: AppModel.Mode, localOnly: Bool, fellBack: Bool,
         outbox: Outbox, connection: LiveConnection?, store: SessionStore
     ) {
         self.sessionId = sessionId
         self.channels = channels
         self.mode = mode
         self.localOnly = localOnly
+        self.fellBack = fellBack
         self.outbox = outbox
         self.connection = connection
         self.store = store

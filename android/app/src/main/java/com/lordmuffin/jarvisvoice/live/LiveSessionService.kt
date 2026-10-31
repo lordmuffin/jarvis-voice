@@ -149,7 +149,7 @@ class LiveSessionService : Service() {
             // Off the main thread: freeing the model waits for a transcription still inside it.
             r.whisper?.let { w -> Thread({ w.release() }, "jarvis-live-release").start() }
             repo.update(r.meta.id) { it.copy(state = SessionMeta.State.PENDING) }
-            if (r.meta.serverId != null) LiveUploadWorker.enqueue(this, r.meta.id)
+            if (r.meta.autoUploads) LiveUploadWorker.enqueue(this, r.meta.id)
         }
         run = null
         releaseWakeLock()
@@ -181,6 +181,7 @@ class LiveSessionService : Service() {
         // Shut the network before anything else happens, so not even a failed start leaks.
         if (localOnly) holdGate()
         var notice: String? = null
+        var fellBack = false
         val api = if (settings.isConfigured) settings.apiClient() else null
         var serverId: String? = null
         if (!localOnly && api != null) {
@@ -192,8 +193,8 @@ class LiveSessionService : Service() {
                 // No connectivity: record anyway and upload later, rather than losing the moment.
                 DebugLog.w(TAG, "createSession failed, recording locally: ${e.message}")
                 localOnly = true
-                holdGate()
-                notice = "Server unreachable — recording locally. Upload it when you're back online."
+                fellBack = true
+                notice = "Server unreachable — recording locally. It will upload when the server is back."
             }
         }
 
@@ -201,6 +202,7 @@ class LiveSessionService : Service() {
         val meta = SessionMeta(
             id = id, mode = mode, title = title, startedAt = System.currentTimeMillis(),
             localOnly = localOnly, serverId = serverId, state = SessionMeta.State.RECORDING,
+            fellBack = fellBack,
         )
         val outbox = try {
             repo.write(meta)
@@ -221,7 +223,7 @@ class LiveSessionService : Service() {
                     _ui.update { it.copy(session = r.store.snapshot) }
                 }
             }
-            r.jobs += scope.launch { conn.state.collect { s -> _ui.update { it.copy(connection = s) } } }
+            r.jobs += scope.launch { conn.state.collect { s -> _ui.update { it.copy(connection = s) }; updateNotification() } }
         }
 
         try {
@@ -365,12 +367,13 @@ class LiveSessionService : Service() {
         }
         val meta = r.meta.copy(state = state, error = failure, notePath = notePath)
         repo.write(meta)
-        if (state == SessionMeta.State.PENDING && meta.serverId != null) LiveUploadWorker.enqueue(this, meta.id)
+        if (state == SessionMeta.State.PENDING && meta.autoUploads) LiveUploadWorker.enqueue(this, meta.id)
 
         val message = when {
             failure != null -> "Server ended the session. $failure"
             state == SessionMeta.State.PENDING && meta.serverId != null ->
                 "Still uploading. It will finish in the background."
+            meta.fellBack -> "Saved locally. It will upload when the server is back."
             meta.localOnly -> "Saved locally. Upload it from Pending sessions."
             else -> error
         }
@@ -465,7 +468,12 @@ class LiveSessionService : Service() {
         val state = _ui.value
         val text = when (state.phase) {
             LiveUiState.Phase.STOPPING -> getString(R.string.live_notif_finishing)
-            else -> if (state.localOnly) getString(R.string.live_notif_local) else getString(R.string.live_notif_streaming)
+            else -> when {
+                state.localOnly -> getString(R.string.live_notif_local)
+                state.connection is ConnState.Reconnecting || state.connection is ConnState.Failed ->
+                    getString(R.string.live_notif_buffering)
+                else -> getString(R.string.live_notif_streaming)
+            }
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.live_notif_title))

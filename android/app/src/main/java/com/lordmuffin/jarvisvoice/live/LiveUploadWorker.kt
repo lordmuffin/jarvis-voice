@@ -122,11 +122,11 @@ class LiveUploadWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 .enqueueUniqueWork(workName(sessionId), ExistingWorkPolicy.KEEP, req)
         }
 
-        /** Resumes online sessions that never finished (local-only ones wait for the user). */
+        /** Resumes online sessions that never finished, and fallback recordings (sessions chosen local wait for the user). */
         fun enqueueInterrupted(context: Context, activeId: String?) {
             val repo = SessionRepository(LiveSettings(context).sessionsRoot)
             for (meta in repo.pending(activeId)) {
-                if (meta.serverId != null && meta.state != SessionMeta.State.FAILED) enqueue(context, meta.id)
+                if (meta.autoUploads) enqueue(context, meta.id)
             }
         }
     }

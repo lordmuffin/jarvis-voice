@@ -32,8 +32,8 @@ struct MenuBarIconSpec: Equatable {
     var badgeFilled: Bool
     var accessibilityLabel: String
 
-    /// A recording session wins over dictation. A local-only recording shows `LOCAL` instead of the
-    /// server's channel: nothing is being sent, so naming the server would say the opposite.
+    /// A recording session wins over dictation. A local session shows `LOCAL` instead of the server's
+    /// channel: it isn't talking to that server, and a LIVE badge on it would be a lie.
     static func make(
         isRecording: Bool, isDictating: Bool, elapsedSeconds: Int, channel: ServerChannel?, localOnly: Bool = false
     ) -> Self {
@@ -42,7 +42,7 @@ struct MenuBarIconSpec: Equatable {
         if isRecording {
             let elapsed = ClockFormat.elapsed(seconds: elapsedSeconds)
             glyph = .recording(elapsed: elapsed)
-            state = "recording \(elapsed)"
+            state = localOnly ? "recording \(elapsed), local only, not streaming" : "recording \(elapsed)"
         } else if isDictating {
             glyph = .dictating
             state = "dictating"
@@ -51,8 +51,10 @@ struct MenuBarIconSpec: Equatable {
             state = "idle"
         }
         if isRecording && localOnly {
-            let label = "Jarvis, \(state), local only, nothing is sent"
-            return Self(glyph: glyph, badge: "LOCAL", badgeFilled: true, accessibilityLabel: label)
+            return Self(
+                glyph: glyph, badge: "LOCAL", badgeFilled: true,
+                accessibilityLabel: ["Jarvis", state].joined(separator: ", ")
+            )
         }
         let badge = channel?.tag
         let label = ["Jarvis", state, badge].compactMap { $0 }.joined(separator: ", ")
