@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.29.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.28.0...web-v0.29.0) (2026-10-31)
+
+
+### Features
+
+* **server:** speak requests to Jarvis during a recording ([79d9181](https://github.com/lordmuffin/jarvis-voice/commit/79d91814bd11f85628c3a080838157e15a66ca89))
+* **server:** user isolation tests, soft delete, trash retention and backups ([92f3023](https://github.com/lordmuffin/jarvis-voice/commit/92f30239048b2a78b82578107bacefae7339f1a5))
+* **web:** review a spoken Pi session, and turn spoken requests on for lab ([9eada65](https://github.com/lordmuffin/jarvis-voice/commit/9eada65e4b080a684587e23d947d05415869640a))
+
+
+### Bug Fixes
+
+* **web:** let the e2e session mocks match a query string ([90c52cc](https://github.com/lordmuffin/jarvis-voice/commit/90c52cc8217832bab75eb67279f9668e46b121eb))
+
 ## [0.28.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.27.0...web-v0.28.0) (2026-10-31)
 
 

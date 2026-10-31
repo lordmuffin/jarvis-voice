@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.29.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.28.0...server-v0.29.0) (2026-10-31)
+
+
+### Features
+
+* **server:** hear requests spoken to Jarvis during a recording ([a5ae3cd](https://github.com/lordmuffin/jarvis-voice/commit/a5ae3cd51030ad958338cc975f16632eb8d7e06f))
+* **server:** speak requests to Jarvis during a recording ([79d9181](https://github.com/lordmuffin/jarvis-voice/commit/79d91814bd11f85628c3a080838157e15a66ca89))
+* **server:** start a Pi Durable session as an approved action ([0fd2415](https://github.com/lordmuffin/jarvis-voice/commit/0fd2415b77d9b09cb3ae4c40aa4c9a77767c78b0))
+* **server:** tell a request to Jarvis from talk about Jarvis ([88abeab](https://github.com/lordmuffin/jarvis-voice/commit/88abeabd161e0b1d7294c976b8e844ba1da1264a))
+* **server:** user isolation tests, soft delete, trash retention and backups ([92f3023](https://github.com/lordmuffin/jarvis-voice/commit/92f30239048b2a78b82578107bacefae7339f1a5))
+* **web:** review a spoken Pi session, and turn spoken requests on for lab ([9eada65](https://github.com/lordmuffin/jarvis-voice/commit/9eada65e4b080a684587e23d947d05415869640a))
+
+
+### Bug Fixes
+
+* **server:** close the recorder's stdout pipe when capture is cancelled ([4f145d1](https://github.com/lordmuffin/jarvis-voice/commit/4f145d1d3695299acc5818005bc29b72db0d858c))
+* **server:** close the recorder's stdout pipe when capture is cancelled ([5e3180d](https://github.com/lordmuffin/jarvis-voice/commit/5e3180d33a0cde83321640349b264ea3d5242af5))
+* **server:** renumber soft-delete migration to 0017 and restore the backup commands ([94b0f03](https://github.com/lordmuffin/jarvis-voice/commit/94b0f03b41748ac5d9069bdb5f9b723173e6ee0f))
+* **server:** wait for the copilot cycle to be mid-call instead of a fixed nap ([d9b19d5](https://github.com/lordmuffin/jarvis-voice/commit/d9b19d5e552657931d40addbfcee1ac317e6c983))
+
+
+### Documentation
+
+* diarizer sidecar contract and the Phase 0 benchmark ([2a5e4c3](https://github.com/lordmuffin/jarvis-voice/commit/2a5e4c3f6994e402b34a3358e227e25287ef311c))
+
 ## [0.28.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.27.0...server-v0.28.0) (2026-10-31)
 
 

@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.22.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.21.0...android-v1.22.0) (2026-10-31)
+
+
+### Features
+
+* **server:** user isolation tests, soft delete, trash retention and backups ([92f3023](https://github.com/lordmuffin/jarvis-voice/commit/92f30239048b2a78b82578107bacefae7339f1a5))
+
+
+### Bug Fixes
+
+* **android:** make Wear OS recordings reliable on the Pixel Watch ([5fc2afd](https://github.com/lordmuffin/jarvis-voice/commit/5fc2afdbd07a7b7f3d84b0b69adbafec1b8fa0ba))
+* **android:** make Wear OS recordings reliable on the Pixel Watch ([e9f72b9](https://github.com/lordmuffin/jarvis-voice/commit/e9f72b928bc2aa46cf0058383166fa68672ba837))
+* **android:** the watch tile no longer crashes a running recording ([e5f3256](https://github.com/lordmuffin/jarvis-voice/commit/e5f3256622b99767a38d6bdcf594ae4acf984279))
+
 ## [1.21.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.20.1...android-v1.21.0) (2026-10-31)
 
 
