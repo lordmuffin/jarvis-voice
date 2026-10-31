@@ -65,6 +65,8 @@ class SessionOut(BaseModel):
     # "delete after N days" deadline. Both are null for an ordinary session.
     deleted_at: datetime | None = None
     purge_after: datetime | None = None
+    # When the trash deletes it for good (``deleted_at`` plus the trash window).
+    trash_expires_at: datetime | None = None
 
     @classmethod
     def of(cls, s: SessionRow, owner: User, request: Request) -> "SessionOut":
@@ -82,6 +84,9 @@ class SessionOut(BaseModel):
             owner=OwnerOut(id=owner.id, display_name=owner.display_name),
             deleted_at=s.deleted_at,
             purge_after=s.purge_after,
+            trash_expires_at=None
+            if s.deleted_at is None
+            else s.deleted_at + timedelta(days=request.app.state.settings.trash_retention_days),
         )
 
 

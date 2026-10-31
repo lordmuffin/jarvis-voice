@@ -3,7 +3,7 @@
 import asyncio
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import asyncpg
@@ -247,3 +247,19 @@ async def test_migration_adds_the_columns_and_keeps_existing_rows(postgres_url: 
     finally:
         await admin.execute(f'DROP DATABASE "{name}" WITH (FORCE)')
         await admin.close()
+
+
+async def test_a_deleted_session_says_when_the_trash_will_take_it(
+    make_server: Callable[..., ServerHandle], sm: SM
+) -> None:
+    server = make_server(trash_retention_days=10, **SETTINGS)
+    user = (await create_user(sm, "Zed")).id
+    device, _ = await new_device(sm, "zed-phone", user_id=user)
+    sid = await make_session(sm, device, status="done")
+    async with await web_client(server, sm, user) as c:
+        assert (await c.get(f"/v1/sessions/{sid}")).json()["trash_expires_at"] is None
+        await c.delete(f"/v1/sessions/{sid}")
+        item = (await c.get("/v1/sessions", params={"deleted": "true"})).json()["items"][0]
+        gone = datetime.fromisoformat(item["deleted_at"])
+        expires = datetime.fromisoformat(item["trash_expires_at"])
+        assert expires - gone == timedelta(days=10)
