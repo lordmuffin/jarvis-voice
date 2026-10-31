@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.21.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.20.1...android-v1.21.0) (2026-10-31)
+
+
+### Features
+
+* **android:** driving-mode trigger, mic recovery, mute and durable markers ([5dd09a1](https://github.com/lordmuffin/jarvis-voice/commit/5dd09a1ae6d8d7902bfa6c5fa65b1148ef135b59))
+* **android:** refuse all Live traffic during a local-only session ([37c385c](https://github.com/lordmuffin/jarvis-voice/commit/37c385c0101a77dc5f0cfdb5522726839278c14d))
+* **android:** upload fallback recordings by themselves; say when offline ([2e503c1](https://github.com/lordmuffin/jarvis-voice/commit/2e503c1929a8e78ba60ea4f1125ef1021f65ddef))
+* driving mode (hands-free capture trigger, mic recovery, durable markers) ([6dbddbf](https://github.com/lordmuffin/jarvis-voice/commit/6dbddbf9c84139c63494c606ae74de0fad4e2ebe))
+* local-only as server-down fallback, visible mode, resumable uploads ([57bed7b](https://github.com/lordmuffin/jarvis-voice/commit/57bed7b6c8bdb53e5d1218169344c7d4e354bc95))
+* local-only gate and restricted sessions for work calls (task 6) ([a89f745](https://github.com/lordmuffin/jarvis-voice/commit/a89f7453fa24b0e2d453b776f08e03fc96c6700f))
+
+
+### Bug Fixes
+
+* **android:** cut open connections at the local-only gate, keep the place while it is shut ([781e719](https://github.com/lordmuffin/jarvis-voice/commit/781e7196a55aecd40afed1f67bc476b0376c2f5f))
+* **android:** register the recording callback with a Handler ([9b5de28](https://github.com/lordmuffin/jarvis-voice/commit/9b5de28bd38345712dca4635514763b9eb0198b6))
+* restore main and the local-only guarantees from the [#214](https://github.com/lordmuffin/jarvis-voice/issues/214) review ([6538f3a](https://github.com/lordmuffin/jarvis-voice/commit/6538f3a1600cbfff4066fcd0b6bf379a0afb7d26))
+* **server:** renumber speakers migration after main's 0011/0012 ([7d05ac6](https://github.com/lordmuffin/jarvis-voice/commit/7d05ac607c243afa9fbd2754f2b2d37ba7a85f15))
+
 ## [1.20.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.20.0...android-v1.20.1) (2026-10-30)
 
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.28.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.27.0...web-v0.28.0) (2026-10-31)
+
+
+### Features
+
+* local-only gate and restricted sessions for work calls (task 6) ([a89f745](https://github.com/lordmuffin/jarvis-voice/commit/a89f7453fa24b0e2d453b776f08e03fc96c6700f))
+* **server:** copilot actions with explicit approval ([9100ef5](https://github.com/lordmuffin/jarvis-voice/commit/9100ef597fe91088d3501173594b93590a4adc19))
+* **server:** speaker diarization at finalize, with a speaker_update protocol message ([f4e49b8](https://github.com/lordmuffin/jarvis-voice/commit/f4e49b8527641f8a2c32f8d0bc80607774f58995))
+* **web:** fold speaker_update into the live state ([21e6d47](https://github.com/lordmuffin/jarvis-voice/commit/21e6d479c008206c987a661e2c1fb258bae4a4b6))
+* **web:** review and approve proposed actions on the session page ([8fd659b](https://github.com/lordmuffin/jarvis-voice/commit/8fd659b95f8ea6dad38f037f540f10f128a68025))
+* **web:** show restricted sessions and let the owner remove the restriction ([ad37943](https://github.com/lordmuffin/jarvis-voice/commit/ad379437214351a3459e3cf0f0bd1c170385b534))
+
 ## [0.27.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.26.1...web-v0.27.0) (2026-10-30)
 
 
