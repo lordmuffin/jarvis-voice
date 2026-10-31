@@ -11,7 +11,6 @@ import androidx.work.WorkerParameters
 import com.lordmuffin.jarvisvoice.wear.RecorderState
 import com.lordmuffin.jarvisvoice.wear.WearGraph
 import com.lordmuffin.jarvisvoice.wearcommon.sync.RecordingCatalog
-import java.io.File
 import java.util.concurrent.TimeUnit
 
 /** Runs the sync pass at the right moments: after a recording, on an ack, when a phone or network appears, when a backoff ends. */
@@ -44,8 +43,7 @@ class SyncWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, 
         val graph = WearGraph.get(applicationContext)
         return try {
             // Audio on disk the queue forgot (killed mid-recording, lost queue file) is queued first.
-            val active = RecorderState.active.value?.let { File(graph.recordingsDir, "${it.id}.${RecordingCatalog.EXT}") }
-            RecordingCatalog.recoverOrphans(graph.store, graph.recordingsDir, active, System.currentTimeMillis())
+            RecordingCatalog.recoverOrphans(graph.store, graph.recordingsDir, RecorderState::isActive, System.currentTimeMillis())
             DataLayerPull.pull(applicationContext, graph)   // acks and config that arrived while we weren't listening
             val report = graph.runner.runOnce()
             report.wakeAtMs?.let { SyncScheduler.later(applicationContext, it - System.currentTimeMillis()) }
