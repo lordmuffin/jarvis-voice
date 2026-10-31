@@ -458,3 +458,36 @@ class ActionProposalEvent(Base):
     payload: Mapped[dict[str, Any]] = mapped_column(
         JSONB, default=dict, server_default=text("'{}'::jsonb")
     )
+
+
+REMINDER_STATES = ("pending", "sending", "sent", "failed")
+
+
+class ScheduledReminder(Base):
+    """A Gotify push an approved ``reminder.schedule`` action will send at ``fire_at``.
+
+    The loop claims a row (``pending`` -> ``sending``) before it pushes, so a restart in between
+    leaves ``sending``, which is reported as failed (outcome unknown) and never sent again: a
+    reminder fires at most once, and a failure is reported to the owner, not retried."""
+
+    __tablename__ = "scheduled_reminders"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN (" + ",".join(f"'{s}'" for s in REMINDER_STATES) + ")",
+            name="ck_scheduled_reminders_state",
+        ),
+        Index("ix_scheduled_reminders_state_fire", "state", "fire_at"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    proposal_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("action_proposals.id", ondelete="CASCADE"), unique=True
+    )
+    fire_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    title: Mapped[str] = mapped_column(Text)
+    body: Mapped[str | None] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(String(16), default="pending", server_default="pending")
+    attempted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()

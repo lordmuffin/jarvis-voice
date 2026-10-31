@@ -155,6 +155,7 @@ class Settings(BaseSettings):
     # when it changes only the approved file; False stops at the open PR.
     actions_vault_merge: bool = True
     actions_work_tracker_path: str = "20 Areas/Personal/Work Tracker.md"
+    reminder_poll_s: float = 15.0  # how often due reminders are looked for
     actions_tracker_section: str = "Needs Triage"  # where proposed tasks land on the board
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the

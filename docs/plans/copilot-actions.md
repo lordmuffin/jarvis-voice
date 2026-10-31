@@ -252,7 +252,7 @@ REST, owner-scoped (404 for anyone else), under `/v1`: `GET /sessions/{id}/actio
    golden `final_note.md` update, `## Proposed actions` rendering).
 4. **Done** (`actions/vault.py`). `feat(server)`: `task.create`/`vault.append` executor on `fake_github`: marker idempotency,
    crash-reconcile, conflict, merge-diff guard. **First time "done when" can be checked locally.**
-5. `feat(server)`: `Notifier.send()`, `scheduled_reminders`, `ReminderLoop`.
+5. **Done** (`actions/reminders.py`). `feat(server)`: `Notifier.send()`, `scheduled_reminders`, `ReminderLoop`.
 6. D6 spike, then `git.pr_comment`.
 7. `feat(web)`: panel + review page (+ Playwright).
 8. `feat(protocol)` + `feat(macos)`: `proposals` in `copilot`, fixtures, Swift tests, panel UI.

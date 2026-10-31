@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from jarvis_live.actions.intake import ActionIntake
+from jarvis_live.actions.reminders import ReminderExecutor, ReminderLoop
 from jarvis_live.actions.service import ActionService, Executor
 from jarvis_live.actions.state import Context
 from jarvis_live.actions.vault import VaultExecutor
@@ -209,7 +210,15 @@ def create_app(
         work = WorkItemService(cfg, sm, runner)
         # Vault writes need the vault repo's write credential: where there is none (lab), those
         # kinds have no executor and fail visibly when approved.
-        executors: dict[str, Executor] = {}
+        if client is None:
+            client = httpx.AsyncClient()
+        push: Notifier = notifier or GotifyNotifier(
+            cfg.gotify_url,
+            cfg.gotify_token_file,
+            client,
+            title_prefix=cfg.notify_title_prefix,
+        )
+        executors: dict[str, Executor] = {"reminder.schedule": ReminderExecutor(cfg, sm, push)}
         if gh is not None:
             vault_writer = VaultExecutor(cfg, sm, gh)
             executors = {"task.create": vault_writer, "vault.append": vault_writer}
@@ -217,6 +226,7 @@ def create_app(
         intake = ActionIntake(action_service, lambda: _action_context(cfg))
         if action_service.enabled:
             await action_service.recover()
+            tasks.append(asyncio.create_task(ReminderLoop(cfg, sm, push).run()))
             tasks.append(asyncio.create_task(_expire_loop(action_service)))
         watching = cfg.forgejo_url and cfg.forgejo_token_file and cfg.work_forgejo_repo_map
         if work.enabled and watching and cfg.work_pr_poll_s > 0:
@@ -257,13 +267,7 @@ def create_app(
                     cfg.litellm_base_url, client, api_key_file=cfg.litellm_api_key_file
                 ),
                 vault,
-                notifier
-                or GotifyNotifier(
-                    cfg.gotify_url,
-                    cfg.gotify_token_file,
-                    client,
-                    title_prefix=cfg.notify_title_prefix,
-                ),
+                push,
                 on_final=publisher.on_note_ready,
                 intake=intake,
             )
