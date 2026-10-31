@@ -17,10 +17,10 @@ from pathlib import Path
 
 import asyncpg
 import pytest
-from jarvis_live.backup import PgTools, RestoreError
 from sqlalchemy import func, select
 
 from jarvis_live import backup as bk
+from jarvis_live.backup import PgTools, RestoreError
 from jarvis_live.db.models import (
     AudioChunk,
     CopilotItem,

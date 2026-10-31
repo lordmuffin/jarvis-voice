@@ -3,7 +3,9 @@ import importlib.metadata
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, HTTPException
@@ -12,6 +14,7 @@ from fastapi.responses import FileResponse
 from jarvis_live.api import account, auth, homelab, publishing, sessions, stream, work_items
 from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
+from jarvis_live.backup import backup_status
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings, get_settings
 from jarvis_live.db.session import make_engine, make_sessionmaker, run_migrations
@@ -268,6 +271,8 @@ def create_app(
                     cfg.retention_interval_s,
                     trash_days=cfg.trash_retention_days,
                     outbox=outbox_dir(cfg),
+                    backup_dir=cfg.backup_dir,
+                    backup_max_age_s=cfg.backup_max_age_s,
                     notifier=notifier
                     or GotifyNotifier(
                         cfg.gotify_url,
@@ -309,10 +314,26 @@ def create_app(
     app.state.family_apps = load_family_apps(cfg)  # cached for the life of the process
 
     @app.get("/healthz")
-    async def healthz() -> dict[str, str]:
+    async def healthz() -> dict[str, Any]:
         """Liveness: the process is up. Also says which release channel, version and commit
         this is, so lab and live can be told apart (and checked after a deploy)."""
-        return {"status": "ok", "environment": environment, "version": version, "commit": commit}
+        body: dict[str, Any] = {
+            "status": "ok",
+            "environment": environment,
+            "version": version,
+            "commit": commit,
+        }
+        if cfg.backup_dir is not None:
+            # Information, not liveness: restarting the server would not fix a missing backup.
+            st = backup_status(
+                cfg.backup_dir, now=datetime.now(UTC), max_age_s=cfg.backup_max_age_s
+            )
+            body["backup"] = {
+                "last_success_at": st.last_success_at.isoformat() if st.last_success_at else None,
+                "age_s": st.age_s,
+                "stale": st.stale,
+            }
+        return body
 
     @app.get("/readyz")
     async def readyz() -> dict[str, str]:

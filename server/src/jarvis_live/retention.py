@@ -19,6 +19,7 @@ from pathlib import Path
 from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live.backup import backup_status
 from jarvis_live.db.models import (
     AudioChunk,
     CopilotItem,
@@ -212,6 +213,20 @@ async def sweep(
     return SweepResult(audio, moved, purged, failed)
 
 
+async def _check_backup(backup_dir: Path, max_age_s: float, notifier: Notifier) -> None:
+    """A backup job that failed tells Gotify itself; this catches one that never ran at all
+    (suspended, unschedulable, the volume unmounted)."""
+    status = backup_status(backup_dir, now=datetime.now(UTC), max_age_s=max_age_s)
+    if not status.stale:
+        return
+    since = (
+        f"The last good backup was {status.age_s / 86_400:.0f} days ago."
+        if status.age_s is not None and status.age_s >= 86_400 * 1.5
+        else "No good backup is on record, or the last one is old."
+    )
+    await notifier.notify("Jarvis: backup is stale", since, 8)
+
+
 async def run_retention_loop(
     sessionmaker: "async_sessionmaker[AsyncSession]",
     data_dir: Path,
@@ -221,10 +236,14 @@ async def run_retention_loop(
     trash_days: int = 30,
     outbox: Path | None = None,
     notifier: Notifier | None = None,
+    backup_dir: Path | None = None,
+    backup_max_age_s: float = 129_600.0,
 ) -> None:
     outbox = outbox or data_dir / "outbox"
     while True:
         problem: str | None = None
+        if backup_dir is not None and notifier is not None:
+            await _check_backup(backup_dir, backup_max_age_s, notifier)
         try:
             r = await sweep(
                 sessionmaker,
