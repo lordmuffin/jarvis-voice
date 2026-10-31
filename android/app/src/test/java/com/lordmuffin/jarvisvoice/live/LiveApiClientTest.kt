@@ -56,7 +56,53 @@ class LiveApiClientTest {
         server.enqueue(MockResponse().setBody("""{"id": "s1", "segments": [], "audio": {"mic": true}}"""))
         val d = client.getSession("s1")
         assertEquals(listOf("mic"), d.audioChannels)
-        assertEquals("/v1/sessions/s1", server.takeRequest().path)
+        // Asks for a trashed session too, so its page can offer Restore.
+        assertEquals("/v1/sessions/s1?include_deleted=true", server.takeRequest().path)
+    }
+
+    @Test fun listSessionsCanAskForTheTrash() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setBody("""{"items": [{"id": "s1", "status": "done", "deleted_at": "2026-10-28T10:00:00Z"}], "total": 1, "limit": 20, "offset": 0}"""))
+        val page = client.listSessions(limit = 20, offset = 0, deleted = true)
+        assertTrue(page.items.single().isDeleted)
+        assertEquals("/v1/sessions?limit=20&offset=0&deleted=true", server.takeRequest().path)
+    }
+
+    @Test fun deleteSessionSendsDelete() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setResponseCode(204))
+        client.deleteSession("s/1")
+        val req = server.takeRequest()
+        assertEquals("DELETE", req.method)
+        assertEquals("/v1/sessions/s%2F1", req.path)
+    }
+
+    @Test fun deletingARecordingSessionIsRefusedAndSaysSo() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setResponseCode(409).setBody("""{"detail": "End the session before deleting it."}"""))
+        try {
+            client.deleteSession("s1")
+            fail("expected a 409")
+        } catch (e: LiveHttpException) {
+            assertEquals(409, e.status)
+        }
+    }
+
+    @Test fun restoreSessionPostsAndReadsTheSession() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setBody("""{"id": "s1", "status": "done", "deleted_at": null}"""))
+        val restored = client.restoreSession("s1")
+        assertFalse(restored.isDeleted)
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/v1/sessions/s1/restore", req.path)
+    }
+
+    @Test fun setDeleteAfterSendsDaysOrNull() = runBlocking<Unit> {
+        server.enqueue(MockResponse().setBody("""{"id": "s1", "status": "done", "purge_after": "2026-11-05T10:00:00Z"}"""))
+        server.enqueue(MockResponse().setBody("""{"id": "s1", "status": "done", "purge_after": null}"""))
+        assertEquals(true, client.setDeleteAfter("s1", 7).purgeAfter != null)
+        val set = server.takeRequest()
+        assertEquals("PATCH", set.method)
+        assertEquals(7, JSONObject(set.body.readUtf8()).getInt("delete_after_days"))
+        assertNull(client.setDeleteAfter("s1", null).purgeAfter)
+        assertTrue(JSONObject(server.takeRequest().body.readUtf8()).isNull("delete_after_days"))
     }
 
     @Test fun processPostsAndReadsTheJobState() = runBlocking<Unit> {

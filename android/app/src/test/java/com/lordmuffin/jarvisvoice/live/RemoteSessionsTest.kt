@@ -1,5 +1,6 @@
 package com.lordmuffin.jarvisvoice.live
 
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -54,6 +55,23 @@ class RemoteSessionsTest {
         assertTrue(c.channels.isEmpty())
         assertNull(c.startedAt)
         assertNull(c.owner)
+    }
+
+    @Test fun readsTheTrashFields() {
+        val gone = RemoteSessions.parseSession(
+            JSONObject(
+                """{"id": "s1", "status": "done", "deleted_at": "2026-10-28T10:00:00Z",
+                    "purge_after": "2026-11-05T10:00:00Z", "trash_expires_at": "2026-11-27T10:00:00Z"}""",
+            ),
+        )
+        assertTrue(gone.isDeleted)
+        assertEquals(Instant.parse("2026-11-27T10:00:00Z"), gone.trashExpiresAt)
+        assertEquals(Instant.parse("2026-11-05T10:00:00Z"), gone.purgeAfter)
+        // An older server sends none of them: an ordinary session.
+        val plain = RemoteSessions.parseSession(JSONObject("""{"id": "s2", "status": "done"}"""))
+        assertFalse(plain.isDeleted)
+        assertNull(plain.purgeAfter)
+        assertNull(plain.trashExpiresAt)
     }
 
     @Test fun lastPageHasNoMore() {
