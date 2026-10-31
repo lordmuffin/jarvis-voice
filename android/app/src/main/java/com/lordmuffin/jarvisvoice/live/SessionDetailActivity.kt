@@ -28,6 +28,7 @@ class SessionDetailActivity : AppCompatActivity() {
         model = SessionDetailModel(
             this, lifecycleScope, { settings.apiClient() }, sessionId,
             intent.getStringExtra(EXTRA_TITLE), tab, lifecycle,
+            onDeleted = { finish() },
         )
         setContent {
             JarvisTheme {
@@ -37,6 +38,8 @@ class SessionDetailActivity : AppCompatActivity() {
                         onTab = model::selectTab, onRetry = model::load, onRefresh = model::load,
                         onPlay = model::onPlayTapped, onSeek = model::seekTo, onProcess = model::process,
                         onCopy = { SessionClipboard.copy(this, it) },
+                        onDelete = model::askDelete, onConfirmDelete = model::confirmDelete,
+                        onCancelDelete = model::cancelDelete, onRestore = model::restore,
                     ),
                     onBack = { finish() },
                     onNav = { BottomNav.open(this, it) },

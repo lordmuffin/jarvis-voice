@@ -168,6 +168,12 @@ export interface SessionSummary {
   /** Audio is arriving now. A `live` session that is not streaming lost its recorder. */
   streaming: boolean;
   owner: Owner;
+  /** Set while the session is in "Recently deleted". */
+  deleted_at?: string | null;
+  /** The owner's "delete after N days" deadline. */
+  purge_after?: string | null;
+  /** When the trash removes a deleted session for good. */
+  trash_expires_at?: string | null;
 }
 
 export interface SessionPage {

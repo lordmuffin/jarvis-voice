@@ -162,6 +162,11 @@ spec:
             - name: family-apps
               mountPath: /config/family
               readOnly: true
+            # READ-ONLY: only the backup CronJob writes it. The app reads last_success.json
+            # to report (on /healthz and on Gotify) a backup that stopped.
+            - name: backups
+              mountPath: /backups
+              readOnly: true
             - name: scratch
               mountPath: /tmp
       volumes:
@@ -174,6 +179,10 @@ spec:
         - name: vault
           persistentVolumeClaim:
             claimName: jarvis-live-vault-clone
+            readOnly: true
+        - name: backups
+          persistentVolumeClaim:
+            claimName: jarvis-live-backups
             readOnly: true
         # Search index: rebuilt from the vault clone on start, so it is disposable
         # and must not live on NFS.

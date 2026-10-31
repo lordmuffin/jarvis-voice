@@ -60,6 +60,7 @@ class SessionsActivity : AppCompatActivity() {
             onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
             onGoToRecord = { BottomNav.open(this, BottomNav.Tab.RECORD) },
             onNav = { BottomNav.open(this, it) },
+            onToggleDeleted = ::toggleDeleted,
         )
         setContent {
             JarvisTheme {
@@ -69,7 +70,11 @@ class SessionsActivity : AppCompatActivity() {
                         SelectSessionPane()
                     } else {
                         val model = remember(id) {
-                            SessionDetailModel(this@SessionsActivity, lifecycleScope, { settings.apiClient() }, id, titleOf(id), lifecycle = lifecycle)
+                            SessionDetailModel(
+                                this@SessionsActivity, lifecycleScope, { settings.apiClient() }, id, titleOf(id), lifecycle = lifecycle,
+                                onListChanged = ::reload,
+                                onDeleted = { ui = ui.copy(selectedId = null) },
+                            )
                         }
                         DisposableEffect(model) {
                             model.load()
@@ -80,7 +85,9 @@ class SessionsActivity : AppCompatActivity() {
                             DetailActions(
                                 onTab = model::selectTab, onRetry = model::load, onRefresh = model::load,
                                 onPlay = model::onPlayTapped, onSeek = model::seekTo, onProcess = model::process,
-                        onCopy = { SessionClipboard.copy(this@SessionsActivity, it) },
+                                onCopy = { SessionClipboard.copy(this@SessionsActivity, it) },
+                                onDelete = model::askDelete, onConfirmDelete = model::confirmDelete,
+                                onCancelDelete = model::cancelDelete, onRestore = model::restore,
                             ),
                         )
                     }
@@ -99,6 +106,13 @@ class SessionsActivity : AppCompatActivity() {
         refreshSubtitle()
         // Also picks up a sign-in finished in Settings after this screen showed "Sign in".
         if (sessions.isEmpty() && loadJob?.isActive != true) reload()
+    }
+
+    /** Switch between the live list and "Recently deleted". */
+    private fun toggleDeleted() {
+        sessions.clear()
+        ui = ui.copy(showDeleted = !ui.showDeleted, selectedId = null, list = RecentUi.Loading, footer = ListFooter.NONE)
+        reload()
     }
 
     private fun titleOf(id: String): String? = sessions.firstOrNull { it.id == id }?.title
@@ -130,7 +144,7 @@ class SessionsActivity : AppCompatActivity() {
         if (sessions.isEmpty()) ui = ui.copy(list = RecentUi.Loading) else publish(ui.footer, refreshing = true)
         loadJob = lifecycleScope.launch {
             try {
-                val page = client().listSessions(PAGE_SIZE, 0)
+                val page = client().listSessions(PAGE_SIZE, 0, deleted = ui.showDeleted)
                 nextOffset = page.nextOffset
                 hasMore = page.hasMore
                 sessions.clear()
@@ -155,7 +169,7 @@ class SessionsActivity : AppCompatActivity() {
         val offset = nextOffset
         loadJob = lifecycleScope.launch {
             try {
-                val page = client().listSessions(PAGE_SIZE, offset)
+                val page = client().listSessions(PAGE_SIZE, offset, deleted = ui.showDeleted)
                 nextOffset = page.nextOffset
                 hasMore = page.hasMore
                 // Sessions started since the first page shift the offsets; skip the repeats.

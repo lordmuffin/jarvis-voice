@@ -93,3 +93,37 @@ test_exception_waives_rule if {
 	count(deny) == 0 with input as {"kind": "Secret", "metadata": {"name": "s"}}
 		with data.exceptions as [{"rule": "plaintext-secret", "kind": "Secret", "name": "s", "reason": "x TODO(tdd)"}]
 }
+
+backup_cron(mounts) := {
+	"kind": "CronJob",
+	"metadata": {"name": "jarvis-live-backup"},
+	"spec": {"jobTemplate": {"spec": {"template": {"spec": {
+		"containers": [{"name": "b", "image": "x:1", "resources": {"requests": {"cpu": "1"}, "limits": {"cpu": "1"}}, "volumeMounts": mounts}],
+		"volumes": [
+			{"name": "data", "persistentVolumeClaim": {"claimName": "jarvis-live-data"}},
+			{"name": "outbox", "persistentVolumeClaim": {"claimName": "jarvis-live-outbox"}},
+			{"name": "backups", "persistentVolumeClaim": {"claimName": "jarvis-live-backups"}},
+		],
+	}}}}},
+}
+
+test_backup_job_may_write_only_its_own_volume if {
+	count([m | some m in deny; contains(m, "read-only")]) == 0 with input as backup_cron([
+		{"name": "data", "mountPath": "/data", "readOnly": true},
+		{"name": "outbox", "mountPath": "/capture", "readOnly": true},
+		{"name": "backups", "mountPath": "/backups"},
+	])
+}
+
+test_backup_job_must_not_write_the_data_volume if {
+	some msg in deny with input as backup_cron([
+		{"name": "data", "mountPath": "/data"},
+		{"name": "outbox", "mountPath": "/capture", "readOnly": true},
+	])
+	contains(msg, "read-only")
+}
+
+test_backup_job_must_not_write_the_outbox_volume if {
+	some msg in deny with input as backup_cron([{"name": "outbox", "mountPath": "/capture"}])
+	contains(msg, "read-only")
+}

@@ -10,14 +10,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from jarvis_live.auth import Principal, current_principal
+from jarvis_live.auth import Principal, require_owner_or_admin
 from jarvis_live.homelab.client import FALLBACK, DpiClient, DpiError
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/homelab")
 
-PrincipalDep = Annotated[Principal, Depends(current_principal)]
+PrincipalDep = Annotated[Principal, Depends(require_owner_or_admin)]
 
 
 class AskRequest(BaseModel):

@@ -144,6 +144,68 @@ def _export_transcript(session_id: str) -> int:
     return _with_db(go)
 
 
+def _backup() -> int:
+    import httpx
+
+    from jarvis_live.backup import PgTools, run_and_report
+    from jarvis_live.config import get_settings
+    from jarvis_live.finalize.outbox import outbox_dir
+    from jarvis_live.notify.gotify import GotifyNotifier
+
+    cfg = get_settings()
+    if cfg.backup_dir is None:
+        print("JARVIS_LIVE_BACKUP_DIR is not set: nowhere to write the backup.", file=sys.stderr)
+        return 2
+
+    async def go() -> int:
+        async with httpx.AsyncClient() as client:
+            notifier = GotifyNotifier(
+                cfg.gotify_url, cfg.gotify_token_file, client, title_prefix=cfg.notify_title_prefix
+            )
+            return await run_and_report(
+                database_url=cfg.database_url,
+                data_dir=cfg.data_dir,
+                outbox_dir=outbox_dir(cfg),
+                backup_dir=cfg.backup_dir,  # type: ignore[arg-type]
+                notifier=notifier,
+                tools=PgTools(),
+            )
+
+    return asyncio.run(go())
+
+
+def _restore_session(args: argparse.Namespace) -> int:
+    import uuid
+
+    from jarvis_live.backup import RestoreError, restore_session
+    from jarvis_live.config import get_settings
+
+    cfg = get_settings()
+    try:
+        report = asyncio.run(
+            restore_session(
+                uuid.UUID(args.session),
+                dump=Path(args.dump),
+                manifest=Path(args.manifest),
+                audio_src=Path(args.audio_src),
+                outbox_src=Path(args.outbox_src),
+                scratch_url=args.scratch_url,
+                target_url=args.target_url or cfg.database_url,
+                target_data=Path(args.target_data),
+                target_outbox=Path(args.target_outbox),
+                force=args.force,
+            )
+        )
+    except RestoreError as e:
+        print(f"restore refused: {e}", file=sys.stderr)
+        return 1
+    print(f"restored session {report.session_id}")
+    print(f"  rows:  {report.rows}")
+    print(f"  audio: {report.audio_files} files, verified against the manifest")
+    print(f"  notes: {report.notes}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jarvis-live")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -184,6 +246,27 @@ def main(argv: list[str] | None = None) -> int:
     )
     p.add_argument("session_id")
 
+    sub.add_parser("backup", help="dump the database and write the recordings manifest")
+
+    p = sub.add_parser(
+        "restore-session",
+        help="restore one session from a backup into a target database and directory",
+    )
+    p.add_argument("session", help="the session id")
+    p.add_argument("--dump", required=True, help="db/<stamp>.dump from the backup directory")
+    p.add_argument("--manifest", required=True, help="audio/<stamp>.manifest.json")
+    p.add_argument("--audio-src", required=True, help="a copy of the data volume (has sessions/)")
+    p.add_argument("--outbox-src", required=True, help="a copy of the outbox volume")
+    p.add_argument(
+        "--scratch-url", required=True, help="a database the dump may be loaded into (overwritten)"
+    )
+    p.add_argument(
+        "--target-url", help="the database to restore into (default: the configured one)"
+    )
+    p.add_argument("--target-data", required=True, help="data directory to restore recordings into")
+    p.add_argument("--target-outbox", required=True, help="outbox directory to restore notes into")
+    p.add_argument("--force", action="store_true", help="replace the session if it exists")
+
     p = sub.add_parser("replay", help="stream a WAV file to a server as a producer")
     p.add_argument("--server", required=True)
     p.add_argument("--token", required=True)
@@ -213,6 +296,11 @@ def main(argv: list[str] | None = None) -> int:
         return _actions_report(args.user, args.days, args.json)
     if args.cmd == "export-transcript":
         return _export_transcript(args.session_id)
+
+    if args.cmd == "backup":
+        return _backup()
+    if args.cmd == "restore-session":
+        return _restore_session(args)
     if args.cmd == "migrate":
         from jarvis_live.config import get_settings
         from jarvis_live.db.session import run_migrations

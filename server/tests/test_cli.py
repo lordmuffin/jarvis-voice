@@ -96,3 +96,11 @@ async def test_replay_cli_streams_a_wav_file(
     assert await asyncio.to_thread(cli.main, args) == 0
     out = capsys.readouterr().out
     assert "seg-1" in out and "seg-2" in out and "acked {'mic': 76" in out
+
+
+def test_backup_without_a_backup_directory_says_so_and_fails(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.delenv("JARVIS_LIVE_BACKUP_DIR", raising=False)
+    assert cli.main(["backup"]) == 2
+    assert "JARVIS_LIVE_BACKUP_DIR" in capsys.readouterr().err

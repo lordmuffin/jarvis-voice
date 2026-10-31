@@ -106,3 +106,17 @@ deny contains msg if {
 	object.get(input.spec, "ingressClassName", "traefik-traefik") != "traefik-traefik"
 	msg := sprintf("Ingress/%s: ingressClassName must be traefik-traefik", [input.metadata.name])
 }
+
+# A backup never touches what it protects: the backup job mounts the recordings and the notes
+# read-only, and writes only to its own volume.
+deny contains msg if {
+	input.kind == "CronJob"
+	input.metadata.name == "jarvis-live-backup"
+	some v in pod_spec.volumes
+	v.persistentVolumeClaim.claimName in {"jarvis-live-data", "jarvis-live-outbox"}
+	some c in pod_spec.containers
+	some m in c.volumeMounts
+	m.name == v.name
+	not m.readOnly == true
+	msg := sprintf("CronJob/jarvis-live-backup: %s must be mounted read-only", [v.persistentVolumeClaim.claimName])
+}

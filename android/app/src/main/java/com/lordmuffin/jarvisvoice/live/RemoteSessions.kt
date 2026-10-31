@@ -36,7 +36,15 @@ data class RemoteSession(
     val owner: RemoteOwner?,
     /** Where it was recorded, when the uploader said: `watch` for the Wear OS app. */
     val source: String? = null,
+    /** Set while the session is in "Recently deleted". */
+    val deletedAt: Instant? = null,
+    /** The owner's "delete after N days" deadline. */
+    val purgeAfter: Instant? = null,
+    /** When the trash removes a deleted session for good. */
+    val trashExpiresAt: Instant? = null,
 ) {
+    val isDeleted: Boolean get() = deletedAt != null
+
     val isFromWatch: Boolean get() = source == SOURCE_WATCH
 
     /** `live` or `finalizing`: the transcript and note may still change. */
@@ -192,6 +200,9 @@ object RemoteSessions {
             RemoteOwner(id = it.optString("id"), displayName = it.stringOrNull("display_name").orEmpty())
         },
         source = json.stringOrNull("source"),
+        deletedAt = parseInstant(json.stringOrNull("deleted_at")),
+        purgeAfter = parseInstant(json.stringOrNull("purge_after")),
+        trashExpiresAt = parseInstant(json.stringOrNull("trash_expires_at")),
     )
 
     fun parseDetail(text: String): RemoteSessionDetail = parseDetail(JSONObject(text))

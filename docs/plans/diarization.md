@@ -180,7 +180,8 @@ Thresholds are config, tuned in Phase 0 on your recordings.
 
 Each PR follows `TDD.md`, uses Conventional Commits, runs `make test` first.
 
-0. **Spike (no product code merged).** Stand up pyannote community-1 on the Spark; run it on 2–3 of
+0. **Spike (no product code merged).** The sidecar contract is `docs/diarizer-sidecar.md`; the
+   measurements are `scripts/diarize_bench.py` (run it on the Spark with your recordings). Stand up pyannote community-1 on the Spark; run it on 2–3 of
    your own recordings (kept local, not committed). Record: peak GPU memory, wall time vs. audio
    length, DER-ish sanity check against your own labelling, embedding separation of your voice vs.
    others, behaviour when the Spark profile parks the role. **Gate:** confirm the recommendation or

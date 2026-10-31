@@ -53,6 +53,10 @@ class DetailActions(
     val onSeek: (String, Float) -> Unit = { _, _ -> },
     val onProcess: () -> Unit = {},
     val onCopy: (String) -> Unit = {},
+    val onDelete: () -> Unit = {},
+    val onConfirmDelete: () -> Unit = {},
+    val onCancelDelete: () -> Unit = {},
+    val onRestore: () -> Unit = {},
 )
 
 /**
@@ -123,7 +127,27 @@ private fun DetailHeader(ui: DetailUi, actions: DetailActions) {
         // The server's release channel (a red LIVE tag) stays in the app bar: beside a finished
         // session's meta it read as the session's own state.
         InstText(ui.meta, InstUi.type.meta)
-        if (ui.canProcess || ui.processing != null) {
+        if (ui.deleted) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
+                InstText(
+                    stringResource(R.string.detail_deleted_notice, ui.trashNote.orEmpty()), InstUi.type.caption,
+                    Modifier.weight(1f), color = Inst.colors.warning, maxLines = 3,
+                )
+                InstButton(stringResource(R.string.detail_restore), actions.onRestore, size = ButtonSize.Sm, enabled = !ui.deleteBusy)
+            }
+        } else if (ui.confirmingDelete) {
+            Column(verticalArrangement = Arrangement.spacedBy(sp.s8)) {
+                InstText(stringResource(R.string.detail_delete_confirm_title), InstUi.type.body.copy(fontWeight = FontWeight.Bold))
+                InstText(stringResource(R.string.detail_delete_confirm_line), InstUi.type.caption, maxLines = 4)
+                Row(horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
+                    InstButton(stringResource(R.string.detail_delete_cancel), actions.onCancelDelete, kind = ButtonKind.Quiet, size = ButtonSize.Sm, enabled = !ui.deleteBusy)
+                    InstButton(stringResource(R.string.detail_delete_confirm), actions.onConfirmDelete, kind = ButtonKind.Danger, size = ButtonSize.Sm, enabled = !ui.deleteBusy)
+                }
+            }
+        } else if (ui.canDelete) {
+            InstButton(stringResource(R.string.detail_delete), actions.onDelete, kind = ButtonKind.Quiet, size = ButtonSize.Sm)
+        }
+        if (!ui.deleted && (ui.canProcess || ui.processing != null)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
                 if (ui.canProcess) {
                     InstButton(
