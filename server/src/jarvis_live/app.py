@@ -23,6 +23,7 @@ from jarvis_live.api import (
     homelab,
     publishing,
     sessions,
+    speakers,
     stream,
     work_items,
 )
