@@ -83,6 +83,9 @@ class LiveSessionService : Service() {
     private lateinit var repo: SessionRepository
 
     private var run: Run? = null
+
+    /** This service holds [EgressGate] closed while a local-only session is under way. */
+    private val gateHeld = java.util.concurrent.atomic.AtomicBoolean(false)
     /** Stop tapped while the session was still being created. */
     @Volatile private var stopRequested = false
 
@@ -150,6 +153,7 @@ class LiveSessionService : Service() {
         }
         run = null
         releaseWakeLock()
+        releaseGate()
         if (_ui.value.isActive) _ui.update { it.copy(phase = LiveUiState.Phase.IDLE) }
         // Bring back the enhancement LLM that startSession unloaded.
         VoiceOverlayService.instance?.loadLlmIfConfigured()
@@ -174,6 +178,8 @@ class LiveSessionService : Service() {
         LlmEnhancer.destroy()
 
         var localOnly = requestedLocalOnly
+        // Shut the network before anything else happens, so not even a failed start leaks.
+        if (localOnly) holdGate()
         var notice: String? = null
         var fellBack = false
         val api = if (settings.isConfigured) settings.apiClient() else null
@@ -379,6 +385,7 @@ class LiveSessionService : Service() {
         }
         DebugLog.i(TAG, "session ${meta.id} stopped state=$state")
         releaseWakeLock()
+        releaseGate()
         main.post {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -408,6 +415,7 @@ class LiveSessionService : Service() {
         // Failed while stopping (or with nothing running): skip the rest of the stop.
         run = null
         releaseWakeLock()
+        releaseGate()
         _ui.update { it.copy(phase = LiveUiState.Phase.IDLE, message = message) }
         main.post {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -417,6 +425,7 @@ class LiveSessionService : Service() {
 
     private fun abortStart(message: String) {
         DebugLog.w(TAG, "start aborted: $message")
+        releaseGate()
         _ui.value = LiveUiState(message = message)
         main.post {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -495,6 +504,15 @@ class LiveSessionService : Service() {
         wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "JarvisVoice::LiveSession")
             .also { it.acquire(MAX_SESSION_MS) }
+    }
+
+    /** Closes the network for a local-only session; [releaseGate] opens it again. Idempotent. */
+    private fun holdGate() {
+        if (gateHeld.compareAndSet(false, true)) EgressGate.shared.beginLocalSession()
+    }
+
+    private fun releaseGate() {
+        if (gateHeld.compareAndSet(true, false)) EgressGate.shared.endLocalSession()
     }
 
     private fun releaseWakeLock() {

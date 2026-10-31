@@ -26,6 +26,7 @@ const detail = (over: Partial<SessionDetail> = {}): SessionDetail => ({
   started_at: "2026-10-09T14:30:00Z",
   ended_at: null,
   local_only: false,
+  restricted: false,
   streaming: true,
   segments: [],
   copilot: { version: 0, notes: [], actions: [], decisions: [], suggestions: [], related: [] },

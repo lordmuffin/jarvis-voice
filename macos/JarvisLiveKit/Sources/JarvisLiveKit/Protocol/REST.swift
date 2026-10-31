@@ -8,14 +8,17 @@ public struct SessionCreateRequest: Equatable, Sendable, Codable {
     public var mode: SessionMode
     /// Either `[.mic]` or `[.mic, .system]`.
     public var channels: [Channel]
+    /// A work call: the server keeps it on the homelab and files its note apart.
+    public var restricted: Bool?
 
-    public init(title: String? = nil, mode: SessionMode, channels: [Channel]) {
+    public init(title: String? = nil, mode: SessionMode, channels: [Channel], restricted: Bool? = nil) {
         self.title = title
         self.mode = mode
         self.channels = channels
+        self.restricted = restricted
     }
 
-    enum CodingKeys: String, CodingKey, CaseIterable { case title, mode, channels }
+    enum CodingKeys: String, CodingKey, CaseIterable { case title, mode, channels, restricted }
 
     public init(from decoder: Decoder) throws {
         try decoder.rejectUnknownKeys(CodingKeys.self)
@@ -23,6 +26,7 @@ public struct SessionCreateRequest: Equatable, Sendable, Codable {
         title = try c.decodeIfPresent(String.self, forKey: .title)
         mode = try c.decode(SessionMode.self, forKey: .mode)
         channels = try c.decode([Channel].self, forKey: .channels)
+        restricted = try c.decodeIfPresent(Bool.self, forKey: .restricted)
         guard channels == [.mic] || channels == [.mic, .system] else {
             throw DecodingError.dataCorruptedError(
                 forKey: .channels, in: c, debugDescription: "channels must be [mic] or [mic, system]"
@@ -35,6 +39,7 @@ public struct SessionCreateRequest: Equatable, Sendable, Codable {
         try c.encodeIfPresent(title, forKey: .title)
         try c.encode(mode, forKey: .mode)
         try c.encode(channels, forKey: .channels)
+        try c.encodeIfPresent(restricted, forKey: .restricted)
     }
 }
 

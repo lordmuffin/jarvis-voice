@@ -40,8 +40,13 @@ class LiveApiClient(
     fun recordingUploader(): RecordingUploader = RecordingUploader(baseUrl.toString(), deviceToken)
 
     /** `POST /v1/sessions` → the new session id. */
-    suspend fun createSession(mode: SessionMode, channels: List<Channel>, title: String?): String {
-        val res = post(url("v1/sessions"), RestBodies.sessionCreate(mode, channels, title))
+    suspend fun createSession(
+        mode: SessionMode,
+        channels: List<Channel>,
+        title: String?,
+        restricted: Boolean = false,
+    ): String {
+        val res = post(url("v1/sessions"), RestBodies.sessionCreate(mode, channels, title, restricted))
         val id = res.getString("id")
         UUID.fromString(id)  // schema: format uuid
         return id
@@ -223,7 +228,8 @@ class LiveApiClient(
         /** Away, the server's address usually times out rather than refusing; don't wait long. */
         const val PROBE_TIMEOUT_S = 4L
 
-        fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
+        fun defaultClient(gate: EgressGate = EgressGate.shared): OkHttpClient = OkHttpClient.Builder()
+            .addInterceptor(gate.interceptor)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             // Transport-level keepalive; the protocol has no application heartbeat.

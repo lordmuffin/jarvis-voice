@@ -166,6 +166,9 @@ final class AppModel {
     /// Checks where the Mac is, once path updates settle; a newer change cancels a check still
     /// waiting on the server.
     func recheckNetwork() {
+        // A local-only session sends nothing, not even a health check (see `EgressGate`); the
+        // network is looked at again when it ends.
+        guard !EgressGate.shared.isBlocking else { return }
         refreshServerInfo()
         networkCheck?.cancel()
         networkCheck = Task { [weak self] in
@@ -235,6 +238,8 @@ final class AppModel {
         let localOnly = self.localOnly
         let mode = self.mode
         var built: Run?
+        // Shut the network before anything else happens, so not even a failed start leaks.
+        if localOnly { EgressGate.shared.beginLocalSession() }
         do {
             guard await AVCaptureDevice.requestAccess(for: .audio) else { throw AppError.micDenied }
             let run = try await prepare(localOnly: localOnly, mode: mode, store: freshStore)
@@ -250,6 +255,7 @@ final class AppModel {
             panel.show()
         } catch {
             if let built { await tearDown(built, writeFile: false) }
+            if localOnly { endLocalSession() }
             notice = error.localizedDescription
             phase = .idle
             sessionClock = nil
@@ -263,10 +269,17 @@ final class AppModel {
         phase = .stopping
         elapsedTicker?.cancel()
         await tearDown(run, writeFile: run.localOnly)
+        if run.localOnly { endLocalSession() }
         self.run = nil
         phase = .idle
         elapsedSeconds = 0
         refreshLocalSessions()
+    }
+
+    /// Opens the network again and looks at where the Mac is, which was not checked meanwhile.
+    private func endLocalSession() {
+        EgressGate.shared.endLocalSession()
+        recheckNetwork()
     }
 
     private func startElapsedTicker() {
