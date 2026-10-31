@@ -24,4 +24,16 @@ class PendingToggleTest {
         assertTrue(p.take())
         assertFalse(p.take())
     }
+
+    @Test fun `a screen rebuilt from its old intent does not replay the toggle`() {
+        val p = PendingToggle()
+        p.fromIntent(asked = true, restored = true)
+        assertFalse("recreating the screen must not stop a running recording", p.take())
+    }
+
+    @Test fun `a fresh open from the tile toggles`() {
+        val p = PendingToggle()
+        p.fromIntent(asked = true, restored = false)
+        assertTrue(p.take())
+    }
 }

@@ -68,17 +68,20 @@ class WearMainActivity : WearBaseActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { RecorderState.active.collectLatest { renderRecording(it != null) } }
                 launch { graph.store.version.collectLatest { renderQueue() } }
+                launch { RecorderState.failure.collectLatest { renderQueue() } }
             }
         }
         SyncScheduler.kick(this)   // opening the app is a good moment to catch up
 
-        takeToggleRequest(intent)
+        // A launch from recents replays the original intent too, with no saved state.
+        val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        pendingToggle.fromIntent(intent.getBooleanExtra(EXTRA_TOGGLE, false), restored = savedInstanceState != null || fromHistory)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        takeToggleRequest(intent)
+        pendingToggle.fromIntent(intent.getBooleanExtra(EXTRA_TOGGLE, false), restored = false)
     }
 
     override fun onResume() {
@@ -86,15 +89,12 @@ class WearMainActivity : WearBaseActivity() {
         if (pendingToggle.take()) onRecordToggle()
     }
 
-    private fun takeToggleRequest(intent: Intent) {
-        if (intent.getBooleanExtra(EXTRA_TOGGLE, false)) {
-            intent.removeExtra(EXTRA_TOGGLE)   // not again after the activity is recreated
-            pendingToggle.request()
-        }
-    }
-
     private fun onRecordToggle() {
-        if (RecorderState.active.value == null && !hasMic()) {
+        if (RecorderState.active.value != null) {
+            RecordingService.stop(this)
+            return
+        }
+        if (!hasMic()) {
             val wanted = buildList {
                 add(Manifest.permission.RECORD_AUDIO)
                 if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
@@ -102,7 +102,7 @@ class WearMainActivity : WearBaseActivity() {
             ActivityCompat.requestPermissions(this, wanted.toTypedArray(), RC_PERMISSIONS)
             return
         }
-        RecordingService.toggle(this)
+        RecordingService.start(this)
     }
 
     private fun hasMic() =
@@ -137,7 +137,7 @@ class WearMainActivity : WearBaseActivity() {
 
     private suspend fun renderQueue() {
         if (RecorderState.active.value != null) return   // recording owns the screen
-        val ui = withContext(Dispatchers.IO) { WearUiState.forQueue(graph.store.all()) }
+        val ui = withContext(Dispatchers.IO) { WearUiState.forQueue(graph.store.all(), RecorderState.failure.value) }
         val tone = when (ui.tone) {
             WearUiState.Tone.SUCCESS -> R.color.inst_success
             WearUiState.Tone.WARNING -> R.color.inst_warning
@@ -161,8 +161,17 @@ class WearMainActivity : WearBaseActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode != RC_PERMISSIONS) return
-        if (hasMic()) RecordingService.toggle(this)
-        else Toast.makeText(this, getString(R.string.wear_mic_required), Toast.LENGTH_SHORT).show()
+        // Not from here: the screen is not resumed yet, and the microphone service needs a visible app.
+        if (hasMic()) {
+            pendingToggle.request()
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) && pendingToggle.take()) onRecordToggle()
+        } else Toast.makeText(this, getString(R.string.wear_mic_required), Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onStop() {
+        // The wearer has seen it. One that happens while the screen is away waits here for them.
+        RecorderState.clearFailure()
+        super.onStop()
     }
 
     override fun onDestroy() {

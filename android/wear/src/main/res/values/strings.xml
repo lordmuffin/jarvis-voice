@@ -6,6 +6,9 @@
     <string name="wear_state_saved">Saved. It syncs when connected.</string>
     <string name="wear_state_sent">Sent to your phone</string>
     <string name="wear_state_failed">Needs attention</string>
+    <string name="wear_failed_mic">Microphone unavailable</string>
+    <string name="wear_failed_empty">Nothing was recorded</string>
+    <string name="wear_failed_stopped">Stopped early. Audio saved.</string>
     <string name="wear_meta_at_phone">Waiting for Jarvis.</string>
     <string name="wear_meta_failed">Open Jarvis on your phone.</string>
     <string name="wear_meta_waiting">%1$d waiting</string>

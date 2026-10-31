@@ -9,10 +9,23 @@ import java.io.File
 object RecorderState {
     data class Active(val id: String, val startedAtWallMs: Long, val startedAtElapsedMs: Long)
 
+    /** Why the last recording did not go as asked. Cleared by the next one, or once the wearer saw it. */
+    enum class Failure { MIC_UNAVAILABLE, NOTHING_CAPTURED, STOPPED_EARLY }
+
+    private val _failure = MutableStateFlow<Failure?>(null)
+    val failure: StateFlow<Failure?> = _failure.asStateFlow()
+
+    fun failed(f: Failure) { _failure.value = f }
+
+    fun clearFailure() { _failure.value = null }
+
     private val _active = MutableStateFlow<Active?>(null)
     val active: StateFlow<Active?> = _active.asStateFlow()
 
-    fun started(a: Active) { _active.value = a }
+    fun started(a: Active) {
+        _failure.value = null
+        _active.value = a
+    }
     fun stopped() { _active.value = null }
 
     /** True for the audio file of the recording running right now. */

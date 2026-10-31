@@ -123,7 +123,15 @@ Errors that used to fail silently now show on the pill:
 
 A watch app (`wear/`) records on the wrist and sends the audio through the phone to Jarvis Live. Both apps share `wearcommon/` (queue and sync state machine, uploader, Data Layer protocol).
 
-**Using it.** Tap the mic button, the Jarvis tile, the Jarvis complication, or a watch button mapped to **Jarvis record** (below) to start; do the same again to stop. The tile, the complication and the button open the record screen with the recording already running and its stop button showing. The watch buzzes once on start and twice on stop and shows the elapsed time. Recording is AAC, 16 kHz mono, 24 kbps (about 180 KB a minute) and continues with the screen off.
+**Using it.** Tap the mic button, the Jarvis tile, the Jarvis complication, or a watch button mapped to **Jarvis record** (below) to start; do the same again to stop. The tile, the complication and the button open the record screen with the recording already running and its stop button showing. The watch buzzes once on start and twice on stop and shows the elapsed time. Recording is AAC, 16 kHz mono, 24 kbps (about 180 KB a minute) and continues with the screen off, for up to two hours.
+
+**When a recording goes wrong.** The watch keeps whatever reached the disk and queues it, and the record screen says what happened:
+
+| Screen | Meaning |
+|---|---|
+| Microphone unavailable | The system would not open the microphone, or refused it because the app was not on screen. Nothing was recorded. |
+| Stopped early. Audio saved. | The recorder failed, or the file stopped growing for 10 to 20 s. What it captured is queued as usual. |
+| Nothing was recorded | The recorder ran but no audio reached the disk. |
 
 **Where the audio goes.** Watch → phone (Wearable Data Layer channel) → the phone app uploads it with the same sign-in as everything else → server. If no phone is in range but the watch has Wi-Fi or LTE, the watch uploads to the server itself. With neither, it keeps the recording and retries. The watch deletes its copy only after the server accepted the upload (the phone relays that acknowledgement). The recording appears in the phone's session history tagged **Watch**, is transcribed like any other, and its note lands in the vault inbox with `source: watch` in the frontmatter.
 
@@ -166,13 +174,16 @@ Check, in this order:
 | Phone off or out of range, watch on Wi-Fi | it uploads directly (needs the phone to have been signed in once) |
 | Tile and complication | tap opens the record screen already recording, with the stop button; tap again stops; both reflect the state |
 | Map a button to **Jarvis record**, press it twice with 10 s between | records like the tile: the record screen opens already recording; the tile and complication show the state |
+| Open the tile while recording, then swipe back | no crash; the tile shows Stop and a running timer; the recording is whole |
+| Tap the tile right after opening the app, with something waiting to sync | the recording is whole, and uploads once, after it stops |
+| Deny the microphone, tap record, then allow it | recording starts once the screen is back |
 | Settings (gear) on the watch | shows the server and the number waiting; "Sync now" runs a pass |
 
 Logs: `adb logcat -s WearRecording WatchReceiver WatchUpload WearBridge`. On the emulator, pair a Wear OS image with a phone image through Android Studio's Device Manager "pair" flow; the microphone is the host's.
 
 ### Tests
 
-`./gradlew test` runs the queue and retry state machine, the sync runner, the uploader and the phone-side inbox as JVM tests. `./gradlew :wearcommon:connectedDebugAndroidTest` (a running device or emulator) transfers a file through a fake Data Layer node and checks the whole acknowledgement chain, including a link that drops mid-file.
+`./gradlew test` runs the queue and retry state machine, the sync runner, the uploader and the phone-side inbox as JVM tests, plus a whole recording against a fake microphone with the real queue and sync pass beside it (`RecordingSessionTest`). `./gradlew :wearcommon:connectedDebugAndroidTest` (a running device or emulator) transfers a file through a fake Data Layer node and checks the whole acknowledgement chain, including a link that drops mid-file.
 
 ### Manifest permissions
 

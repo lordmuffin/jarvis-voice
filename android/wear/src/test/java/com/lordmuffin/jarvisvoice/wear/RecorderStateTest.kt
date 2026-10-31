@@ -2,6 +2,7 @@ package com.lordmuffin.jarvisvoice.wear
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -27,5 +28,12 @@ class RecorderStateTest {
         assertFalse(RecorderState.isActive(File("/rec/w-2.aac")))
         RecorderState.stopped()
         assertFalse(RecorderState.isActive(File("/rec/w-1.aac")))
+    }
+
+    @Test fun `a failure stays until the wearer has seen it`() {
+        RecorderState.failed(RecorderState.Failure.STOPPED_EARLY)
+        assertEquals(RecorderState.Failure.STOPPED_EARLY, RecorderState.failure.value)
+        RecorderState.clearFailure()
+        assertNull(RecorderState.failure.value)
     }
 }

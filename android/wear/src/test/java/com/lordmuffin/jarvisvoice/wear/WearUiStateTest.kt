@@ -35,4 +35,23 @@ class WearUiStateTest {
             assertEquals(1, s.waiting)
         }
     }
+
+    @Test fun `a failed recording is on screen, whatever the queue is doing`() {
+        val cases = mapOf(
+            RecorderState.Failure.MIC_UNAVAILABLE to R.string.wear_failed_mic,
+            RecorderState.Failure.NOTHING_CAPTURED to R.string.wear_failed_empty,
+            RecorderState.Failure.STOPPED_EARLY to R.string.wear_failed_stopped,
+        )
+        for ((failure, label) in cases) {
+            val s = WearUiState.forQueue(listOf(item(SyncState.RECORDED, "a")), failure)
+            assertEquals(WearUiState.Tone.WARNING, s.tone)
+            assertEquals(WearUiState.Glyph.FLAG, s.glyph)
+            assertEquals(label, s.labelRes)
+            assertEquals("the queue count stays visible", 1, s.waiting)
+        }
+    }
+
+    @Test fun `with no failure the queue decides`() {
+        assertEquals(R.string.wear_state_ready, WearUiState.forQueue(emptyList(), null).labelRes)
+    }
 }
