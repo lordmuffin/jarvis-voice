@@ -9,16 +9,15 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.config import Settings
-from jarvis_live.db.models import CopilotItem, User
 from jarvis_live.db.models import Session as SessionRow
+from jarvis_live.db.models import User
 from jarvis_live.finalize.finalizer import write_atomic
 from jarvis_live.finalize.outbox import (
-    FINAL_NOTE_KIND,
     latest_final_note,
-    note_file,
     outbox_dir,
-    owned_by,
     read_note,
+    record_final_note,
+    remove_superseded,
 )
 
 
@@ -55,18 +54,9 @@ async def lift_restriction(
             )
             if subdir:
                 written = f"{subdir}/{written}"
-            async with sm() as db:
-                db.add(
-                    CopilotItem(
-                        session_id=session_id,
-                        kind=FINAL_NOTE_KIND,
-                        payload={"path": written, "title": title},
-                    )
-                )
-                await db.commit()
-            path = note_file(outbox, old)
-            if written != old and path is not None and owned_by(path, str(session_id)):
-                path.unlink(missing_ok=True)
+            await record_final_note(sm, session_id, written, title)
+            if written != old:
+                await asyncio.to_thread(remove_superseded, outbox, old, str(session_id))
     async with sm() as db:
         await db.execute(
             update(SessionRow).where(SessionRow.id == session_id).values(restricted=False)
