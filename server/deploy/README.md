@@ -92,7 +92,7 @@ it. One-time setup (the sandbox repo, the GitHub App, the `claude-oauth` and
 
 ## Resetting lab
 
-Lab data is disposable and is not backed up. To start it from empty, for example after a
+Lab data is disposable and is not backed up (its backup CronJob is suspended). To start it from empty, for example after a
 migration from a reverted change, do this in np-home-homelab or the cluster. Never do any
 of it to `jarvis-live`.
 
@@ -132,3 +132,16 @@ Secret *values* live in 1Password. The `OnePasswordItem`s here only name the ite
   what differs per channel in an overlay.
 - Render locally with `kubectl kustomize server/deploy/k8s/jarvis-live` (live) and
   `kubectl kustomize server/deploy/k8s/jarvis-live-lab` (lab).
+
+## Backups and retention
+
+- **Retention** (the server, daily): `JARVIS_LIVE_AUDIO_RETENTION_DAYS` (90) deletes old audio
+  of finished sessions and keeps the rows. `JARVIS_LIVE_TRASH_RETENTION_DAYS` (30) deletes a
+  session that has been in "Recently deleted" that long for good: rows, audio and note together.
+  A session can also be set to move to the trash after N days. Set in `k8s/base/configmap.yaml`.
+- **Backups** (`k8s/base/cronjob-backup.yaml`, 03:00 UTC): `jarvis-live backup` writes a
+  `pg_dump` and a manifest of every recording to the `jarvis-live-backups` volume, which Velero
+  carries offsite with the audio (04:00). Failure sends a Gotify notice; a backup that never ran
+  shows on `/healthz` and in a daily notice. The CronJob takes the Deployment's image, so it
+  moves with every release, and the image carries `pg_dump` 18 (the CNPG major).
+- **Restoring** one session, the database, or a volume: [`docs/runbooks/restore.md`](../../docs/runbooks/restore.md).
