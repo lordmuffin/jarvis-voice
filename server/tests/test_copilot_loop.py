@@ -130,7 +130,10 @@ async def test_never_concurrent_and_cancels_on_session_end(rig: Rig) -> None:
     # cancel mid-LLM-call
     await rig.segs(3)
     await rig.clock.advance(1)
-    await asyncio.sleep(0.01)
+    for _ in range(100):  # the cycle reads the DB first; on a slow runner that outlasts a fixed nap
+        if rig.llm.active:
+            break
+        await asyncio.sleep(0.005)
     assert rig.llm.active == 1
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
