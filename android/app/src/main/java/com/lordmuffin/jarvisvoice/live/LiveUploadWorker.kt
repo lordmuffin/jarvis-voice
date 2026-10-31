@@ -44,9 +44,7 @@ class LiveUploader(private val context: Context) {
 
         try {
             if (meta.serverId == null) {
-                // A session kept local-only is a work call until you say otherwise: the server
-                // files its note apart and never publishes or pushes it.
-                val serverId = api.createSession(meta.mode, listOf(Channel.MIC), meta.title, restricted = true)
+                val serverId = api.createSession(meta.mode, listOf(Channel.MIC), meta.title, meta.uploadsRestricted)
                 meta = repo.rename(meta, serverId).copy(serverId = serverId, state = SessionMeta.State.PENDING)
                 repo.write(meta)
             }
