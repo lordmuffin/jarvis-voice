@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from jarvis_live import metrics
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import OWNER_USER_ID
@@ -44,7 +45,7 @@ def _state(
     """`gone_for`: the producer dropped that many seconds ago without ending."""
     return SimpleNamespace(
         session_id=uuid.uuid4(),
-        pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for),
+        pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for, lag_ms=lambda: 0),
         uploading=uploading,
         producer=None if gone_for is not None else object(),
         producer_gone_at=None if gone_for is None else clock.now - gone_for,
@@ -151,6 +152,18 @@ async def test_stt_outage_notifies_once_after_two_minutes(rig: Any) -> None:
     rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
     await rig.orch.check_once()
     assert len(rig.notifier.sent) == 2
+
+
+async def test_a_sustained_slow_tier_alerts_once_through_the_watchdog(rig: Any) -> None:
+    rig.hub.states = [_state(rig.clock)]
+    for _ in range(10):
+        metrics.stt_request("watchdog-tier", "ok", 9.0)  # reaches the SLO monitor via the hook
+        await rig.clock.advance(1)
+        rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
+    for _ in range(3):
+        await rig.orch.check_once()
+    assert [s.title for s in rig.notifier.sent] == ["Jarvis: STT tier watchdog-tier slow"]
+    await rig.orch.shutdown()
 
 
 async def test_no_outage_alert_without_a_live_session(rig: Any) -> None:
