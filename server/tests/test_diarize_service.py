@@ -10,7 +10,7 @@ from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import OWNER_USER_ID, SegmentRow, SessionSpeaker, SpeakerTurn
 from jarvis_live.diarize.align import Turn
-from jarvis_live.diarize.client import DiarizeUnavailable
+from jarvis_live.diarize.client import Diarization, DiarizeUnavailable
 from jarvis_live.diarize.service import DiarizeService
 from jarvis_live.protocol import SpeakerUpdate
 from tests.fakes import add_segments, make_session, new_device
@@ -21,16 +21,16 @@ SM = async_sessionmaker  # type: ignore[type-arg]
 class FakeDiarizer:
     """Answers per recording file name (``mic.pcm``); a value that is an exception is raised."""
 
-    def __init__(self, by_channel: dict[str, list[Turn] | Exception]) -> None:
+    def __init__(self, by_channel: dict[str, list[Turn] | Diarization | Exception]) -> None:
         self.by_channel = by_channel
         self.calls: list[str] = []
 
-    async def diarize(self, pcm: Path) -> list[Turn]:
+    async def diarize(self, pcm: Path) -> Diarization:
         self.calls.append(pcm.stem)
         out = self.by_channel[pcm.stem]
         if isinstance(out, Exception):
             raise out
-        return out
+        return out if isinstance(out, Diarization) else Diarization(out)
 
 
 class Rig:
@@ -39,8 +39,16 @@ class Rig:
         self.bus = Bus()
         self.settings = Settings(data_dir=tmp_path)
 
-    async def session(self, channels: tuple[str, ...] = ("mic", "system")) -> uuid.UUID:
-        device, _ = await new_device(self.sm, f"d-{uuid.uuid4()}", user_id=OWNER_USER_ID)
+    async def user(self) -> uuid.UUID:
+        """A user of their own: enrolled voices are per user, and the database is shared."""
+        from jarvis_live.users import create_user
+
+        return (await create_user(self.sm, "Test", email=f"{uuid.uuid4()}@x.test")).id
+
+    async def session(
+        self, channels: tuple[str, ...] = ("mic", "system"), user_id: uuid.UUID = OWNER_USER_ID
+    ) -> uuid.UUID:
+        device, _ = await new_device(self.sm, f"d-{uuid.uuid4()}", user_id=user_id)
         sid = await make_session(self.sm, device, status="finalizing")
         for c in channels:
             d = self.settings.data_dir / "sessions" / str(sid)
@@ -222,9 +230,9 @@ async def test_a_diarizer_that_hangs_is_cut_off_at_the_timeout(sm: SM, tmp_path:
     import asyncio
 
     class Hangs:
-        async def diarize(self, pcm: Path) -> list[Turn]:
+        async def diarize(self, pcm: Path) -> Diarization:
             await asyncio.sleep(30)
-            return []
+            return Diarization([])
 
     rig = Rig(sm, tmp_path)
     rig.settings = Settings(data_dir=tmp_path, diarize_timeout_min_s=0.05, diarize_timeout_ratio=0)
@@ -241,3 +249,110 @@ def test_timeout_grows_with_the_recording(tmp_path: Path) -> None:
     svc = DiarizeService(cfg, None, Bus(), None)  # type: ignore[arg-type]
     assert svc.timeout_s(10_000) == 60  # 10 s of audio: the floor
     assert svc.timeout_s(3_600_000) == 1800  # an hour: half of it
+
+
+# --- enrolled voices -------------------------------------------------------------------------
+
+MODEL = "wespeaker-test"
+ANDREW_PRINT = [1.0, 0.0, 0.0]
+DANA_PRINT = [0.0, 1.0, 0.0]
+
+
+async def _enrol(
+    sm: SM,
+    label: str,
+    vector: list[float],
+    *,
+    owner: bool = False,
+    model: str = MODEL,
+    user_id: uuid.UUID = OWNER_USER_ID,
+) -> uuid.UUID:
+    from jarvis_live.db.models import SpeakerProfile
+
+    async with sm() as db:
+        row = SpeakerProfile(
+            user_id=user_id, label=label, is_owner=owner, model_id=model, embedding=vector
+        )
+        db.add(row)
+        await db.commit()
+        return row.id
+
+
+def _voices(system: list[float], other: list[float]) -> Diarization:
+    return Diarization(
+        SYSTEM_TURNS,
+        {"SPEAKER_01": system, "SPEAKER_00": other},  # SPEAKER_01 speaks first
+        MODEL,
+    )
+
+
+async def _speakers_of(rig: Rig, sid: uuid.UUID) -> dict[str, SessionSpeaker]:
+    async with rig.sm() as db:
+        q = select(SessionSpeaker).where(SessionSpeaker.session_id == sid)
+        return {s.speaker_id: s for s in (await db.execute(q)).scalars()}
+
+
+async def test_an_enrolled_voice_is_recognised_by_name(rig: Rig) -> None:
+    user = await rig.user()
+    profile = await _enrol(rig.sm, "Andrew", ANDREW_PRINT, owner=True, user_id=user)
+    sid = await rig.session(("system",), user)
+    await add_segments(rig.sm, sid, [(0, 3000, "them", "mine"), (4500, 8500, "them", "theirs")])
+    sub = rig.bus.subscribe(str(sid), features=frozenset({"speaker_update"}))
+    voices = _voices([0.98, 0.1, 0.0], [0.0, 0.9, 0.1])
+
+    await rig.service(FakeDiarizer({"system": voices})).run(sid, ["system"])
+
+    speakers = await _speakers_of(rig, sid)
+    me, other = speakers["spk_system_0"], speakers["spk_system_1"]
+    assert (me.label, me.is_owner, me.profile_id) == ("Andrew", True, profile)
+    assert (other.label, other.is_owner, other.profile_id) == (None, False, None)
+    assert me.embedding == [0.98, 0.1, 0.0] and me.model_id == MODEL  # kept, to enrol from
+    event = await sub.get()
+    assert isinstance(event, SpeakerUpdate)
+    by_id = {s.id: s for s in event.speakers}
+    assert (by_id["spk_system_0"].label, by_id["spk_system_0"].enrolled) == ("Andrew", True)
+    assert by_id["spk_system_0"].is_owner and not by_id["spk_system_1"].enrolled
+
+
+async def test_two_enrolled_voices_each_find_their_own_profile(rig: Rig) -> None:
+    user = await rig.user()
+    await _enrol(rig.sm, "Andrew", ANDREW_PRINT, user_id=user)
+    await _enrol(rig.sm, "Dana", DANA_PRINT, user_id=user)
+    sid = await rig.session(("system",), user)
+    await add_segments(rig.sm, sid, [(0, 3000, "them", "a")])
+    await rig.service(FakeDiarizer({"system": _voices([0.1, 0.99, 0.0], [0.97, 0.1, 0.0])})).run(
+        sid, ["system"]
+    )
+    speakers = await _speakers_of(rig, sid)
+    assert (speakers["spk_system_0"].label, speakers["spk_system_1"].label) == ("Dana", "Andrew")
+
+
+async def test_a_voice_print_from_another_model_is_not_compared(rig: Rig) -> None:
+    user = await rig.user()
+    await _enrol(rig.sm, "Andrew", ANDREW_PRINT, model="older-model", user_id=user)
+    sid = await rig.session(("system",), user)
+    await add_segments(rig.sm, sid, [(0, 3000, "them", "a")])
+    await rig.service(FakeDiarizer({"system": _voices(ANDREW_PRINT, DANA_PRINT)})).run(
+        sid, ["system"]
+    )
+    assert all(s.label is None for s in (await _speakers_of(rig, sid)).values())
+
+
+async def test_someone_elses_enrolled_voices_are_not_used(rig: Rig) -> None:
+    await _enrol(rig.sm, "Andrew", ANDREW_PRINT, user_id=await rig.user())
+    sid = await rig.session(("system",), await rig.user())
+    await add_segments(rig.sm, sid, [(0, 3000, "them", "a")])
+    await rig.service(FakeDiarizer({"system": _voices(ANDREW_PRINT, DANA_PRINT)})).run(
+        sid, ["system"]
+    )
+    assert all(s.label is None for s in (await _speakers_of(rig, sid)).values())
+
+
+async def test_a_diarizer_without_voice_prints_just_leaves_voices_unnamed(rig: Rig) -> None:
+    user = await rig.user()
+    await _enrol(rig.sm, "Andrew", ANDREW_PRINT, user_id=user)
+    sid = await rig.session(("system",), user)
+    await add_segments(rig.sm, sid, [(0, 3000, "them", "a")])
+    await rig.service(FakeDiarizer({"system": SYSTEM_TURNS})).run(sid, ["system"])
+    speakers = await _speakers_of(rig, sid)
+    assert len(speakers) == 2 and all(s.label is None for s in speakers.values())

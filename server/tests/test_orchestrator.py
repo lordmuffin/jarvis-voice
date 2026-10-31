@@ -342,9 +342,11 @@ class _Diarizer:
         self.turns = turns
 
     async def diarize(self, pcm: Path) -> Any:
+        from jarvis_live.diarize.client import Diarization
+
         if isinstance(self.turns, Exception):
             raise self.turns
-        return self.turns
+        return Diarization(self.turns)
 
 
 def _with_diarizer(sm: SM, tmp_path: Path, diarizer: Any) -> tuple[Orchestrator, FakeLLM]:
