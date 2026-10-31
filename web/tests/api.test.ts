@@ -3,6 +3,9 @@ import {
   ApiError,
   audioUrl,
   createDevice,
+  deleteSession,
+  restoreSession,
+  setDeleteAfter,
   editNote,
   endSession,
   getProcessing,
@@ -81,6 +84,21 @@ describe("api", () => {
       status: 415,
       message: "no audio could be read from the file",
     });
+  });
+
+  it("lists the trash, deletes, restores and sets delete-after", async () => {
+    expect(sessionsPath({ deleted: true })).toBe("/v1/sessions?limit=100&offset=0&deleted=true");
+    const gone = fakeFetch(204);
+    await expect(deleteSession("s/1", gone.f)).resolves.toBeUndefined();
+    expect(gone.calls[0]).toMatchObject({ url: "/v1/sessions/s%2F1", init: { method: "DELETE" } });
+    const back = fakeFetch(200, { id: "s1", deleted_at: null });
+    expect((await restoreSession("s1", back.f)).deleted_at).toBeNull();
+    expect(back.calls[0]).toMatchObject({ url: "/v1/sessions/s1/restore", init: { method: "POST" } });
+    const after = fakeFetch(200, { id: "s1", purge_after: "x" });
+    await setDeleteAfter("s1", 7, after.f);
+    expect(after.calls[0]!.init).toMatchObject({ method: "PATCH", body: '{"delete_after_days":7}' });
+    await setDeleteAfter("s1", null, after.f);
+    expect(after.calls[1]!.init.body).toBe('{"delete_after_days":null}');
   });
 
   it("lists sessions with the filter", async () => {
