@@ -9,11 +9,13 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.actions.comments import CommentTokens, PrCommentExecutor, commentable_repos
+from jarvis_live.actions.pi import PiSessionExecutor
 from jarvis_live.actions.reminders import ReminderExecutor
 from jarvis_live.actions.service import Executor
 from jarvis_live.actions.vault import VaultExecutor
 from jarvis_live.config import Settings
 from jarvis_live.dispatch.githubapp import AppTokens
+from jarvis_live.homelab.client import DpiClient
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.publish.github import GitHubClient
 
@@ -25,6 +27,7 @@ def build_executors(
     vault_repo: GitHubClient | None,
     notifier: Notifier,
     tokens: CommentTokens | None,
+    dpi: DpiClient | None = None,
 ) -> tuple[dict[str, Executor], frozenset[str]]:
     """The executors by kind, and the repos a PR comment may name."""
     executors: dict[str, Executor] = {
@@ -34,6 +37,8 @@ def build_executors(
         vault_writer = VaultExecutor(cfg, sessionmaker, vault_repo)
         executors["task.create"] = vault_writer
         executors["vault.append"] = vault_writer
+    if dpi is not None and cfg.voice_pi_enabled:
+        executors["pi.session"] = PiSessionExecutor(dpi)
     if tokens is None and (
         cfg.github_app_id and cfg.github_app_installation_id and cfg.github_app_key_file
     ):

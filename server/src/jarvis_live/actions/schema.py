@@ -6,7 +6,10 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, ValidationError, model_validator
 
-Kind = Literal["task.create", "vault.append", "reminder.schedule", "git.pr_comment"]
+Kind = Literal["task.create", "vault.append", "reminder.schedule", "git.pr_comment", "pi.session"]
+# Built only by the voice pass, behind the wake phrase and the speaker check. Parsing drops these
+# from LLM output, so what is said in a transcript cannot talk the copilot into proposing them.
+SERVER_ONLY_KINDS = frozenset({"pi.session"})
 
 
 class _LLMModel(BaseModel):
@@ -38,10 +41,10 @@ class ProposalIn(_LLMModel):
 
     kind: Kind
     evidence: list[Evidence] = Field(default_factory=list)
-    text: str | None = None  # task.create, vault.append
+    text: str | None = None  # task.create, vault.append, pi.session
     due: str | None = None  # task.create
     path: str | None = None  # vault.append
-    title: str | None = None  # reminder.schedule
+    title: str | None = None  # reminder.schedule, pi.session
     body: str | None = None  # reminder.schedule, git.pr_comment
     at: str | None = None  # reminder.schedule
     repo: str | None = None  # git.pr_comment
@@ -56,9 +59,11 @@ def _lenient(value: Any) -> list[ProposalIn]:
     out: list[ProposalIn] = []
     for item in value:
         try:
-            out.append(ProposalIn.model_validate(item))
+            proposal = ProposalIn.model_validate(item)
         except ValidationError:
             continue
+        if proposal.kind not in SERVER_ONLY_KINDS:
+            out.append(proposal)
     return out
 
 

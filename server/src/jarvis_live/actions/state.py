@@ -110,6 +110,11 @@ def build_payload(p: ProposalIn, ctx: Context) -> dict[str, Any] | None:
         if not body or p.pr is None or p.pr < 1 or p.repo not in ctx.repos:
             return None
         return {"repo": p.repo, "pr": p.pr, "body": body[: MAX_TEXT * 4]}
+    if p.kind == "pi.session":
+        title, text = one_line(p.title, 120), (p.text or "").strip()
+        if not title or not text:
+            return None
+        return {"title": title, "text": text[: MAX_TEXT * 8]}
     return None
 
 
