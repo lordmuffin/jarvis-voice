@@ -255,8 +255,8 @@ REST, owner-scoped (404 for anyone else), under `/v1`: `GET /sessions/{id}/actio
 5. **Done** (`actions/reminders.py`). `feat(server)`: `Notifier.send()`, `scheduled_reminders`, `ReminderLoop`.
 6. **Done** (`actions/comments.py`). D6 spike, then `git.pr_comment`.
 7. **Done** (`web/src/views/SessionActions.tsx`, `jarvis/ActionCard.tsx`, `e2e/actions.spec.ts`). `feat(web)`: a Proposed actions section on the live and past session pages (one-tap Approve, Edit, Reject, Approve all, Retry, History). The cross-session "waiting on you" list is not built.
-8. `feat(protocol)` + `feat(macos)`: `proposals` in `copilot`, fixtures, Swift tests, panel UI.
-9. Eval harness + `actions-report`.
+8. **Not started** (needs macOS to verify the Swift side). `feat(protocol)` + `feat(macos)`: `proposals` in `copilot`, fixtures, Swift tests, panel UI.
+9. **Done** (`actions/report.py`, `tests/evals/actions.py`, `jarvis-live actions-report` / `export-transcript`). Eval harness + `actions-report`. Not run against a real LLM yet.
 
 Steps 1–6 and 9 are server-only. Manifest changes (settings, the reminder loop) ship in
 `server/deploy/k8s/base/` in the same PR as the code that needs them, per CLAUDE.md.
