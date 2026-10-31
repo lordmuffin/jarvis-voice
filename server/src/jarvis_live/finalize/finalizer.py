@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live.actions.intake import ActionIntake
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import RELATED
@@ -34,11 +35,18 @@ from jarvis_live.finalize.outbox import (
     overwrite_atomic,
     owned_by,
 )
-from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
+from jarvis_live.finalize.render import (
+    NoteMeta,
+    NoteProposal,
+    NoteWorkItem,
+    render_filename,
+    render_note,
+)
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
+from jarvis_live.publish.service import may_publish_for
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.template import session_url
 
@@ -74,7 +82,9 @@ class Finalizer:
         llm: LLM,
         vault: VaultContext,
         notifier: Notifier,
+        intake: ActionIntake | None = None,
     ) -> None:
+        self._intake = intake
         self._cfg = settings
         self._sm = sessionmaker
         self._bus = bus
@@ -153,7 +163,16 @@ class Finalizer:
             source=row.source,
             duration_minutes=max(1, round(duration_s / 60)),
         )
-        markdown = render_note(note, meta, lines, work_items)
+        proposals = await self._file_proposals(row, user, note, lines)
+        pending = sum(p.state == "proposed" for p in proposals)
+        markdown = render_note(
+            note,
+            meta,
+            lines,
+            work_items,
+            proposals,
+            review_url=self._session_url(session_id) or "",
+        )
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
@@ -179,11 +198,45 @@ class Finalizer:
             await self._notify_owner(
                 session_id,
                 "Jarvis: note ready",
-                f"**{note.title}**\n\n{note.summary.strip()}",
+                f"**{note.title}**\n\n{note.summary.strip()}"
+                + (
+                    f"\n\n{pending} action{'s' * (pending != 1)} waiting for your approval."
+                    if pending
+                    else ""
+                ),
                 5,
                 self._session_url(session_id),
             )
         return FinalResult(written, note.title)
+
+    async def _file_proposals(
+        self, row: SessionRow, user: User | None, note: FinalNote, lines: list[Line]
+    ) -> list[NoteProposal]:
+        """File the end-of-session pass's proposals for review and list the session's queue for
+        the note. Only for sessions whose owner can review them; a failure here never costs the
+        note."""
+        if self._intake is None or not self._cfg.actions_enabled:
+            return []
+        if user is None or not may_publish_for(user):
+            return []
+        mine = self._intake.for_session(row.id, row.user_id)
+        try:
+            await mine.propose(
+                note.proposals, lines, proposed_by=f"finalizer:{self._cfg.final_model}"
+            )
+            return [
+                NoteProposal(
+                    r.ref,
+                    r.kind,
+                    dict(r.payload),
+                    r.state,
+                    (r.result or {}).get("error"),
+                )
+                for r in await mine.listing()
+            ]
+        except Exception:
+            session_logger(__name__, row.id).exception("filing action proposals failed")
+            return []
 
     def _remove_old(self, name: str, session_id: str) -> None:
         """Drop a regenerated session's previous note, but never another session's file."""

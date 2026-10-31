@@ -6,7 +6,7 @@ Nothing here executes anything: a proposal only ever becomes reviewable."""
 import hashlib
 import json
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import PurePosixPath
@@ -14,6 +14,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from jarvis_live.actions.schema import Evidence, ProposalIn
+from jarvis_live.copilot.transcript import Line
 from jarvis_live.vault.index import is_excluded
 
 MAX_NEW_PER_CYCLE = 3
@@ -112,6 +113,32 @@ def build_payload(p: ProposalIn, ctx: Context) -> dict[str, Any] | None:
     return None
 
 
+EVIDENCE_SLACK_MS = 2000
+MAX_EVIDENCE = 3
+
+
+def ground(incoming: Sequence[ProposalIn], lines: Sequence[Line]) -> list[ProposalIn]:
+    """Replace each proposal's cited evidence with the real transcript lines it points at. A
+    citation that matches no line is dropped, and a proposal left with none is dropped: nothing
+    is proposed that the transcript does not back, and the stored quote is the transcript's own
+    text, never the model's paraphrase."""
+    out: list[ProposalIn] = []
+    for p in incoming:
+        found: dict[int, Evidence] = {}
+        for e in p.evidence:
+            near = [
+                x
+                for x in lines
+                if x.start_ms - EVIDENCE_SLACK_MS <= e.start_ms <= x.end_ms + EVIDENCE_SLACK_MS
+            ]
+            if near:
+                best = min(near, key=lambda x: abs(x.start_ms - e.start_ms))
+                found.setdefault(best.start_ms, Evidence(start_ms=best.start_ms, text=best.text))
+        if found:
+            out.append(p.model_copy(update={"evidence": list(found.values())[:MAX_EVIDENCE]}))
+    return out
+
+
 @dataclass
 class ProposalState:
     proposals: list[Proposal] = field(default_factory=list)
@@ -146,6 +173,14 @@ class ProposalState:
             self.proposals.append(prop)
             admitted.append(prop)
         return admitted
+
+    @classmethod
+    def restore(cls, proposals: Sequence[Proposal]) -> "ProposalState":
+        """The state a previous process left: refs continue, nothing is proposed twice."""
+        st = cls(proposals=list(proposals))
+        nums = [int(p.ref[1:]) for p in proposals if p.ref[1:].isdigit()]
+        st._next = max(nums, default=0) + 1
+        return st
 
     def close(self, ref: str) -> None:
         """Approved, rejected or expired: stays known (so it is not proposed again) but no

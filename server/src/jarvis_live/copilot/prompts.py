@@ -14,6 +14,12 @@ items (reuse the id exactly as given). Never repeat an item that is already in t
 - suggestions: at most 3 short prompts for "me" right now. kind is question, gap, counterpoint or \
 fact_check. ttl_s is how long it stays useful in seconds (default 120). Skip if nothing is worth \
 saying.
+- proposals: things "me" explicitly asked to have DONE, each for their approval. Kinds: \
+task.create {text, due}; reminder.schedule {title, body, at}, with at an ISO datetime resolved \
+from Today; vault.append {path, text}, only to a path shown under RELATED VAULT NOTES. Each needs \
+evidence: [{"at": "mm:ss", "text": the line}]. Propose only when "me" explicitly asks ("remind \
+me...", "add a task...", "note that in..."), never because a subject was merely discussed. None is \
+the normal answer; at most two. Do not repeat anything in proposals_already_made.
 - topics: up to 5 short search phrases naming the subjects being discussed.
 - title: only when SESSION TITLE says the session is untitled. A short, specific name for the \
 conversation (3-8 words, no date, no quotes), as soon as the subject is clear. Null while it is \
@@ -42,6 +48,11 @@ from today's date, otherwise the words used). Otherwise null. Never invent eithe
 - open_questions: questions raised and left unanswered.
 - follow_ups: things to check or revisit that are not firm actions.
 - related: names of vault notes only if they are in the list provided; otherwise empty.
+- proposals: things "me" explicitly asked to have DONE, each for their approval. Kinds: \
+task.create {text, due}; reminder.schedule {title, body, at}, with at an ISO datetime resolved \
+from today's date. Each needs evidence: [{"at": "mm:ss", "text": the line}]. Propose only when \
+"me" explicitly asks ("remind me...", "add a task..."), never for things merely discussed, and \
+not for the commitments already listed under actions. Usually empty.
 
 Only use what is in the transcript. Transcription errors are likely; fix the obvious ones."""
 

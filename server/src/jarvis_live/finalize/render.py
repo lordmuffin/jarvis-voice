@@ -4,6 +4,8 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import PurePosixPath
+from typing import Any
 
 from jarvis_live.copilot.schema import FinalAction, FinalNote
 from jarvis_live.copilot.transcript import Line, hhmmss, mmss
@@ -36,6 +38,36 @@ class NoteWorkItem:
     sources: list[tuple[int, str]]  # (start_ms, link; "" if there is no public URL)
     review_url: str
     prompt: str | None = None  # the frozen prompt of an approved item
+
+
+@dataclass(frozen=True)
+class NoteProposal:
+    """An action proposal as the note shows it: a snapshot. Approving happens in Jarvis, never by
+    ticking the box here; regenerating the note picks up what happened since."""
+
+    ref: str
+    kind: str
+    payload: dict[str, Any]
+    state: str
+    error: str | None = None
+
+
+def _proposal(p: NoteProposal, tz: Any) -> str | None:
+    if p.state in ("rejected", "expired"):
+        return None
+    d = p.payload
+    if p.kind == "task.create":
+        label = f"Task: {_one_line(d['text'])}" + (f" (due {d['due']})" if d.get("due") else "")
+    elif p.kind == "vault.append":
+        label = f"Append to [[{PurePosixPath(d['path']).stem}]]: {_one_line(d['text'])[:120]}"
+    elif p.kind == "reminder.schedule":
+        when = datetime.fromisoformat(d["at"]).astimezone(tz).strftime("%Y-%m-%d %H:%M")
+        label = f"Reminder {when}: {_one_line(d['title'])}"
+    else:
+        label = f"Comment on {d['repo']}#{d['pr']}: {_one_line(d['body'])[:120]}"
+    done = p.state == "succeeded"
+    tail = f" — failed: {_one_line(p.error)}" if p.state == "failed" and p.error else ""
+    return f"- [{'x' if done else ' '}] {label}{tail} <!-- action:{p.ref} -->"
 
 
 def _yaml(value: str) -> str:
@@ -87,6 +119,8 @@ def render_note(
     meta: NoteMeta,
     transcript: list[Line],
     work_items: list[NoteWorkItem] | None = None,
+    proposals: list[NoteProposal] | None = None,
+    review_url: str = "",
 ) -> str:
     # The vault's AI Output template (Notes: 30 Resources/Templates/AI Output Template.md),
     # then this session's details.
@@ -127,6 +161,11 @@ def render_note(
         for w in work_items:
             out.extend(_work_item(w))
     section("Related", [f"- [[{_one_line(r)}]]" for r in note.related])
+    lines = [x for p in proposals or [] if (x := _proposal(p, meta.created.tzinfo))]
+    if lines:
+        out.extend(["## Proposed actions", "", *lines, ""])
+        if review_url:
+            out.extend([f"[Review and approve in Jarvis]({review_url})", ""])
     out.extend(["## Transcript", ""])
     out.extend(
         f"[{hhmmss(x.start_ms)}] **{'Me' if x.speaker == 'me' else 'Them'}:** {_one_line(x.text)}"

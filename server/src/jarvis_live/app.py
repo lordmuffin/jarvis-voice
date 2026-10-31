@@ -10,6 +10,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+from jarvis_live.actions.intake import ActionIntake
 from jarvis_live.actions.service import ActionService
 from jarvis_live.actions.state import Context
 from jarvis_live.api import (
@@ -207,6 +208,7 @@ def create_app(
         work = WorkItemService(cfg, sm, runner)
         # Executors are added per kind as they ship; a kind without one fails visibly.
         action_service = ActionService(cfg, sm, {}, lambda: _action_context(cfg))
+        intake = ActionIntake(action_service, lambda: _action_context(cfg))
         if action_service.enabled:
             await action_service.recover()
             tasks.append(asyncio.create_task(_expire_loop(action_service)))
@@ -257,6 +259,7 @@ def create_app(
                     title_prefix=cfg.notify_title_prefix,
                 ),
                 on_final=publisher.on_note_ready,
+                intake=intake,
             )
         hub = IngestHub(
             cfg,

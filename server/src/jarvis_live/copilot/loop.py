@@ -11,6 +11,7 @@ from typing import Protocol
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live.actions.intake import SessionProposals
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.prompts import COPILOT_SYSTEM, copilot_user
@@ -61,6 +62,7 @@ class CopilotLoop:
         stream_ms: Callable[[], int],
         set_llm_ok: Callable[[bool], None] = lambda ok: None,
         clock: Clock | None = None,
+        proposals: SessionProposals | None = None,
     ) -> None:
         self.session_id = session_id
         self._cfg = settings
@@ -71,6 +73,7 @@ class CopilotLoop:
         self._stream_ms = stream_ms
         self._set_llm_ok = set_llm_ok
         self._clock = clock or RealClock()
+        self._proposals = proposals  # set only where the owner can review them
         self._log = session_logger(__name__, session_id)
         self.state = CopilotState()
         self._seen = 0  # final segments already accounted for by a cycle
@@ -119,11 +122,12 @@ class CopilotLoop:
             title = (
                 await db.execute(select(SessionRow.title).where(SessionRow.id == self.session_id))
             ).scalar_one_or_none()
+        made = await self._proposals.known() if self._proposals else []
         user = copilot_user(
             today=datetime.now(UTC).date().isoformat(),
             title=title,
-            state_json=self.state.prompt_json(),
-            related="\n".join(f"- {r.title}: {r.snippet}" for r in self.state.related),
+            state_json=self.state.prompt_json(made),
+            related="\n".join(f"- {r.title} [{r.path}]: {r.snippet}" for r in self.state.related),
             transcript=render_lines(lines),
         )
         try:
@@ -139,6 +143,14 @@ class CopilotLoop:
             self._mark_llm(False)
             return
         self._mark_llm(True)
+
+        if self._proposals is not None and delta.proposals:
+            try:
+                await self._proposals.propose(
+                    delta.proposals, lines, proposed_by=f"copilot:{self._cfg.copilot_model}"
+                )
+            except Exception:  # a proposal problem must never cost the suggestions
+                self._log.exception("filing action proposals failed")
 
         if title is None and delta.title:
             await self._name_session(delta.title)
