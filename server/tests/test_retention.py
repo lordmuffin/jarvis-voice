@@ -1,6 +1,7 @@
 """Retention: delete-after, the trash window, and the (unchanged) audio purge."""
 
 import asyncio
+import json
 import shutil
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -298,3 +299,57 @@ async def test_a_purge_that_fails_for_one_session_is_reported(
         await asyncio.sleep(0.01)
     task.cancel()
     assert notifier.sent and "1" in notifier.sent[0].message
+
+
+async def test_a_backup_that_stopped_is_reported_by_the_daily_sweep(
+    rig: Rig, tmp_path: Path
+) -> None:
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    old = datetime.now(UTC) - timedelta(days=3)
+    (backups / "last_success.json").write_text(json.dumps({"finished_at": old.isoformat()}))
+    notifier = FakeNotifier()
+    task = asyncio.create_task(
+        run_retention_loop(
+            rig.sm,
+            rig.data,
+            90,
+            3600,
+            trash_days=30,
+            outbox=rig.outbox,
+            notifier=notifier,
+            backup_dir=backups,
+            backup_max_age_s=86_400,
+        )
+    )
+    for _ in range(200):
+        if notifier.sent:
+            break
+        await asyncio.sleep(0.01)
+    task.cancel()
+    (sent,) = notifier.sent
+    assert sent.priority == 8 and "backup" in sent.title.lower() and "3 days" in sent.message
+
+
+async def test_a_fresh_backup_is_not_reported(rig: Rig, tmp_path: Path) -> None:
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    now = datetime.now(UTC).isoformat()
+    (backups / "last_success.json").write_text(json.dumps({"finished_at": now}))
+    notifier = FakeNotifier()
+    task = asyncio.create_task(
+        run_retention_loop(
+            rig.sm,
+            rig.data,
+            90,
+            3600,
+            trash_days=30,
+            outbox=rig.outbox,
+            notifier=notifier,
+            backup_dir=backups,
+            backup_max_age_s=86_400,
+        )
+    )
+    await asyncio.sleep(0.5)
+    task.cancel()
+    assert notifier.sent == []

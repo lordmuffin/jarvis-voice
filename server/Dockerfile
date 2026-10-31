@@ -75,6 +75,20 @@ ENV PATH="/app/.venv/bin:$PATH" \
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
+# pg_dump / pg_restore for `jarvis-live backup` and `restore-session`. They must be the server's
+# major version (the CNPG cluster runs 18): pg_dump refuses a newer server.
+ARG POSTGRES_CLIENT_MAJOR=18
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+        https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends "postgresql-client-${POSTGRES_CLIENT_MAJOR}" \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 jarvis \
     && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin jarvis \
     && mkdir -p /data /index \
