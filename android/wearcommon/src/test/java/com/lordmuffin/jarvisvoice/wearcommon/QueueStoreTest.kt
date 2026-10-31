@@ -62,7 +62,7 @@ class QueueStoreTest {
         val empty = File(rec, "w-4.aac").apply { writeBytes(ByteArray(0)) }
         File(rec, "notes.txt").writeText("x")
 
-        val queued = RecordingCatalog.recoverOrphans(s, rec, active, now = 999)
+        val queued = RecordingCatalog.recoverOrphans(s, rec, { it == active }, now = 999)
 
         assertEquals(listOf("w-2"), queued)
         assertEquals(20L, s.get("w-2")!!.bytes)
@@ -70,5 +70,27 @@ class QueueStoreTest {
         assertNull(s.get("w-3"))
         assertFalse(empty.exists())
         assertTrue(known.exists() && orphan.exists() && active.exists())
+    }
+
+    @Test fun `an empty file that is being recorded is not deleted`() {
+        val rec = tmp.newFolder("rec")
+        val live = File(rec, "w-9.aac").apply { createNewFile() }
+
+        val queued = RecordingCatalog.recoverOrphans(JsonQueueStore(qf), rec, { it == live }, now = 999)
+
+        assertTrue("the live file must survive", live.exists())
+        assertTrue(queued.isEmpty())
+    }
+
+    @Test fun `a recording that stops while recovery runs keeps the details the recorder gave it`() {
+        val rec = tmp.newFolder("rec")
+        val finished = File(rec, "w-9.aac").apply { writeBytes(ByteArray(64)) }
+        val real = QueueItem("w-9", finished.path, 42, durationMs = 61_000, bytes = 64)
+        val s = JsonQueueStore(qf)
+
+        // The recorder queues the file, then stops counting it as active, after the directory was read.
+        RecordingCatalog.recoverOrphans(s, rec, { s.put(real); false }, now = 999)
+
+        assertEquals(real, s.get("w-9"))
     }
 }

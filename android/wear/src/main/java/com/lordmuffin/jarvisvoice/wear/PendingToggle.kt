@@ -10,6 +10,15 @@ class PendingToggle {
 
     fun request() { pending = true }
 
+    /**
+     * [asked]: the intent carries the request. [restored]: the screen is being rebuilt. The system
+     * rebuilds it from the original intent, so that request already ran; running it again would stop
+     * the recording it started.
+     */
+    fun fromIntent(asked: Boolean, restored: Boolean) {
+        if (asked && !restored) request()
+    }
+
     /** True once per request. */
     fun take(): Boolean = pending.also { pending = false }
 }

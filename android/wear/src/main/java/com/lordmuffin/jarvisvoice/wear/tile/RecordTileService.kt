@@ -11,6 +11,7 @@ import androidx.wear.protolayout.DimensionBuilders.sp
 import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.ModifiersBuilders
 import androidx.wear.protolayout.ResourceBuilders
+import androidx.wear.protolayout.TypeBuilders
 import androidx.wear.protolayout.TypeBuilders.StringProp
 import androidx.wear.protolayout.TimelineBuilders.Timeline
 import androidx.wear.protolayout.expression.DynamicBuilders
@@ -46,6 +47,22 @@ class RecordTileService : TileService() {
 
         fun requestUpdate(ctx: Context) = getUpdater(ctx).requestUpdate(RecordTileService::class.java)
 
+        /** The running time, ticked by the tile renderer from the platform clock. */
+        internal fun timerText(startedAtWallMs: Long, style: LayoutElementBuilders.FontStyle): LayoutElementBuilders.Text {
+            val start = DynamicBuilders.DynamicInstant.withSecondsPrecision(Instant.ofEpochMilli(startedAtWallMs))
+            val elapsed = start.durationUntil(DynamicBuilders.DynamicInstant.platformTimeWithSecondsPrecision())
+            val minutes = elapsed.toIntMinutes()
+            val seconds = elapsed.toIntSeconds().minus(minutes.times(60))
+            val text = minutes.format().concat(DynamicBuilders.DynamicString.constant(":"))
+                .concat(seconds.format(DynamicBuilders.DynamicInt32.IntFormatter.Builder().setMinIntegerDigits(2).build()))
+            return LayoutElementBuilders.Text.Builder()
+                .setText(StringProp.Builder("0:00").setDynamicValue(text).build())
+                // Without this build() throws: the renderer needs the widest text to reserve room for.
+                .setLayoutConstraintsForDynamicText(TypeBuilders.StringLayoutConstraint.Builder("000:00").build())
+                .setFontStyle(style)
+                .build()
+        }
+
         internal fun layout(ctx: Context, active: RecorderState.Active?): LayoutElementBuilders.LayoutElement {
             fun color(id: Int) = argb(ContextCompat.getColor(ctx, id))
             fun spOf(id: Int) = sp(ctx.resources.getDimension(id) / ctx.resources.displayMetrics.density / ctx.resources.configuration.fontScale)
@@ -63,21 +80,14 @@ class RecordTileService : TileService() {
 
             val column = LayoutElementBuilders.Column.Builder().addContent(label)
             if (active != null) {
-                val start = DynamicBuilders.DynamicInstant.withSecondsPrecision(Instant.ofEpochMilli(active.startedAtWallMs))
-                val elapsed = start.durationUntil(DynamicBuilders.DynamicInstant.platformTimeWithSecondsPrecision())
-                val minutes = elapsed.toIntMinutes()
-                val seconds = elapsed.toIntSeconds().minus(minutes.times(60))
-                val text = minutes.format().concat(DynamicBuilders.DynamicString.constant(":"))
-                    .concat(seconds.format(DynamicBuilders.DynamicInt32.IntFormatter.Builder().setMinIntegerDigits(2).build()))
                 column.addContent(
-                    LayoutElementBuilders.Text.Builder()
-                        .setText(StringProp.Builder("0:00").setDynamicValue(text).build())
-                        .setFontStyle(
-                            LayoutElementBuilders.FontStyle.Builder()
-                                .setSize(spOf(R.dimen.inst_type_stat))
-                                .setColor(color(R.color.inst_on_error))
-                                .build(),
-                        ).build(),
+                    timerText(
+                        active.startedAtWallMs,
+                        LayoutElementBuilders.FontStyle.Builder()
+                            .setSize(spOf(R.dimen.inst_type_stat))
+                            .setColor(color(R.color.inst_on_error))
+                            .build(),
+                    ),
                 )
             }
 

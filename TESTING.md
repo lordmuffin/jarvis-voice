@@ -76,6 +76,8 @@ Playwright 7; policy tests 28; rendered resources 13 (live) and 12 (lab), all va
   so the web baseline is low. The work item views have component tests; the rest do not yet.
 - **Not run in this setup session:** Android unit tests and Swift tests (no Android SDK / not macOS). The `make test-android` command
   mirrors `build.yml`, but it was not executed here.
+- **Wear recording on hardware:** `RecordingSessionTest` runs a whole recording on the JVM with a fake microphone and the real queue and sync
+  pass. The Android shell (`RecordingService`, `AacRecorder`) needs a watch: the checklist is in `android/README.md`, "Testing on a physical watch".
 
 ## Top 5 untested risk areas
 

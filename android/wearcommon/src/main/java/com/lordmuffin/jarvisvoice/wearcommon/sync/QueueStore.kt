@@ -88,17 +88,20 @@ object RecordingCatalog {
 
     /**
      * Queues recordings that are on disk but not in [store]: the app died mid-recording (raw ADTS
-     * AAC stays playable when cut short), or the queue file was lost. [active] is the file being
-     * recorded right now and is left alone. Returns the ids it queued.
+     * AAC stays playable when cut short), or the queue file was lost. Returns the ids it queued.
+     *
+     * [isActive] is asked about each file after the directory was listed, and before the store,
+     * so a recorder that publishes itself before creating its file and queues it before
+     * unpublishing can start or stop at any point of this pass. A file being recorded is left
+     * alone: queueing one would send half of it, and an empty one would be deleted under the recorder.
      */
-    fun recoverOrphans(store: QueueStore, dir: File, active: File?, now: Long): List<String> {
-        val known = store.all().map { it.id }.toSet()
+    fun recoverOrphans(store: QueueStore, dir: File, isActive: (File) -> Boolean, now: Long): List<String> {
         val queued = ArrayList<String>()
         for (f in dir.listFiles { x -> x.isFile && x.extension == EXT }.orEmpty().sortedBy { it.name }) {
-            if (f == active) continue
+            if (isActive(f)) continue
             if (f.length() == 0L) { f.delete(); continue }
             val id = f.nameWithoutExtension
-            if (id in known) continue
+            if (store.get(id) != null) continue
             store.put(QueueItem(id, f.absolutePath, startedAtMs = f.lastModified().takeIf { it > 0 } ?: now, durationMs = 0, bytes = f.length()))
             queued.add(id)
         }
