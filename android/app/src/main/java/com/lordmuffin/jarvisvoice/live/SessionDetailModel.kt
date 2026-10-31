@@ -14,6 +14,8 @@ import com.lordmuffin.jarvisvoice.live.protocol.Speaker
 import com.lordmuffin.jarvisvoice.ui.compose.FeedLine
 import com.lordmuffin.jarvisvoice.ui.compose.Tone
 import java.io.File
+import java.text.DateFormat
+import java.util.Date
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -76,6 +78,16 @@ data class DetailUi(
     val summaryText: String? = null,
     /** What "Copy actions" puts on the clipboard: a "- [ ] item" checklist. */
     val actionsText: String? = null,
+    /** The session is in "Recently deleted": Restore is offered instead of Delete. */
+    val deleted: Boolean = false,
+    /** "Removed for good <date>." while it is in the trash. */
+    val trashNote: String? = null,
+    /** Delete is offered: the session is finished (not recording or being written). */
+    val canDelete: Boolean = false,
+    /** The "Delete this session?" question is showing. */
+    val confirmingDelete: Boolean = false,
+    /** A delete or restore request is in flight. */
+    val deleteBusy: Boolean = false,
 ) {
     val loaded: Boolean get() = status != null
 }
@@ -93,6 +105,10 @@ class SessionDetailModel(
     initialTitle: String?,
     initialTab: DetailTab = DetailTab.SUMMARY,
     private val lifecycle: Lifecycle? = null,
+    /** The session moved to or from "Recently deleted": the list behind this screen is stale. */
+    private val onListChanged: () -> Unit = {},
+    /** A delete finished: this screen has nothing left to show. */
+    private val onDeleted: () -> Unit = {},
 ) : DefaultLifecycleObserver {
 
     private val app = context.applicationContext
@@ -186,6 +202,56 @@ class SessionDetailModel(
 
     // endregion
 
+    // region Delete and restore
+
+    fun askDelete() {
+        ui = ui.copy(confirmingDelete = true, notice = null)
+    }
+
+    fun cancelDelete() {
+        ui = ui.copy(confirmingDelete = false)
+    }
+
+    /** Move the session to "Recently deleted"; its recording and transcript are kept. */
+    fun confirmDelete() {
+        if (ui.deleteBusy) return
+        ui = ui.copy(deleteBusy = true)
+        scope.launch {
+            try {
+                client.deleteSession(sessionId)
+                ui = ui.copy(deleteBusy = false, confirmingDelete = false)
+                onListChanged()
+                onDeleted()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ui = ui.copy(deleteBusy = false, confirmingDelete = false, notice = app.getString(R.string.detail_delete_error, reasonOf(e)))
+            }
+        }
+    }
+
+    fun restore() {
+        if (ui.deleteBusy) return
+        ui = ui.copy(deleteBusy = true, notice = null)
+        scope.launch {
+            try {
+                client.restoreSession(sessionId)
+                ui = ui.copy(deleteBusy = false)
+                onListChanged()
+                load()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ui = ui.copy(deleteBusy = false, notice = app.getString(R.string.detail_restore_error, reasonOf(e)))
+            }
+        }
+    }
+
+    private fun reasonOf(e: Exception): String =
+        if (e is LiveHttpException) app.getString(R.string.livesess_http, e.status) else e.message ?: e.javaClass.simpleName
+
+    // endregion
+
     // region Processing
 
     /** "Transcribe & summarize": the server never starts a second job, so a tap while one runs just joins it. */
@@ -265,7 +331,12 @@ class SessionDetailModel(
             audio = audioUi(),
             summaryText = noteBody(d),
             actionsText = CopyText.checklist(d.copilot.actions),
-            canProcess = d.canRegenerate,
+            canProcess = d.canRegenerate && !s.isDeleted,
+            deleted = s.isDeleted,
+            trashNote = s.trashExpiresAt?.let {
+                app.getString(R.string.detail_trash_expires, DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(it.toEpochMilli())))
+            },
+            canDelete = !s.isDeleted && !s.isInProgress,
         )
         showProcessing(d.processing)
     }

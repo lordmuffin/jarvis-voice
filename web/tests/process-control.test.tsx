@@ -67,7 +67,7 @@ describe("ProcessControl", () => {
       "POST /v1/sessions/s1/process",
       "GET /v1/sessions/s1/processing",
       "GET /v1/sessions/s1/processing",
-      "GET /v1/sessions/s1",
+      "GET /v1/sessions/s1?include_deleted=true",
     ]);
   });
 });

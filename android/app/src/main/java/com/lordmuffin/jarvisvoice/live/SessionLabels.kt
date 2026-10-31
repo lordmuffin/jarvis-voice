@@ -37,8 +37,9 @@ internal object SessionLabels {
     fun row(ctx: Context, s: RemoteSession) = RecentRow(
         id = s.id,
         title = s.title ?: ctx.getString(R.string.history_untitled),
-        status = statusText(ctx, s.status, s.streaming),
-        statusTone = tone(s.status, s.streaming),
+        // In the trash the row says so, and when it goes for good, instead of the old status.
+        status = if (s.isDeleted) ctx.getString(R.string.history_deleted_status) else statusText(ctx, s.status, s.streaming),
+        statusTone = if (s.isDeleted) Tone.Warning else tone(s.status, s.streaming),
         meta = meta(ctx, s),
     )
 
@@ -58,5 +59,8 @@ internal object SessionLabels {
             ?: if (s.isInProgress) ctx.getString(R.string.history_in_progress) else null,
         modeLabel(ctx, s.mode),
         if (s.isFromWatch) ctx.getString(R.string.history_source_watch) else null,
+        s.trashExpiresAt?.takeIf { s.isDeleted }?.let {
+            ctx.getString(R.string.history_trash_expires_short, DateFormat.getDateInstance(DateFormat.SHORT).format(Date(it.toEpochMilli())))
+        },
     ).joinToString(" · ")
 }

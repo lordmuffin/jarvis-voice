@@ -45,6 +45,13 @@ class HistoryScreenTest(private val variant: Variant) {
     @Test fun error() = history("history_error", Fixtures.sessions.copy(list = RecentUi.Error("Couldn't load sessions: HTTP 502")))
     @Test fun loading() = history("history_loading", Fixtures.sessions.copy(list = RecentUi.Loading))
 
+    // Recently deleted: the list, its empty state, and a deleted session's page with Restore.
+    @Test fun deletedList() = history("history_deleted", Fixtures.deletedSessions)
+    @Test fun deletedEmpty() = history("history_deleted_empty", Fixtures.deletedSessions.copy(list = RecentUi.Empty, footer = com.lordmuffin.jarvisvoice.ui.compose.ListFooter.NONE))
+    @Test fun detailDeleted() = detail("detail_deleted", Fixtures.detailDeleted)
+    @Test fun detailConfirmDelete() = detail("detail_confirm_delete", Fixtures.detail.copy(confirmingDelete = true))
+    @Test fun detailRecordingCannotBeDeleted() = detail("detail_in_progress_no_delete", Fixtures.detailFinalizing)
+
     @Test fun detailSummary() = detail("detail_summary", Fixtures.detail)
     @Test fun detailTranscript() = detail("detail_transcript", Fixtures.detail.copy(tab = DetailTab.TRANSCRIPT))
     @Test fun detailActions() = detail("detail_actions", Fixtures.detail.copy(tab = DetailTab.ACTIONS))

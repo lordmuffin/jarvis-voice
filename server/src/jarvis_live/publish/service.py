@@ -146,7 +146,7 @@ class PublishService:
             await db.execute(
                 select(SessionRow, User)
                 .join(User, User.id == SessionRow.user_id)
-                .where(SessionRow.id == session_id)
+                .where(SessionRow.id == session_id, SessionRow.deleted_at.is_(None))
             )
         ).one_or_none()
         if found is None:
@@ -525,7 +525,7 @@ class PublishService:
             .join(latest, latest.c.session_id == SessionRow.id)
             .outerjoin(NotePublication, NotePublication.session_id == SessionRow.id)
             .where((User.id == OWNER_USER_ID) | User.is_admin)
-            .where(SessionRow.restricted.is_(False))
+            .where(SessionRow.restricted.is_(False), SessionRow.deleted_at.is_(None))
         )
         async with self._sm() as db:
             ready = (

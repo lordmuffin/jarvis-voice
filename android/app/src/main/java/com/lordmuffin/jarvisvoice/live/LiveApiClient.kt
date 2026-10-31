@@ -95,18 +95,45 @@ class LiveApiClient(
     /** `GET /v1/me`: who the device token belongs to. */
     suspend fun me(): RemoteUser = RemoteSessions.parseMe(execute(request(url("v1/me")).get().build()))
 
-    /** `GET /v1/sessions?limit=&offset=`: the caller's own sessions, newest first. */
-    suspend fun listSessions(limit: Int = 20, offset: Int = 0): SessionPage {
+    /**
+     * `GET /v1/sessions?limit=&offset=`: the caller's own sessions, newest first. With [deleted],
+     * "Recently deleted" instead, the most recently deleted first.
+     */
+    suspend fun listSessions(limit: Int = 20, offset: Int = 0, deleted: Boolean = false): SessionPage {
         val url = url("v1/sessions").newBuilder()
             .addQueryParameter("limit", limit.toString())
             .addQueryParameter("offset", offset.toString())
+            .apply { if (deleted) addQueryParameter("deleted", "true") }
             .build()
         return RemoteSessions.parsePage(execute(request(url).get().build()))
     }
 
-    /** `GET /v1/sessions/{id}`: segments, copilot, markers, the final note and audio availability. */
-    suspend fun getSession(id: String): RemoteSessionDetail =
-        RemoteSessions.parseDetail(execute(request(sessionUrl(id)).get().build()))
+    /**
+     * `GET /v1/sessions/{id}`: segments, copilot, markers, the final note and audio availability.
+     * A session in "Recently deleted" is returned too, so its page can offer Restore.
+     */
+    suspend fun getSession(id: String): RemoteSessionDetail {
+        val url = sessionUrl(id).newBuilder().addQueryParameter("include_deleted", "true").build()
+        return RemoteSessions.parseDetail(execute(request(url).get().build()))
+    }
+
+    /** `DELETE /v1/sessions/{id}`: to "Recently deleted"; the recording and transcript are kept. 409 while recording. */
+    suspend fun deleteSession(id: String) {
+        execute(request(sessionUrl(id)).delete().build())
+    }
+
+    /** `POST /v1/sessions/{id}/restore`: bring a session back from "Recently deleted". */
+    suspend fun restoreSession(id: String): RemoteSession {
+        val url = sessionUrl(id).newBuilder().addPathSegment("restore").build()
+        return RemoteSessions.parseSession(JSONObject(execute(request(url).post(EMPTY_BODY).build())))
+    }
+
+    /** `PATCH /v1/sessions/{id}` `{delete_after_days}`: delete (to the trash) in [days] days; null cancels. */
+    suspend fun setDeleteAfter(id: String, days: Int?): RemoteSession {
+        val body = JSONObject().put("delete_after_days", days ?: JSONObject.NULL)
+        val text = execute(request(sessionUrl(id)).patch(body.toString().toRequestBody(JSON)).build())
+        return RemoteSessions.parseSession(JSONObject(text))
+    }
 
     /**
      * `POST /v1/sessions/{id}/process`: transcribe the stored recording again, then rewrite the note.

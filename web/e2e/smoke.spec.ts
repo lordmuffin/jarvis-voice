@@ -169,6 +169,32 @@ test("users see only their own sessions", async ({ page, request }) => {
   expect((await page.request.get(`/v1/sessions/${id}/audio/mic.wav`)).status()).toBe(404);
 });
 
+test("delete a session, find it in Recently Deleted, restore it; others never see it", async ({ page, request }) => {
+  const id = await aliceSessionId(request);
+  test.skip(!id, "needs a session from the first test");
+
+  await signIn(page, "alice", `/sessions/${id}`);
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("button", { name: "Delete Session" }).click();
+
+  // Lands on Recently Deleted, with the session in it, and it is gone from Sessions.
+  await expect(page.getByRole("heading", { name: "Recently Deleted" })).toBeVisible();
+  const row = page.getByTestId("deleted-row").filter({ has: page.locator(`a[href="/sessions/${id}"]`) });
+  await expect(row).toBeVisible();
+  expect((await request.get(`/v1/sessions/${id}`, asAlice)).status()).toBe(404);
+  // Its recording is kept: the owner can still open the page to preview and restore it.
+  await row.locator("a").click();
+  await expect(page.getByText("In Recently deleted.")).toBeVisible();
+
+  // Restore from the list; it is back in Sessions with its recording.
+  await page.goto("/deleted");
+  await row.getByRole("button", { name: "Restore" }).click();
+  await expect(row).toHaveCount(0);
+  expect((await request.get(`/v1/sessions/${id}`, asAlice)).status()).toBe(200);
+  await page.goto("/");
+  await expect(page.locator(`a[href="/sessions/${id}"]`)).toBeVisible();
+});
+
 test("devices: add one, see its token once, revoke it", async ({ page, request }) => {
   await signIn(page, "alice", "/devices"); // comes back to the page it started on
   await expect(page.getByRole("heading", { name: "Devices", exact: true })).toBeVisible();

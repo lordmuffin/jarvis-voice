@@ -115,6 +115,17 @@ class Session(Base):
         CheckConstraint("mode IN ('meeting','solo')", name="ck_sessions_mode"),
         Index("ix_sessions_device_started", "device_id", text("started_at DESC")),
         Index("ix_sessions_user_started", "user_id", text("started_at DESC")),
+        Index(
+            "ix_sessions_user_deleted",
+            "user_id",
+            text("deleted_at DESC"),
+            postgresql_where=text("deleted_at IS NOT NULL"),
+        ),
+        Index(
+            "ix_sessions_purge_after",
+            "purge_after",
+            postgresql_where=text("purge_after IS NOT NULL"),
+        ),
         # A client retrying an upload (a watch that never saw the ack) gets its session back.
         Index(
             "uq_sessions_user_client_id",
@@ -148,6 +159,11 @@ class Session(Base):
     source: Mapped[str | None] = mapped_column(String(16))
     # The uploader's own id for the recording; makes an upload retry idempotent.
     client_id: Mapped[str | None] = mapped_column(String(64))
+    # Soft delete: set, the session is hidden but its audio and transcript are kept until the
+    # trash window ends (``retention.py``); restoring clears it.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The owner's "delete after N days": when reached, the session is deleted (to the trash).
+    purge_after: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class AudioChunk(Base):

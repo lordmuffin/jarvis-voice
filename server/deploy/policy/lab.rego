@@ -102,3 +102,11 @@ deny contains msg if {
 	contains(json.marshal(input), "jarvis-dispatch-app\"")
 	msg := sprintf("%s/%s: lab must not hold live's GitHub App (jarvis-dispatch-app)", [input.kind, input.metadata.name])
 }
+
+# Lab data is disposable and not backed up: the backup job ships but never runs there.
+deny contains msg if {
+	input.kind == "CronJob"
+	input.metadata.name == "jarvis-live-backup"
+	not input.spec.suspend == true
+	msg := "CronJob/jarvis-live-backup: lab's backup job must be suspended (lab is not backed up)"
+}

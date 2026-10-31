@@ -69,7 +69,7 @@ async def stream(
         return
     async with state.sessionmaker() as db:
         row = await db.get(SessionRow, session_id)
-    if row is None:
+    if row is None or row.deleted_at is not None:
         await ws.close(code=WS_NOT_FOUND)
         return
     log = session_logger(__name__, session_id)

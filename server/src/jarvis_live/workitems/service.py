@@ -122,7 +122,11 @@ class WorkItemService:
             rows = await db.execute(
                 select(WorkItem, SessionRow.title, SessionRow.started_at)
                 .join(SessionRow, SessionRow.id == WorkItem.session_id)
-                .where(WorkItem.user_id == user_id, WorkItem.state.in_(states))
+                .where(
+                    WorkItem.user_id == user_id,
+                    WorkItem.state.in_(states),
+                    SessionRow.deleted_at.is_(None),
+                )
                 .order_by(SessionRow.started_at.desc(), WorkItem.created_at)
                 .limit(500)
             )

@@ -2,7 +2,9 @@ import { audioUrl, getSession } from "../api";
 import { Column, Player, Recordings as RecordingList } from "../ds/components";
 import { duration } from "../format";
 import { NoNote } from "../jarvis/NoNote";
+import { DeleteAfter, DeleteSession, DeletedNotice } from "../jarvis/DeleteSession";
 import { ProcessControl } from "../jarvis/ProcessControl";
+import { navigate } from "../store";
 import { SessionHeader } from "../jarvis/SessionHeader";
 import { useNaming } from "../jarvis/useNaming";
 import { Timeline } from "../jarvis/Timeline";
@@ -63,12 +65,17 @@ export function PastSession({
         suffix={duration(detail.started_at, detail.ended_at) || undefined}
         title={<SessionTitle session={detail} onRenamed={onRenamed} />}
         actions={
-          <>
-            <UnrestrictControl detail={detail} onChanged={onChanged} />
-            <ProcessControl detail={detail} onChanged={onChanged} />
-          </>
+          detail.deleted_at ? undefined : (
+            <>
+              <UnrestrictControl detail={detail} onChanged={onChanged} />
+              <ProcessControl detail={detail} onChanged={onChanged} />
+              <DeleteAfter detail={detail} onChanged={(s) => onRenamed(s)} />
+              <DeleteSession detail={detail} onDeleted={() => navigate("/deleted")} />
+            </>
+          )
         }
       />
+      <DeletedNotice detail={detail} onRestored={(s) => onRenamed(s)} />
       <Recordings detail={detail} />
       <SessionActions sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />
