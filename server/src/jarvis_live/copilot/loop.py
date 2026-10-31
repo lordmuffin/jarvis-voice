@@ -28,6 +28,7 @@ from jarvis_live.vault.index import VaultContext
 
 SNAPSHOT = "snapshot"
 RELATED = "related"
+NOTICE_TTL_S = 300
 
 
 class Clock(Protocol):
@@ -111,6 +112,11 @@ class CopilotLoop:
             await self._cycle(total, waiting_since)
         elif changed:
             await self._publish()
+
+    async def announce(self, text: str) -> None:
+        """Answer the speaker on the channel every client already shows."""
+        self.state.notice(text, self._now_ms(), NOTICE_TTL_S)
+        await self._publish()
 
     # --- one cycle --------------------------------------------------------------------------
 

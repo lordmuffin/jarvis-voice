@@ -418,7 +418,12 @@ export interface FamilyApp {
 
 // --- Action proposals ---
 
-export type ActionKind = "task.create" | "vault.append" | "reminder.schedule" | "git.pr_comment";
+export type ActionKind =
+  | "task.create"
+  | "vault.append"
+  | "reminder.schedule"
+  | "git.pr_comment"
+  | "pi.session";
 export type ActionState =
   | "proposed"
   | "approved"
@@ -460,7 +465,13 @@ export interface ActionPage {
   items: ActionItem[];
 }
 
-export type ApprovalOutcome = "approved" | "already" | "stale" | "not_open" | "not_found";
+export type ApprovalOutcome =
+  | "approved"
+  | "already"
+  | "stale"
+  | "not_open"
+  | "not_found"
+  | "needs_web";
 
 export interface ApproveResult {
   results: { id: string; outcome: ApprovalOutcome }[];

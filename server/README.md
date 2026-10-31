@@ -165,6 +165,31 @@ When you think out loud in a session, the copilot picks out the ideas that are w
 | `JARVIS_LIVE_WORK_PR_POLL_S` | Seconds between those lookups. Default 300; 0 disables. |
 | `JARVIS_LIVE_WORK_TEMPLATE` | Overrides the template path. Default: `/app/prompts/templates/work-item.md` in the image (copied from `prompts/` at build time), else the repo's copy. |
 
+## Spoken requests: asking Jarvis during a recording
+
+Say "Jarvis, start a Pi session to find out why Flux is failing" while recording, on any client.
+Jarvis files the request and answers with a copilot suggestion and a Gotify push linking to the
+session. **Nothing starts until you approve it.** See `docs/plans/voice-commands.md`.
+
+| You ask for | It becomes | You start it with |
+|---|---|---|
+| A cloud session | A draft work item | Approve, then Run in Claude Code, signed in to the dashboard |
+| A Pi session | A `pi.session` action | Approve, signed in to the dashboard |
+| A task, reminder, note or PR comment | An action | Approve, on the dashboard or a device |
+
+Only your own voice counts: the mic channel, minus any voice diarization labelled as someone else.
+A request opens with "hey Jarvis", or with "Jarvis" at the start of a sentence, but never "Jarvis
+Live" or "Jarvis Voice". It runs until `JARVIS_LIVE_VOICE_SETTLE_S` of quiet. Sessions that
+produce no work items are not listened to: local-only, restricted, and other users'.
+
+| Setting | |
+|---|---|
+| `JARVIS_LIVE_VOICE_ENABLED` | Default off. Needs an LLM. |
+| `JARVIS_LIVE_VOICE_PI_ENABLED` | Default off, and never on lab (`policy/lab.rego`). Needs `JARVIS_LIVE_ACTIONS_ENABLED`, `JARVIS_LIVE_DPI_BASE_URL`, its token, and dpi-backend's NetworkPolicy admitting this namespace. |
+| `JARVIS_LIVE_VOICE_MODEL` | Empty: the copilot model. |
+| `JARVIS_LIVE_VOICE_SETTLE_S`, `JARVIS_LIVE_VOICE_MAX_S` | How much quiet ends a request (10), and the longest one (90). |
+| `JARVIS_LIVE_DPI_MODEL`, `JARVIS_LIVE_DPI_WORK_CWD` | Model and working directory of a new Pi session. |
+
 ## Dispatch: approved work items as headless Claude Code
 
 **Run in Claude Code** on an approved work item queues a run. Each run is one Kubernetes Job in the app's namespace, with one git worktree, and opens a **draft PR** on the item's repo. The design and its safety reasoning are in [`docs/plans/copilot-to-claude-code.md`](../docs/plans/copilot-to-claude-code.md) §3.

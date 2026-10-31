@@ -140,3 +140,72 @@ async def test_unconfigured_raises_without_a_request(tmp_path: Path) -> None:
     with pytest.raises(DpiError):
         await DpiClient("http://x", None, c).ask("ping", "r-1")
     assert not called
+
+
+def _pi(tmp_path: Path, handler, **kwargs) -> DpiClient:  # type: ignore[no-untyped-def]
+    return _client(tmp_path, handler, model="qwen", work_cwd="/var/lib/dpi/work", **kwargs)
+
+
+async def test_start_session_creates_it_then_briefs_its_agent(tmp_path: Path) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        if req.url.path == "/v1/sessions":
+            return httpx.Response(201, json={"id": "s-1"})
+        return httpx.Response(202, json={"status": "queued"})
+
+    sid = await _pi(tmp_path, handler).start_session("jarvis-abc", "fix flux", key="prop-1")
+    assert sid == "s-1"
+    create, brief = seen
+    assert create.headers["idempotency-key"] == "prop-1"
+    assert create.headers["authorization"] == "Bearer tok"
+    assert json.loads(create.content) == {
+        "name": "jarvis-abc",
+        "cwd": "/var/lib/dpi/work",
+        "model": {"provider": "openai-compatible", "modelId": "qwen"},
+    }
+    assert brief.url.path == "/v1/sessions/s-1/agents/main/messages"
+    assert json.loads(brief.content) == {
+        "content": "fix flux",
+        "requestId": "prop-1",
+        "whenBusy": "followUp",
+    }
+
+
+async def test_a_retried_start_session_reuses_its_keys(tmp_path: Path) -> None:
+    """Both calls resend with the same key after a transport failure: pi-durable admits each
+    once, so the retry cannot make a second session or brief it twice."""
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        if len(seen) in (1, 3):
+            raise httpx.ConnectError("boom")
+        if req.url.path == "/v1/sessions":
+            return httpx.Response(200, json={"id": "s-1"})
+        return httpx.Response(202, json={})
+
+    await _pi(tmp_path, handler).start_session("n", "p", key="prop-1")
+    assert [r.url.path for r in seen] == ["/v1/sessions"] * 2 + [
+        "/v1/sessions/s-1/agents/main/messages"
+    ] * 2
+    assert {r.headers["idempotency-key"] for r in seen[:2]} == {"prop-1"}
+    assert {json.loads(r.content)["requestId"] for r in seen[2:]} == {"prop-1"}
+
+
+@pytest.mark.parametrize(
+    ("status", "body"), [(500, {"error": "no"}), (200, {"unexpected": True}), (200, [])]
+)
+async def test_start_session_reports_a_session_it_did_not_get(
+    tmp_path: Path, status: int, body: object
+) -> None:
+    client = _pi(tmp_path, lambda r: httpx.Response(status, json=body))
+    with pytest.raises(DpiError):
+        await client.start_session("n", "p", key="k")
+
+
+async def test_start_session_needs_a_configured_backend(tmp_path: Path) -> None:
+    client = _pi(tmp_path, lambda r: httpx.Response(200, json={}), token=None)
+    with pytest.raises(DpiError):
+        await client.start_session("n", "p", key="k")

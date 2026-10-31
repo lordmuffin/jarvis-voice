@@ -122,3 +122,14 @@ data:
   JARVIS_LIVE_DPI_BASE_URL: "http://dpi-backend.pi-durable.svc.cluster.local:4780"
   JARVIS_LIVE_DPI_SESSION: "jarvis"
   JARVIS_LIVE_DPI_WAIT_MS: "60000"
+  # New sessions a spoken request starts, once approved.
+  JARVIS_LIVE_DPI_MODEL: "qwen3.8-flash-next"
+  JARVIS_LIVE_DPI_WORK_CWD: "/var/lib/dpi/work"
+
+  # Requests spoken to Jarvis during a recording (docs/plans/voice-commands.md). They only file
+  # work for approval, and never start anything. Off here: a channel turns it on. Workflow steps
+  # and Pi sessions need JARVIS_LIVE_ACTIONS_ENABLED too. Pi also needs the jarvis-live namespace
+  # admitted by dpi-backend's NetworkPolicy, and the token above; lab must never turn it on.
+  JARVIS_LIVE_VOICE_ENABLED: "false"
+  JARVIS_LIVE_VOICE_PI_ENABLED: "false"
+  JARVIS_LIVE_VOICE_MODEL: ""

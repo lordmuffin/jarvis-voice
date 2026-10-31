@@ -21,7 +21,7 @@ from jarvis_live.db.models import CopilotItem, SegmentRow, WorkItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
-from jarvis_live.workitems.rows import log_event, to_item, write_item
+from jarvis_live.workitems.rows import store_changes, to_item
 from jarvis_live.workitems.schema import IdeasDelta
 from jarvis_live.workitems.state import CLOSED, OPEN, IdeasState, number_lines
 
@@ -150,29 +150,9 @@ class IdeasPass:
                 .scalars()
                 .all()
             )
-            by_ref = {r.ref: r for r in current}
             state = IdeasState([to_item(r) for r in current], cfg.work_repo_allowlist)
             changes = state.apply(delta, refs)
-            for ch in changes:
-                row = by_ref.get(ch.item.ref)
-                if row is None:
-                    row = WorkItem(
-                        id=uuid.uuid4(),
-                        session_id=session_id,
-                        user_id=session.user_id,
-                        ref=ch.item.ref,
-                        state=OPEN,
-                        title=ch.item.title,
-                    )
-                    write_item(row, ch.item)
-                    db.add(row)
-                    await db.flush()
-                    log_event(db, row.id, "proposed", payload={"title": row.title})
-                else:
-                    write_item(row, ch.item)
-                    row.version += 1
-                    row.updated_at = datetime.now(UTC)
-                    log_event(db, row.id, "llm_updated", payload={"fields": ch.fields})
+            await store_changes(db, session, current, changes)
             db.add(CopilotItem(session_id=session_id, kind=CURSOR, payload={"until_ms": until}))
         if changes:
             log.info("ideas pass: %d work item(s) changed", len(changes))
