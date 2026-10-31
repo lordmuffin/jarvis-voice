@@ -58,7 +58,10 @@ struct CopilotPanelView: View {
         @Bindable var settings = model.settings
         return HStack(spacing: 8) {
             Text("Jarvis Live").instStyle(InstType.caption).fontWeight(.bold)
-            if let channel = model.serverChannel { InstBadge(channel: channel) }
+            // A local session talks to no server, so it doesn't wear one's LIVE / LAB badge.
+            if let channel = model.serverChannel, !(model.isRecording && model.sessionIsLocalOnly) {
+                InstBadge(channel: channel)
+            }
             Spacer()
             Button {
                 collapsed.toggle()
@@ -195,6 +198,8 @@ struct CopilotPanelView: View {
         switch model.link {
         case .reconnecting: "Still recording. Nothing is lost."
         case .failed(let why): why
+        case .offlineLocal where model.sessionFellBack:
+            "Server unreachable. Recording on this Mac; it uploads when the server is back."
         default: nil
         }
     }

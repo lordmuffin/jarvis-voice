@@ -72,11 +72,17 @@ sealed class ClientMessage {
 
 /** REST request bodies. */
 object RestBodies {
-    fun sessionCreate(mode: SessionMode, channels: List<Channel>, title: String?): JSONObject =
+    fun sessionCreate(
+        mode: SessionMode,
+        channels: List<Channel>,
+        title: String?,
+        restricted: Boolean = false,
+    ): JSONObject =
         JSONObject().apply {
             if (!title.isNullOrBlank()) put("title", title)
             put("mode", mode.wire)
             put("channels", JSONArray(channels.map { it.wire }))
+            if (restricted) put("restricted", true)
         }
 
     fun ticket(role: String = "producer"): JSONObject = JSONObject().put("role", role)

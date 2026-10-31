@@ -117,7 +117,11 @@ class Settings(BaseSettings):
     # On startup, finalize sessions left in `finalizing` that ended within this window. Older
     # ones (e.g. from before the finalizer existed) are left alone. 0 disables recovery.
     finalize_recover_max_age_s: float = 86_400.0
+    watchdog_interval_s: float = 10.0  # idle sessions, STT outage, SLO checks
     idle_end_s: float = 600.0  # end a live session after this long without audio
+    # A producer that dropped without `end` (a phone in a tunnel) is given this long to come back
+    # and replay its buffer before the idle watchdog ends the session.
+    producer_gone_grace_s: float = 2_700.0
     # A live session counts as streaming while a producer is connected and audio arrived
     # within this window; otherwise viewers show it as offline.
     streaming_stale_s: float = 10.0
@@ -128,6 +132,22 @@ class Settings(BaseSettings):
     gotify_token_file: Path | None = None
     public_base_url: str = ""
     stt_outage_notify_s: float = 120.0
+
+    # SLOs on the live path (see slo.py). A breach is sustained when the signal's p95 over
+    # `slo_window_s` exceeds its limit with at least `slo_min_samples` samples; it re-arms after
+    # `slo_clear_s` without one. Limits are the 2026-10-09 handoff's latency budget.
+    slo_enabled: bool = True
+    slo_window_s: float = 300.0
+    slo_min_samples: int = 8
+    slo_clear_s: float = 600.0
+    slo_authoritative_p95_s: float = 5.0  # segment cut -> published (dup-guard hold excluded)
+    slo_stt_p95_s: float = 4.0  # one Whisper request, per tier
+    slo_copilot_roundtrip_p95_s: float = 8.0
+    slo_copilot_staleness_p95_s: float = 35.0  # handoff: notes refresh in 25-35 s
+    slo_finalize_s: float = 120.0  # handoff: final note within 2 min of stop
+
+    # Prometheus scrape port, separate from the app port (which the Ingress routes). 0: off.
+    metrics_port: int = 0
 
     # Sign-in with Pocket-ID (OIDC). Unset issuer: no web sign-in; device tokens still work.
     # The redirect URI is <public_base_url>/auth/callback.

@@ -62,6 +62,21 @@ class LiveConnectionTest {
         return outbox
     }
 
+    @Test fun shuttingTheGateCutsAnOpenConnection() = runBlocking {
+        val gate = EgressGate()
+        val outbox = outboxWith(3)
+        val conn = LiveConnection(api(), sessionId, "android:test", outbox, scope, fastConfig, gate = gate)
+        conn.start()
+        withTimeout(5_000) { while (fake.received.size < 3) delay(10) }
+
+        gate.beginLocalSession()
+
+        assertEquals(ConnState.Idle, conn.state.value)
+        conn.enqueueAudio(Channel.MIC, ByteArray(AudioFrame.FRAME_BYTES), 300)
+        delay(200)
+        assertEquals(3, fake.received.size)
+    }
+
     @Test fun streamsEverythingThenEnds() = runBlocking {
         val outbox = outboxWith(10)
         val conn = LiveConnection(api(), sessionId, "android:test", outbox, scope, fastConfig)
@@ -96,6 +111,24 @@ class LiveConnectionTest {
         assertTrue(fake.gaps.isEmpty())
         assertEquals((0L..19L).toList(), fake.received.distinct())
         assertEquals(2, fake.tickets)  // a fresh ticket per connection
+    }
+
+    /** A marker sent just before a drop may never have arrived, so every connection resends them all. */
+    @Test fun markersAreResentOnEveryConnection() = runBlocking {
+        fake.dropAfterFrames = 5
+        fake.ackEvery = 3
+        val known = listOf(ClientMessage.Marker(500, "mark"), ClientMessage.Marker(900, "todo"))
+        val conn = LiveConnection(
+            api(), sessionId, "android:test", outboxWith(20), scope, fastConfig, markers = { known },
+        )
+        conn.start()
+
+        val terminal = withTimeout(10_000) { conn.end() }
+
+        assertEquals(ConnState.Ended, terminal)
+        assertTrue(fake.connections >= 2)
+        val sent = fake.texts.count { it.contains("\"marker\"") }
+        assertEquals("two per connection, none duplicated", 2 * fake.connections, sent)
     }
 
     @Test fun ticketRejectionIsFatal() = runBlocking {

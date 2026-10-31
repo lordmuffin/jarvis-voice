@@ -149,6 +149,13 @@ struct NetworkPlaceDetectorTests {
         #expect(await NetworkPlaceDetector.detect(baseURL: base, interfaces: wifi, session: session) == .away)
     }
 
+    @Test func aBlockedProbeSaysNothingAboutWhereTheMacIs() async {
+        HealthStub.reply = (200, #"{"status":"ok"}"#)
+        let gate = EgressGate()
+        gate.beginLocalSession()
+        #expect(await NetworkPlaceDetector.detect(baseURL: base, interfaces: wifi, session: session, gate: gate) == nil)
+    }
+
     @Test func netBirdNeedsNoProbe() async {
         HealthStub.reply = nil
         let tunnel = wifi + [NetInterface(name: "utun100", isTunnel: true, addresses: ["100.92.10.5"])]
