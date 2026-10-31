@@ -2,6 +2,7 @@ import { Brand, Button, CenterCard, FamilySwitcher, Loading, Shell, TabIcon } fr
 import { familyApps, me, navigate, releaseChannel, route, signOut } from "./store";
 import type { Route } from "./route";
 import { Admin } from "./views/Admin";
+import { DeletedView } from "./views/Deleted";
 import { Devices } from "./views/Devices";
 import { Link } from "./views/Link";
 import { Login } from "./views/Login";
@@ -17,6 +18,8 @@ function page(r: Route) {
   switch (r.name) {
     case "session":
       return <SessionPage key={r.id} id={r.id} />;
+    case "deleted":
+      return <DeletedView />;
     case "devices":
       return <Devices />;
     case "publishing":
@@ -44,6 +47,7 @@ export function App() {
   const current = (name: Route["name"]) => (r.name === name ? ("page" as const) : undefined);
   const tabs: { name: Route["name"]; href: string; label: string; ico: string }[] = [
     { name: "sessions", href: "/", label: "Sessions", ico: "📋" },
+    { name: "deleted", href: "/deleted", label: "Recently Deleted", ico: "🗑" },
     { name: "devices", href: "/devices", label: "Devices", ico: "📱" },
     ...(user.work_items
       ? [{ name: "work-items" as const, href: "/work-items", label: "Work Items", ico: "🤖" }]

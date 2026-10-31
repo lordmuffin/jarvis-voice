@@ -47,7 +47,10 @@ function serve(routes: Record<string, () => Response>) {
 
 const buttons = () => [...root.querySelectorAll("button")];
 const byText = (t: string) => buttons().find((b) => b.textContent?.trim() === t);
-const settle = () => act(() => new Promise((r) => setTimeout(r, 0)));
+// Let the mocked fetch, its json() and the state updates that follow all run.
+const settle = async () => {
+  for (let i = 0; i < 5; i++) await act(() => new Promise((r) => setTimeout(r, 0)));
+};
 
 beforeEach(() => {
   root = document.createElement("div");

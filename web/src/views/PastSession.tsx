@@ -2,7 +2,9 @@ import { audioUrl } from "../api";
 import { Column, Player, Recordings as RecordingList } from "../ds/components";
 import { duration } from "../format";
 import { NoNote } from "../jarvis/NoNote";
+import { DeleteAfter, DeleteSession, DeletedNotice } from "../jarvis/DeleteSession";
 import { ProcessControl } from "../jarvis/ProcessControl";
+import { navigate } from "../store";
 import { SessionHeader } from "../jarvis/SessionHeader";
 import { Timeline } from "../jarvis/Timeline";
 import { initialState, reduce, transcriptLines } from "../reducer";
@@ -56,8 +58,17 @@ export function PastSession({
         session={detail}
         suffix={duration(detail.started_at, detail.ended_at) || undefined}
         title={<SessionTitle session={detail} onRenamed={onRenamed} />}
-        actions={<ProcessControl detail={detail} onChanged={onChanged} />}
+        actions={
+          detail.deleted_at ? undefined : (
+            <>
+              <ProcessControl detail={detail} onChanged={onChanged} />
+              <DeleteAfter detail={detail} onChanged={(s) => onRenamed(s)} />
+              <DeleteSession detail={detail} onDeleted={() => navigate("/deleted")} />
+            </>
+          )
+        }
       />
+      <DeletedNotice detail={detail} onRestored={(s) => onRenamed(s)} />
       <Recordings detail={detail} />
       <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <Panes

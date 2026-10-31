@@ -1,18 +1,20 @@
 export type Route =
   | { name: "sessions"; all?: true; user?: string }
   | { name: "session"; id: string }
+  | { name: "deleted" }
   | { name: "devices" }
   | { name: "publishing" }
   | { name: "work-items" }
   | { name: "admin" };
 
 /**
- * `/` (with `?all=1` or `?user=<id>` for admins), `/sessions/:id`, `/devices`, `/publishing`,
+ * `/` (with `?all=1` or `?user=<id>` for admins), `/sessions/:id`, `/deleted`, `/devices`, `/publishing`,
  * `/work-items`, `/admin`.
  */
 export function parseRoute(pathname: string, search = ""): Route {
   const m = /^\/sessions\/([^/]+)\/?$/.exec(pathname);
   if (m) return { name: "session", id: decodeURIComponent(m[1]!) };
+  if (/^\/deleted\/?$/.test(pathname)) return { name: "deleted" };
   if (/^\/devices\/?$/.test(pathname)) return { name: "devices" };
   if (/^\/publishing\/?$/.test(pathname)) return { name: "publishing" };
   if (/^\/work-items\/?$/.test(pathname)) return { name: "work-items" };
