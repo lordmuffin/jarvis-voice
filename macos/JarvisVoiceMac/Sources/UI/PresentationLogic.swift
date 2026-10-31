@@ -32,8 +32,11 @@ struct MenuBarIconSpec: Equatable {
     var badgeFilled: Bool
     var accessibilityLabel: String
 
-    /// A recording session wins over dictation.
-    static func make(isRecording: Bool, isDictating: Bool, elapsedSeconds: Int, channel: ServerChannel?) -> Self {
+    /// A recording session wins over dictation. A local-only recording shows `LOCAL` instead of the
+    /// server's channel: nothing is being sent, so naming the server would say the opposite.
+    static func make(
+        isRecording: Bool, isDictating: Bool, elapsedSeconds: Int, channel: ServerChannel?, localOnly: Bool = false
+    ) -> Self {
         let glyph: Glyph
         let state: String
         if isRecording {
@@ -46,6 +49,10 @@ struct MenuBarIconSpec: Equatable {
         } else {
             glyph = .waveform
             state = "idle"
+        }
+        if isRecording && localOnly {
+            let label = "Jarvis, \(state), local only, nothing is sent"
+            return Self(glyph: glyph, badge: "LOCAL", badgeFilled: true, accessibilityLabel: label)
         }
         let badge = channel?.tag
         let label = ["Jarvis", state, badge].compactMap { $0 }.joined(separator: ", ")
