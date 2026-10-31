@@ -98,6 +98,24 @@ class LiveConnectionTest {
         assertEquals(2, fake.tickets)  // a fresh ticket per connection
     }
 
+    /** A marker sent just before a drop may never have arrived, so every connection resends them all. */
+    @Test fun markersAreResentOnEveryConnection() = runBlocking {
+        fake.dropAfterFrames = 5
+        fake.ackEvery = 3
+        val known = listOf(ClientMessage.Marker(500, "mark"), ClientMessage.Marker(900, "todo"))
+        val conn = LiveConnection(
+            api(), sessionId, "android:test", outboxWith(20), scope, fastConfig, markers = { known },
+        )
+        conn.start()
+
+        val terminal = withTimeout(10_000) { conn.end() }
+
+        assertEquals(ConnState.Ended, terminal)
+        assertTrue(fake.connections >= 2)
+        val sent = fake.texts.count { it.contains("\"marker\"") }
+        assertEquals("two per connection, none duplicated", 2 * fake.connections, sent)
+    }
+
     @Test fun ticketRejectionIsFatal() = runBlocking {
         fake.ticketStatus = 401
         val conn = LiveConnection(api(), sessionId, "android:test", outboxWith(3), scope, fastConfig)

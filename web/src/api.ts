@@ -150,16 +150,9 @@ export async function uploadRecording(
 export const renameSession = (id: string, title: string, f?: typeof fetch) =>
   request<SessionSummary>(sid(id), { method: "PATCH", body: JSON.stringify({ title }) }, f);
 
-/** Move a session to "Recently deleted"; its audio and transcript are kept. */
-export const deleteSession = (id: string, f?: typeof fetch) => send(sid(id), { method: "DELETE" }, f);
-
-/** Bring a session back from "Recently deleted". */
-export const restoreSession = (id: string, f?: typeof fetch) =>
-  request<SessionSummary>(`${sid(id)}/restore`, { method: "POST" }, f);
-
-/** Delete the session (to the trash) this many days from now; null cancels. */
-export const setDeleteAfter = (id: string, days: number | null, f?: typeof fetch) =>
-  request<SessionSummary>(sid(id), { method: "PATCH", body: JSON.stringify({ delete_after_days: days }) }, f);
+/** Lift a session's restriction (owner only): its note leaves `Restricted/` and can be published. */
+export const unrestrictSession = (id: string, f?: typeof fetch) =>
+  request<SessionSummary>(`${sid(id)}/unrestrict`, { method: "POST" }, f);
 
 /** A channel's recording as WAV; the cookie authenticates `<audio src>` too. */
 export const audioUrl = (id: string, channel: Channel) => `${sid(id)}/audio/${channel}.wav`;

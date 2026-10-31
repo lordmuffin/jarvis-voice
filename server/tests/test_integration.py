@@ -18,8 +18,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from jarvis_live.db.models import AudioChunk, CopilotItem, Device, MarkerRow, SegmentRow
 from jarvis_live.db.models import Session as SessionRow
-from jarvis_live.ingest.store import AudioStore
-from jarvis_live.protocol import Frame, server_message_adapter
+from jarvis_live.ingest.store import AudioStore, save_marker
+from jarvis_live.protocol import Frame, Marker, server_message_adapter
 from jarvis_live.replay import ReplayProducer
 from jarvis_live.retention import purge_expired_audio
 from jarvis_live.users import create_user
@@ -829,3 +829,17 @@ async def test_recording_is_served_as_wav_with_ranges(server: ServerHandle, sm: 
         # no file (never recorded, or removed by retention)
         assert (await c.get(f"/v1/sessions/{sid}/audio/system.wav")).status_code == 404
         assert (await c.get(f"/v1/sessions/{sid}/audio/other.wav")).status_code == 422
+
+
+async def test_resent_markers_are_stored_once(sm: SM) -> None:
+    device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}")
+    sid = await make_session(sm, device_id)
+    for _ in range(2):  # a client resends after a reconnect
+        await save_marker(sm, sid, Marker(t_ms=500, label="mark"))
+    await save_marker(sm, sid, Marker(t_ms=500, label="todo"))
+    await save_marker(sm, sid, Marker(t_ms=900, label="mark"))
+    async with sm() as db:
+        rows = (
+            (await db.execute(select(MarkerRow).where(MarkerRow.session_id == sid))).scalars().all()
+        )
+    assert sorted((m.t_ms, m.label) for m in rows) == [(500, "mark"), (500, "todo"), (900, "mark")]

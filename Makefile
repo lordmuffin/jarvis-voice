@@ -5,7 +5,7 @@
 LEGACY_PY ?= python3
 RATCHET := python3 scripts/tdd/ratchet.py
 
-.PHONY: help deps tools test test-all lint lint-server lint-web lint-workflows lint-design lint-android lint-swift \
+.PHONY: help deps tools test test-all lint lint-server lint-web lint-workflows lint-design lint-android lint-swift lint-egress \
 	test-server test-legacy test-web test-policy \
 	test-server-full test-legacy-cov test-web-cov test-e2e test-android test-macos ratchet
 
@@ -37,11 +37,14 @@ lint-workflows:
 
 # Design-system guardrails: no hard-coded colours/sizes/fonts outside the vendored Instrument
 # trees. Web is stylelint (lint-web); Android and Swift are below. See CLAUDE.md.
-lint-design: lint-android lint-swift
+lint-design: lint-android lint-swift lint-egress
 
 lint-android:
 	$(LEGACY_PY) -m pytest -q scripts/lint
 	$(LEGACY_PY) scripts/lint/check_android_design.py .
+
+lint-egress:
+	$(LEGACY_PY) scripts/lint/check_egress.py .
 
 lint-swift:
 	@if command -v swiftlint >/dev/null 2>&1; then cd macos && swiftlint lint --strict; \

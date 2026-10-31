@@ -152,6 +152,8 @@ class PublishService:
         if found is None:
             raise PublishError(404, "session not found")
         row, owner = found
+        if row.restricted:
+            raise PublishError(409, "this session is restricted and is never published")
         if not may_publish_for(owner):
             raise PublishError(409, "only the owner's and admins' notes are published")
         note = await latest_final_note(db, session_id)
@@ -492,7 +494,12 @@ class PublishService:
                 )
             ).scalar_one_or_none()
             pub = await self._row(db, session_id)
+            restricted = await db.scalar(
+                select(SessionRow.restricted).where(SessionRow.id == session_id)
+            )
         if found is None or not found.auto_publish or not may_publish_for(found) or pub:
+            return
+        if restricted:
             return
         try:
             await self.publish(session_id, found)
@@ -517,7 +524,8 @@ class PublishService:
             .join(User, User.id == SessionRow.user_id)
             .join(latest, latest.c.session_id == SessionRow.id)
             .outerjoin(NotePublication, NotePublication.session_id == SessionRow.id)
-            .where((User.id == OWNER_USER_ID) | User.is_admin, SessionRow.deleted_at.is_(None))
+            .where((User.id == OWNER_USER_ID) | User.is_admin)
+            .where(SessionRow.restricted.is_(False))
         )
         async with self._sm() as db:
             ready = (
