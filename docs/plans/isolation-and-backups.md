@@ -238,6 +238,25 @@ Original questions:
 - **D5. Missing-run alert:** add an age-of-last-success check to `/healthz` (or just rely on a Gotify failure from the job)? I recommend the check; it is ~20 lines.
 - **D6. Offsite for the DB:** this plan gets a dump offsite via Velero. The homelab docs note barman data itself has no offsite copy; fixing that belongs in np-home-homelab and is out of scope here.
 
+## 8b. Where the implementation differs from the plan above
+
+- **Purge order (§3):** files first, then rows, with the session row locked (`FOR UPDATE`) for the
+  whole purge. A file error rolls everything back, so a session is never left with rows and no
+  audio; a restore that arrives mid-purge waits and then finds nothing. The orphan-directory
+  sweep was dropped: a wrong or empty database would make it delete every recording.
+- **Backup integrity check (§5):** the dump is read back with `pg_restore --list`, rather than
+  cross-checked against the manifest. Restore is where the manifest is enforced.
+- **Admin writes (D3):** note edit, regenerate and process are owner-only (403 for an admin).
+  Publication stays with the publisher rule, because existing behaviour and tests have admins
+  publish the owner's notes.
+- **Android:** delete, Recently deleted and restore are in the app. "Delete after N days" is
+  in the API client and on the web, not in the Android UI.
+- **Lab:** the backup CronJob is suspended by a patch in the lab overlay, and a policy requires it.
+- **Not verified here:** the Dockerfile's `postgresql-client-18` step (the sandbox has no network
+  inside containers); the server-image workflow is its first real build.
+- **Real restore:** not yet performed; it needs the job to have run on a deployed build. The
+  runbook's restore log is empty until then.
+
 ## 9. Definition of done (from your brief)
 
 - [ ] This plan approved
