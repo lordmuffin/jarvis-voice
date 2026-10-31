@@ -1,13 +1,13 @@
 """markers: one per (session, time, label), so a client can safely resend them
 
-Revision ID: 0010
-Revises: 0009
+Revision ID: 0011
+Revises: 0010
 """
 
 from alembic import op
 
-revision = "0010"
-down_revision = "0009"
+revision = "0011"
+down_revision = "0010"
 branch_labels = None
 depends_on = None
 
