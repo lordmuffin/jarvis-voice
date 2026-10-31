@@ -8,16 +8,17 @@ public enum LiveAPIError: Error, Equatable, Sendable {
 /// Minimal REST client for session creation and WebSocket tickets.
 public struct LiveAPIClient: Sendable {
     public let baseURL: URL
-    private let session: URLSession
+    private let session: GatedSession
     private let bearerToken: @Sendable () async throws -> String
 
     public init(
         baseURL: URL,
         session: URLSession = .shared,
+        gate: EgressGate = .shared,
         bearerToken: @escaping @Sendable () async throws -> String
     ) {
         self.baseURL = baseURL
-        self.session = session
+        self.session = GatedSession(session, gate: gate)
         self.bearerToken = bearerToken
     }
 

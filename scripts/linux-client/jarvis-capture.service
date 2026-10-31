@@ -1,0 +1,23 @@
+[Unit]
+Description=Jarvis Live headless capture endpoint
+Documentation=https://github.com/lordmuffin/jarvis-voice#linux-headless-capture-client
+# The recorder needs the user's sound server. Units that don't exist are ignored.
+After=pipewire-pulse.service pulseaudio.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Records continuously and rolls to a new session every max_session_hours (default 4).
+# Settings come from ~/.config/jarvis-live/client.toml; optional overrides in the env file.
+ExecStart=%h/.local/bin/jarvis-live capture start --foreground --resume-or-new
+EnvironmentFile=-%h/.config/jarvis-live/env
+Restart=on-failure
+RestartSec=5
+# Exit 2 is a configuration error (e.g. no mode set): restarting cannot fix it.
+RestartPreventExitStatus=2
+# Stopping flushes audio and waits for the server to confirm, up to 30 s.
+TimeoutStopSec=45
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

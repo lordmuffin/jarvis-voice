@@ -34,6 +34,7 @@ export function SessionHeader({
         <span class="t-label">
           {kind} · {when(session.started_at)}
           {suffix && ` · ${suffix}`}
+          {session.restricted && " · Restricted"}
         </span>
         <div class="i-row">{title}</div>
         <OwnerLabel owner={session.owner} />

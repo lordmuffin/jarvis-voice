@@ -4,6 +4,7 @@ alert."""
 
 import asyncio
 import logging
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -11,6 +12,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live import metrics
 from jarvis_live.actions.intake import ActionIntake, SessionProposals
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
@@ -23,6 +25,7 @@ from jarvis_live.ingest.retranscribe import RetranscribeFailed, retranscribe
 from jarvis_live.llm.client import LLM
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.processing import Job, JobSource, Stage
+from jarvis_live.slo import SloMonitor
 from jarvis_live.stt.backend import STTBackend
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.ideas import IdeasLoop, IdeasPass
@@ -60,10 +63,13 @@ class Orchestrator:
             IdeasPass(settings, sessionmaker, llm) if settings.work_items_enabled else None
         )
         self._finals: set[asyncio.Task[object]] = set()
+        self._job_t0: dict[uuid.UUID, float] = {}  # monotonic start of each job
         self._jobs: dict[uuid.UUID, Job] = {}  # a finalizer (or reprocess) run is in flight
         self._transcription_failed: set[uuid.UUID] = set()  # the last reprocess could not
         self._on_final = on_final  # after a note is written (auto-publish)
         self._orphans: dict[uuid.UUID, float] = {}  # live in the DB, no ingest state: first seen
+        self._slo = SloMonitor(settings, notifier, self._clock)
+        metrics.add_observer(self._slo.observe)
         self._outage_since: float | None = None
         self._outage_notified = False
 
@@ -120,12 +126,14 @@ class Orchestrator:
         self, session_id: uuid.UUID, source: JobSource, stage: Stage, coro: Awaitable[None]
     ) -> None:
         self._jobs[session_id] = Job(source, stage, datetime.now(UTC))
+        self._job_t0[session_id] = time.monotonic()
 
         async def run() -> None:
             try:
                 await coro
             finally:
                 self._jobs.pop(session_id, None)
+                self._job_t0.pop(session_id, None)
 
         task = asyncio.create_task(run())
         self._finals.add(task)
@@ -178,8 +186,8 @@ class Orchestrator:
 
     async def _ideas_eligible(self, row: SessionRow) -> bool:
         """Work items target the owner's repositories: only the owner's and admins' sessions
-        are mined for them, and never a local-only one."""
-        if row.local_only:
+        are mined for them, and never a local-only or restricted one."""
+        if row.local_only or row.restricted:
             return False
         if row.user_id == OWNER_USER_ID:
             return True
@@ -248,7 +256,14 @@ class Orchestrator:
     async def _finalize(
         self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
     ) -> None:
-        result = await self._finalizer.run(session_id, replace=replace, notify=notify)
+        job = self._jobs.get(session_id)
+        result = await self._finalizer.run(
+            session_id,
+            replace=replace,
+            notify=notify,
+            source=job.source if job else "finalize",
+            since=self._job_t0.get(session_id),
+        )
         if result is None or self._on_final is None:
             return
         try:
@@ -289,12 +304,27 @@ class Orchestrator:
         assert self._hub is not None
         now = self._clock.monotonic()
         live = self._hub.live_sessions()
+        metrics.sessions(len(live), max((st.pipeline.lag_ms() for st in live), default=0))
         await self._check_stt_outage(now, bool(live))
+        await self._slo.check(now, any_live=bool(live), stt_up=self._stt.current_tier() is not None)
         for st in live:
-            if not st.uploading and now - st.pipeline.last_audio_at > self._cfg.idle_end_s:
+            if (
+                not st.uploading
+                and now - st.pipeline.last_audio_at > self._cfg.idle_end_s
+                and not self._producer_may_return(st, now)
+            ):
                 log.info("ending idle session %s", st.session_id)
                 await self._hub.end(st.session_id)
         await self._end_orphans(now, {st.session_id for st in live})
+
+    def _producer_may_return(self, st: SessionIngest, now: float) -> bool:
+        """A producer that dropped without `end` keeps the session alive for a grace period."""
+        gone = st.producer_gone_at
+        return (
+            st.producer is None
+            and gone is not None
+            and now - gone < self._cfg.producer_gone_grace_s
+        )
 
     async def _end_orphans(self, now: float, in_hub: set[uuid.UUID]) -> None:
         """Sessions that are ``live`` in the DB but have no ingest state (e.g. after a restart,
@@ -332,6 +362,7 @@ class Orchestrator:
     # --- shutdown ---------------------------------------------------------------------------
 
     async def shutdown(self) -> None:
+        metrics.remove_observer(self._slo.observe)
         tasks = [*self._copilots.values(), *self._ideas.values(), *self._finals]
         for t in tasks:
             t.cancel()

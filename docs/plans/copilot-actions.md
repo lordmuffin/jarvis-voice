@@ -102,7 +102,7 @@ of a session. It matters for the "approve at finalize" flow.
 
 ## 4. Lifecycle, approval and execution
 
-### 4.1 Data (Alembic `0010_action_proposals`)
+### 4.1 Data (Alembic `0013_action_proposals`)
 
 `action_proposals`: `id`, `session_id`, `user_id`, `ref`, `position`, `kind`, `payload` JSONB,
 `payload_sha256`, `dedupe_key` (unique with `session_id`), `evidence` JSONB, `state`,
@@ -246,7 +246,7 @@ REST, owner-scoped (404 for anyone else), under `/v1`: `GET /sessions/{id}/actio
 ## 7. Build order (TDD; one PR per step, Conventional Commits)
 
 1. `feat(server)`: schema + `ProposalState` (pure): dedupe, validation, caps, hash. Tests first.
-2. `feat(server)`: migration `0010`, `ActionService` (approve CAS, edit, reject, expire, events),
+2. `feat(server)`: migration `0013`, `ActionService` (approve CAS, edit, reject, expire, events),
    REST. Fake executors. Tests include the audit trail and the no-auto-run test.
 3. `feat(server)`: copilot + finalizer emit proposals (prompts, `CopilotDelta`/`FinalNote`,
    golden `final_note.md` update, `## Proposed actions` rendering).

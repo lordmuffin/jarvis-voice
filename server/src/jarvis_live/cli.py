@@ -5,11 +5,10 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
-from jarvis_live.config import get_settings
-
 
 def _with_db(fn: Callable[[Any], Awaitable[int]]) -> int:
     """Run ``fn(sessionmaker)`` against the configured database."""
+    from jarvis_live.config import get_settings
     from jarvis_live.db.session import make_engine, make_sessionmaker
 
     async def go() -> int:
@@ -98,7 +97,9 @@ def _claim_owner(email: str) -> int:
 def _replay(args: argparse.Namespace) -> int:
     from jarvis_live.replay import replay
 
-    res = asyncio.run(replay(args.server, args.token, Path(args.wav), args.channel, args.speed))
+    res = asyncio.run(
+        replay(args.server, args.token, Path(args.wav), args.channel, args.speed, args.drafts)
+    )
     segments = [e for e in res.events if e.get("type") == "segment"]
     print(f"session {res.session_id}: sent {res.sent_frames} frames, acked {res.acked}")
     for s in segments:
@@ -189,8 +190,17 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--wav", required=True)
     p.add_argument("--channel", choices=["mic", "system"], default="mic")
     p.add_argument("--speed", type=float, default=4.0)
+    p.add_argument(
+        "--drafts", action="store_true", help="also send partial drafts, like a client does"
+    )
+
+    from jarvis_live.client import capture_cli
+
+    capture_cli.add_parser(sub)
 
     args = parser.parse_args(argv)
+    if args.cmd == "capture":
+        return capture_cli.run(args)
     if args.cmd == "create-device":
         return _create_device(args.name, args.user)
     if args.cmd == "list-users":
@@ -204,6 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "export-transcript":
         return _export_transcript(args.session_id)
     if args.cmd == "migrate":
+        from jarvis_live.config import get_settings
         from jarvis_live.db.session import run_migrations
 
         run_migrations(get_settings().database_url)
@@ -211,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "serve":
         import uvicorn
 
+        from jarvis_live.config import get_settings
         from jarvis_live.logging_setup import configure_logging
 
         configure_logging(get_settings().log_level)

@@ -167,9 +167,11 @@ def fin(sm: SM, tmp_path: Path, note: FinalNote, with_intake: bool = True) -> tu
     return f, notifier
 
 
-async def finalizing(sm: SM, user_id: uuid.UUID = OWNER_USER_ID) -> uuid.UUID:
+async def finalizing(
+    sm: SM, user_id: uuid.UUID = OWNER_USER_ID, *, restricted: bool = False
+) -> uuid.UUID:
     device_id, _ = await new_device(sm, f"dev-{uuid.uuid4()}", user_id=user_id)
-    sid = await make_session(sm, device_id, status="finalizing")
+    sid = await make_session(sm, device_id, status="finalizing", restricted=restricted)
     await add_segments(sm, sid, [(60_000, 64_000, "me", "Remind me to send the invoice Monday.")])
     return sid
 
@@ -246,9 +248,27 @@ async def test_only_reviewable_sessions_get_a_proposal_door(sm: SM, tmp_path: Pa
     other = await create_user(sm, f"other {uuid.uuid4().hex[:6]}")
     mine, theirs = await row_of(OWNER_USER_ID), await row_of(other.id)
     local = await row_of(OWNER_USER_ID, local_only=True)
+    work_call = await row_of(OWNER_USER_ID, restricted=True)
     on = orch(True)
     assert await on._proposals_for(mine) is not None
     assert await on._proposals_for(theirs) is None  # not the vault's owner or an admin
     assert await on._proposals_for(local) is None  # never leaves the device's control
+    assert await on._proposals_for(work_call) is None  # restricted: never pushed or written out
     assert await orch(False)._proposals_for(mine) is None  # feature off
     assert await orch(True, with_intake=False)._proposals_for(mine) is None
+
+
+async def test_a_restricted_work_call_gets_no_proposals_and_a_plain_push(
+    sm: SM, tmp_path: Path
+) -> None:
+    sid = await finalizing(sm, restricted=True)
+    f, notifier = fin(sm, tmp_path, note_with(task("Send the invoice", at="01:01")))
+    result = await f.run(sid)
+    assert result is not None
+    text = next((tmp_path / "outbox").rglob(result.path.split("/")[-1])).read_text()
+    assert "Proposed actions" not in text  # never written to the vault, or pushed
+    async with sm() as db:
+        found = await db.scalars(select(ActionProposal).where(ActionProposal.session_id == sid))
+        assert found.all() == []
+    sent = notifier.sent[0]
+    assert "waiting" not in sent.message and "Invoice" not in sent.title + sent.message

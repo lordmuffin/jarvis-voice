@@ -1,15 +1,15 @@
 """action_proposals and action_proposal_events: what the copilot proposes to do, and its audit log
 
-Revision ID: 0010
-Revises: 0009
+Revision ID: 0013
+Revises: 0012
 """
 
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects import postgresql
 
-revision = "0010"
-down_revision = "0009"
+revision = "0013"
+down_revision = "0012"
 branch_labels = None
 depends_on = None
 
