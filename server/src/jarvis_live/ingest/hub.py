@@ -37,6 +37,8 @@ class SessionIngest:
     store: AudioStore
     pipeline: SessionPipeline
     producer: WebSocket | None = None
+    # time.monotonic() when the producer last disconnected without ending; None while connected.
+    producer_gone_at: float | None = None
     # Fed from an uploaded file rather than a producer (see ingest/upload.py).
     uploading: bool = False
     ended: asyncio.Event = field(default_factory=asyncio.Event)
