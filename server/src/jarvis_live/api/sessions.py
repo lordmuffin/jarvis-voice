@@ -16,6 +16,7 @@ from jarvis_live.db.models import CopilotItem, MarkerRow, NotePublication, Segme
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.note_items import merge_note_items
 from jarvis_live.finalize.outbox import latest_final_note, outbox_dir, read_note
+from jarvis_live.finalize.restriction import lift_restriction
 from jarvis_live.ingest.upload import UndecodableAudio, decode_to_pcm
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.processing import ProcessingState, derive
@@ -55,6 +56,8 @@ class SessionOut(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     local_only: bool
+    # A work call: its note is filed apart and nothing leaves the homelab (see ``publish/``).
+    restricted: bool
     # "watch" for a recording made on the Wear OS app; None when the uploader did not say.
     source: str | None
     # Audio is arriving right now. ``status`` stays ``live`` while a dropped producer may still
@@ -73,6 +76,7 @@ class SessionOut(BaseModel):
             started_at=s.started_at,
             ended_at=s.ended_at,
             local_only=s.local_only,
+            restricted=s.restricted,
             source=s.source,
             streaming=s.status == "live" and request.app.state.hub.is_streaming(s.id),
             owner=OwnerOut(id=owner.id, display_name=owner.display_name),
@@ -229,6 +233,7 @@ async def create_session(
         mode=body.mode,
         status="live",
         channels=list(body.channels),
+        restricted=bool(body.restricted),
     )
     db.add(row)
     await db.commit()
@@ -249,6 +254,7 @@ async def upload_recording(
     title: Annotated[str | None, Query(max_length=200)] = None,
     filename: Annotated[str | None, Query(max_length=255)] = None,
     mode: Literal["meeting", "solo"] = "solo",
+    restricted: bool = False,
     source: Literal["watch", "phone", "web"] | None = None,
     client_id: Annotated[str | None, Query(min_length=1, max_length=64)] = None,
 ) -> SessionCreateResponse:
@@ -304,6 +310,7 @@ async def upload_recording(
         mode=mode,
         status="live",
         channels=["mic"],
+        restricted=restricted,
         source=source,
         client_id=client_id,
     )
@@ -424,7 +431,9 @@ async def get_session(
         publication=PublicationOut.of(pub, final_note.markdown if final_note else None)
         if pub
         else None,
-        can_publish=service.can_publish(principal.user) and may_publish_for(owner),
+        can_publish=service.can_publish(principal.user)
+        and may_publish_for(owner)
+        and not row.restricted,
         can_regenerate=request.app.state.orchestrator is not None and not row.local_only,
         processing=processing_of(request, row),
         markers=[MarkerOut(t_ms=m.t_ms, label=m.label) for m in markers],
@@ -487,6 +496,23 @@ async def update_session(
     await db.commit()
     session_logger(__name__, row.id).info("session renamed")
     return SessionOut.of(row, owner, request)
+
+
+@router.post("/{session_id}/unrestrict")
+async def unrestrict_session(
+    session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
+) -> SessionOut:
+    """Lift a session's restriction: its note moves out of ``Restricted/`` and may be published
+    like any other. Only the session's owner may, and not while its note is being written. A
+    session that is not restricted is returned as it is."""
+    row = await _owned(db, principal, session_id)
+    if row.restricted:
+        if row.status == "finalizing":
+            raise HTTPException(409, "The note is being written. Try again when it is done.")
+        await lift_restriction(request.app.state.settings, request.app.state.sessionmaker, row.id)
+        await db.refresh(row)
+        session_logger(__name__, row.id).info("restriction lifted")
+    return SessionOut.of(row, principal.user, request)
 
 
 @router.get("/{session_id}/audio/{channel}.wav")

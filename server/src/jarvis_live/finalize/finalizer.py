@@ -46,6 +46,7 @@ log = logging.getLogger(__name__)
 
 CHARS_PER_TOKEN = 4
 MAX_RELATED = 8
+RESTRICTED_DIR = "Restricted"  # outbox folder for the owner's work calls
 
 
 def estimate_tokens(text: str) -> int:
@@ -151,6 +152,7 @@ class Finalizer:
             user=user.display_name if user else None,
             mode=row.mode,
             source=row.source,
+            restricted=row.restricted,
             duration_minutes=max(1, round(duration_s / 60)),
         )
         markdown = render_note(note, meta, lines, work_items)
@@ -159,6 +161,8 @@ class Finalizer:
         )
         # Each user's notes go to their own folder; the owner's (no folder) to the outbox root.
         subdir = user.notes_subdir if user else None
+        if row.restricted:  # a work call is filed apart, where the publisher never looks
+            subdir = f"Restricted - {subdir}" if subdir else RESTRICTED_DIR
         written = await asyncio.to_thread(
             write_atomic,
             self.outbox / subdir if subdir else self.outbox,
@@ -176,13 +180,13 @@ class Finalizer:
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
         if notify:
-            await self._notify_owner(
-                session_id,
-                "Jarvis: note ready",
-                f"**{note.title}**\n\n{note.summary.strip()}",
-                5,
-                self._session_url(session_id),
+            # A restricted note's title and summary stay off the phone: Gotify is a push relay.
+            title, body = (
+                ("Jarvis: restricted note ready", "A restricted note is ready.")
+                if row.restricted
+                else ("Jarvis: note ready", f"**{note.title}**\n\n{note.summary.strip()}")
             )
+            await self._notify_owner(session_id, title, body, 5, self._session_url(session_id))
         return FinalResult(written, note.title)
 
     def _remove_old(self, name: str, session_id: str) -> None:

@@ -134,6 +134,9 @@ class Session(Base):
     started_at: Mapped[datetime] = _now()
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     local_only: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    # A work call. Never set by the server itself: the client says so when it creates or uploads
+    # the session. The note is tagged and filed apart, and nothing leaves the homelab.
+    restricted: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Not in the A2 column list, but the duplicate guard must know up front whether a system
     # channel exists (it comes from the create request).
     channels: Mapped[list[str]] = mapped_column(
