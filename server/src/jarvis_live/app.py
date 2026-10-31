@@ -282,6 +282,12 @@ def create_app(
                 push,
                 on_final=publisher.on_note_ready,
                 intake=intake,
+                diarizer=diarizer
+                or (
+                    HttpDiarizer(cfg.diarize_url, client, timeout_s=None)
+                    if cfg.diarize_url
+                    else None
+                ),
             )
         hub = IngestHub(
             cfg,

@@ -1,15 +1,15 @@
 """speakers: diarized turns, the speakers of a session, and who spoke each segment
 
-Revision ID: 0013
-Revises: 0012
+Revision ID: 0015
+Revises: 0014
 """
 
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "0013"
-down_revision = "0012"
+revision = "0015"
+down_revision = "0014"
 branch_labels = None
 depends_on = None
 
