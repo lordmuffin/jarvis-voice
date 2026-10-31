@@ -62,6 +62,21 @@ class LiveConnectionTest {
         return outbox
     }
 
+    @Test fun shuttingTheGateCutsAnOpenConnection() = runBlocking {
+        val gate = EgressGate()
+        val outbox = outboxWith(3)
+        val conn = LiveConnection(api(), sessionId, "android:test", outbox, scope, fastConfig, gate = gate)
+        conn.start()
+        withTimeout(5_000) { while (fake.received.size < 3) delay(10) }
+
+        gate.beginLocalSession()
+
+        assertEquals(ConnState.Idle, conn.state.value)
+        conn.enqueueAudio(Channel.MIC, ByteArray(AudioFrame.FRAME_BYTES), 300)
+        delay(200)
+        assertEquals(3, fake.received.size)
+    }
+
     @Test fun streamsEverythingThenEnds() = runBlocking {
         val outbox = outboxWith(10)
         val conn = LiveConnection(api(), sessionId, "android:test", outbox, scope, fastConfig)

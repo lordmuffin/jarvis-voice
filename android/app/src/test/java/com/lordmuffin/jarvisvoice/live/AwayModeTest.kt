@@ -3,6 +3,7 @@ package com.lordmuffin.jarvisvoice.live
 import com.lordmuffin.jarvisvoice.live.NetworkPlace.AWAY
 import com.lordmuffin.jarvisvoice.live.NetworkPlace.HOME
 import com.lordmuffin.jarvisvoice.live.NetworkPlace.NETBIRD
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -97,5 +98,22 @@ class AwayModeTest {
         mode = mode.withEnabled(true)
         assertNull(mode.manual)
         assertTrue(mode.localOnly)
+    }
+
+    @Test fun aBlockedProbeSaysNothingAboutWhereThePhoneIs() = runBlocking {
+        val gate = EgressGate().apply { beginLocalSession() }
+        assertNull(probePlace(gate, netBird = false) { error("no probe while blocked") })
+    }
+
+    @Test fun aProbeOverlappedByALocalSessionIsDiscarded() = runBlocking {
+        val gate = EgressGate()
+        assertNull(probePlace(gate, netBird = false) { gate.beginLocalSession(); false })
+    }
+
+    @Test fun anOpenGateReportsThePlace() = runBlocking {
+        val gate = EgressGate()
+        assertEquals(NetworkPlace.NETBIRD, probePlace(gate, netBird = true) { false })
+        assertEquals(NetworkPlace.HOME, probePlace(gate, netBird = false) { true })
+        assertEquals(NetworkPlace.AWAY, probePlace(gate, netBird = false) { false })
     }
 }

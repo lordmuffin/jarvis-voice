@@ -34,12 +34,10 @@ class NetworkPlaceMonitor(context: Context) {
         awaitClose { cm.unregisterNetworkCallback(callback) }
     }.conflate()
 
-    /** NetBird first (no network round trip), then the server's health check. */
-    suspend fun check(api: LiveApiClient): NetworkPlace = when {
-        NetBird.detect(interfaces()) -> NetworkPlace.NETBIRD
-        api.isReachable() -> NetworkPlace.HOME
-        else -> NetworkPlace.AWAY
-    }
+    /** NetBird first (no network round trip), then the server's health check. Null while a
+     *  local-only session keeps the check from running (see [probePlace]). */
+    suspend fun check(api: LiveApiClient): NetworkPlace? =
+        probePlace(EgressGate.shared, NetBird.detect(interfaces())) { api.isReachable() }
 
     @Suppress("DEPRECATION")  // allNetworks: its replacement is callback-only.
     private fun interfaces(): List<NetInterface> = cm.allNetworks.mapNotNull { network ->

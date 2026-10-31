@@ -6,6 +6,17 @@ import XCTest
 final class LocalMarkdownTests: XCTestCase {
     private let started = Date(timeIntervalSince1970: 1_790_000_000)
 
+    func testASessionKeptLocalUploadsRestrictedAndAServerOutageDoesNot() {
+        var header = LocalMarkdown.Header(
+            sessionId: "0b1f6d2e-7e0a-4c53-9d3f-2a5e0a6c1d11", mode: .meeting,
+            channels: [.mic], started: started, uploadedAs: nil
+        )
+        XCTAssertEqual(header.uploadRequest.restricted, true)
+        XCTAssertEqual(header.uploadRequest.channels, [.mic])
+        header.autoUpload = true
+        XCTAssertNil(header.uploadRequest.restricted)
+    }
+
     func testRenderThenParseRoundTripsTheHeader() throws {
         let header = LocalMarkdown.Header(
             sessionId: "0b1f6d2e-7e0a-4c53-9d3f-2a5e0a6c1d11", mode: .meeting,

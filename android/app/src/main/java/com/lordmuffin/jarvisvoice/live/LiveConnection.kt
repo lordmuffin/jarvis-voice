@@ -63,6 +63,7 @@ class LiveConnection(
     private val config: Config = Config(),
     /** Every marker of the session; resent after each handshake because delivery is not acked. */
     private val markers: () -> List<ClientMessage.Marker> = { emptyList() },
+    private val gate: EgressGate = EgressGate.shared,
 ) {
     data class Config(
         /** The send loop pauses while more than this much sent audio is unacked. */
@@ -91,6 +92,8 @@ class LiveConnection(
 
     private var runJob: Job? = null
     private var failureCount = 0
+    private var releaseGate: (() -> Unit)? = null
+    @Volatile private var socket: Socket? = null
     @Volatile private var endRequested = false
     @Volatile private var endSent = false
     @Volatile private var finished = false
@@ -100,6 +103,7 @@ class LiveConnection(
     /** Starts connecting. Idempotent. */
     fun start() = synchronized(lock) {
         if (runJob != null || finished) return
+        releaseGate = gate.whenShut(::cut)
         runJob = scope.launch { run() }
     }
 
@@ -130,6 +134,12 @@ class LiveConnection(
     fun stop() {
         synchronized(lock) { runJob?.cancel(); runJob = null }
         if (!finished) finish(ConnState.Idle)
+    }
+
+    /** A local-only session began: drop the socket now, unsent frames included. The outbox resumes. */
+    private fun cut() {
+        socket?.cancel()
+        stop()
     }
 
     // endregion
@@ -167,6 +177,7 @@ class LiveConnection(
     private suspend fun runOnce() {
         val ticket = api.ticket(sessionId)
         val socket = Socket.open(api.http, api.streamUrl(sessionId, ticket))
+        this.socket = socket
         endSent = false  // `end` is re-sent on a new connection if it was not fully acked.
         try {
             converse(socket)
@@ -350,6 +361,8 @@ class LiveConnection(
         synchronized(lock) {
             if (finished) return
             finished = true
+            releaseGate?.invoke()
+            releaseGate = null
         }
         setState(terminal)
         done.complete(terminal)
@@ -376,6 +389,9 @@ class LiveConnection(
         fun close() {
             if (!ws.close(1000, null)) ws.cancel()
         }
+
+        /** Immediately, without flushing what is queued. */
+        fun cancel() = ws.cancel()
 
         override fun onMessage(webSocket: WebSocket, text: String) {
             incoming.trySend(text)

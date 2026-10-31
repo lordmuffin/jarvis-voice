@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from jarvis_live import metrics
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import RELATED
@@ -28,17 +30,19 @@ from jarvis_live.copilot.transcript import Line, load_lines, render_lines
 from jarvis_live.db.models import OWNER_USER_ID, CopilotItem, Device, User, WorkItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.finalize.outbox import (
-    FINAL_NOTE_KIND,
-    note_file,
     outbox_dir,
     overwrite_atomic,
     owned_by,
+    record_final_note,
+    remove_superseded,
 )
 from jarvis_live.finalize.render import NoteMeta, NoteWorkItem, render_filename, render_note
+from jarvis_live.finalize.timing import load_timing, render_timing
 from jarvis_live.llm.client import LLM
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
 from jarvis_live.protocol import FinalNote as FinalNoteMessage
+from jarvis_live.stt.tiers import parse_tiers
 from jarvis_live.vault.index import NullVault, VaultContext
 from jarvis_live.workitems.template import session_url
 
@@ -88,20 +92,30 @@ class Finalizer:
         return outbox_dir(self._cfg)
 
     async def run(
-        self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
+        self,
+        session_id: uuid.UUID,
+        *,
+        replace: str | None = None,
+        notify: bool = True,
+        source: str = "finalize",
+        since: float | None = None,
     ) -> FinalResult | None:
         """Finalize one session. Never raises: failures set status ``failed`` and notify.
 
         ``replace`` is the outbox path of an earlier note of this session (a regeneration): if
         the new note lands under a different name, the old file is removed. ``notify=False``
-        skips the "note ready" push (a regeneration the user asked for and is watching)."""
+        skips the "note ready" push (a regeneration the user asked for and is watching).
+        ``source`` and ``since`` (a ``time.monotonic()`` reading from when the job began) only
+        label and anchor the duration metric."""
         slog = session_logger(__name__, session_id)
+        began = time.monotonic() if since is None else since
         try:
-            result = await self._finalize(session_id, replace=replace, notify=notify)
+            result = await self._finalize(session_id, replace=replace, notify=notify, source=source)
         except asyncio.CancelledError:
             raise  # shutdown: stays ``finalizing`` and is retried on the next start
         except Exception:
             slog.exception("finalizer failed")
+            metrics.finalize(source, "error", time.monotonic() - began)
             await self._set_status(session_id, "failed")
             await self._notify_owner(
                 session_id,
@@ -111,10 +125,12 @@ class Finalizer:
                 self._session_url(session_id),
             )
             return None
+        if result is not None:  # no transcript / local-only: nothing was written, nothing timed
+            metrics.finalize(source, "ok", time.monotonic() - began)
         return result
 
     async def _finalize(
-        self, session_id: uuid.UUID, *, replace: str | None, notify: bool
+        self, session_id: uuid.UUID, *, replace: str | None, notify: bool, source: str = "finalize"
     ) -> FinalResult | None:
         async with self._sm() as db:
             row = await db.get(SessionRow, session_id)
@@ -155,7 +171,8 @@ class Finalizer:
             restricted=row.restricted,
             duration_minutes=max(1, round(duration_s / 60)),
         )
-        markdown = render_note(note, meta, lines, work_items)
+        timing = await self._timing(session_id, row.ended_at if source == "finalize" else None)
+        markdown = render_note(note, meta, lines, work_items, timing)
         name = render_filename(
             self._cfg.final_filename_template, created, note.title, str(session_id)
         )
@@ -173,9 +190,9 @@ class Finalizer:
         if subdir:
             written = f"{subdir}/{written}"
         if replace and replace != written:
-            await asyncio.to_thread(self._remove_old, replace, str(session_id))
+            await asyncio.to_thread(remove_superseded, self.outbox, replace, str(session_id))
 
-        await self._persist_final(session_id, written, note.title)
+        await record_final_note(self._sm, session_id, written, note.title)
         await self._fill_title(session_id, note.title)
         await self._set_status(session_id, "done")
         self._bus.publish(str(session_id), FinalNoteMessage(path=written, title=note.title))
@@ -189,11 +206,22 @@ class Finalizer:
             await self._notify_owner(session_id, title, body, 5, self._session_url(session_id))
         return FinalResult(written, note.title)
 
-    def _remove_old(self, name: str, session_id: str) -> None:
-        """Drop a regenerated session's previous note, but never another session's file."""
-        path = note_file(self.outbox, name)
-        if path is not None and owned_by(path, session_id):
-            path.unlink(missing_ok=True)
+    async def _timing(self, session_id: uuid.UUID, stopped_at: datetime | None) -> list[str] | None:
+        """The note's "Session timing" section. Never blocks the note."""
+        try:
+            async with self._sm() as db:
+                summary = await load_timing(db, session_id)
+            if summary is None:
+                return None
+            try:
+                primary = parse_tiers(self._cfg.whisper_tiers)[0].name
+            except (ValueError, IndexError):
+                primary = None
+            waited = (datetime.now(UTC) - stopped_at).total_seconds() if stopped_at else None
+            return render_timing(summary, self._cfg, primary_tier=primary, stop_to_note_s=waited)
+        except Exception:
+            log.warning("could not summarise timing for %s", session_id, exc_info=True)
+            return None
 
     # --- LLM --------------------------------------------------------------------------------
 
@@ -290,17 +318,6 @@ class Finalizer:
         ]
 
     # --- persistence ------------------------------------------------------------------------
-
-    async def _persist_final(self, session_id: uuid.UUID, path: str, title: str) -> None:
-        async with self._sm() as db:
-            db.add(
-                CopilotItem(
-                    session_id=session_id,
-                    kind=FINAL_NOTE_KIND,
-                    payload={"path": path, "title": title},
-                )
-            )
-            await db.commit()
 
     async def _fill_title(self, session_id: uuid.UUID, title: str) -> None:
         """A session still untitled at the end (e.g. the copilot never ran) takes the note's

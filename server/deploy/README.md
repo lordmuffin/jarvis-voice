@@ -105,6 +105,26 @@ of it to `jarvis-live`.
 5. `flux resume kustomization ai-jarvis-live-lab`. Flux recreates the PVCs, and the app
    migrates the empty database on start.
 
+## Metrics, SLOs and the dashboard
+
+The server exports Prometheus metrics (`jarvis_live_*`) on `JARVIS_LIVE_METRICS_PORT` (9100, the
+Service's `metrics` port). It is not the app port because each channel's Ingress routes the app
+port to the internet. Labels are closed sets (channel, tier, outcome, job source); never a session.
+np-home-homelab scrapes both channels and provisions the dashboard from
+`server/deploy/grafana/jarvis-live.json` (this repo owns it; the homelab keeps a copy).
+
+The server judges its own latency SLOs from the handoff's budget (`JARVIS_LIVE_SLO_*`, see
+`slo.py`) and pushes **one** Gotify message per sustained breach, then stays quiet until the
+signal has been healthy for `SLO_CLEAR_S`. There is no recovery push and no Alertmanager rule
+(it would page twice). While a tier is breached the transcript SLO is tracked but silent, and
+copilot staleness defers to the copilot round trip, so one cause is one alert. The "transcription
+down" and "note failed" alerts are separate and unchanged.
+
+Every final note ends its summary with a "Session timing" section and a one-line verdict.
+
+To see it work against lab: `jarvis-live replay --server <lab url> --token ... --wav x.wav
+--drafts`, then open the dashboard on the `jarvis-live-lab` channel.
+
 ## What is not here
 
 This repository is public, so environment-private values stay in np-home-homelab:

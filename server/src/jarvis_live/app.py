@@ -11,6 +11,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+from jarvis_live import metrics
 from jarvis_live.api import account, auth, homelab, publishing, sessions, stream, work_items
 from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
@@ -229,7 +230,7 @@ def create_app(
         if orchestrator is not None:
             orchestrator.attach(hub)
             await orchestrator.recover()
-            tasks.append(asyncio.create_task(orchestrator.run_watchdog()))
+            tasks.append(asyncio.create_task(orchestrator.run_watchdog(cfg.watchdog_interval_s)))
         oidc: OIDCClient | None = None
         if cfg.oidc_issuer:
             if client is None:
@@ -283,9 +284,12 @@ def create_app(
                 )
             )
         )
+        metrics_server = metrics.serve(cfg.metrics_port) if cfg.metrics_port else None
         try:
             yield
         finally:
+            if metrics_server is not None:
+                metrics_server.close()
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)

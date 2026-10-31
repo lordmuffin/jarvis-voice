@@ -212,6 +212,7 @@ async def _producer_loop(
             await _reject(sub, ws, "bad_message", e.errors()[0]["msg"], log)
             return False
         if isinstance(parsed, DraftSegment):
+            ing.pipeline.on_draft(parsed)
             if parsed.final:  # partial drafts are only relayed, not stored
                 await save_draft(sm, ing.session_id, parsed)
             bus.publish(sid, parsed)

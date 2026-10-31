@@ -591,13 +591,19 @@ async def unrestrict_session(
     session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
 ) -> SessionOut:
     """Lift a session's restriction: its note moves out of ``Restricted/`` and may be published
-    like any other. Only the session's owner may, and not while its note is being written. A
-    session that is not restricted is returned as it is."""
+    like any other. Only the session's owner may, and only once the session has finished: its
+    note is not being written. Runs under the note's lock, which regenerating and reprocessing
+    take to reopen a session, so the status read here holds until the note has moved. A session
+    that is not restricted is returned as it is."""
     row = await _owned(db, principal, session_id)
     if row.restricted:
-        if row.status == "finalizing":
-            raise HTTPException(409, "The note is being written. Try again when it is done.")
-        await lift_restriction(request.app.state.settings, request.app.state.sessionmaker, row.id)
+        async with request.app.state.publishing.lock(session_id):
+            await db.refresh(row)
+            if row.status not in ("done", "failed"):
+                raise HTTPException(409, "The note is being written. Try again when it is done.")
+            await lift_restriction(
+                request.app.state.settings, request.app.state.sessionmaker, row.id
+            )
         await db.refresh(row)
         session_logger(__name__, row.id).info("restriction lifted")
     return SessionOut.of(row, principal.user, request)

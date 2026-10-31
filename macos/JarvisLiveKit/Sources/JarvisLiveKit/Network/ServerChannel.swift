@@ -48,11 +48,11 @@ public struct ServerInfo: Equatable, Sendable {
     /// Asks the server. Nil when it can't be reached, answers with anything but an ok health
     /// check, or doesn't name its environment (servers before the lab channel didn't).
     public static func fetch(baseURL: URL, session: URLSession? = nil, gate: EgressGate = .shared) async -> ServerInfo? {
-        guard !gate.isBlocking else { return nil }
         let request = URLRequest(
             url: baseURL.appending(path: "healthz"), timeoutInterval: NetworkPlaceDetector.probeTimeout
         )
-        let result = try? await (session ?? NetworkPlaceDetector.probeSession).data(for: request)
+        let result = try? await GatedSession(session ?? NetworkPlaceDetector.probeSession, gate: gate)
+            .data(for: request)
         guard let data = result?.0, let http = result?.1 as? HTTPURLResponse, (200..<300).contains(http.statusCode)
         else { return nil }
         struct Health: Decodable {
