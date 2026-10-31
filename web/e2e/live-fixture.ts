@@ -148,7 +148,8 @@ export async function mockLive(
   const json = (route: Route, body: unknown, code = 200) =>
     route.fulfill({ status: code, contentType: "application/json", body: JSON.stringify(body) });
 
-  await page.route(`**/v1/sessions/${LIVE_ID}`, (r) => json(r, detail()));
+  // A regex, not a glob: the page asks for `?include_deleted=true`, which a glob would not match.
+  await page.route(new RegExp(`/v1/sessions/${LIVE_ID}(\\?.*)?$`), (r) => json(r, detail()));
   await page.route(`**/v1/sessions/${LIVE_ID}/ticket`, (r) => json(r, { ticket: "t", expires_in: 60 }));
   await page.route(`**/v1/sessions/${LIVE_ID}/end`, (r) => {
     endCount += 1;
@@ -264,7 +265,7 @@ export async function mockPast(page: Page, { ownerId }: { ownerId: string }): Pr
   };
   const json = (route: Route, body: unknown) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
-  await page.route(`**/v1/sessions/${PAST_ID}`, (r) => json(r, detail));
+  await page.route(new RegExp(`/v1/sessions/${PAST_ID}(\\?.*)?$`), (r) => json(r, detail));
   await page.route(`**/v1/sessions/${PAST_ID}/publication`, (r) => json(r, { publication }));
   await page.route(`**/v1/sessions/${PAST_ID}/work-items`, (r) =>
     json(r, { enabled: true, dispatch_enabled: false, repos: [{ name: "lordmuffin/np-home-homelab" }], items: [{ ...WORK_ITEM, session_id: PAST_ID }] }),
