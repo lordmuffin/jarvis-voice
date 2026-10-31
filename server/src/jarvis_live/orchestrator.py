@@ -30,6 +30,8 @@ from jarvis_live.processing import Job, JobSource, Stage
 from jarvis_live.slo import SloMonitor
 from jarvis_live.stt.backend import STTBackend
 from jarvis_live.vault.index import NullVault, VaultContext
+from jarvis_live.voice.loop import VoiceLoop
+from jarvis_live.voice.service import VoicePass
 from jarvis_live.workitems.ideas import IdeasLoop, IdeasPass
 
 log = logging.getLogger(__name__)
@@ -63,6 +65,7 @@ class Orchestrator:
         self._hub: IngestHub | None = None
         self._copilots: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._ideas: dict[uuid.UUID, asyncio.Task[None]] = {}
+        self._voices: dict[uuid.UUID, tuple[VoiceLoop, asyncio.Task[None]]] = {}
         self._ideas_pass = (
             IdeasPass(settings, sessionmaker, llm) if settings.work_items_enabled else None
         )
@@ -164,6 +167,7 @@ class Orchestrator:
             pipeline.publish_status()
 
         pipeline.llm_ok = True  # healthy until a cycle fails
+        proposals = await self._proposals_for(row)
         loop = CopilotLoop(
             state.session_id,
             settings=self._cfg,
@@ -175,8 +179,21 @@ class Orchestrator:
             stream_ms=pipeline.position_ms,
             set_llm_ok=set_llm_ok,
             clock=self._clock,
-            proposals=await self._proposals_for(row),
+            proposals=proposals,
         )
+        if self._cfg.voice_enabled and await self._ideas_eligible(row):
+            voice = VoiceLoop(
+                state.session_id,
+                row.user_id,
+                settings=self._cfg,
+                sessionmaker=self._sm,
+                runner=VoicePass(self._cfg, self._sm, self._llm, self._notifier),
+                proposals=proposals,
+                stream_ms=pipeline.position_ms,
+                reply=loop.announce,
+                clock=self._clock,
+            )
+            self._voices[state.session_id] = (voice, asyncio.create_task(voice.run()))
         await loop.run()
 
     async def _proposals_for(self, row: SessionRow) -> SessionProposals | None:
@@ -204,9 +221,19 @@ class Orchestrator:
             if (task := tasks.pop(session_id, None)) is not None:
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
+        await self.stop_voice(session_id)
         await self._flush_ideas(session_id)
         await self._label_speakers(session_id)
         await self._finalize(session_id)
+
+    async def stop_voice(self, session_id: uuid.UUID) -> None:
+        """Stop listening, and hear out a request the session ended on."""
+        if (entry := self._voices.pop(session_id, None)) is None:
+            return
+        voice, task = entry
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        await voice.flush()
 
     async def _label_speakers(self, session_id: uuid.UUID) -> None:
         """Who said what, before the note is written. Never raises, never fails the session."""

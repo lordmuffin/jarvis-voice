@@ -93,6 +93,9 @@ class ActionService:
     def enabled(self) -> bool:
         return self._cfg.actions_enabled
 
+    def can_run(self, kind: str) -> bool:
+        return kind in self._executors
+
     def lock(self, session_id: uuid.UUID) -> asyncio.Lock:
         lock = self._locks.get(session_id)
         if lock is None:
