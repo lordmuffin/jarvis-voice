@@ -16,6 +16,7 @@ const summary = (over: Partial<SessionSummary> = {}): SessionSummary => ({
   started_at: "2026-10-01T10:00:00Z",
   ended_at: "2026-10-01T10:30:00Z",
   local_only: false,
+  restricted: false,
   streaming: false,
   owner,
   deleted_at: "2026-10-28T10:00:00Z",

@@ -50,6 +50,7 @@ SESSION_ROUTES: list[tuple[str, str, Any]] = [
     ("GET", "/v1/sessions/{sid}/work-items", None),
     ("DELETE", "/v1/sessions/{sid}", None),
     ("POST", "/v1/sessions/{sid}/restore", None),
+    ("POST", "/v1/sessions/{sid}/unrestrict", None),
 ]
 ITEM_ROUTES: list[tuple[str, str, Any]] = [
     ("GET", "/v1/work-items/{item}", None),

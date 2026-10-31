@@ -7,6 +7,7 @@ import { ProcessControl } from "../jarvis/ProcessControl";
 import { navigate } from "../store";
 import { SessionHeader } from "../jarvis/SessionHeader";
 import { Timeline } from "../jarvis/Timeline";
+import { UnrestrictControl } from "../jarvis/UnrestrictControl";
 import { initialState, reduce, transcriptLines } from "../reducer";
 import type { Channel, SessionDetail, SessionSummary } from "../types";
 import { NotePane } from "./NotePane";
@@ -61,6 +62,7 @@ export function PastSession({
         actions={
           detail.deleted_at ? undefined : (
             <>
+              <UnrestrictControl detail={detail} onChanged={onChanged} />
               <ProcessControl detail={detail} onChanged={onChanged} />
               <DeleteAfter detail={detail} onChanged={(s) => onRenamed(s)} />
               <DeleteSession detail={detail} onDeleted={() => navigate("/deleted")} />

@@ -29,6 +29,9 @@ class SessionCreateRequest(_Model):
     title: str | None = None
     mode: Literal["meeting", "solo"]
     channels: list[ChannelName]
+    # A work call: recorded on the device, uploaded on purpose. The server keeps it on the
+    # homelab: no vault PR, no work items, no Gotify body, and its note is filed apart.
+    restricted: bool | None = None
 
     @field_validator("channels")
     @classmethod
