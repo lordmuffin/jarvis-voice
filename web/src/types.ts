@@ -15,6 +15,22 @@ export interface Segment {
   stt_tier: string | null;
 }
 
+/** A voice in the session. `label: null` = not named yet: shown as "Speaker N". */
+export interface SpeakerInfo {
+  id: string;
+  label: string | null;
+  enrolled: boolean;
+  is_owner: boolean;
+}
+/** Who spoke one segment. Kept only if `rev` is higher than the one already held. */
+export interface SpeakerAssignment {
+  segment_id: string;
+  speaker_id: string | null;
+  rev: number;
+  final: boolean;
+  mixed?: boolean;
+}
+
 export interface Note {
   id: string;
   text: string;
@@ -78,6 +94,12 @@ export interface AckMsg {
 export interface SegmentMsg extends Segment {
   type: "segment";
 }
+/** Sent only to connections opened with `features=speaker_update`. */
+export interface SpeakerUpdateMsg {
+  type: "speaker_update";
+  speakers: SpeakerInfo[];
+  assignments: SpeakerAssignment[];
+}
 export interface CopilotMsg extends Copilot {
   type: "copilot";
 }
@@ -108,6 +130,7 @@ export type ServerEvent =
   | HelloAckMsg
   | AckMsg
   | SegmentMsg
+  | SpeakerUpdateMsg
   | CopilotMsg
   | StatusMsg
   | FinalNoteMsg

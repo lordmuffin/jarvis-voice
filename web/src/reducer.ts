@@ -8,6 +8,8 @@ import type {
   ServerEvent,
   SessionDetail,
   SessionSummary,
+  SpeakerInfo,
+  SpeakerUpdateMsg,
   Status,
 } from "./types";
 
@@ -43,6 +45,10 @@ export interface LiveState {
    * sorts by. Keyed by segment id; a segment with no draft is not listed (it is its own row).
    */
   slots: Record<string, { key: string; sortMs: number }>;
+  /** Voices heard so far, by id (from `speaker_update`). */
+  speakers: Record<string, SpeakerInfo>;
+  /** Who spoke each segment, by segment id: the highest rev seen, even before its segment. */
+  assignments: Record<string, { speaker_id: string | null; rev: number; mixed: boolean }>;
 }
 
 /** Events the reducer folds: every server message plus local lifecycle/bootstrap events. */
@@ -74,6 +80,8 @@ export const initialState: LiveState = {
   streamMs: 0,
   session: null,
   slots: {},
+  speakers: {},
+  assignments: {},
 };
 
 const overlaps = (a: { start_ms: number; end_ms: number }, b: { start_ms: number; end_ms: number }) =>
@@ -145,6 +153,18 @@ function summaryOf(s: SessionSummary): SessionSummary {
 }
 
 /** Pure: `(state, event) => state`. Unknown events return the state unchanged. */
+function applySpeakers(state: LiveState, msg: SpeakerUpdateMsg): LiveState {
+  const speakers = { ...state.speakers };
+  for (const sp of msg.speakers) speakers[sp.id] = sp;
+  const assignments = { ...state.assignments };
+  for (const a of msg.assignments) {
+    if (a.rev > (assignments[a.segment_id]?.rev ?? -1)) {
+      assignments[a.segment_id] = { speaker_id: a.speaker_id, rev: a.rev, mixed: a.mixed ?? false };
+    }
+  }
+  return { ...state, speakers, assignments };
+}
+
 export function reduce(state: LiveState, event: Event): LiveState {
   switch (event.type) {
     case "hello_ack":
@@ -158,6 +178,8 @@ export function reduce(state: LiveState, event: Event): LiveState {
       const { type: _t, ...seg } = event;
       return mergeSegments(state, [seg]);
     }
+    case "speaker_update":
+      return applySpeakers(state, event);
     case "draft_segment":
       return {
         ...state,
