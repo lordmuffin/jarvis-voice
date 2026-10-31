@@ -58,6 +58,10 @@ data class LiveUiState(
     val unackedMs: Int = 0,
     val level: Float = 0f,
     val markers: Int = 0,
+    /** The mic has been taken away (a call) or is being re-opened; the session keeps running. */
+    val interrupted: Boolean = false,
+    /** The microphone is released on request; silence is recorded in its place. */
+    val muted: Boolean = false,
     /** Last user-facing problem or notice. */
     val message: String? = null,
 ) {
@@ -93,6 +97,7 @@ class LiveSessionService : Service() {
         val connection: LiveConnection?,
         val capture: AudioCapture,
         val store: SessionStore,
+        val markerLog: MarkerLog,
     ) {
         @Volatile var transcriber: LiveTranscriber? = null
         @Volatile var whisper: WhisperRecognizer? = null
@@ -121,14 +126,16 @@ class LiveSessionService : Service() {
                 val mode = SessionMode.fromWire(intent.getStringExtra(EXTRA_MODE) ?: "") ?: SessionMode.SOLO
                 val title = intent.getStringExtra(EXTRA_TITLE)?.takeIf { it.isNotBlank() }
                 val localOnly = intent.getBooleanExtra(EXTRA_LOCAL_ONLY, false)
+                val builtInMic = intent.getBooleanExtra(EXTRA_BUILTIN_MIC, false)
                 stopRequested = false
                 _ui.value = LiveUiState(phase = LiveUiState.Phase.STARTING, mode = mode, localOnly = localOnly)
-                scope.launch { startSession(mode, title, localOnly) }
+                scope.launch { startSession(mode, title, localOnly, builtInMic) }
             }
             ACTION_STOP -> {
                 if (run == null && _ui.value.phase == LiveUiState.Phase.STARTING) stopRequested = true
                 else scope.launch { stopSession() }
             }
+            ACTION_MUTE -> toggleMute()
             ACTION_MARKER -> addMarker(intent.getStringExtra(EXTRA_LABEL) ?: "marker")
             else -> if (run == null) stopSelf()
         }
@@ -159,7 +166,9 @@ class LiveSessionService : Service() {
 
     // region Start / stop
 
-    private suspend fun startSession(mode: SessionMode, title: String?, requestedLocalOnly: Boolean) {
+    private suspend fun startSession(
+        mode: SessionMode, title: String?, requestedLocalOnly: Boolean, builtInMic: Boolean,
+    ) {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             return abortStart("Microphone permission is required.")
         }
@@ -201,10 +210,14 @@ class LiveSessionService : Service() {
         } catch (e: IOException) {
             return abortStart("Cannot create session storage: ${e.message}")
         }
+        val markerLog = MarkerLog.inDir(outbox.directory)
         val connection = if (serverId != null && api != null) {
-            LiveConnection(api, serverId, settings.deviceName, outbox, scope)
+            LiveConnection(
+                api, serverId, settings.deviceName, outbox, scope,
+                markers = { markerLog.read().map { ClientMessage.Marker(it.tMs, it.label) } },
+            )
         } else null
-        val r = Run(meta, outbox, connection, AudioCapture(this), SessionStore())
+        val r = Run(meta, outbox, connection, AudioCapture(this, builtInMic), SessionStore(), markerLog)
         run = r
 
         connection?.let { conn ->
@@ -235,6 +248,11 @@ class LiveSessionService : Service() {
                     }
                 },
                 onError = { e -> scope.launch { stopSession("Microphone stopped: ${e.message}") } },
+                onInterruption = { on ->
+                    _ui.update { it.copy(interrupted = on) }
+                    addMarker(if (on) "mic interrupted" else "mic back")
+                    updateNotification()
+                },
             )
         } catch (e: Exception) {
             run = null
@@ -319,8 +337,19 @@ class LiveSessionService : Service() {
         val r = run ?: return
         val marker = LocalMarkdown.Marker(r.lastTMs, label)
         synchronized(r.markers) { r.markers += marker }
+        runCatching { r.markerLog.append(marker) }.onFailure { DebugLog.e(TAG, "marker not persisted", it) }
         r.connection?.sendMarker(ClientMessage.Marker(marker.tMs, marker.label))
         _ui.update { it.copy(markers = it.markers + 1) }
+    }
+
+    private fun toggleMute() {
+        val r = run ?: return
+        if (_ui.value.phase != LiveUiState.Phase.RECORDING) return
+        val muted = !_ui.value.muted
+        r.capture.setMuted(muted)
+        _ui.update { it.copy(muted = muted) }
+        addMarker(if (muted) "muted" else "unmuted")
+        updateNotification()
     }
 
     private suspend fun stopSession(error: String? = null) {
@@ -369,7 +398,7 @@ class LiveSessionService : Service() {
         }
         _ui.update {
             it.copy(
-                phase = LiveUiState.Phase.IDLE, unackedMs = 0, level = 0f,
+                phase = LiveUiState.Phase.IDLE, unackedMs = 0, level = 0f, interrupted = false, muted = false,
                 localStt = LiveUiState.LocalStt.OFF, message = message,
             )
         }
@@ -452,10 +481,16 @@ class LiveSessionService : Service() {
             this, 2, Intent(this, LiveSessionService::class.java).setAction(ACTION_MARKER),
             PendingIntent.FLAG_IMMUTABLE,
         )
+        val mute = PendingIntent.getService(
+            this, 3, Intent(this, LiveSessionService::class.java).setAction(ACTION_MUTE),
+            PendingIntent.FLAG_IMMUTABLE,
+        )
         val state = _ui.value
         val text = when (state.phase) {
             LiveUiState.Phase.STOPPING -> getString(R.string.live_notif_finishing)
-            else -> if (state.localOnly) getString(R.string.live_notif_local) else getString(R.string.live_notif_streaming)
+            else -> if (state.muted) getString(R.string.live_notif_muted)
+                else if (state.interrupted) getString(R.string.live_notif_interrupted)
+                else if (state.localOnly) getString(R.string.live_notif_local) else getString(R.string.live_notif_streaming)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.live_notif_title))
@@ -467,6 +502,10 @@ class LiveSessionService : Service() {
             .setUsesChronometer(state.phase == LiveUiState.Phase.RECORDING)
             .setWhen(System.currentTimeMillis() - (SystemClock.elapsedRealtime() - state.startedElapsed))
             .addAction(android.R.drawable.ic_menu_edit, getString(R.string.live_marker), marker)
+            .addAction(
+                android.R.drawable.ic_lock_silent_mode,
+                getString(if (state.muted) R.string.live_unmute else R.string.live_mute), mute,
+            )
             .addAction(android.R.drawable.ic_media_pause, getString(R.string.live_stop), stop)
             .build()
     }
@@ -507,6 +546,8 @@ class LiveSessionService : Service() {
         const val ACTION_START = "com.lordmuffin.jarvisvoice.live.START"
         const val ACTION_STOP = "com.lordmuffin.jarvisvoice.live.STOP"
         const val ACTION_MARKER = "com.lordmuffin.jarvisvoice.live.MARKER"
+        const val ACTION_MUTE = "com.lordmuffin.jarvisvoice.live.MUTE"
+        private const val EXTRA_BUILTIN_MIC = "builtin_mic"
         private const val EXTRA_MODE = "mode"
         private const val EXTRA_TITLE = "title"
         private const val EXTRA_LOCAL_ONLY = "local_only"
@@ -518,17 +559,22 @@ class LiveSessionService : Service() {
         /** True while a session owns the microphone. */
         val isRecording: Boolean get() = _ui.value.isActive
 
-        fun start(context: Context, mode: SessionMode, title: String?, localOnly: Boolean) {
+        fun start(context: Context, mode: SessionMode, title: String?, localOnly: Boolean, builtInMic: Boolean = false) {
             val intent = Intent(context, LiveSessionService::class.java)
                 .setAction(ACTION_START)
                 .putExtra(EXTRA_MODE, mode.wire)
                 .putExtra(EXTRA_TITLE, title)
                 .putExtra(EXTRA_LOCAL_ONLY, localOnly)
+                .putExtra(EXTRA_BUILTIN_MIC, builtInMic)
             ContextCompat.startForegroundService(context, intent)
         }
 
         fun stop(context: Context) {
             context.startService(Intent(context, LiveSessionService::class.java).setAction(ACTION_STOP))
+        }
+
+        fun toggleMute(context: Context) {
+            context.startService(Intent(context, LiveSessionService::class.java).setAction(ACTION_MUTE))
         }
 
         fun marker(context: Context, label: String = "marker") {
