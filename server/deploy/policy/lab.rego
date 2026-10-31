@@ -25,6 +25,13 @@ deny contains msg if {
 	msg := sprintf("ConfigMap/%s: lab must not publish (%s is set)", [input.metadata.name, key])
 }
 
+# A Pi session is a real agent on the homelab, and there is no sandbox Pi to fence lab into.
+deny contains msg if {
+	input.kind == "ConfigMap"
+	input.data.JARVIS_LIVE_VOICE_PI_ENABLED == "true"
+	msg := sprintf("ConfigMap/%s: lab must not start Pi sessions", [input.metadata.name])
+}
+
 # the notes-vault-pat secret (the vault write credential) must not be mounted or referenced
 deny contains msg if {
 	contains(json.marshal(input), "notes-vault-pat")

@@ -13,7 +13,8 @@
 #   - only the admin group may sign in;
 #   - Gotify titles carry a [lab] prefix (JARVIS_LIVE_ENVIRONMENT);
 #   - dispatch runs only against lordmuffin/jarvis-dispatch-sandbox, with lab's own
-#     GitHub App installed on that repo alone (onepassword-dispatch-app.yaml).
+#     GitHub App installed on that repo alone (onepassword-dispatch-app.yaml);
+#   - no Pi sessions: there is no sandbox Pi (policy/lab.rego).
 # It shares the Whisper tiers and LiteLLM with live.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
@@ -46,6 +47,14 @@ patches:
         path: /data/JARVIS_LIVE_FORGEJO_TOKEN_FILE
       - op: replace
         path: /data/JARVIS_LIVE_DISPATCH_ENABLED
+        value: "true"
+      # Spoken requests, proved here first. Without vault or GitHub credentials, lab's only
+      # runnable actions are reminders; cloud sessions stay limited to the sandbox repo.
+      - op: replace
+        path: /data/JARVIS_LIVE_VOICE_ENABLED
+        value: "true"
+      - op: add
+        path: /data/JARVIS_LIVE_ACTIONS_ENABLED
         value: "true"
       - op: add
         path: /data/JARVIS_LIVE_DISPATCH_REPOS

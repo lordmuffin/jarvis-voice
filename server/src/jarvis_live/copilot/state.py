@@ -114,6 +114,16 @@ class CopilotState:
             self.version += 1
         return changed
 
+    def notice(self, text: str, now_ms: int, ttl_s: int) -> None:
+        """Something Jarvis has to tell the speaker: shown like any other suggestion, on every
+        client, and gone once it expires."""
+        expires = now_ms + ttl_s * 1000
+        self.suggestions.append(
+            Suggestion(id=self._new_id("s"), kind="question", text=text, expires_at_ms=expires)
+        )
+        self.suggestions = self.suggestions[-MAX_SUGGESTIONS:]
+        self.version += 1
+
     def set_related(self, hits: list[Related]) -> bool:
         if not hits:
             return False

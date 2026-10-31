@@ -220,6 +220,17 @@ def create_app(
             client,
             title_prefix=cfg.notify_title_prefix,
         )
+        dpi_client = dpi
+        if dpi_client is None and cfg.dpi_base_url:
+            dpi_client = DpiClient(
+                cfg.dpi_base_url,
+                cfg.dpi_token_file,
+                client,
+                session=cfg.dpi_session,
+                wait_ms=cfg.dpi_wait_ms,
+                model=cfg.dpi_model,
+                work_cwd=cfg.dpi_work_cwd,
+            )
         executors, commentable = build_executors(
             cfg,
             sm,
@@ -227,6 +238,7 @@ def create_app(
             gh,
             push,
             app_tokens,
+            dpi_client,
         )
         action_service = ActionService(
             cfg, sm, executors, lambda: _action_context(cfg, commentable)
@@ -309,17 +321,6 @@ def create_app(
                 client = httpx.AsyncClient()
             oidc = OIDCClient(
                 cfg.oidc_issuer, cfg.oidc_client_id, cfg.oidc_client_secret_file, client
-            )
-        dpi_client = dpi
-        if dpi_client is None and cfg.dpi_base_url:
-            if client is None:
-                client = httpx.AsyncClient()
-            dpi_client = DpiClient(
-                cfg.dpi_base_url,
-                cfg.dpi_token_file,
-                client,
-                session=cfg.dpi_session,
-                wait_ms=cfg.dpi_wait_ms,
             )
         app.state.dpi = dpi_client
         app.state.oidc = oidc

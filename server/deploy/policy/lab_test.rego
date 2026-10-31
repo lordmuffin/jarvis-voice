@@ -21,6 +21,15 @@ test_lab_must_not_have_token_file if {
 	contains(msg, "publish")
 }
 
+test_lab_must_not_start_pi_sessions if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_VOICE_PI_ENABLED": "true"})
+	contains(msg, "Pi")
+}
+
+test_lab_may_say_pi_sessions_are_off if {
+	count(deny) == 0 with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_VOICE_PI_ENABLED": "false"})
+}
+
 test_lab_must_not_mount_vault_pat if {
 	d := {"kind": "Deployment", "metadata": {"name": "d", "namespace": "jarvis-live-lab"}, "spec": {"template": {"spec": {"volumes": [{"name": "v", "secret": {"secretName": "notes-vault-pat"}}]}}}}
 	some msg in deny with input as d

@@ -78,6 +78,38 @@ describe("describing an action", () => {
   });
 });
 
+describe("a Pi session", () => {
+  const pi = (over: Partial<ActionItem> = {}) =>
+    action({
+      kind: "pi.session",
+      payload: { title: "Check Flux", text: "Find out why Flux is failing." },
+      proposed_by: "voice:fast",
+      ...over,
+    });
+
+  it("shows the task the agent will get", () => {
+    expect(KIND_LABEL["pi.session"]).toBe("Pi session");
+    expect(describeAction(pi())).toEqual({
+      title: "Check Flux",
+      detail: "Find out why Flux is failing.",
+    });
+  });
+
+  it("lets the owner change the task before approving", () => {
+    expect(editFields("pi.session").map((f) => f.key)).toEqual(["title", "text"]);
+  });
+
+  it("names the session once it started", () => {
+    expect(
+      resultLine(pi({ state: "succeeded", result: { session_id: "s", session_name: "jarvis-1234" } })),
+    ).toEqual({ text: "Started Pi session jarvis-1234" });
+  });
+
+  it("says why a device could not approve it", () => {
+    expect(outcomeNote("needs_web")).toContain("dashboard");
+  });
+});
+
 describe("what happened", () => {
   it("links the pull request of a vault action, and says if it is still open", () => {
     const r = { landed: "merged", pr_url: "https://github.com/o/r/pull/9", merged: true };

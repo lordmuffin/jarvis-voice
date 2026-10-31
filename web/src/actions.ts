@@ -5,6 +5,7 @@ export const KIND_LABEL: Record<ActionKind, string> = {
   "vault.append": "Note",
   "reminder.schedule": "Reminder",
   "git.pr_comment": "PR comment",
+  "pi.session": "Pi session",
 };
 
 export const STATE_LABEL: Record<ActionItem["state"], string> = {
@@ -42,6 +43,8 @@ export function describeAction(item: ActionItem, timeZone?: string): { title: st
     }
     case "git.pr_comment":
       return { title: str(p.body), detail: `Comment on ${str(p.repo)}#${str(p.pr)}` };
+    case "pi.session":
+      return { title: str(p.title), detail: str(p.text) };
   }
 }
 
@@ -62,6 +65,11 @@ export function editFields(kind: ActionKind): { key: string; label: string; mult
       ];
     case "git.pr_comment":
       return [{ key: "body", label: "Comment", multiline: true }];
+    case "pi.session":
+      return [
+        { key: "title", label: "Title", multiline: false },
+        { key: "text", label: "Task for the agent", multiline: true },
+      ];
   }
 }
 
@@ -92,6 +100,7 @@ export function resultLine(item: ActionItem, timeZone?: string): ResultLine | nu
         return { text: `Scheduled for ${formatWhen(str(r.fire_at), timeZone)}` };
     }
   }
+  if (item.kind === "pi.session") return { text: `Started Pi session ${str(r.session_name)}` };
   if (item.kind === "git.pr_comment") {
     return r.comment_url
       ? { text: "Comment posted", href: str(r.comment_url), linkText: "comment" }
@@ -141,6 +150,8 @@ export function outcomeNote(outcome: ApprovalOutcome): string | null {
       return "This action was already rejected or expired.";
     case "not_found":
       return "This action no longer exists.";
+    case "needs_web":
+      return "A Pi session can only be approved from the dashboard sign-in.";
     default:
       return null;
   }

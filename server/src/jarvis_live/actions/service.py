@@ -36,8 +36,12 @@ EDITABLE: dict[str, tuple[str, ...]] = {
     "vault.append": ("text",),
     "reminder.schedule": ("title", "body", "at"),
     "git.pr_comment": ("body",),
+    "pi.session": ("title", "text"),
 }
-Outcome = Literal["approved", "already", "stale", "not_open", "not_found"]
+# An agent with a shell, so the rule work items follow, not the device approval of plan D3:
+# a leaked phone token must not be able to start one.
+WEB_APPROVAL_KINDS = frozenset({"pi.session"})
+Outcome = Literal["approved", "already", "stale", "not_open", "not_found", "needs_web"]
 
 
 class ActionError(Exception):
@@ -88,6 +92,9 @@ class ActionService:
     @property
     def enabled(self) -> bool:
         return self._cfg.actions_enabled
+
+    def can_run(self, kind: str) -> bool:
+        return kind in self._executors
 
     def lock(self, session_id: uuid.UUID) -> asyncio.Lock:
         lock = self._locks.get(session_id)
@@ -244,6 +251,7 @@ class ActionService:
         """Approve each ``(id, payload_sha256 the reviewer saw)``. Approving only marks them;
         ``execute_approved`` runs them. Re-approving something already approved is a no-op."""
         out: list[ApprovalOutcome] = []
+        blocked = () if actor.kind == "web" else (ActionProposal.kind.not_in(WEB_APPROVAL_KINDS),)
         async with self._sm() as db:
             for pid, seen_sha in items:
                 result = await db.execute(
@@ -254,6 +262,7 @@ class ActionService:
                         ActionProposal.user_id == actor.user_id,
                         ActionProposal.state == "proposed",
                         ActionProposal.payload_sha256 == seen_sha,
+                        *blocked,
                     )
                     .values(
                         state="approved",
@@ -272,6 +281,8 @@ class ActionService:
                     out.append(ApprovalOutcome(pid, "not_found"))
                 elif row.state in ("rejected", "expired"):
                     out.append(ApprovalOutcome(pid, "not_open"))
+                elif row.state == "proposed" and blocked and row.kind in WEB_APPROVAL_KINDS:
+                    out.append(ApprovalOutcome(pid, "needs_web"))
                 elif row.state == "proposed":
                     out.append(ApprovalOutcome(pid, "stale"))
                 else:
@@ -283,6 +294,8 @@ class ActionService:
         """The owner's explicit request to run a failed action again."""
         async with self._sm() as db:
             row = await self._own(db, proposal_id, actor.user_id)
+            if row.kind in WEB_APPROVAL_KINDS and actor.kind != "web":
+                raise ActionError(403, "retry this from the dashboard sign-in, not a device token")
             if not await self._cas(
                 db,
                 proposal_id,

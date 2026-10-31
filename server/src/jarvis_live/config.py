@@ -196,6 +196,13 @@ class Settings(BaseSettings):
     actions_work_tracker_path: str = "20 Areas/Personal/Work Tracker.md"
     reminder_poll_s: float = 15.0  # how often due reminders are looked for
     actions_tracker_section: str = "Needs Triage"  # where proposed tasks land on the board
+    # Requests spoken to Jarvis during a recording (docs/plans/voice-commands.md).
+    voice_enabled: bool = False
+    voice_pi_enabled: bool = False  # offer Pi sessions: needs dpi_base_url and its token
+    voice_model: str = ""  # empty: the copilot model
+    voice_timeout_s: float = 30.0
+    voice_settle_s: float = 10.0  # quiet that ends a request
+    voice_max_s: float = 90.0  # the longest request
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.
@@ -242,6 +249,8 @@ class Settings(BaseSettings):
     dpi_token_file: Path | None = None
     dpi_session: str = "jarvis"
     dpi_wait_ms: int = 60_000
+    dpi_model: str = "qwen3.8-flash-next"  # for sessions started on the owner's behalf
+    dpi_work_cwd: str = "/var/lib/dpi/work"
 
     @staticmethod
     def _repo_list(text: str) -> dict[str, str]:
