@@ -98,6 +98,7 @@ class Settings(BaseSettings):
     # On startup, finalize sessions left in `finalizing` that ended within this window. Older
     # ones (e.g. from before the finalizer existed) are left alone. 0 disables recovery.
     finalize_recover_max_age_s: float = 86_400.0
+    watchdog_interval_s: float = 10.0  # idle sessions, STT outage, SLO checks
     idle_end_s: float = 600.0  # end a live session after this long without audio
     # A live session counts as streaming while a producer is connected and audio arrived
     # within this window; otherwise viewers show it as offline.

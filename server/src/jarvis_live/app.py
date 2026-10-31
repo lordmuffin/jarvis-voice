@@ -226,7 +226,7 @@ def create_app(
         if orchestrator is not None:
             orchestrator.attach(hub)
             await orchestrator.recover()
-            tasks.append(asyncio.create_task(orchestrator.run_watchdog()))
+            tasks.append(asyncio.create_task(orchestrator.run_watchdog(cfg.watchdog_interval_s)))
         oidc: OIDCClient | None = None
         if cfg.oidc_issuer:
             if client is None:
