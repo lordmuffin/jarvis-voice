@@ -1,12 +1,12 @@
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import PurePath
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import func, select
+from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -61,6 +61,10 @@ class SessionOut(BaseModel):
     # reconnect, so viewers use this to tell "live" from "live but nothing streaming".
     streaming: bool
     owner: OwnerOut
+    # Set while the session is in "Recently deleted"; ``purge_after`` is the owner's own
+    # "delete after N days" deadline. Both are null for an ordinary session.
+    deleted_at: datetime | None = None
+    purge_after: datetime | None = None
 
     @classmethod
     def of(cls, s: SessionRow, owner: User, request: Request) -> "SessionOut":
@@ -76,12 +80,24 @@ class SessionOut(BaseModel):
             source=s.source,
             streaming=s.status == "live" and request.app.state.hub.is_streaming(s.id),
             owner=OwnerOut(id=owner.id, display_name=owner.display_name),
+            deleted_at=s.deleted_at,
+            purge_after=s.purge_after,
         )
 
 
 class SessionUpdate(BaseModel):
+    """Only the fields sent are changed."""
+
     # Blank or null clears the title; the copilot may then name the session again.
-    title: str | None = Field(max_length=200)
+    title: str | None = Field(default=None, max_length=200)
+    # Delete the session (to "Recently deleted") this many days from now; null cancels.
+    delete_after_days: int | None = Field(default=None, ge=1, le=3650)
+
+    @model_validator(mode="after")
+    def _says_something(self) -> "SessionUpdate":
+        if not self.model_fields_set & {"title", "delete_after_days"}:
+            raise ValueError("send a title or delete_after_days")
+        return self
 
     @field_validator("title")
     @classmethod
@@ -194,15 +210,21 @@ def processing_of(request: Request, row: SessionRow) -> ProcessingState:
 
 
 async def _visible(
-    db: AsyncSession, principal: Principal, session_id: uuid.UUID
+    db: AsyncSession,
+    principal: Principal,
+    session_id: uuid.UUID,
+    *,
+    include_deleted: bool = False,
 ) -> tuple[SessionRow, User]:
-    found = (
-        await db.execute(
-            select(SessionRow, User)
-            .join(User, User.id == SessionRow.user_id)
-            .where(SessionRow.id == session_id)
-        )
-    ).one_or_none()
+    """A soft-deleted session is as good as gone, unless the caller asks for the trash."""
+    query = (
+        select(SessionRow, User)
+        .join(User, User.id == SessionRow.user_id)
+        .where(SessionRow.id == session_id)
+    )
+    if not include_deleted:
+        query = query.where(SessionRow.deleted_at.is_(None))
+    found = (await db.execute(query)).one_or_none()
     if found is None or (found[0].user_id != principal.user.id and not principal.is_admin):
         raise HTTPException(404, "Session not found.")
     return found[0], found[1]
@@ -216,12 +238,16 @@ async def _owned(db: AsyncSession, principal: Principal, session_id: uuid.UUID) 
 
 
 async def _writable(
-    db: AsyncSession, principal: Principal, session_id: uuid.UUID
+    db: AsyncSession,
+    principal: Principal,
+    session_id: uuid.UUID,
+    *,
+    include_deleted: bool = False,
 ) -> tuple[SessionRow, User]:
     """Read access is not write access: an admin can see another user's session (and rename it),
     but its note, its jobs and its publication are its owner's. 404 if not visible at all, 403
     if visible but not theirs."""
-    row, owner = await _visible(db, principal, session_id)
+    row, owner = await _visible(db, principal, session_id, include_deleted=include_deleted)
     if row.user_id != principal.user.id:
         raise HTTPException(403, "Only the session's owner can do this.")
     return row, owner
@@ -347,12 +373,16 @@ async def list_sessions(
     offset: Annotated[int, Query(ge=0)] = 0,
     all_users: Annotated[bool, Query(alias="all")] = False,
     user_id: uuid.UUID | None = None,
+    deleted: bool = False,
 ) -> SessionPage:
     """The caller's sessions, newest first. Admins may pass ``all=true`` for everyone's, or
-    ``user_id`` for one user's."""
+    ``user_id`` for one user's. ``deleted=true`` lists the trash instead ("Recently deleted"),
+    the most recently deleted first."""
     if (all_users or user_id is not None) and not principal.is_admin:
         raise HTTPException(403, "Admin only.")
-    where = []
+    where: list[ColumnElement[bool]] = [
+        SessionRow.deleted_at.is_not(None) if deleted else SessionRow.deleted_at.is_(None)
+    ]
     if user_id is not None:
         where.append(SessionRow.user_id == user_id)
     elif not all_users:
@@ -365,7 +395,10 @@ async def list_sessions(
             select(SessionRow, User)
             .join(User, User.id == SessionRow.user_id)
             .where(*where)
-            .order_by(SessionRow.started_at.desc(), SessionRow.id.desc())
+            .order_by(
+                SessionRow.deleted_at.desc() if deleted else SessionRow.started_at.desc(),
+                SessionRow.id.desc(),
+            )
             .limit(limit)
             .offset(offset)
         )
@@ -380,9 +413,13 @@ async def list_sessions(
 
 @router.get("/{session_id}")
 async def get_session(
-    session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
+    session_id: uuid.UUID,
+    principal: PrincipalDep,
+    db: Db,
+    request: Request,
+    include_deleted: bool = False,
 ) -> SessionDetail:
-    row, owner = await _visible(db, principal, session_id)
+    row, owner = await _visible(db, principal, session_id, include_deleted=include_deleted)
     segments = (
         (
             await db.execute(
@@ -494,10 +531,44 @@ async def end_session(
 async def update_session(
     session_id: uuid.UUID, body: SessionUpdate, principal: PrincipalDep, db: Db, request: Request
 ) -> SessionOut:
-    row, owner = await _visible(db, principal, session_id)
-    row.title = body.title
+    if "delete_after_days" in body.model_fields_set:  # the deadline is the owner's
+        row, owner = await _writable(db, principal, session_id)
+        days = body.delete_after_days
+        row.purge_after = None if days is None else datetime.now(UTC) + timedelta(days=days)
+    else:
+        row, owner = await _visible(db, principal, session_id)
+    if "title" in body.model_fields_set:
+        row.title = body.title
     await db.commit()
-    session_logger(__name__, row.id).info("session renamed")
+    session_logger(__name__, row.id).info("session updated")
+    return SessionOut.of(row, owner, request)
+
+
+@router.delete("/{session_id}", status_code=204)
+async def delete_session(session_id: uuid.UUID, principal: PrincipalDep, db: Db) -> None:
+    """Move the session to "Recently deleted". Its audio and transcript are kept until the
+    trash window ends; ``POST .../restore`` brings it back. Repeating it changes nothing."""
+    row, _ = await _writable(db, principal, session_id, include_deleted=True)
+    if row.deleted_at is not None:
+        return
+    if row.status in ("live", "finalizing"):
+        raise HTTPException(409, "End the session before deleting it.")
+    row.deleted_at = datetime.now(UTC)
+    await db.commit()
+    session_logger(__name__, row.id).info("session deleted")
+
+
+@router.post("/{session_id}/restore")
+async def restore_session(
+    session_id: uuid.UUID, principal: PrincipalDep, db: Db, request: Request
+) -> SessionOut:
+    row, owner = await _writable(db, principal, session_id, include_deleted=True)
+    if row.deleted_at is None:
+        raise HTTPException(404, "Session not found.")
+    row.deleted_at = None
+    row.purge_after = None  # a pending delete-after would only delete it again
+    await db.commit()
+    session_logger(__name__, row.id).info("session restored")
     return SessionOut.of(row, owner, request)
 
 

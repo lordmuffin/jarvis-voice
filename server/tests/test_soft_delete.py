@@ -134,10 +134,10 @@ async def test_delete_is_idempotent_and_keeps_the_first_time(rig: Rig) -> None:
     assert first["deleted_at"] == again["deleted_at"]
 
 
-@pytest.mark.parametrize("status", ["live", "finalizing"])
+@pytest.mark.parametrize("status", ["streaming", "finalizing"])
 async def test_a_session_still_recording_cannot_be_deleted(rig: Rig, status: str) -> None:
     device, _ = await new_device(rig.sm, f"dev-{status}", user_id=rig.user)
-    sid = await make_session(rig.sm, device, status=status)
+    sid = await make_session(rig.sm, device, status="live" if status == "streaming" else status)
     async with await rig.client() as c:
         assert (await c.delete(f"/v1/sessions/{sid}")).status_code == 409
         assert (await c.get(f"/v1/sessions/{sid}")).status_code == 200
