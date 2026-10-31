@@ -25,7 +25,7 @@ resources:
   - onepassword-dispatch-app.yaml
 images:
   - name: ghcr.io/lordmuffin/jarvis-live
-    newTag: sha-0000000
+    newTag: sha-1db8033
 patches:
   - target: {kind: ConfigMap, name: jarvis-live-config}
     patch: |
