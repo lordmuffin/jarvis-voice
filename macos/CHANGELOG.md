@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.15.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.14.0...macos-v0.15.0) (2026-10-31)
+
+
+### Features
+
+* local-only as server-down fallback, visible mode, resumable uploads ([57bed7b](https://github.com/lordmuffin/jarvis-voice/commit/57bed7b6c8bdb53e5d1218169344c7d4e354bc95))
+* local-only gate and restricted sessions for work calls (task 6) ([a89f745](https://github.com/lordmuffin/jarvis-voice/commit/a89f7453fa24b0e2d453b776f08e03fc96c6700f))
+* **macos:** record locally when the server is down; fix interrupted uploads ([6f2c7b1](https://github.com/lordmuffin/jarvis-voice/commit/6f2c7b109de598d636e5c5f3afeec256d0c3be73))
+* **macos:** refuse all network traffic during a local-only session ([5ef5df8](https://github.com/lordmuffin/jarvis-voice/commit/5ef5df88cc53abe66dc37298f26690a301d15f1d))
+* **protocol:** speaker_update message, sent only to clients that ask for it ([7b3eb11](https://github.com/lordmuffin/jarvis-voice/commit/7b3eb11163e2c42678e5dbbfe97e340c0436990f))
+* **server:** speaker diarization at finalize, with a speaker_update protocol message ([f4e49b8](https://github.com/lordmuffin/jarvis-voice/commit/f4e49b8527641f8a2c32f8d0bc80607774f58995))
+
+
+### Bug Fixes
+
+* **macos:** restore restricted uploads, cut open connections at the local-only gate ([de58f26](https://github.com/lordmuffin/jarvis-voice/commit/de58f26bafdaf39aeac9df0b79e7e1a7a18c34fa))
+* restore main and the local-only guarantees from the [#214](https://github.com/lordmuffin/jarvis-voice/issues/214) review ([6538f3a](https://github.com/lordmuffin/jarvis-voice/commit/6538f3a1600cbfff4066fcd0b6bf379a0afb7d26))
+* **server:** renumber speakers migration after main's 0011/0012 ([7d05ac6](https://github.com/lordmuffin/jarvis-voice/commit/7d05ac607c243afa9fbd2754f2b2d37ba7a85f15))
+
 ## [0.14.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.13.1...macos-v0.14.0) (2026-10-15)
 
 

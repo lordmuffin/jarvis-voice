@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.28.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.27.0...server-v0.28.0) (2026-10-31)
+
+
+### Features
+
+* driving mode (hands-free capture trigger, mic recovery, durable markers) ([6dbddbf](https://github.com/lordmuffin/jarvis-voice/commit/6dbddbf9c84139c63494c606ae74de0fad4e2ebe))
+* local-only gate and restricted sessions for work calls (task 6) ([a89f745](https://github.com/lordmuffin/jarvis-voice/commit/a89f7453fa24b0e2d453b776f08e03fc96c6700f))
+* **protocol:** speaker_update message, sent only to clients that ask for it ([7b3eb11](https://github.com/lordmuffin/jarvis-voice/commit/7b3eb11163e2c42678e5dbbfe97e340c0436990f))
+* **server:** action proposal schema and server-owned validation ([c2b9f6b](https://github.com/lordmuffin/jarvis-voice/commit/c2b9f6bd23b5311b07c88997d737a985a55e983f))
+* **server:** capture daemon with control socket and local-only transport ([0fb23a2](https://github.com/lordmuffin/jarvis-voice/commit/0fb23a229368df58d3d16d4607d35cbbb31df3ea))
+* **server:** client config, tail renderer and network-import guard ([b29e6e0](https://github.com/lordmuffin/jarvis-voice/commit/b29e6e0b83d39a45854e4457d961bd6218cecc77))
+* **server:** client outbox ([721a3ca](https://github.com/lordmuffin/jarvis-voice/commit/721a3ca941c73b035913b7249c7770392945c2ff))
+* **server:** copilot actions with explicit approval ([9100ef5](https://github.com/lordmuffin/jarvis-voice/commit/9100ef597fe91088d3501173594b93590a4adc19))
+* **server:** copilot and finalizer file action proposals for review ([ad83c31](https://github.com/lordmuffin/jarvis-voice/commit/ad83c31cf17e9ae9e70c797f3fa784dad64749b9))
+* **server:** diarize a finished session and label who said what ([4e6455b](https://github.com/lordmuffin/jarvis-voice/commit/4e6455bb0bca14b1ee1cab716ef9d1d6161251fb))
+* **server:** enrol a voice once and be recognised in later sessions ([6ed3039](https://github.com/lordmuffin/jarvis-voice/commit/6ed3039ece3548d62a156d45e7652216d5040c35))
+* **server:** enrol a voice once and be recognised in later sessions ([e55765d](https://github.com/lordmuffin/jarvis-voice/commit/e55765dd9d4a12abcadbb911d9da5861ad8957b0))
+* **server:** execute approved tasks and vault appends as merged PRs ([aad43cd](https://github.com/lordmuffin/jarvis-voice/commit/aad43cd0b900ebb4d9c8927934e9406e3aa566f9))
+* **server:** headless Linux capture client ([e1f132a](https://github.com/lordmuffin/jarvis-voice/commit/e1f132a702552ac248226e91e2a813ead45854b4))
+* **server:** jarvis-live capture start|stop|status|tail, systemd unit and installer ([7d6d20f](https://github.com/lordmuffin/jarvis-voice/commit/7d6d20faa192dbddf35ccdda6fb13e475889cdfe))
+* **server:** keep a dropped producer's session alive and store markers once ([1f21a40](https://github.com/lordmuffin/jarvis-voice/commit/1f21a4060bafe3669862707b129e984b6d37d815))
+* **server:** live-path metrics, latency SLO alerts and per-session timing ([546c0da](https://github.com/lordmuffin/jarvis-voice/commit/546c0dafb664ca0bb8149b93204ad0368460c0a2))
+* **server:** metrics port in the deploy manifests and a Grafana dashboard ([3cc0d8d](https://github.com/lordmuffin/jarvis-voice/commit/3cc0d8d6645d4c3c9e56190c4a3525e083e664ee))
+* **server:** parec/pw-record capture for the Linux client ([175e1fa](https://github.com/lordmuffin/jarvis-voice/commit/175e1fa4cb53de953f92606cf4064f5586e67a1a))
+* **server:** per-session timing summary in the final note ([94dca9b](https://github.com/lordmuffin/jarvis-voice/commit/94dca9beca8aca1d24753982dc22ded98d57f804))
+* **server:** post approved PR comments with the GitHub App ([b6ec12e](https://github.com/lordmuffin/jarvis-voice/commit/b6ec12e6f121d18e1579d581399aa50cc065727a))
+* **server:** Prometheus metrics for the live path ([8de634e](https://github.com/lordmuffin/jarvis-voice/commit/8de634e688fdadf59d9bc04d2911cda4970e9a5a))
+* **server:** provisional speaker labels while a session streams ([fe4cd00](https://github.com/lordmuffin/jarvis-voice/commit/fe4cd0079fc7728a0a3a7c5c8877dfffeaf86da6))
+* **server:** provisional speaker labels while a session streams ([92800ee](https://github.com/lordmuffin/jarvis-voice/commit/92800ee2d3931e323c3e4ea9ae96566168b011fc))
+* **server:** report how many proposed actions the owner accepts ([7bc8bc1](https://github.com/lordmuffin/jarvis-voice/commit/7bc8bc138491e6caf1c716d66644fa2c2f2f6412))
+* **server:** restricted sessions for work calls, and a way to lift them ([1f0cc15](https://github.com/lordmuffin/jarvis-voice/commit/1f0cc15d74d28b8bd7264bee823c532fff53652c))
+* **server:** resumable producer transport for the Linux client ([b39bb80](https://github.com/lordmuffin/jarvis-voice/commit/b39bb804e1616a46010dd173783c54179ef0cf36))
+* **server:** review queue and execution gate for action proposals ([8573420](https://github.com/lordmuffin/jarvis-voice/commit/85734204e3be9290c555febc7b6168cb1ef04651))
+* **server:** scheduled Gotify reminders from approved actions ([b81a153](https://github.com/lordmuffin/jarvis-voice/commit/b81a153a7ee255ad32d3e75d0cd55c25c633f682))
+* **server:** SLO monitor alerts once on a sustained latency breach ([9a0ae3e](https://github.com/lordmuffin/jarvis-voice/commit/9a0ae3e7961b159ef09412c78514e397eab26d3c))
+* **server:** speaker diarization at finalize, with a speaker_update protocol message ([f4e49b8](https://github.com/lordmuffin/jarvis-voice/commit/f4e49b8527641f8a2c32f8d0bc80607774f58995))
+* **web:** review and approve proposed actions on the session page ([8fd659b](https://github.com/lordmuffin/jarvis-voice/commit/8fd659b95f8ea6dad38f037f540f10f128a68025))
+
+
+### Bug Fixes
+
+* restore main and the local-only guarantees from the [#214](https://github.com/lordmuffin/jarvis-voice/issues/214) review ([6538f3a](https://github.com/lordmuffin/jarvis-voice/commit/6538f3a1600cbfff4066fcd0b6bf379a0afb7d26))
+* **server:** capture reports no audio honestly and survives long runtime dirs ([3d194cc](https://github.com/lordmuffin/jarvis-voice/commit/3d194cc701443dd61118d3c5b4ae94091302e2f1))
+* **server:** capture tail --session keeps only wire fields of stored segments ([c001df2](https://github.com/lordmuffin/jarvis-voice/commit/c001df265f9b19818ce675acfc8c63f804e77584))
+* **server:** classify speaker_update in the client conformance test ([8996175](https://github.com/lordmuffin/jarvis-voice/commit/8996175153045eb600c9ac7e52e0a20b3205d30b))
+* **server:** drop unused sqlalchemy.false import ([83b116c](https://github.com/lordmuffin/jarvis-voice/commit/83b116c6613d6853cf81e27b3ee80f2c8d6bfc84))
+* **server:** keep a session live in the SLO e2e until the alert fires ([bcdd1fc](https://github.com/lordmuffin/jarvis-voice/commit/bcdd1fc57537a3b678a75591729a0b11ca889d1a))
+* **server:** keep a session live in the SLO e2e until the alert fires ([f19cf37](https://github.com/lordmuffin/jarvis-voice/commit/f19cf3712bf974665938f2aa6d6d66fd277a2867))
+* **server:** lift a restriction under the note lock, once the session has finished ([726de55](https://github.com/lordmuffin/jarvis-voice/commit/726de554aee39229d1b2c9cee9b7ac65240d6e2d))
+* **server:** put the migrations back in one line ([6063114](https://github.com/lordmuffin/jarvis-voice/commit/6063114739a71a6d494b010ea5cd49f858208f3d))
+* **server:** renumber speaker_profiles to 0016 and restore the speakers router import ([1eb110e](https://github.com/lordmuffin/jarvis-voice/commit/1eb110e32d970bd8aaf568c60013f4637cb7e062))
+* **server:** renumber speakers migration after main's 0011/0012 ([7d05ac6](https://github.com/lordmuffin/jarvis-voice/commit/7d05ac607c243afa9fbd2754f2b2d37ba7a85f15))
+* **server:** restore diarization wiring and renumber the speakers migration after merging main ([2bbfa75](https://github.com/lordmuffin/jarvis-voice/commit/2bbfa75381e86958cd17fbc16856d490764469e1))
+* **server:** restore SegmentRow speaker columns lost in merge ([de0d7cd](https://github.com/lordmuffin/jarvis-voice/commit/de0d7cd0ce7baf27a9d3c18ed3c452051507ca2c))
+
 ## [0.27.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.26.1...server-v0.27.0) (2026-10-30)
 
 
