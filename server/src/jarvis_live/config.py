@@ -125,6 +125,9 @@ class Settings(BaseSettings):
 
     # Retention
     audio_retention_days: int = 90
+    # A soft-deleted session is deleted for good (rows, audio, note) after this many days;
+    # 0 skips the trash. Separate from ``audio_retention_days``, which only drops old audio.
+    trash_retention_days: int = 30
     retention_interval_s: float = 86_400.0
 
     # Publishing finished notes to the Obsidian vault's git repo, one branch + PR per session,

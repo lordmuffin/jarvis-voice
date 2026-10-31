@@ -18,6 +18,7 @@ from jarvis_live.db.session import make_engine, make_sessionmaker, run_migration
 from jarvis_live.dispatch.githubapp import AppTokens
 from jarvis_live.dispatch.kube import KubeClient
 from jarvis_live.dispatch.service import DispatchService, Kube, Tokens, dispatch_config_problems
+from jarvis_live.finalize.outbox import outbox_dir
 from jarvis_live.homelab.client import DpiClient
 from jarvis_live.ingest.hub import IngestHub
 from jarvis_live.ingest.upload import Uploads
@@ -256,10 +257,24 @@ def create_app(
         app.state.publishing = publisher
         app.state.work_items = work
         app.state.dispatch = dispatch
+        if client is None:
+            client = httpx.AsyncClient()
         tasks.append(
             asyncio.create_task(
                 run_retention_loop(
-                    sm, cfg.data_dir, cfg.audio_retention_days, cfg.retention_interval_s
+                    sm,
+                    cfg.data_dir,
+                    cfg.audio_retention_days,
+                    cfg.retention_interval_s,
+                    trash_days=cfg.trash_retention_days,
+                    outbox=outbox_dir(cfg),
+                    notifier=notifier
+                    or GotifyNotifier(
+                        cfg.gotify_url,
+                        cfg.gotify_token_file,
+                        client,
+                        title_prefix=cfg.notify_title_prefix,
+                    ),
                 )
             )
         )

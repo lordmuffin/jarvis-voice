@@ -96,7 +96,11 @@ class Rig:
 
 
 @pytest.fixture
-def rig(sm: SM, tmp_path: Path) -> Rig:
+async def rig(sm: SM, tmp_path: Path) -> Rig:
+    # The database is shared by the whole run: leave no other test's trash to be counted here.
+    async with sm() as db:
+        await db.execute(update(SessionRow).values(deleted_at=None, purge_after=None))
+        await db.commit()
     return Rig(sm, tmp_path)
 
 
