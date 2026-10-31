@@ -63,6 +63,12 @@ def _message(r: httpx.Response) -> str:
     return r.text[:500]
 
 
+@dataclass(frozen=True)
+class FileContent:
+    sha: str  # blob sha, what a commit to this path must quote
+    text: str
+
+
 class GitHubClient:
     def __init__(
         self,
@@ -164,6 +170,27 @@ class GitHubClient:
         if not isinstance(body, dict) or body.get("type") != "file":
             raise GitHubError(409, f"{path} exists in the repository and is not a file")
         return str(body["sha"])
+
+    async def get_file(self, path: str, ref: str) -> "FileContent | None":
+        """``path`` on ``ref`` with its text; None if there is no such file."""
+        try:
+            r = await self._req("GET", f"/contents/{quote(path, safe='/')}", params={"ref": ref})
+        except GitHubError as e:
+            if e.status == 404:
+                return None
+            raise
+        body = r.json()
+        if not isinstance(body, dict) or body.get("type") != "file":
+            raise GitHubError(409, f"{path} exists in the repository and is not a file")
+        if body.get("encoding") != "base64":  # the contents API omits files over 1 MB
+            raise GitHubError(409, f"{path} is too large to edit through the API")
+        text = base64.b64decode(str(body["content"])).decode("utf-8")
+        return FileContent(sha=str(body["sha"]), text=text)
+
+    async def pr_files(self, number: int) -> list[str]:
+        """Paths a pull request changes."""
+        r = await self._req("GET", f"/pulls/{number}/files", params={"per_page": "100"})
+        return [str(f["filename"]) for f in r.json()]
 
     async def put_file(
         self,

@@ -3,6 +3,7 @@ import importlib.metadata
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -10,8 +11,14 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
 from jarvis_live import metrics
+from jarvis_live.actions.intake import ActionIntake
+from jarvis_live.actions.reminders import ReminderLoop
+from jarvis_live.actions.service import ActionService
+from jarvis_live.actions.state import Context
+from jarvis_live.actions.wiring import build_executors
 from jarvis_live.api import (
     account,
+    actions,
     auth,
     homelab,
     publishing,
@@ -92,6 +99,33 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
         if path.startswith("assets/") or Path(path).suffix:
             raise HTTPException(404)  # a missing file, not a client-side route
         return FileResponse(index, headers=no_cache)  # SPA fallback
+
+
+def _action_context(cfg: Settings, commentable: frozenset[str]) -> Context:
+    """What validating a proposal needs from this deployment: the vault clone's notes and the
+    repo allowlist."""
+    clone = cfg.vault_clone_dir
+
+    def vault_has(path: str) -> bool:
+        return clone is not None and (clone / path).is_file()
+
+    return Context(
+        now=datetime.now(UTC),
+        timezone=cfg.timezone,
+        vault_has=vault_has,
+        repos=commentable,
+    )
+
+
+async def _expire_loop(service: ActionService, interval_s: float = 3600.0) -> None:
+    while True:
+        try:
+            await service.expire_stale()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("expiring action proposals failed")
+        await asyncio.sleep(interval_s)
 
 
 def create_app(
@@ -178,6 +212,30 @@ def create_app(
                 runner = dispatch
                 tasks.append(asyncio.create_task(dispatch.run_loop()))
         work = WorkItemService(cfg, sm, runner)
+        if client is None:
+            client = httpx.AsyncClient()
+        push: Notifier = notifier or GotifyNotifier(
+            cfg.gotify_url,
+            cfg.gotify_token_file,
+            client,
+            title_prefix=cfg.notify_title_prefix,
+        )
+        executors, commentable = build_executors(
+            cfg,
+            sm,
+            client,
+            gh,
+            push,
+            app_tokens,
+        )
+        action_service = ActionService(
+            cfg, sm, executors, lambda: _action_context(cfg, commentable)
+        )
+        intake = ActionIntake(action_service, lambda: _action_context(cfg, commentable))
+        if action_service.enabled:
+            await action_service.recover()
+            tasks.append(asyncio.create_task(ReminderLoop(cfg, sm, push).run()))
+            tasks.append(asyncio.create_task(_expire_loop(action_service)))
         watching = cfg.forgejo_url and cfg.forgejo_token_file and cfg.work_forgejo_repo_map
         if work.enabled and watching and cfg.work_pr_poll_s > 0:
             if client is None:
@@ -222,15 +280,15 @@ def create_app(
                     cfg.litellm_base_url, client, api_key_file=cfg.litellm_api_key_file
                 ),
                 vault,
-                notifier
-                or GotifyNotifier(
-                    cfg.gotify_url,
-                    cfg.gotify_token_file,
-                    client,
-                    title_prefix=cfg.notify_title_prefix,
-                ),
+                push,
                 on_final=publisher.on_note_ready,
-                diarizer=sidecar,
+                intake=intake,
+                diarizer=diarizer
+                or (
+                    HttpDiarizer(cfg.diarize_url, client, timeout_s=None)
+                    if cfg.diarize_url
+                    else None
+                ),
             )
         hub = IngestHub(
             cfg,
@@ -274,6 +332,8 @@ def create_app(
         app.state.orchestrator = orchestrator
         app.state.publishing = publisher
         app.state.work_items = work
+        app.state.actions = action_service
+        app.state.action_tasks = set()
         app.state.dispatch = dispatch
         tasks.append(
             asyncio.create_task(
@@ -307,6 +367,7 @@ def create_app(
     app.include_router(speakers.router)
     app.include_router(publishing.router)
     app.include_router(work_items.router)
+    app.include_router(actions.router)
     app.include_router(stream.router)
     app.include_router(homelab.router)
 
