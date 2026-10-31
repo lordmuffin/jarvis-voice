@@ -12,6 +12,7 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.lordmuffin.jarvisvoice.DebugLog
 import com.lordmuffin.jarvisvoice.live.protocol.Channel
+import com.lordmuffin.jarvisvoice.live.protocol.ClientMessage
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.coroutineScope
@@ -58,7 +59,12 @@ class LiveUploader(private val context: Context) {
         val outbox = Outbox.reopen(settings.sessionsRoot, meta.id)
         val terminal = try {
             coroutineScope {
-                val connection = LiveConnection(api, meta.id, settings.deviceName, outbox, this)
+                val connection = LiveConnection(
+                    api, meta.id, settings.deviceName, outbox, this,
+                    markers = {
+                        MarkerLog.inDir(outbox.directory).read().map { ClientMessage.Marker(it.tMs, it.label) }
+                    },
+                )
                 // Stay inside WorkManager's 10-minute window; unfinished work resumes on retry.
                 withTimeoutOrNull(UPLOAD_TIMEOUT_MS) { connection.end() }
                     ?: ConnState.Idle.also { connection.stop() }

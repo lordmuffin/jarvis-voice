@@ -61,6 +61,8 @@ class LiveConnection(
     private val outbox: Outbox,
     private val scope: CoroutineScope,
     private val config: Config = Config(),
+    /** Every marker of the session; resent after each handshake because delivery is not acked. */
+    private val markers: () -> List<ClientMessage.Marker> = { emptyList() },
 ) {
     data class Config(
         /** The send loop pauses while more than this much sent audio is unacked. */
@@ -183,6 +185,7 @@ class LiveConnection(
         }
         failureCount = 0
         setState(ConnState.Connected)
+        queueAllMarkers()
 
         // Everything past the (now authoritative) ack is replayed by the send loop.
         val nextToSend = HashMap<Channel, Long>()
@@ -252,6 +255,17 @@ class LiveConnection(
                 else -> _events.tryEmit(event)
             }
         }
+    }
+
+    /** Replaces any queued markers with the full list: the server stores each once. */
+    private fun queueAllMarkers() {
+        val all = markers()
+        if (all.isEmpty()) return
+        synchronized(lock) {
+            pendingControl.removeAll { it is ClientMessage.Marker }
+            pendingControl.addAll(all)
+        }
+        wake()
     }
 
     private fun parse(text: String): ServerEvent? = runCatching { ServerEvent.parse(text) }.getOrNull()

@@ -278,10 +278,23 @@ class Orchestrator:
         live = self._hub.live_sessions()
         await self._check_stt_outage(now, bool(live))
         for st in live:
-            if not st.uploading and now - st.pipeline.last_audio_at > self._cfg.idle_end_s:
+            if (
+                not st.uploading
+                and now - st.pipeline.last_audio_at > self._cfg.idle_end_s
+                and not self._producer_may_return(st, now)
+            ):
                 log.info("ending idle session %s", st.session_id)
                 await self._hub.end(st.session_id)
         await self._end_orphans(now, {st.session_id for st in live})
+
+    def _producer_may_return(self, st: SessionIngest, now: float) -> bool:
+        """A producer that dropped without `end` keeps the session alive for a grace period."""
+        gone = st.producer_gone_at
+        return (
+            st.producer is None
+            and gone is not None
+            and now - gone < self._cfg.producer_gone_grace_s
+        )
 
     async def _end_orphans(self, now: float, in_hub: set[uuid.UUID]) -> None:
         """Sessions that are ``live`` in the DB but have no ingest state (e.g. after a restart,

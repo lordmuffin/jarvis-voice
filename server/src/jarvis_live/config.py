@@ -99,6 +99,9 @@ class Settings(BaseSettings):
     # ones (e.g. from before the finalizer existed) are left alone. 0 disables recovery.
     finalize_recover_max_age_s: float = 86_400.0
     idle_end_s: float = 600.0  # end a live session after this long without audio
+    # A producer that dropped without `end` (a phone in a tunnel) is given this long to come back
+    # and replay its buffer before the idle watchdog ends the session.
+    producer_gone_grace_s: float = 2_700.0
     # A live session counts as streaming while a producer is connected and audio arrived
     # within this window; otherwise viewers show it as offline.
     streaming_stale_s: float = 10.0

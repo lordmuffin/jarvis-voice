@@ -35,11 +35,19 @@ class StubHub:
         return True
 
 
-def _state(clock: FakeClock, idle_for: float = 0.0, uploading: bool = False) -> Any:
+def _state(
+    clock: FakeClock,
+    idle_for: float = 0.0,
+    uploading: bool = False,
+    gone_for: float | None = None,
+) -> Any:
+    """`gone_for`: the producer dropped that many seconds ago without ending."""
     return SimpleNamespace(
         session_id=uuid.uuid4(),
         pipeline=SimpleNamespace(last_audio_at=clock.now - idle_for),
         uploading=uploading,
+        producer=None if gone_for is not None else object(),
+        producer_gone_at=None if gone_for is None else clock.now - gone_for,
     )
 
 
@@ -73,6 +81,28 @@ async def test_idle_session_is_ended_after_ten_minutes(rig: Any) -> None:
     rig.hub.states = [quiet, busy]
     await rig.orch.check_once()
     assert rig.hub.ended == [quiet.session_id]
+
+
+async def test_session_whose_producer_dropped_survives_the_grace_period(rig: Any) -> None:
+    # A phone in a tunnel: no audio for far longer than idle_end_s, but it is coming back.
+    away = _state(rig.clock, idle_for=1800, gone_for=1800)
+    rig.hub.states = [away]
+    await rig.orch.check_once()
+    assert rig.hub.ended == []
+
+
+async def test_session_whose_producer_never_returns_ends_after_the_grace_period(rig: Any) -> None:
+    gone = _state(rig.clock, idle_for=2701, gone_for=2701)
+    rig.hub.states = [gone]
+    await rig.orch.check_once()
+    assert rig.hub.ended == [gone.session_id]
+
+
+async def test_connected_but_silent_producer_still_ends_after_ten_minutes(rig: Any) -> None:
+    silent = _state(rig.clock, idle_for=601)  # producer connected, no audio
+    rig.hub.states = [silent]
+    await rig.orch.check_once()
+    assert rig.hub.ended == [silent.session_id]
 
 
 async def test_uploaded_session_is_not_ended_as_idle_while_it_is_transcribed(rig: Any) -> None:

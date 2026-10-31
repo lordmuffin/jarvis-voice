@@ -189,7 +189,11 @@ class SegmentRow(Base):
 
 class MarkerRow(Base):
     __tablename__ = "markers"
-    __table_args__ = (Index("ix_markers_session_t", "session_id", "t_ms"),)
+    __table_args__ = (
+        Index("ix_markers_session_t", "session_id", "t_ms"),
+        # One marker per (session, time, label); md5 keeps long labels inside the btree limit.
+        Index("uq_markers_session_t_label", "session_id", "t_ms", text("md5(label)"), unique=True),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("sessions.id"))
