@@ -1,0 +1,328 @@
+name: Server Image
+
+# Build the jarvis-live image and move the two release channels.
+#
+# Deploying is GitOps from this repo: the cluster's Flux follows two branches,
+# each applying one overlay of server/deploy/k8s (see server/deploy/README.md):
+#
+#   deploy/lab   -> k8s/jarvis-live-lab, live.lab.apj.dev. Every push to main
+#                   builds :sha-<7>, and `deploy-lab` moves deploy/lab to that commit
+#                   plus one generated commit pinning the lab overlay to that image.
+#   deploy/live  -> k8s/jarvis-live, live.apj.dev. The release PR (release-please)
+#                   bumps the image tag; merging it pushes the release commit to main
+#                   (so lab gets it first) and tags server-vX.Y.Z. `promote` waits
+#                   until lab has that exact commit, gives its image the :X.Y.Z tag --
+#                   the same digest, not a rebuild -- and only then moves deploy/live,
+#                   so Flux never sees a tag before its image exists.
+#
+# "Run workflow" redeploys either channel: `tag` (an earlier server-v* release) rolls
+# live back; `lab_sha` (a commit on main) puts lab on that commit.
+
+on:
+  pull_request:
+    paths: ["server/**", "web/**", "prompts/**", ".github/workflows/server-image.yml"]
+  push:
+    branches: [main]
+    paths: ["server/**", "web/**", "prompts/**", ".github/workflows/server-image.yml"]
+    tags: ["server-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Live: release to deploy, e.g. server-v0.9.0 (its image must already exist)"
+        required: false
+        type: string
+      lab_sha:
+        description: "Lab: commit on main to deploy (its sha-<7> image must already exist)"
+        required: false
+        type: string
+
+env:
+  IMAGE: ghcr.io/lordmuffin/jarvis-live
+  RUNNER_IMAGE: ghcr.io/lordmuffin/jarvis-dispatch-runner
+
+jobs:
+  build:
+    # Release tags are not rebuilt: promote retags the image lab already ran.
+    if: github.event_name != 'workflow_dispatch' && github.ref_type != 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute tag
+        id: tags
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          echo "tag=${IMAGE}:sha-${SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "runner=${RUNNER_IMAGE}:sha-${SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build${{ github.event_name != 'pull_request' && ' and push' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          # The dashboard sources and prompt templates live outside the context; see
+          # server/Dockerfile.
+          build-contexts: |
+            webctx=web
+            promptsctx=prompts
+          build-args: |
+            WEB_SRC=webctx
+            WEB_DIST_SOURCE=web-build
+            PROMPTS_SRC=promptsctx
+            PROMPTS_SOURCE=prompts-copy
+            GIT_SHA=${{ github.sha }}
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.tags.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test (read-only root)
+        if: github.event_name == 'pull_request'
+        env:
+          TAG: ${{ steps.tags.outputs.tag }}
+        run: |
+          docker run --rm --read-only --tmpfs /tmp \
+            -e JARVIS_LIVE_DATA_DIR=/tmp/data -e JARVIS_LIVE_INDEX_DIR=/tmp/idx \
+            "$TAG" python -c "import jarvis_live.app"
+          docker run --rm "$TAG" test -f /app/web/dist/index.html
+          docker run --rm "$TAG" test -f /app/prompts/templates/work-item.md
+          docker run --rm "$TAG" ffmpeg -hide_banner -version  # decodes uploaded recordings
+          test "$(docker run --rm "$TAG" printenv JARVIS_LIVE_GIT_SHA)" = "${{ github.sha }}"
+
+      # The dispatch runner, same commit and tag as the server, which runs it by that tag
+      # (JARVIS_LIVE_GIT_SHA). The GHCR package must be public, like jarvis-live: the
+      # cluster pulls without credentials.
+      - name: Build dispatch runner${{ github.event_name != 'pull_request' && ' and push' || '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: server/dispatch-runner
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          tags: ${{ steps.tags.outputs.runner }}
+          cache-from: type=gha,scope=dispatch-runner
+          cache-to: type=gha,mode=max,scope=dispatch-runner
+
+      - name: Smoke test the runner
+        if: github.event_name == 'pull_request'
+        env:
+          TAG: ${{ steps.tags.outputs.runner }}
+        run: |
+          docker run --rm --entrypoint claude "$TAG" --version
+          docker run --rm --entrypoint git "$TAG" --version
+          docker run --rm --entrypoint uv "$TAG" --version
+          code=0; docker run --rm "$TAG" >/dev/null || code=$?
+          test "$code" = 2  # no step given: prints usage
+
+  deploy-lab:
+    # Every main push whose image built, or "Run workflow" with lab_sha.
+    if: >-
+      !cancelled()
+      && ((github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.build.result == 'success')
+          || (github.event_name == 'workflow_dispatch' && inputs.lab_sha != '' && inputs.tag == ''))
+    needs: build
+    runs-on: ubuntu-latest
+    # One move of deploy/lab at a time, in order; never cancel one half-way.
+    concurrency:
+      group: deploy-lab
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      packages: read
+    outputs:
+      short: ${{ steps.resolve.outputs.short }}
+      moved: ${{ steps.move.outputs.moved }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the commit
+        id: resolve
+        env:
+          REQUESTED: ${{ inputs.lab_sha || github.sha }}
+        run: |
+          sha=$(git rev-parse --verify "${REQUESTED}^{commit}")
+          if ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "::error::${REQUESTED} is not on main; lab only runs merged code"
+            exit 1
+          fi
+          if ! git cat-file -e "${sha}:server/deploy/k8s/jarvis-live-lab/kustomization.yaml" 2>/dev/null; then
+            echo "::error::${sha::7} predates the lab channel (no server/deploy/k8s/jarvis-live-lab)"
+            exit 1
+          fi
+          {
+            echo "sha=${sha}"
+            echo "short=${sha::7}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check the image exists
+        env:
+          SHORT: ${{ steps.resolve.outputs.short }}
+        run: docker manifest inspect "${IMAGE}:sha-${SHORT}" > /dev/null
+
+      - name: Move deploy/lab
+        id: move
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+          SHORT: ${{ steps.resolve.outputs.short }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          # A push whose build finished after a newer commit's did must not drag lab
+          # backwards. ("Run workflow" may, on purpose.)
+          if [ "$EVENT" = push ] && git rev-parse -q --verify origin/deploy/lab > /dev/null; then
+            current=$(git rev-parse origin/deploy/lab^1)
+            if [ "$current" != "$SHA" ] && git merge-base --is-ancestor "$SHA" "$current"; then
+              echo "::notice::deploy/lab is already on newer ${current::7}; leaving it"
+              echo "moved=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          git checkout -q --detach "$SHA"
+          overlay=server/deploy/k8s/jarvis-live-lab
+          NEW_TAG="sha-${SHORT}" yq -i \
+            '(.images[] | select(.name == strenv(IMAGE))).newTag = strenv(NEW_TAG)' \
+            "${overlay}/kustomization.yaml"
+          kubectl kustomize "$overlay" | grep -qF "image: ${IMAGE}:sha-${SHORT}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -q -m "chore(deploy): lab -> sha-${SHORT}" -- "${overlay}/kustomization.yaml"
+          git push --force origin "HEAD:refs/heads/deploy/lab"
+          echo "moved=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::deploy/lab -> ${SHORT}; Flux applies it within a couple of minutes"
+
+  promote:
+    # A release tag (after lab has run it), or "Run workflow" with tag (rollback).
+    if: >-
+      (github.ref_type == 'tag' && startsWith(github.ref_name, 'server-v'))
+      || (github.event_name == 'workflow_dispatch' && inputs.tag != '' && inputs.lab_sha == '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve the release
+        id: resolve
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          case "$TAG" in server-v*) ;; *) echo "::error::$TAG is not a server-v* tag"; exit 1 ;; esac
+          sha=$(git rev-parse --verify "refs/tags/${TAG}^{commit}")
+          version="${TAG#server-v}"
+          # The manifests at that commit must pin exactly this release's image
+          # (k8s/base since the lab channel; k8s/jarvis-live before it).
+          pinned=false
+          for manifest in server/deploy/k8s/base/deployment.yaml server/deploy/k8s/jarvis-live/deployment.yaml; do
+            if git show "${sha}:${manifest}" 2>/dev/null | grep -Eq "image: ${IMAGE}:${version}( |$)"; then
+              pinned=true
+            fi
+          done
+          if [ "$pinned" != true ]; then
+            echo "::error::the manifests at ${TAG} do not pin ${IMAGE}:${version} (releases before the manifests moved here cannot be deployed this way)"
+            exit 1
+          fi
+          {
+            echo "tag=${TAG}"
+            echo "sha=${sha}"
+            echo "version=${version}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for lab to run this commit
+        if: github.ref_type == 'tag'
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+        run: |
+          # The release commit is also a push to main: its build makes :sha-<7> and
+          # deploy-lab puts it on lab. Live only ever gets a commit lab has had.
+          for _ in $(seq 1 50); do
+            git fetch -q origin deploy/lab 2>/dev/null || true
+            if docker manifest inspect "${IMAGE}:sha-${SHA::7}" > /dev/null 2>&1 \
+               && git rev-parse -q --verify origin/deploy/lab > /dev/null \
+               && git merge-base --is-ancestor "$SHA" origin/deploy/lab; then
+              echo "lab has ${SHA::7}"
+              exit 0
+            fi
+            sleep 30
+          done
+          echo "::error::after 25 minutes lab still does not have ${SHA::7} (did its main build or deploy-lab fail?). Fix that, then re-run this job."
+          exit 1
+
+      - uses: docker/setup-buildx-action@v3
+        if: github.ref_type == 'tag'
+
+      - name: Tag lab's image as the release
+        if: github.ref_type == 'tag'
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: docker buildx imagetools create -t "${IMAGE}:${VERSION}" "${IMAGE}:sha-${SHA::7}"
+
+      - name: Check the image exists
+        env:
+          VERSION: ${{ steps.resolve.outputs.version }}
+        run: docker manifest inspect "${IMAGE}:${VERSION}" > /dev/null
+
+      - name: Move deploy/live
+        env:
+          SHA: ${{ steps.resolve.outputs.sha }}
+          TAG: ${{ steps.resolve.outputs.tag }}
+        run: |
+          git push --force origin "${SHA}:refs/heads/deploy/live"
+          echo "::notice::deploy/live -> ${TAG} (${SHA::7}); Flux applies it within a couple of minutes"
+
+  notify-lab:
+    if: ${{ !cancelled() && needs.deploy-lab.result != 'skipped' && needs.deploy-lab.outputs.moved != 'false' }}
+    needs: deploy-lab
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-live [lab] sha-${{ needs.deploy-lab.outputs.short || inputs.lab_sha || github.sha }} ${{ needs.deploy-lab.result == 'success' && 'deploying' || 'NOT deployed' }}"
+      message: "deploy/lab: **${{ needs.deploy-lab.result }}**. live.lab.apj.dev updates within a couple of minutes."
+      priority: ${{ needs.deploy-lab.result == 'success' && 3 || 8 }}
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit
+
+  notify-live:
+    if: ${{ !cancelled() && needs.promote.result != 'skipped' }}
+    needs: promote
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-live ${{ needs.promote.outputs.tag || inputs.tag || github.ref_name }} ${{ needs.promote.result == 'success' && 'deploying' || 'NOT deployed' }}"
+      message: "deploy/live: **${{ needs.promote.result }}**. Flux applies it within a couple of minutes."
+      priority: ${{ needs.promote.result == 'success' && 5 || 8 }}
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

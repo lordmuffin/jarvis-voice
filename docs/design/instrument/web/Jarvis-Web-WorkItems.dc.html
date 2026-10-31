@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Work items</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.col{flex:1 1 520px;min-width:0;display:flex;flex-direction:column;gap:4px}
+.wh{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.wh h3{margin:0;flex:1 1 220px;min-width:0;font-size:16px;font-weight:700;line-height:1.35}
+.none{font-style:italic;color:var(--inst-text-2)}
+.sh{color:var(--inst-text);font-weight:700}
+.j-run .hd .i-chip{font-family:var(--inst-sans)}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="min-height: 1400px; display: flex; flex-direction: column;">
+
+<header class="i-header">
+  <div class="i-header-in">
+    <div class="i-brand">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+      <a href="#" class="i-wordmark">Jarvis Live</a>
+      <span class="i-badge i-badge--lab">Lab</span>
+    </div>
+    <nav class="i-nav" aria-label="Main">
+      <a href="#">Sessions</a>
+      <a href="#">Devices</a>
+      <a href="#" aria-current="page">Work Items</a>
+      <a href="#">Publishing</a>
+      <a href="#">Admin</a>
+    </nav>
+    <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+  </div>
+</header>
+
+<main class="i-page" style="width: 100%; flex: 1;">
+  <div class="i-stack" style="gap: 6px; padding-top: 8px;">
+    <h1 class="t-title">Work items</h1>
+    <p class="t-body t-2">Edit and approve one to freeze its prompt, then copy it into Claude Code.</p>
+  </div>
+
+  <div class="j-toolbar">
+    <div class="i-seg" role="radiogroup" aria-label="Show">
+      <button type="button" role="radio" aria-checked="true">Open <span class="t-mono">4</span></button>
+      <button type="button" role="radio" aria-checked="false">Discarded <span class="t-mono">1</span></button>
+      <button type="button" role="radio" aria-checked="false">Merged <span class="t-mono">1</span></button>
+    </div>
+    <span class="t-meta t-2" style="margin-left: auto;">Newest session first</span>
+  </div>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+
+    <section class="col" aria-labelledby="g1">
+      <div class="j-sec"><h2 id="g1" class="t-label sh">ARC runner migration vendor call</h2><span class="t-mono t-meta t-2">Oct 14, 3:05 PM</span></div>
+
+      <div class="i-block" role="region" aria-label="Merge drafts" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; box-shadow: inset 0 1.5px 0 var(--inst-accent);">
+        <label class="i-label" for="mg-into">Merge 2 drafts into</label>
+        <span class="i-select" style="flex: 1 1 220px; min-width: 0;"><select id="mg-into" class="i-input" style="height: 32px; font-size: 13px;"><option>Add ARM runner scale set to k3s2</option><option>Scope ARC scale sets to the org</option></select></span>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Merge…</button>
+        <button type="button" class="i-btn i-btn--quiet i-btn--sm">Clear</button>
+        <span class="i-help" style="flex-basis: 100%;">Only drafts from the same session can merge.</span>
+      </div>
+
+      <article class="j-wi" aria-labelledby="wa">
+        <div class="wh">
+          <span class="i-chip">Draft</span>
+          <h3 id="wa">Add ARM runner scale set to k3s2</h3>
+          <label class="i-choice" style="font-size: 12px; min-height: 28px;"><input type="checkbox" checked aria-label="Select Add ARM runner scale set to k3s2 to merge"><span>Merge</span></label>
+        </div>
+        <dl>
+          <dt>Repository</dt><dd class="t-mono">lordmuffin/np-home-homelab</dd>
+          <dt>Intent</dt><dd>Give the k3s2 cluster an ARC runner scale set for ARM builds, scoped to the org.</dd>
+          <dt>Acceptance criteria</dt><dd><ul><li>A runner scale set named <span class="t-mono">arm64</span> registers with the org.</li><li>Jobs with <span class="t-mono">runs-on: arm64</span> land on it.</li><li>It runs on the critical-stateful-free nodes only.</li></ul></dd>
+          <dt>Done when</dt><dd>A test workflow on <span class="t-mono">lordmuffin/np-home-homelab</span> passes on arm64.</dd>
+          <dt>Source</dt><dd><a href="#" class="i-src" title="“What's the timeline for the ARM images?”">▶ 14:32</a> <span class="t-meta t-2">· Kai drafted</span></dd>
+        </dl>
+        <div class="j-acts">
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">✓ Approve</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">Preview Prompt</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button>
+          <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+        </div>
+      </article>
+
+      <article class="j-wi" aria-labelledby="wb">
+        <div class="wh">
+          <span class="i-chip">Draft</span>
+          <h3 id="wb">Scope ARC scale sets to the org</h3>
+          <label class="i-choice" style="font-size: 12px; min-height: 28px;"><input type="checkbox" checked aria-label="Select Scope ARC scale sets to the org to merge"><span>Merge</span></label>
+        </div>
+        <dl>
+          <dt>Repository</dt><dd class="t-mono">lordmuffin/np-home-homelab</dd>
+          <dt>Intent</dt><dd>Register runner scale sets once for the org, not once per repository.</dd>
+          <dt>Acceptance criteria</dt><dd><ul><li>One scale set serves all four repositories.</li></ul></dd>
+          <dt>Done when</dt><dd>Jobs from all four repositories land on the org scale set.</dd>
+          <dt>Source</dt><dd><a href="#" class="i-src" title="“Org level works for us. Four repos need runners.”">▶ 14:20</a> <a href="#" class="i-src" title="“We run the controller in its own namespace. Scale sets register per repository or per org.”">▶ 13:58</a></dd>
+        </dl>
+        <div class="j-acts">
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">✓ Approve</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">Preview Prompt</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button>
+          <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+        </div>
+      </article>
+
+      <article class="j-wi" aria-labelledby="wc">
+        <div class="wh">
+          <span class="i-chip">Draft</span>
+          <h3 id="wc">Document GPU runner pricing in the vault</h3>
+          <label class="i-choice" style="font-size: 12px; min-height: 28px;"><input type="checkbox" aria-label="Select Document GPU runner pricing in the vault to merge"><span>Merge</span></label>
+        </div>
+        <dl>
+          <dt>Repository</dt><dd class="none">no repository yet</dd>
+          <dt>Intent</dt><dd>Record the vendor's GPU runner pricing next to the DGX node sizing.</dd>
+          <dt>Acceptance criteria</dt><dd class="t-2">—</dd>
+          <dt>Done when</dt><dd>The vault note lists each GPU runner SKU with its monthly price.</dd>
+          <dt>Source</dt><dd><a href="#" class="i-src" title="“Send me the GPU runner pricing and we'll size it against the DGX node.”">▶ 16:12</a></dd>
+        </dl>
+        <div class="j-acts">
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" disabled aria-describedby="wc-why">✓ Approve</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">Preview Prompt</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm">Edit</button>
+          <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+        </div>
+        <span id="wc-why" class="i-reason">⚑ To approve: choose a repository; add at least one acceptance criterion.</span>
+      </article>
+    </section>
+
+    <section class="col" aria-labelledby="g2" style="flex: 1 1 560px;">
+      <div class="j-sec"><h2 id="g2" class="t-label sh">Platform sync</h2><span class="t-mono t-meta t-2">Oct 13, 10:00 AM</span></div>
+
+      <article class="j-wi j-wi--approved" aria-labelledby="wd">
+        <div class="wh">
+          <span class="i-chip i-chip--live">✓ Approved</span>
+          <h3 id="wd">Add node inventory export script</h3>
+        </div>
+        <dl>
+          <dt>Repository</dt><dd class="t-mono">lordmuffin/np-home-homelab</dd>
+          <dt>Intent</dt><dd>Export the per-node hardware and software inventory as one CSV a vendor can quote from.</dd>
+          <dt>Acceptance criteria</dt><dd><ul><li><span class="t-mono">scripts/pve-node-inventory/export.py</span> writes one row per host.</li><li>It only reads, and needs no new credentials.</li><li>A unit test pins the CSV header.</li></ul></dd>
+          <dt>Done when</dt><dd><span class="t-mono">make test</span> passes and the CSV opens in a spreadsheet.</dd>
+          <dt>Source</dt><dd><a href="#" class="i-src" title="“The node inventory is still a manual export. Let's script it.”">▶ 21:10</a></dd>
+        </dl>
+
+        <div class="i-stack" style="gap: 4px;">
+          <span class="t-meta t-2">Approved prompt · <span class="t-mono">sha256 4be0d93a1c57</span></span>
+<pre class="j-prompt">Repository: lordmuffin/np-home-homelab
+Work item: Add node inventory export script
+
+Intent
+Export the per-node hardware and software inventory as one CSV
+a vendor can quote from.
+
+Acceptance criteria
+- scripts/pve-node-inventory/export.py writes one row per host.
+- It only reads, and needs no new credentials.
+- A unit test pins the CSV header.
+
+Done when
+make test passes and the CSV opens in a spreadsheet.
+
+Source: Platform sync, Oct 13, 21:10
+"The node inventory is still a manual export. Let's script it."</pre>
+        </div>
+
+        <div class="j-acts">
+          <button type="button" class="i-btn i-btn--primary i-btn--sm">⎘ Copy Prompt</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-expanded="true">Hide Prompt</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm" aria-describedby="wd-ed">Edit</button>
+          <button type="button" class="i-btn i-btn--quiet i-btn--sm">Unapprove</button>
+          <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm">✕ Discard</button>
+        </div>
+        <span id="wd-ed" class="i-help">Edit or Unapprove returns it to a draft. The next approval freezes a new prompt.</span>
+
+        <button type="button" class="i-btn i-btn--quiet i-btn--sm t-mono" aria-expanded="false" style="align-self: flex-start; font-size: 11px;">▾ Attempt 1 · Draft PR opened · 15:47</button>
+
+        <div class="j-run" role="region" aria-label="Claude Code, attempt 2">
+          <div class="hd"><span>Claude Code · attempt 2 ·</span><span class="i-chip i-chip--progress">⚑ Needs your input</span><span>·</span><a href="#" title="lordmuffin/np-home-homelab#318">Draft PR #318</a><span style="margin-left: auto;">Oct 14 15:52</span></div>
+          <div class="i-stack" style="gap: 2px;">
+            <span class="t-label">Your guidance</span>
+            <blockquote>Write CSV, not JSON. Keep it read-only against the PVE API.</blockquote>
+          </div>
+          <p>Switched the export to CSV and added a header test. Both are pushed to Draft PR #318.</p>
+          <blockquote style="box-shadow: inset 2px 0 0 var(--inst-warning);"><b>Claude asks:</b> Should the export include guest CTs per host, or only the hosts themselves?</blockquote>
+          <form class="i-stack" style="gap: 8px; padding-top: 4px;" aria-label="Answer Claude">
+            <div class="i-field">
+              <label class="i-label" for="st">Answer Claude</label>
+              <textarea id="st" class="i-input" maxlength="4000" aria-describedby="st-c">Hosts only for now: the four Proxmox nodes, TrueNAS and the two bare-metal hosts. Leave guest CTs out and add a TODO that points at node-control's nodes.yaml. Keep the CSV header stable.</textarea>
+              <span id="st-c" class="i-help" style="display: flex; justify-content: space-between; gap: 8px;"><span>Claude continues on the same branch.</span><span class="t-mono">212 / 4000</span></span>
+            </div>
+            <div class="j-acts">
+              <button type="submit" class="i-btn i-btn--secondary i-btn--sm">↪ Continue</button>
+              <button type="button" class="i-btn i-btn--danger-quiet i-btn--sm" style="margin-left: auto;">■ Cancel Run</button>
+            </div>
+          </form>
+        </div>
+      </article>
+    </section>
+  </div>
+</main>
+
+<footer class="i-footer">
+  <span>Claude Code runs only in LAB. Work items come from your sessions.</span>
+  <span class="t-mono">main · 7d41b2e</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1280,"height":1400}}'>
+class Component extends DCLogic { renderVals() { return { theme: this.props.theme ?? 'dark' }; } }
+</script>
+</body>
+</html>

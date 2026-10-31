@@ -1,0 +1,10 @@
+{
+  "type": "segment",
+  "id": "seg_1",
+  "channel": "system",
+  "speaker": "them",
+  "start_ms": 1000,
+  "end_ms": 2400,
+  "text": "Hello everyone",
+  "stt_tier": "local"
+}

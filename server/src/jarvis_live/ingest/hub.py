@@ -1,0 +1,168 @@
+"""Registry of live-session ingest state (single replica; Postgres is the source of truth)."""
+
+import asyncio
+import contextlib
+import time
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+
+from fastapi import WebSocket
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from starlette.websockets import WebSocketDisconnect
+
+from jarvis_live.bus import Bus
+from jarvis_live.config import Settings
+from jarvis_live.db.models import Session
+from jarvis_live.diarize.client import Embedder
+from jarvis_live.ingest.pipeline import SessionPipeline
+from jarvis_live.ingest.store import AudioStore
+from jarvis_live.logging_setup import session_logger
+from jarvis_live.processing import fraction
+from jarvis_live.stt.backend import STTBackend
+
+
+async def close_producer(ws: WebSocket, code: int) -> None:
+    """Close a producer connection that may already be dead: after a network drop the server
+    can still hold the old socket when the client reconnects or the session ends."""
+    with contextlib.suppress(RuntimeError, WebSocketDisconnect):
+        await ws.close(code=code)
+
+
+@dataclass
+class SessionIngest:
+    session_id: uuid.UUID
+    channels: list[str]
+    store: AudioStore
+    pipeline: SessionPipeline
+    producer: WebSocket | None = None
+    # time.monotonic() when the producer last disconnected without ending; None while connected.
+    producer_gone_at: float | None = None
+    # Fed from an uploaded file rather than a producer (see ingest/upload.py).
+    uploading: bool = False
+    ended: asyncio.Event = field(default_factory=asyncio.Event)
+
+
+class IngestHub:
+    def __init__(
+        self,
+        settings: Settings,
+        sessionmaker: "async_sessionmaker[AsyncSession]",
+        bus: Bus,
+        stt: STTBackend,
+        *,
+        embedder: Embedder | None = None,
+        on_start: Callable[[SessionIngest], None] | None = None,
+        on_end: Callable[[uuid.UUID], None] | None = None,
+    ) -> None:
+        """``on_start`` fires (synchronously, under the hub lock) when a session's ingest state
+        is created; ``on_end`` after a live session has been moved to ``finalizing`` and its
+        pipeline drained. Both must return quickly (spawn a task)."""
+        self._on_start = on_start
+        self._on_end = on_end
+        self._cfg = settings
+        self._sm = sessionmaker
+        self._bus = bus
+        self._stt = stt
+        self._embedder = embedder
+        self._states: dict[uuid.UUID, SessionIngest] = {}
+        self._draining: dict[uuid.UUID, datetime] = {}  # end() in progress: since when
+        self._drained: dict[uuid.UUID, SessionPipeline] = {}  # the pipeline end() drains
+        self._lock = asyncio.Lock()
+
+    async def get(self, session_id: uuid.UUID, channels: list[str]) -> SessionIngest:
+        async with self._lock:
+            state = self._states.get(session_id)
+            if state is None:
+                store = AudioStore(
+                    session_id, self._cfg.data_dir, self._sm, self._cfg.fsync_interval_s
+                )
+                await store.load()
+                pipeline = SessionPipeline(
+                    session_id,
+                    channels,
+                    settings=self._cfg,
+                    sessionmaker=self._sm,
+                    bus=self._bus,
+                    stt=self._stt,
+                    embedder=self._embedder,
+                )
+                pipeline.start()
+                state = self._states[session_id] = SessionIngest(
+                    session_id, channels, store, pipeline
+                )
+                if self._on_start is not None:
+                    self._on_start(state)
+            return state
+
+    def live_sessions(self) -> list[SessionIngest]:
+        return list(self._states.values())
+
+    def is_streaming(self, session_id: uuid.UUID) -> bool:
+        """True while a producer is connected and sending audio. A ``live`` session without
+        this is waiting for its producer to reconnect, or for the idle watchdog to end it. An upload
+        counts as streaming until its audio is transcribed."""
+        state = self._states.get(session_id)
+        if state is None:
+            return False
+        return state.uploading or (
+            state.producer is not None
+            and time.monotonic() - state.pipeline.last_audio_at < self._cfg.streaming_stale_s
+        )
+
+    def draining_since(self, session_id: uuid.UUID) -> datetime | None:
+        """When an ``end()`` of this session began, while it drains the last segments."""
+        return self._draining.get(session_id)
+
+    def draining_progress(self, session_id: uuid.UUID) -> float | None:
+        """How much of an ending session's audio is transcribed (0-1), while it drains."""
+        if (pipeline := self._drained.get(session_id)) is None:
+            return None
+        return fraction(pipeline.transcribed_ms(), pipeline.fed_ms())
+
+    async def end(self, session_id: uuid.UUID, *, caller: WebSocket | None = None) -> bool:
+        """Move a live session to ``finalizing`` and drain its pipeline. Idempotent.
+
+        Returns True if this call performed the transition. A producer other than ``caller`` is
+        disconnected."""
+        self._draining.setdefault(session_id, datetime.now(UTC))
+        try:
+            return await self._end(session_id, caller)
+        finally:
+            self._draining.pop(session_id, None)
+            self._drained.pop(session_id, None)
+
+    async def _end(self, session_id: uuid.UUID, caller: WebSocket | None) -> bool:
+        log = session_logger(__name__, session_id)
+        async with self._sm() as db:
+            result = await db.execute(
+                update(Session)
+                .where(Session.id == session_id, Session.status == "live")
+                .values(status="finalizing", ended_at=datetime.now(UTC))
+            )
+            await db.commit()
+        transitioned = bool(result.rowcount)  # type: ignore[attr-defined]
+        async with self._lock:
+            state = self._states.pop(session_id, None)
+        if state is not None:
+            state.ended.set()
+            await state.store.close()  # reject further frames, fsync
+            self._drained[session_id] = state.pipeline
+            await state.pipeline.finish()
+            await state.pipeline.close()
+            if state.producer is not None and state.producer is not caller:
+                await close_producer(state.producer, 4410)
+        if transitioned:
+            log.info("session ended")
+            if self._on_end is not None:
+                self._on_end(session_id)
+        return transitioned
+
+    async def shutdown(self) -> None:
+        async with self._lock:
+            states, self._states = list(self._states.values()), {}
+        for s in states:
+            await s.store.close()
+            await s.pipeline.close()

@@ -13,8 +13,7 @@ import java.util.concurrent.TimeUnit
 class NotificationRepository(context: Context) {
 
     private val prefs = context.getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
-    private val apiKey get() = (prefs.getString(VoiceChatViewModel.PREF_VAULT_KEY, "") ?: "")
-        .ifBlank { VoiceChatViewModel.DEFAULT_VAULT_KEY }
+    private val apiKey get() = prefs.getString(VoiceChatViewModel.PREF_VAULT_KEY, "") ?: ""
     private val base = "http://192.168.1.155:8881"
 
     private val http = OkHttpClient.Builder()

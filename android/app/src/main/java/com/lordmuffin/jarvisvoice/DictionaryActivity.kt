@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
-import android.widget.Toast
+import com.lordmuffin.jarvisvoice.ui.InstToast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,7 +22,7 @@ class DictionaryActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dictionary)
-        supportActionBar?.title = "Custom Dictionary"
+        supportActionBar?.title = getString(R.string.chat_dict_title)
 
         dictManager = CustomDictionaryManager(this)
 
@@ -54,22 +54,23 @@ class DictionaryActivity : AppCompatActivity() {
             etFrom.setText(existing.first)
             etTo.setText(existing.second)
             etFrom.isEnabled = false
+            view.findViewById<View>(R.id.tv_word_from_locked).visibility = View.VISIBLE
         }
         AlertDialog.Builder(this)
-            .setTitle(if (existing == null) "Add substitution" else "Edit substitution")
+            .setTitle(getString(if (existing == null) R.string.chat_dict_dialog_add else R.string.chat_dict_dialog_edit))
             .setView(view)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.chat_dict_save) { _, _ ->
                 val from = etFrom.text.toString().trim()
                 val to   = etTo.text.toString().trim()
                 if (from.isBlank() || to.isBlank()) {
-                    Toast.makeText(this, "Both fields required", Toast.LENGTH_SHORT).show()
+                    InstToast.show(this, R.string.chat_dict_both_required)
                     return@setPositiveButton
                 }
                 if (existing != null) dictManager.removeEntry(existing.first)
                 dictManager.addEntry(from, to)
                 refreshEntries()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.chat_dict_cancel, null)
             .show()
     }
 
@@ -90,7 +91,7 @@ class DictionaryActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val (from, to) = entries[position]
             holder.tvFrom.text = from
-            holder.tvTo.text   = "→  $to"
+            holder.tvTo.text   = getString(R.string.chat_dict_arrow, to)
             holder.itemView.setOnClickListener { showAddDialog(from to to) }
             holder.btnDelete.setOnClickListener {
                 dictManager.removeEntry(from)

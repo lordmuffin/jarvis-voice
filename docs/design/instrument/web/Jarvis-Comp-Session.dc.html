@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Session, publication and upload components</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inst-text);padding-bottom:4px}
+.st{font-size:10px;color:var(--inst-text-2);padding:8px 0 2px}
+.cap{font-size:11px;color:var(--inst-text-2);padding-top:4px}
+.pr{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--inst-surface);padding:8px 12px;min-height:48px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2200px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+<div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 2200px;">
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · 3 · Components · {{th.name}}</span>
+    <h1 class="t-title">Session row, chips, upload</h1>
+  </div>
+
+  <section class="i-stack">
+    <h2 class="h">Session row</h2>
+    <span class="st">Pinned live card (planned) · top of Sessions</span>
+    <a href="#" class="j-srow j-srow--pinned"><span class="i-live" style="height: 32px;"><span class="i-dot i-breathe"></span><span class="lbl">LIVE</span><span class="time">18:42</span></span><span class="i-stack" style="flex: 1; min-width: 0; gap: 0;"><span class="ti">ARC runner migration vendor call</span><span class="mt">Meeting · started 3:05 PM · <span class="t-mono">pve · lag 840 ms</span></span></span><span class="t-meta">Open ▶</span></a>
+    <span class="st">Rows · the whole row is one link</span>
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+      <a href="#" class="j-srow"><span class="i-stack" style="flex: 1; min-width: 0; gap: 0;"><span class="{{r.tcls}}">{{r.title}}</span><span class="mt">{{r.meta}}</span></span><span class="{{r.chip}}">{{r.dot}}{{r.state}}</span></a>
+    </sc-for>
+    <span class="cap">Meta: owner (only when not you) · date and time · duration (“&lt;1 min” under a minute) · Meeting or Solo. Duration is mono.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Session status chip</h2>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+      <span class="i-chip i-chip--live"><span class="i-dot i-breathe"></span>Live</span>
+      <span class="i-chip" title="No audio is streaming. The session resumes if the recorder reconnects, or ends on its own after a while."><span class="i-dot i-dot--hollow"></span>Offline</span>
+      <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span>
+      <span class="i-chip i-chip--done">✓ Done</span>
+      <span class="i-chip i-chip--failed">✕ Failed</span>
+      <span class="i-chip">Paused</span>
+    </div>
+    <div class="i-tooltip" style="max-width: 300px;">No audio is streaming. The session resumes if the recorder reconnects, or ends on its own after a while.</div>
+    <span class="cap">Paused is planned. Its slot is kept.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Connection chip and pipeline meta</h2>
+    <sc-for list="{{links}}" as="l" hint-placeholder-count="8">
+      <div class="pr" style="min-height: 40px;"><span class="{{l.chip}}">{{l.lead}}<span class="{{l.dot}}"></span>{{l.word}}</span><span class="t-mono t-meta t-2">{{l.meta}}</span><span class="t-caption t-2" style="margin-left: auto;">{{l.note}}</span></div>
+    </sc-for>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Publication chip · note toolbar</h2>
+    <sc-for list="{{pubs}}" as="p" hint-placeholder-count="7">
+      <div class="pr"><span class="{{p.chip}}">{{p.label}}</span><sc-if value="{{p.pr}}" hint-placeholder-val="{{false}}"><a href="#" class="t-mono t-meta">PR #212</a></sc-if><sc-if value="{{p.edited}}" hint-placeholder-val="{{false}}"><span class="i-reason">⚑ Edited since it was published</span></sc-if><span style="margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px;"><sc-for list="{{p.btns}}" as="b" hint-placeholder-count="2"><button type="button" class="{{b.cls}}">{{b.t}}</button></sc-for></span></div>
+    </sc-for>
+    <div class="pr"><span class="i-chip">Not published</span><span style="margin-left: auto; display: flex; align-items: center; gap: 8px;"><span class="i-reason">⚑ LAB: publishing is off in this copy.</span><button type="button" class="i-btn i-btn--sm" disabled>Publish</button></span></div>
+    <div class="pr"><span class="i-chip i-chip--failed">✕ Publish failed</span><span class="i-msg-error" style="flex: 1 1 260px;">Publishing failed: GitHub returned 422: the branch already has a pull request.</span><button type="button" class="i-btn i-btn--secondary i-btn--sm">↩ Retry</button></div>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Upload recording · inline in the toolbar</h2>
+    <span class="st">Closed</span>
+    <div class="i-block"><button type="button" class="i-btn i-btn--secondary i-btn--sm">Upload Recording</button></div>
+    <span class="st">File chosen</span>
+    <form class="j-upload">
+      <div class="i-field" style="flex: 0 1 220px;"><span class="i-label">File</span><span class="t-mono t-caption" style="height: 36px; display: flex; align-items: center;">vendor-call-oct14.m4a · 41 MB</span></div>
+      <div class="i-field" style="flex: 1 1 220px;"><label class="i-label" for="up-t-{{th.id}}">Title <span class="opt">(optional)</span></label><input id="up-t-{{th.id}}" class="i-input" placeholder="vendor-call-oct14"></div>
+      <div class="i-field"><span class="i-label" id="up-m-{{th.id}}">Mode</span><div class="i-seg" role="radiogroup" aria-labelledby="up-m-{{th.id}}"><button type="button" role="radio" aria-checked="false">Solo</button><button type="button" role="radio" aria-checked="true">Meeting</button></div></div>
+      <div class="j-acts"><button type="submit" class="i-btn i-btn--primary">Upload</button><button type="button" class="i-btn i-btn--quiet">Cancel</button></div>
+    </form>
+    <span class="st">Uploading</span>
+    <form class="j-upload" style="align-items: center;">
+      <span class="t-mono t-caption" style="flex: 1 1 200px;">vendor-call-oct14.m4a</span>
+      <div style="flex: 2 1 200px;" class="i-stack"><div class="i-progress" role="progressbar" aria-valuenow="64" aria-label="Upload"><span style="width: 64%;"></span></div><span class="t-mono t-meta t-2">64% · 26 of 41 MB</span></div>
+      <button type="button" class="i-btn i-btn--sm" disabled><span class="i-spin"></span>Uploading…</button>
+      <button type="button" class="i-btn i-btn--quiet i-btn--sm">Cancel</button>
+    </form>
+    <span class="st">Errors · beside the file, never a toast</span>
+    <div class="j-upload" style="flex-direction: column; align-items: stretch; gap: 6px;">
+      <span class="i-msg-error">✕ Recordings are limited to 500 MB.</span>
+      <span class="i-msg-error">✕ The upload is empty.</span>
+      <span class="i-msg-error">✕ No audio could be read from the file.</span>
+    </div>
+    <span class="cap">On success, Jarvis opens the new session while it transcribes.</span>
+  </section>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (title, meta, state, tone, dot) => ({ title: title || 'Untitled session', tcls: title ? 'ti' : 'ti ti--none', meta, state, chip: 'i-chip' + (tone ? ' i-chip--' + tone : ''), dot: dot || '' });
+    const B = (t, kind) => ({ t, cls: 'i-btn i-btn--sm ' + (kind === 'p' ? 'i-btn--primary' : kind === 'q' ? 'i-btn--quiet' : 'i-btn--secondary') });
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      rows: [
+        row('Platform sync', 'Oct 13, 10:00 AM · 42 min · Meeting', '✓ Done', 'done'),
+        row('', 'Oct 13, 8:12 AM · <1 min · Solo', '✕ Failed', 'failed'),
+        row('Homelab power budget', 'sam · Oct 11, 2:15 PM · 28 min · Meeting', '✓ Done', 'done'),
+        row('Sleep pipeline backfill plan', 'Oct 12, 9:40 PM · 12 min · Solo', 'Finalizing', 'progress'),
+        row('Kai voice latency notes', 'Oct 10, 7:05 AM · 6 min · Solo', 'Offline', '')
+      ],
+      links: [
+        { chip: 'i-chip i-chip--live', lead: '', dot: 'i-dot', word: 'Connected', meta: 'pve · lag 840 ms', note: '' },
+        { chip: 'i-chip', lead: '', dot: 'i-spin i-chip-spin', word: 'Connecting', meta: '', note: '' },
+        { chip: 'i-chip i-chip--progress', lead: '', dot: 'i-spin i-chip-spin', word: 'Reconnecting · 3.2 s queued', meta: '', note: 'Still recording. Nothing is lost.' },
+        { chip: 'i-chip', lead: '', dot: 'i-sq', word: 'Local only', meta: 'on-device draft', note: 'Your choice. Nothing leaves this device.' },
+        { chip: 'i-chip i-chip--progress', lead: '⚑ ', dot: '', word: 'Degraded · gamingpc', meta: 'lag 4200 ms', note: 'spark and pve are down.' },
+        { chip: 'i-chip i-chip--progress', lead: '⚑ ', dot: '', word: 'Copilot offline', meta: 'pve · lag 840 ms', note: 'The transcript continues.' },
+        { chip: 'i-chip', lead: '', dot: 'i-dot i-dot--hollow', word: 'Offline', meta: '', note: 'No audio for 10 s.' },
+        { chip: 'i-chip i-chip--failed', lead: '✕ ', dot: '', word: 'Failed', meta: '', note: 'The server ended the session.' }
+      ],
+      pubs: [
+        { chip: 'i-chip', label: 'Not published', pr: false, edited: false, btns: [B('Publish', 'p'), B('Skip'), B('Edit'), B('Regenerate', 'q')] },
+        { chip: 'i-chip i-chip--progress', label: 'Publishing', pr: false, edited: false, btns: [{ t: 'Opening a pull request…', cls: 'i-btn i-btn--sm i-btn--quiet' }] },
+        { chip: 'i-chip i-chip--live', label: 'PR open', pr: true, edited: false, btns: [B('Review', 'p'), B('Merge'), B('Close PR'), B('Edit')] },
+        { chip: 'i-chip i-chip--live', label: 'PR open', pr: true, edited: true, btns: [B('Publish Changes', 'p'), B('Merge'), B('Close PR')] },
+        { chip: 'i-chip i-chip--done', label: '✓ Merged', pr: true, edited: false, btns: [B('Edit'), B('Regenerate', 'q')] },
+        { chip: 'i-chip', label: 'PR closed', pr: true, edited: false, btns: [B('Publish'), B('Edit')] },
+        { chip: 'i-chip', label: 'Skipped', pr: false, edited: false, btns: [B('Unskip')] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

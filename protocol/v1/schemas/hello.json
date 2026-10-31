@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/hello.json",
+  "title": "hello",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "hello"
+    },
+    "protocol": {
+      "const": 1
+    },
+    "device": {
+      "type": "string"
+    },
+    "codec": {
+      "const": "pcm16le_16k"
+    },
+    "resume": {
+      "type": "object",
+      "properties": {
+        "mic": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "system": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        }
+      },
+      "required": [
+        "mic",
+        "system"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "type",
+    "protocol",
+    "device",
+    "codec",
+    "resume"
+  ],
+  "additionalProperties": false
+}

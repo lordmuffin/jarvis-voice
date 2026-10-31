@@ -8,7 +8,6 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.RadioButton
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Observer
@@ -16,6 +15,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.lordmuffin.jarvisvoice.ui.InstButtonKind
+import com.lordmuffin.jarvisvoice.ui.InstToast
+import com.lordmuffin.jarvisvoice.ui.setInstKind
 import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.SttDownloadWorker
 import com.lordmuffin.jarvisvoice.speech.SttModelConfig
@@ -33,7 +35,7 @@ class SttModelManagerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_stt_model_manager)
-        supportActionBar?.title = "STT Model"
+        supportActionBar?.title = getString(R.string.models_stt_model)
 
         sttMgr = SttModelManager(this)
 
@@ -74,14 +76,14 @@ class SttModelManagerActivity : AppCompatActivity() {
                             sttMgr.setActiveModel(config.id)
                             VoiceOverlayService.instance?.reloadSpeechEngine()
                             adapter.notifyDataSetChanged()
-                            Toast.makeText(this, "${config.displayName} ready", Toast.LENGTH_SHORT).show()
+                            InstToast.show(this, getString(R.string.models_toast_ready, config.displayName))
                         }
                         WorkInfo.State.FAILED -> {
                             if (downloadingId == config.id) downloadingId = null
                             adapter.clearProgress(config.id)
                             adapter.notifyDataSetChanged()
-                            val err = info.outputData.getString(SttDownloadWorker.KEY_ERROR) ?: "Unknown error"
-                            Toast.makeText(this, "Download failed: $err", Toast.LENGTH_LONG).show()
+                            val err = info.outputData.getString(SttDownloadWorker.KEY_ERROR) ?: getString(R.string.models_unknown_error)
+                            InstToast.show(this, getString(R.string.models_toast_download_failed, err))
                         }
                         WorkInfo.State.CANCELLED -> {
                             if (downloadingId == config.id) downloadingId = null
@@ -105,7 +107,7 @@ class SttModelManagerActivity : AppCompatActivity() {
         sttMgr.setActiveModel(config.id)
         VoiceOverlayService.instance?.reloadSpeechEngine()
         adapter.notifyDataSetChanged()
-        Toast.makeText(this, "${config.displayName} selected", Toast.LENGTH_SHORT).show()
+        InstToast.show(this, getString(R.string.models_toast_selected, config.displayName))
     }
 
     private fun onDownload(config: SttModelConfig) {
@@ -122,14 +124,14 @@ class SttModelManagerActivity : AppCompatActivity() {
 
     private fun onDelete(config: SttModelConfig) {
         AlertDialog.Builder(this)
-            .setTitle("Delete ${config.displayName}?")
-            .setMessage("${config.fileSizeMb} MB will be freed.")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(getString(R.string.models_delete_title, config.displayName))
+            .setMessage(getString(R.string.models_delete_message, config.fileSizeMb))
+            .setPositiveButton(R.string.models_delete) { _, _ ->
                 sttMgr.deleteModel(config)
                 VoiceOverlayService.instance?.reloadSpeechEngine()
                 adapter.notifyDataSetChanged()
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.models_cancel, null)
             .show()
     }
 
@@ -209,15 +211,25 @@ class SttModelManagerActivity : AppCompatActivity() {
                 rbSelect.isEnabled = isInstalled && !isDownloading
 
                 tvStatus.text = when {
-                    isExtracting  -> "Extracting…"
-                    isDownloading -> "Downloading…"
+                    isExtracting  -> getString(R.string.models_extracting)
+                    isDownloading -> getString(R.string.models_downloading)
                     isInstalled   -> {
                         val base = sttMgr.getStatusLabel(config)
                         val sttBackend = (VoiceOverlayService.instance?.speechEngine as? SherpaOnnxSpeechEngine)
                             ?.activeProvider?.takeIf { isActive }
-                        if (sttBackend != null) "$base  [$sttBackend]" else base
+                        if (sttBackend != null) getString(R.string.models_status_installed_backend, base, sttBackend) else base
                     }
-                    else          -> "${config.fileSizeMb} MB"
+                    else          -> getString(R.string.models_status_not_installed_stt, config.fileSizeMb)
+                }
+                // Why the radio and the action are greyed out.
+                val disabledHint = when {
+                    !isInstalled && !isDownloading && !isExtracting && downloadingId != null -> R.string.models_hint_other_download
+                    !isInstalled && !isDownloading && !isExtracting -> R.string.models_hint_download_first
+                    isInstalled && downloadingId != null -> R.string.models_hint_other_download
+                    else -> null
+                }
+                if (disabledHint != null) {
+                    tvStatus.text = getString(R.string.models_hint_join, tvStatus.text, getString(disabledHint))
                 }
 
                 val busy = isDownloading || isExtracting
@@ -226,7 +238,7 @@ class SttModelManagerActivity : AppCompatActivity() {
                 when {
                     isExtracting -> {
                         progressBar.isIndeterminate = true
-                        tvProgress.text = "Extracting…"
+                        tvProgress.text = getString(R.string.models_extracting)
                     }
                     isDownloading -> {
                         progressBar.max = 100
@@ -236,31 +248,27 @@ class SttModelManagerActivity : AppCompatActivity() {
                             tvProgress.text = buildProgressLabel(pct, prog.speedBps, prog.etaSec)
                         } else {
                             progressBar.isIndeterminate = true
-                            tvProgress.text = "Connecting…"
+                            tvProgress.text = getString(R.string.models_connecting)
                         }
                     }
                 }
 
                 when {
                     busy -> {
-                        btnAction.text = "Cancel"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF333333.toInt())
+                        btnAction.text = getString(R.string.models_cancel)
+                        btnAction.setInstKind(InstButtonKind.SECONDARY)
                         btnAction.isEnabled = true
                         btnAction.setOnClickListener { onCancelDownload(config) }
                     }
                     isInstalled -> {
-                        btnAction.text = if (isActive) "Remove" else "Delete"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF442222.toInt())
+                        btnAction.text = getString(if (isActive) R.string.models_remove else R.string.models_delete)
+                        btnAction.setInstKind(InstButtonKind.DANGER)
                         btnAction.isEnabled = downloadingId == null
                         btnAction.setOnClickListener { onDelete(config) }
                     }
                     else -> {
-                        btnAction.text = "Download"
-                        btnAction.backgroundTintList =
-                            android.content.res.ColorStateList.valueOf(0xFF00F5D4.toInt())
-                        btnAction.setTextColor(0xFF04130F.toInt())
+                        btnAction.text = getString(R.string.models_download)
+                        btnAction.setInstKind(InstButtonKind.PRIMARY)
                         btnAction.isEnabled = downloadingId == null
                         btnAction.setOnClickListener { onDownload(config) }
                     }
@@ -274,21 +282,21 @@ class SttModelManagerActivity : AppCompatActivity() {
     }
 
     private fun buildProgressLabel(pct: Int, speedBps: Long, etaSec: Long): String {
-        val sb = StringBuilder("$pct%")
-        if (speedBps > 0) sb.append("  ·  ").append(formatSpeed(speedBps))
-        if (etaSec >= 0) sb.append("  ·  ETA ").append(formatEta(etaSec))
+        val sb = StringBuilder(getString(R.string.models_progress_pct, pct))
+        if (speedBps > 0) sb.append(getString(R.string.models_progress_speed, formatSpeed(speedBps)))
+        if (etaSec >= 0) sb.append(getString(R.string.models_progress_eta, formatEta(etaSec)))
         return sb.toString()
     }
 
     private fun formatSpeed(bps: Long): String = when {
-        bps < 1_024         -> "$bps B/s"
-        bps < 1_048_576     -> "${bps / 1_024} KB/s"
-        else                -> "%.1f MB/s".format(bps.toDouble() / 1_048_576)
+        bps < 1_024         -> getString(R.string.models_speed_bps, bps)
+        bps < 1_048_576     -> getString(R.string.models_speed_kbps, bps / 1_024)
+        else                -> getString(R.string.models_speed_mbps, bps.toDouble() / 1_048_576)
     }
 
     private fun formatEta(sec: Long): String = when {
-        sec < 60    -> "${sec}s"
-        sec < 3_600 -> "${sec / 60}m ${sec % 60}s"
-        else        -> "${sec / 3_600}h ${(sec % 3_600) / 60}m"
+        sec < 60    -> getString(R.string.models_eta_s, sec)
+        sec < 3_600 -> getString(R.string.models_eta_ms, sec / 60, sec % 60)
+        else        -> getString(R.string.models_eta_hm, sec / 3_600, (sec % 3_600) / 60)
     }
 }

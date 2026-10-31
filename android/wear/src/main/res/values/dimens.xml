@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Watch-specific sizes with no Instrument token. Everything else is @dimen/inst_*. -->
+<resources>
+    <dimen name="wear_state_glyph">28sp</dimen>
+    <dimen name="wear_record_button">72dp</dimen>
+    <dimen name="wear_tile_button">120dp</dimen>
+</resources>

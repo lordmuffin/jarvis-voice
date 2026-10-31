@@ -1,0 +1,10 @@
+{
+  "type": "hello",
+  "protocol": 2,
+  "device": "d",
+  "codec": "pcm16le_16k",
+  "resume": {
+    "mic": 41,
+    "system": null
+  }
+}

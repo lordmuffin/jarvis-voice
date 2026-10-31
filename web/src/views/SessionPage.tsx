@@ -1,0 +1,60 @@
+import { useEffect, useState } from "preact/hooks";
+import { ApiError, getSession } from "../api";
+import { Banner, Loading } from "../ds/components";
+import type { SessionDetail } from "../types";
+import { Link } from "./Link";
+import { LiveSession } from "./LiveSession";
+import { PastSession } from "./PastSession";
+
+export function SessionPage({ id }: { id: string }) {
+  const [detail, setDetail] = useState<SessionDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let stopped = false;
+    getSession(id).then(
+      (d) => !stopped && setDetail(d),
+      (e) => {
+        if (stopped || (e instanceof ApiError && e.status === 401)) return;
+        setError(e instanceof ApiError && e.status === 404 ? "Session not found." : "Couldn't load session.");
+      },
+    );
+    return () => {
+      stopped = true;
+    };
+  }, [id]);
+
+  const back = <Link href="/">← Sessions</Link>;
+
+  if (error)
+    return (
+      <>
+        {back}
+        <Banner variant="error">{error}</Banner>
+      </>
+    );
+  if (!detail)
+    return (
+      <>
+        {back}
+        <Loading />
+      </>
+    );
+
+  const inProgress = detail.status === "live" || detail.status === "finalizing";
+  return (
+    <>
+      {back}
+      {inProgress ? (
+        <LiveSession key="live" detail={detail} onFinished={setDetail} />
+      ) : (
+        <PastSession
+          key="past"
+          detail={detail}
+          onRenamed={(s) => setDetail({ ...detail, ...s })}
+          onChanged={setDetail}
+        />
+      )}
+    </>
+  );
+}

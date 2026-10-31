@@ -1,0 +1,6 @@
+{
+  "type": "status",
+  "stt_tier": "local",
+  "llm_ok": true,
+  "lag_ms": 180
+}

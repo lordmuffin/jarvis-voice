@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ripple xmlns:android="http://schemas.android.com/apk/res/android" android:color="@color/inst_text">
+  <item>
+    <selector>
+      <item android:state_enabled="false">
+        <shape>
+          <solid android:color="@color/inst_surface_2"/>
+          <stroke android:width="@dimen/inst_border_hairline" android:color="@color/inst_control" android:dashWidth="3dp" android:dashGap="2dp"/>
+          <corners android:radius="@dimen/inst_radius_pill"/>
+        </shape>
+      </item>
+      <item>
+        <shape>
+          <solid android:color="@color/inst_surface_2"/>
+          <stroke android:width="@dimen/inst_border_hairline" android:color="@color/inst_control"/>
+          <corners android:radius="@dimen/inst_radius_pill"/>
+        </shape>
+      </item>
+    </selector>
+  </item>
+</ripple>

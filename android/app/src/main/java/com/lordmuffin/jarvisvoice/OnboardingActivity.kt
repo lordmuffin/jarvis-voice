@@ -11,6 +11,8 @@ import android.view.View
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.lordmuffin.jarvisvoice.ui.InstButtonKind
+import com.lordmuffin.jarvisvoice.ui.setInstKind
 
 class OnboardingActivity : AppCompatActivity() {
 
@@ -20,6 +22,8 @@ class OnboardingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         if (prefs.getBoolean("onboarding_done", false)) {
+            // Set up already: MainActivity checks the grants and opens Record (home).
+            startActivity(Intent(this, MainActivity::class.java))
             finish()
             return
         }
@@ -37,10 +41,12 @@ class OnboardingActivity : AppCompatActivity() {
         listOf(R.id.dot0, R.id.dot1, R.id.dot2).forEachIndexed { i, id ->
             val v = findViewById<View>(id)
             val lp = v.layoutParams
-            lp.width = if (i == s) dpToPx(22) else dpToPx(7)
+            lp.width = resources.getDimensionPixelSize(
+                if (i == s) R.dimen.app_models_dot_active else R.dimen.app_models_dot
+            )
             v.layoutParams = lp
             v.setBackgroundColor(
-                if (i == s) getColor(R.color.jv_accent) else 0x598B949E.toInt()
+                getColor(if (i == s) R.color.inst_accent else R.color.inst_control)
             )
         }
         findViewById<View>(R.id.step_0).visibility = if (s == 0) View.VISIBLE else View.GONE
@@ -80,19 +86,13 @@ class OnboardingActivity : AppCompatActivity() {
     private fun applyGrantedStyle(btnId: Int, granted: Boolean, isOverlay: Boolean) {
         val btn = findViewById<Button>(btnId) ?: return
         if (granted) {
-            btn.text = "✓ Granted"
-            btn.setTextColor(getColor(R.color.jv_bg))
-            btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_success)
+            btn.setText(R.string.models_onb_granted)
+            btn.setBackgroundResource(R.drawable.models_granted_bg)
+            btn.setTextColor(getColor(R.color.inst_success))
             btn.isEnabled = false
         } else {
-            btn.text = "Grant"
-            if (isOverlay) {
-                btn.setTextColor(getColor(R.color.jv_text2))
-                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_surface2)
-            } else {
-                btn.setTextColor(getColor(android.R.color.black))
-                btn.backgroundTintList = ContextCompat.getColorStateList(this, R.color.jv_accent)
-            }
+            btn.setText(R.string.models_onb_grant)
+            btn.setInstKind(if (isOverlay) InstButtonKind.SECONDARY else InstButtonKind.PRIMARY)
             btn.isEnabled = true
         }
     }
@@ -139,6 +139,4 @@ class OnboardingActivity : AppCompatActivity() {
         startActivity(Intent(this, SettingsActivity::class.java))
         finish()
     }
-
-    private fun dpToPx(dp: Int) = (dp * resources.displayMetrics.density).toInt()
 }

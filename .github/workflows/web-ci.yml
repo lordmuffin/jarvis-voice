@@ -1,0 +1,65 @@
+name: Web CI
+
+on:
+  # Push builds main only; branches get CI through their PR, not twice.
+  push:
+    branches: [main]
+    paths: ["web/**", "protocol/**", ".github/workflows/web-ci.yml"]
+  pull_request:
+    paths: ["web/**", "protocol/**", ".github/workflows/web-ci.yml"]
+
+# One run per PR or branch: a newer push cancels the older PR run. Runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    env:
+      # Avoid Docker Hub's anonymous pull limit (and the Ryuk image pull) on shared runners.
+      JARVIS_LIVE_TEST_POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:16-alpine
+      TESTCONTAINERS_RYUK_DISABLED: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+      # Playwright smoke: the real server (FakeSTT/FakeLLM + Postgres testcontainer) serves
+      # web/dist and the replay CLI streams a generated WAV into it.
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - run: uv sync --frozen
+        working-directory: server
+      - name: Pull Postgres test image
+        run: |
+          "$GITHUB_WORKSPACE/.github/scripts/pull-test-postgres.sh" "$JARVIS_LIVE_TEST_POSTGRES_IMAGE"
+      - run: npx playwright install --with-deps chromium
+      # The upload e2e: the server decodes uploaded recordings with ffmpeg.
+      - name: Install ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
+      - run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: web-screenshots
+          path: web/screenshots
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            web/playwright-report
+            web/test-results

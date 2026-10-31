@@ -1,0 +1,7 @@
+{
+  "mode": "meeting",
+  "channels": [
+    "mic"
+  ],
+  "restricted": "yes"
+}

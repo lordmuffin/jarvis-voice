@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/status.json",
+  "title": "status",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "status"
+    },
+    "stt_tier": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "llm_ok": {
+      "type": "boolean"
+    },
+    "lag_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "type",
+    "stt_tier",
+    "llm_ok",
+    "lag_ms"
+  ],
+  "additionalProperties": false
+}

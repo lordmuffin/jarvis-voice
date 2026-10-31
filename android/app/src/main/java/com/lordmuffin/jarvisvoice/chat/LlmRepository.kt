@@ -2,6 +2,7 @@ package com.lordmuffin.jarvisvoice.chat
 
 import android.content.Context
 import com.lordmuffin.jarvisvoice.DebugLog
+import com.lordmuffin.jarvisvoice.live.LiveSettings
 import com.lordmuffin.jarvisvoice.notify.NotifyWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -308,6 +309,29 @@ private val VAULT_TOOLS = JSONArray().apply {
             })
         })
     })
+    // ── Homelab (jarvis-live /v1/homelab/ask → Pi Durable's persistent `jarvis` session) ──────
+    put(JSONObject().apply {
+        put("type", "function")
+        put("function", JSONObject().apply {
+            put("name", "ask_homelab")
+            put("description",
+                "Ask a question about Andrew's homelab infrastructure: Kubernetes/k3s2 " +
+                "cluster status, Proxmox nodes, deployments, services, or recent incidents. " +
+                "Routes to the persistent homelab assistant session (durable, remembers prior " +
+                "turns) via the Jarvis Live server. Prefer this over run_command for homelab " +
+                "questions — it is read-only and does not run commands on this phone.")
+            put("parameters", JSONObject().apply {
+                put("type", "object")
+                put("properties", JSONObject().apply {
+                    put("question", JSONObject().apply {
+                        put("type", "string")
+                        put("description", "The homelab question to ask, in plain language")
+                    })
+                })
+                put("required", JSONArray().put("question"))
+            })
+        })
+    })
     put(JSONObject().apply {
         put("type", "function")
         put("function", JSONObject().apply {
@@ -395,6 +419,10 @@ class LlmRepository(private val context: Context) {
     suspend fun chatWithTools(
         history: List<ConversationMessage>,
         model: String,
+        // "<conversation id>-<turn>": reused verbatim as the ask_homelab requestId, so a retry
+        // of the same turn is answered once by dpi-backend's idempotency. Blank for turns with
+        // no stable id (e.g. compaction summaries) — ask_homelab then mints a one-off id.
+        conversationId: String = "",
         onToolCall: (String) -> Unit = {},
         onUsage: (Int) -> Unit = {},
     ): String = withContext(Dispatchers.IO) {
@@ -431,7 +459,7 @@ class LlmRepository(private val context: Context) {
                 DebugLog.i("VaultTool", "calling $toolName args=$args")
                 onToolCall(toolName)
 
-                val result = executeVaultTool(toolName, args)
+                val result = executeVaultTool(toolName, args, conversationId)
                 DebugLog.i("VaultTool", "$toolName → ${result.take(80)}")
 
                 messages.put(JSONObject().apply {
@@ -471,7 +499,7 @@ class LlmRepository(private val context: Context) {
 
     // ── Vault tool execution (HTTP calls to capture API on GamingPC) ──────────
 
-    private fun executeVaultTool(name: String, args: JSONObject): String {
+    private fun executeVaultTool(name: String, args: JSONObject, conversationId: String): String {
         return try {
             when (name) {
                 "read_note" -> {
@@ -650,10 +678,45 @@ class LlmRepository(private val context: Context) {
                     NotifyWorker.scheduleOnce(context, notifId, title, body, delayMs)
                     respBody.ifEmpty { "schedule failed: ${resp.code}" }
                 }
+                "ask_homelab" -> askHomelab(args.getString("question"), conversationId)
                 else -> "Unknown tool: $name"
             }
         } catch (e: Exception) {
             "Tool error ($name): ${e.message}"
+        }
+    }
+
+    // ── Homelab: POST jarvis-live's /v1/homelab/ask (never calls dpi-backend directly — the
+    //    DPI token lives only on the jarvis-live server, see server/src/jarvis_live/api/homelab.py
+    //    in this repo and docs/pi-durable.md in np-home-homelab) ─────────────────────────────
+
+    private val homelabFallback = "I can't reach the homelab assistant right now."
+
+    private fun askHomelab(question: String, conversationId: String): String {
+        val settings = LiveSettings(context)
+        val token = settings.deviceToken
+        if (token.isNullOrBlank()) {
+            return "Homelab assistant isn't signed in — sign in to Jarvis Live in Settings first."
+        }
+        val requestId = conversationId.ifBlank { "adhoc-${System.currentTimeMillis()}" }
+        val payload = JSONObject()
+            .put("question", question)
+            .put("requestId", requestId)
+            .toString()
+            .toRequestBody("application/json".toMediaType())
+        val req = Request.Builder()
+            .url(settings.serverUrl.trimEnd('/') + "/v1/homelab/ask")
+            .header("Authorization", "Bearer $token")
+            .post(payload)
+            .build()
+        return try {
+            val resp = client.newCall(req).execute()
+            val body = resp.body?.string()
+            if (!resp.isSuccessful || body.isNullOrEmpty()) return homelabFallback
+            JSONObject(body).optString("answer", homelabFallback)
+        } catch (e: Exception) {
+            DebugLog.e("LlmRepository", "ask_homelab failed: ${e.message}")
+            homelabFallback
         }
     }
 

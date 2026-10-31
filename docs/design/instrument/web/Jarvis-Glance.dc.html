@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Glance hierarchy during a live call</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.pn{position:absolute;left:80px;top:80px;width:480px;height:880px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-2);display:flex;flex-direction:column;overflow:hidden}
+.pn-tb{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.pn-hd{flex:none;background:var(--inst-surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pn-feed{flex:1;min-height:0;overflow:hidden;padding:8px 8px 4px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px}
+.pn .i-utt{grid-template-columns:36px 40px minmax(0,1fr)}
+.pn .i-event{grid-template-columns:36px 64px minmax(0,1fr)}
+.zone{position:absolute;left:80px;width:480px;border:2px solid var(--inst-chart-2);pointer-events:none}
+.num{position:absolute;width:32px;height:32px;border-radius:50%;background:var(--inst-chart-2);color:var(--inst-bg);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px}
+.lead{position:absolute;left:562px;height:2px;width:94px;background:var(--inst-chart-2)}
+.note{position:absolute;left:672px;width:520px;display:flex;flex-direction:column;gap:4px}
+.note h2{font-size:16px;font-weight:700}
+.note p{font-size:14px;line-height:1.45;color:var(--inst-text-2)}
+.note .when{font-family:var(--inst-mono);font-size:11px;color:var(--inst-chart-2)}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="position: relative; width: 1440px; height: 1040px; overflow: hidden;">
+
+  <section class="pn" aria-label="Jarvis Live copilot panel during a call">
+    <div class="pn-tb"><span style="font-size: 13px; font-weight: 700;">Jarvis Live</span><span class="i-badge i-badge--live">Live</span><button type="button" class="i-switch" role="switch" aria-checked="true" style="margin-left: auto; font-size: 12px; min-height: 28px;"><span class="track"><span class="knob"></span></span>On top</button></div>
+    <div class="pn-hd">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+      </div>
+      <span class="t-meta t-2"><span class="i-chip i-chip--live" style="margin-right: 6px;"><span class="i-dot"></span>Connected</span><span class="t-mono">pve · lag 840 ms</span></span>
+    </div>
+    <div style="flex: none; padding: 8px 8px 0;"><div class="i-seg" role="radiogroup" aria-label="Show"><button type="button" role="radio" aria-checked="true">All</button><button type="button" role="radio" aria-checked="false">Actions <span class="t-mono">2</span></button><button type="button" role="radio" aria-checked="false">Decisions <span class="t-mono">1</span></button><button type="button" role="radio" aria-checked="false">Notes <span class="t-mono">2</span></button></div></div>
+    <div class="pn-feed" role="log" aria-label="Transcript and copilot">
+      <div class="i-utt i-utt--them"><span class="t">16:40</span><span class="i-spk i-spk--them">Them</span><span class="x">Sure. Can you send the node inventory so we can quote?</span></div>
+      <div class="i-utt"><span class="t">17:02</span><span class="i-spk i-spk--me">Me</span><span class="x">I'll send it by Friday.</span></div>
+      <div class="i-unseen" role="separator"><span class="i-new">3 new since you looked at 17:15</span></div>
+      <div class="i-event i-fresh"><span class="t">17:20</span><span class="i-chip k">Action</span><span class="t-body"><span class="g">☐</span>Send the node inventory. <span class="m">Me · Fri 16 Oct</span></span></div>
+      <div class="i-utt"><span class="t">17:30</span><span class="i-spk i-spk--me">Me</span><span class="x">Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback.</span></div>
+      <div class="i-event i-fresh"><span class="t">17:45</span><span class="i-chip k">Decision</span><span class="t-body"><span class="g">✓</span>Pilot on the k3s2 cluster first.</span></div>
+      <div class="i-utt i-utt--them"><span class="t">18:05</span><span class="i-spk i-spk--them">Them</span><span class="x">That works. We'd want read access to the cluster metrics during the pilot.</span></div>
+      <div class="i-utt i-utt--draft"><span class="t">18:31</span><span class="i-spk i-spk--me">Me</span><span class="x">Metrics are fine, but nothing with write access to the</span></div>
+      <div class="i-utt i-utt--them i-utt--draft"><span class="t">18:38</span><span class="i-spk i-spk--them">Them</span><span class="x">Understood, read-only is</span></div>
+    </div>
+    <div class="i-dock" role="region" aria-label="Now">
+      <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+      <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+      <div class="more"><span class="t-tag t-2">Gap</span><span class="t-caption t-2" style="flex: 1;">You haven't discussed egress costs.</span><span class="t-mono t-meta t-2">1:32</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+    </div>
+  </section>
+
+  <div class="zone" style="top: 836px; height: 124px;"></div>
+  <div class="zone" style="top: 504px; height: 216px;"></div>
+  <div class="zone" style="top: 724px; height: 98px; border-style: dashed;"></div>
+  <div class="zone" style="top: 112px; height: 76px; border-style: dotted;"></div>
+
+  <span class="num" style="left: 546px; top: 882px;" aria-hidden="true">1</span>
+  <span class="num" style="left: 546px; top: 596px;" aria-hidden="true">2</span>
+  <span class="num" style="left: 546px; top: 757px;" aria-hidden="true">3</span>
+  <span class="num" style="left: 546px; top: 134px;" aria-hidden="true">4</span>
+  <span class="lead" style="top: 897px;"></span>
+  <span class="lead" style="top: 611px;"></span>
+  <span class="lead" style="top: 772px;"></span>
+  <span class="lead" style="top: 149px;"></span>
+
+  <div class="note" style="top: 72px;">
+    <span class="t-label">5 · Glance hierarchy · Mac panel at 480, mid-call</span>
+    <span class="t-title">Where your eye goes in 1–2 seconds</span>
+  </div>
+
+  <div class="note" style="top: 128px;">
+    <span class="when">④ only when not nominal</span>
+    <h2>Health stays quiet</h2>
+    <p>Connected, a known tier and a low lag ask nothing of you. The header asks for a look only when the link leaves Connected: the chip turns amber or red and says why, such as “Reconnecting · 3.2 s queued”. Recording is never in doubt, because the REC pill breathes.</p>
+  </div>
+
+  <div class="note" style="top: 540px;">
+    <span class="when">② second · ~0.5 s</span>
+    <h2>What changed since you last looked</h2>
+    <p>One accent rule marks where you left off. Everything below it is new, and new findings carry a tint. You read down from the rule, never the whole feed. The rule moves only on your next real look, after 2 s with the panel focused.</p>
+  </div>
+
+  <div class="note" style="top: 728px;">
+    <span class="when">③ third · peripheral</span>
+    <h2>Proof it's hearing</h2>
+    <p>The last two lines sit just above the dock. Italic, outlined tags are drafts that are still settling. You confirm capture without reading the words.</p>
+  </div>
+
+  <div class="note" style="top: 850px;">
+    <span class="when">① first · ~1 s</span>
+    <h2>The Now dock</h2>
+    <p>This is the copilot's largest and boldest text, always at the bottom edge with the same height. It holds one thing to say or ask. New lines arrive above it and push older ones up. Nothing ever moves the dock.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

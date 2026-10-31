@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign-in pages</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.frame{background:var(--inst-bg);box-shadow:inset 0 0 0 1px var(--inst-line);min-height:380px;padding:24px 16px;display:flex;align-items:center;justify-content:center}
+.card{background:var(--inst-surface);width:100%;max-width:340px;min-height:300px;padding:28px 24px 16px;display:flex;flex-direction:column;gap:14px}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 1440px; min-height: 1300px; padding: 40px 32px; display: flex; flex-direction: column; gap: 28px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · Web · Sign-in</span>
+    <h1 class="t-title">Sign-in pages · Pocket-ID only</h1>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 16px; align-items: start;">
+    <sc-for list="{{pages}}" as="p" hint-placeholder-count="8">
+      <section class="i-stack" style="gap: 8px;" aria-label="{{p.cap}}">
+        <span class="t-micro t-2">{{p.cap}}</span>
+        <div class="frame" style="width: {{p.frameW}};">
+          <div class="card" aria-busy="{{p.busy}}">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="t-display" style="font-size: 26px;">Jarvis Live</span><span class="{{p.badgeCls}}">{{p.badge}}</span></div>
+
+            <sc-if value="{{p.loading}}" hint-placeholder-val="{{false}}">
+              <div role="status" style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--inst-text-2); padding: 12px 0;"><span class="i-spin"></span>Loading…</div>
+            </sc-if>
+
+            <sc-if value="{{p.form}}" hint-placeholder-val="{{true}}">
+              <div class="i-stack" style="gap: 4px;">
+                <sc-if value="{{p.hasTag}}" hint-placeholder-val="{{false}}"><span class="t-tag" style="color: {{p.tagC}};">{{p.tag}}</span></sc-if>
+                <h2 style="font-size: 16px; font-weight: 700; line-height: 1.4;">{{p.title}}</h2>
+                <sc-if value="{{p.hasLine}}" hint-placeholder-val="{{false}}"><p class="t-caption t-2">{{p.line}}</p></sc-if>
+              </div>
+              <sc-if value="{{p.hasErr}}" hint-placeholder-val="{{false}}">
+                <div class="i-banner i-banner--error" role="alert"><b>✕</b><span>{{p.err}}</span></div>
+              </sc-if>
+              <div class="i-row">
+                <a href="#" class="{{p.btn}}">{{p.act}}</a>
+                <sc-if value="{{p.home}}" hint-placeholder-val="{{false}}"><a href="#" class="i-btn i-btn--quiet">Go to Home</a></sc-if>
+              </div>
+            </sc-if>
+
+            <span class="t-mono t-micro t-2" style="margin-top: auto;">{{p.foot}}</span>
+          </div>
+        </div>
+      </section>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const LIVE = 'live.apj.dev · server-v0.18.0 · 39e69a0';
+    const LAB = 'live.lab.apj.dev · main · 7d41b2e';
+    const signIn = 'Sign In with Pocket-ID';
+    const P = (cap, o) => Object.assign({
+      cap, badgeCls: 'i-badge i-badge--live', badge: 'Live', foot: LIVE, frameW: '100%',
+      loading: false, form: true, busy: 'false',
+      tag: '', tagC: 'var(--inst-text-2)', hasTag: false, title: 'Sign in to watch your sessions.', line: '', hasLine: false,
+      err: '', hasErr: false, btn: 'i-btn i-btn--primary', act: signIn, home: false
+    }, o || {});
+    return {
+      theme: this.props.theme ?? 'dark',
+      pages: [
+        P('Login · LIVE'),
+        P('Login · LAB', { badgeCls: 'i-badge i-badge--lab', badge: 'Lab', foot: LAB }),
+        P('Booting · Loading…', { loading: true, form: false, busy: 'true' }),
+        P('Login · server unreachable', { err: "Couldn't reach the server. Try again.", hasErr: true }),
+        P('Link expired', { tag: 'Link expired', tagC: 'var(--inst-warning)', hasTag: true, title: 'This sign-in link has expired.', line: 'Please try again.', hasLine: true, act: 'Sign In Again' }),
+        P('Sign-in failed', { tag: 'Sign-in failed', tagC: 'var(--inst-error)', hasTag: true, title: 'Sign-in failed.', line: 'Please try again.', hasLine: true, act: 'Sign In Again' }),
+        P('Not allowed', { tag: 'Not allowed', tagC: 'var(--inst-error)', hasTag: true, title: 'Your account (casey@apj.dev) is not allowed to use Jarvis Live.', line: 'Ask an admin to add you.', hasLine: true, btn: 'i-btn i-btn--secondary', act: 'Sign Out', home: true }),
+        P('Login · LIVE · 360 wide', { frameW: '360px' })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+# jarvis-live, lab channel: the unstable instance at live.lab.apj.dev (ingress.yaml).
+#
+# Flux applies this path from the deploy/lab branch, which the Server Image workflow
+# moves on every push to main (server/deploy/README.md §Release channels). That
+# branch is main plus one generated commit setting `images[0].newTag` below to the
+# commit's own image (sha-<7>); the placeholder here is never deployed.
+#
+# Lab runs code no release has vouched for, so it is fenced off from what live owns:
+#   - its own namespace, PVCs and Postgres database (jarvis_live_lab);
+#   - no write credential to the vault: notes-vault-pat is removed and publishing
+#     is off (no PUBLISH_REPO), so lab can never open PRs on lordmuffin/Notes. It
+#     still reads the vault through its own read-only clone, for search context;
+#   - only the admin group may sign in;
+#   - Gotify titles carry a [lab] prefix (JARVIS_LIVE_ENVIRONMENT);
+#   - dispatch runs only against lordmuffin/jarvis-dispatch-sandbox, with lab's own
+#     GitHub App installed on that repo alone (onepassword-dispatch-app.yaml);
+#   - no Pi sessions: there is no sandbox Pi (policy/lab.rego).
+# It shares the Whisper tiers and LiteLLM with live.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: jarvis-live-lab
+resources:
+  - namespace.yaml
+  - ../base
+  - ingress.yaml
+  - onepassword-dispatch-app.yaml
+images:
+  - name: ghcr.io/lordmuffin/jarvis-live
+    newTag: sha-0000000
+patches:
+  - target: {kind: ConfigMap, name: jarvis-live-config}
+    patch: |
+      - op: add
+        path: /data/JARVIS_LIVE_ENVIRONMENT
+        value: lab
+      - op: replace
+        path: /data/JARVIS_LIVE_PUBLIC_BASE_URL
+        value: https://live.lab.apj.dev
+      - op: replace
+        path: /data/JARVIS_LIVE_OIDC_ALLOWED_GROUPS
+        value: admins
+      - op: remove
+        path: /data/JARVIS_LIVE_PUBLISH_REPO
+      - op: remove
+        path: /data/JARVIS_LIVE_GITHUB_TOKEN_FILE
+      - op: remove
+        path: /data/JARVIS_LIVE_FORGEJO_TOKEN_FILE
+      - op: replace
+        path: /data/JARVIS_LIVE_DISPATCH_ENABLED
+        value: "true"
+      # Spoken requests, proved here first. Without vault or GitHub credentials, lab's only
+      # runnable actions are reminders; cloud sessions stay limited to the sandbox repo.
+      - op: replace
+        path: /data/JARVIS_LIVE_VOICE_ENABLED
+        value: "true"
+      - op: add
+        path: /data/JARVIS_LIVE_ACTIONS_ENABLED
+        value: "true"
+      - op: add
+        path: /data/JARVIS_LIVE_DISPATCH_REPOS
+        value: "lordmuffin/jarvis-dispatch-sandbox  scratch repo for exercising dispatch on lab\n"
+      # A run targets its item's repo, so the sandbox must be a work repo too. Base's
+      # repos are repeated (a patch can't append to a string): keep the two in step.
+      - op: replace
+        path: /data/JARVIS_LIVE_WORK_REPOS
+        value: |
+          lordmuffin/jarvis-voice     Jarvis Live: transcription server, copilot, web dashboard, Android and macOS apps, CI
+          lordmuffin/np-home-homelab  homelab GitOps: k3s2 cluster, Flux apps, TrueNAS, Proxmox, LXC services, alerting
+          lordmuffin/jarvis-dispatch-sandbox  scratch repo for exercising dispatch on lab: pick it for anything said to be a dispatch test
+  - target: {kind: PersistentVolumeClaim, name: jarvis-live-data}
+    patch: |
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 10Gi
+  # Lab data is disposable and not backed up: the backup job exists but never runs, and uses
+  # lab's own database secret like the Deployment.
+  - patch: |
+      apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        name: jarvis-live-backup
+      spec:
+        suspend: true
+        jobTemplate:
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: backup
+                    env:
+                      - name: JARVIS_LIVE_DATABASE_URL
+                        valueFrom:
+                          secretKeyRef:
+                            name: jarvis-live-lab-db-app
+                            key: connection
+  # No vault write PAT in lab at all, not merely unused.
+  - patch: |
+      $patch: delete
+      apiVersion: onepassword.com/v1
+      kind: OnePasswordItem
+      metadata:
+        name: notes-vault-pat
+  - patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: jarvis-live
+      spec:
+        template:
+          spec:
+            containers:
+              - name: jarvis-live
+                env:
+                  # Reflected from the postgres namespace (np-home-homelab
+                  # apps/secrets/external-secret-jarvis-live-lab-db.yaml).
+                  - name: JARVIS_LIVE_DATABASE_URL
+                    valueFrom:
+                      secretKeyRef:
+                        name: jarvis-live-lab-db-app
+                        key: connection
+                  # Lab's dispatch App (onepassword-dispatch-app.yaml). Optional: until
+                  # the item exists the app starts with dispatch off and says why.
+                  - name: JARVIS_LIVE_GITHUB_APP_ID
+                    valueFrom:
+                      secretKeyRef:
+                        name: jarvis-dispatch-lab-app
+                        key: app-id
+                        optional: true
+                  - name: JARVIS_LIVE_GITHUB_APP_INSTALLATION_ID
+                    valueFrom:
+                      secretKeyRef:
+                        name: jarvis-dispatch-lab-app
+                        key: installation-id
+                        optional: true
+                  - name: JARVIS_LIVE_GITHUB_APP_KEY_FILE
+                    value: /secrets/github-app/private-key
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 256Mi
+                volumeMounts:
+                  - mountPath: /secrets/github
+                    $patch: delete
+                  - name: github-app
+                    mountPath: /secrets/github-app
+                    readOnly: true
+            volumes:
+              - name: github-token
+                $patch: delete
+              - name: github-app
+                secret:
+                  secretName: jarvis-dispatch-lab-app
+                  optional: true
+                  defaultMode: 0400
+                  items:
+                    - key: private-key
+                      path: private-key

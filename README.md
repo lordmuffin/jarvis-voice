@@ -324,6 +324,42 @@ curl http://localhost:8881/health
 # {"status":"ok"}
 ```
 
+### Linux headless client
+
+Start a Jarvis Live session from any Linux box over SSH (the Spark, a homelab node, a VM), with no GUI.
+It records with `parec` (PulseAudio) or `pw-record` (PipeWire) and speaks protocol v1, including resume.
+
+```bash
+# One-time install (installs uv if needed, then the jarvis-live CLI and a systemd user unit)
+curl -fsSL https://raw.githubusercontent.com/lordmuffin/jarvis-voice/main/scripts/install-linux-client.sh | sh
+# Pin a release instead of main: JARVIS_LIVE_REF=server-vX.Y.Z
+
+# One-time setup. Get a device token on the server with: jarvis-live create-device --name "$(hostname)"
+jarvis-live capture configure --server https://live.lab.apj.dev --token <device-token> --mode stream
+
+# Then, any time:
+jarvis-live capture start --title "Standup"   # prints the dashboard URL; speak
+jarvis-live capture tail                      # live transcript in the terminal
+jarvis-live capture status                    # mode, connection, unsent audio
+jarvis-live capture stop                      # flush, wait for the server, finish
+```
+
+- `start` runs a background daemon that survives the SSH session ending. If the network drops, audio
+  is kept in `~/.local/state/jarvis-live/sessions/` and resumed automatically; after a crash,
+  `start --resume` continues the unfinished session.
+- `--system` also captures what the box plays (the default sink's monitor).
+- `tail --session <id>` follows any session you may see from any machine; `--no-follow` prints and exits.
+- **Local-only**: `start --local-only` (or `configure --mode local`) records to disk and sends nothing:
+  no session, no requests, no transcript. `status` always states `STREAMING` or `LOCAL ONLY`. The mode
+  must be set explicitly; it is never guessed. Local sessions have no upload command.
+- **Permanent endpoint**: `loginctl enable-linger "$USER"; systemctl --user enable --now jarvis-capture`
+  records continuously and rolls to a new session every `max_session_hours` (default 4). This is
+  opt-in because it records unattended.
+- Exit codes: 0 ok, 1 failure, 2 configuration error, 3 not running.
+
+Settings live in `~/.config/jarvis-live/client.toml` (mode 0600); `JARVIS_LIVE_SERVER`, `JARVIS_LIVE_TOKEN`
+(or `JARVIS_LIVE_TOKEN_FILE`) and `JARVIS_LIVE_MODE` override it.
+
 ### SSH / Git Auth (for agent git operations)
 
 The server uses a deploy key to push to GitHub. If port 22 outbound is blocked, this config routes via `ssh.github.com:443`:
@@ -353,8 +389,12 @@ ssh -F ~/.config/jarvis/github-ssh.config -T git@github.com
 ### Server: `~/.jarvis-agent.env`
 
 ```bash
-# Auth — must match DEFAULT_VAULT_KEY in VoiceChatViewModel.kt
-JARVIS_CAPTURE_KEY=0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo
+# Auth — required (no default; API returns 503 if unset). Must match "Capture key" in the app.
+# Generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+JARVIS_CAPTURE_KEY=change-me
+
+# Shell/git endpoints and agent tools are off by default
+# JARVIS_ENABLE_DANGEROUS_TOOLS=false
 
 # Vault root (defaults to /home/lordmuffin/Notes)
 # VAULT_ROOT=/home/lordmuffin/Notes

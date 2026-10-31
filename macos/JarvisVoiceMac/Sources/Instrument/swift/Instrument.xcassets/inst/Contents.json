@@ -1,0 +1,9 @@
+{
+  "info": {
+    "author": "instrument",
+    "version": 1
+  },
+  "properties": {
+    "provides-namespace": true
+  }
+}

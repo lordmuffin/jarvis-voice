@@ -1,0 +1,81 @@
+import { signal } from "@preact/signals";
+import { ApiError, familyApps as fetchFamilyApps, health, logout, me as fetchMe, onUnauthorized } from "./api";
+import { parseRoute, type Route } from "./route";
+import type { FamilyApp, Me } from "./types";
+
+/** The signed-in user; null shows the sign-in screen. */
+export const me = signal<Me | null | "loading">("loading");
+/** Why the sign-in check failed, when it was not simply "signed out". */
+export const authError = signal<string | null>(null);
+
+// Any 401 from the API means the session cookie is gone: back to sign-in.
+onUnauthorized(() => {
+  me.value = null;
+  authError.value = null;
+});
+
+/** The signed-in user, once known. */
+export const currentUser = (): Me | null => (me.value === "loading" ? null : me.value);
+
+export async function loadMe(): Promise<void> {
+  try {
+    me.value = await fetchMe();
+    authError.value = null;
+  } catch (e) {
+    me.value = null;
+    authError.value =
+      e instanceof ApiError && e.status === 401 ? null : "Couldn't reach the server. Try again.";
+  }
+}
+
+/** The release channel this server says it is ("live", or e.g. "lab"), shown next to the
+ * wordmark so live and lab are never mistaken for each other. null while unknown. */
+export const releaseChannel = signal<string | null>(null);
+
+/** The version (and commit, when known) of the server this dashboard is running on, shown
+ * in the header. null while unknown. */
+export const serverBuild = signal<{ version: string; commit: string } | null>(null);
+
+export async function loadHealth(): Promise<void> {
+  try {
+    const { environment: env, version, commit } = await health();
+    releaseChannel.value = env || null;
+    serverBuild.value = version ? { version, commit: commit ?? "" } : null;
+  } catch {
+    /* an old server without the field, or offline: show nothing */
+  }
+}
+
+/** The apps in the ▦ family switcher. Empty (the default, and after any failure) means no
+ * switcher: it fails closed. */
+export const familyApps = signal<FamilyApp[]>([]);
+
+export async function loadFamilyApps(): Promise<void> {
+  try {
+    familyApps.value = await fetchFamilyApps();
+  } catch {
+    familyApps.value = [];
+  }
+}
+
+export async function signOut(): Promise<void> {
+  try {
+    await logout();
+  } catch {
+    /* the cookie may already be gone */
+  }
+  me.value = null;
+}
+
+const here = () => location.pathname + location.search;
+
+export const route = signal<Route>(parseRoute(location.pathname, location.search));
+
+export function navigate(path: string): void {
+  if (here() !== path) history.pushState(null, "", path);
+  route.value = parseRoute(location.pathname, location.search);
+}
+
+window.addEventListener("popstate", () => {
+  route.value = parseRoute(location.pathname, location.search);
+});

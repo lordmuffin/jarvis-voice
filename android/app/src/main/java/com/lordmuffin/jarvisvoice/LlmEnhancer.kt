@@ -23,6 +23,8 @@ import kotlinx.coroutines.runBlocking
  *
  * init() runs on a background thread (callers' responsibility).
  * enhance() is blocking — callers must NOT call from the main thread.
+ * init(), enhance() and destroy() are serialized, so destroy() never closes the engine under a
+ * running enhancement (it waits for it instead).
  */
 object LlmEnhancer {
 
@@ -42,6 +44,7 @@ object LlmEnhancer {
 
     fun isReady(): Boolean = engine != null
 
+    @Synchronized
     fun init(modelFile: File, modelId: String, nativeLibraryDir: String = "",
              npuOnly: Boolean = false): Boolean {
         if (loadedModelId == modelId && isReady()) return true
@@ -119,6 +122,7 @@ object LlmEnhancer {
     }
 
     /** Blocking. Must be called from a background thread. Returns rawTranscript on any failure. */
+    @Synchronized
     fun enhance(rawTranscript: String): String {
         val e = engine ?: return rawTranscript
 
@@ -137,6 +141,7 @@ object LlmEnhancer {
         }
     }
 
+    @Synchronized
     fun destroy() {
         try { engine?.close() } catch (_: Exception) {}
         engine        = null

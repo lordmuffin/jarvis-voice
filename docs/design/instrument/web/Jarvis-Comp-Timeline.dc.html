@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Timeline components</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inst-text);padding-bottom:4px}
+.st{font-size:10px;color:var(--inst-text-2);padding:8px 0 2px}
+.cap{font-size:11px;color:var(--inst-text-2);padding-top:4px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2000px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+<div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 2000px;">
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · 3 · Components · {{th.name}}</span>
+    <h1 class="t-title">Timeline: speech, markers, findings</h1>
+  </div>
+
+  <section class="i-stack">
+    <h2 class="h">Transcript line</h2>
+    <span class="st">Final · Me</span>
+    <div class="i-utt"><span class="t">14:32</span><span class="i-spk i-spk--me">Me</span><span class="x">What's the timeline for the ARM images?</span></div>
+    <span class="st">Final · Them · long session (h:mm:ss)</span>
+    <div class="i-utt i-utt--them" style="grid-template-columns: 56px 44px minmax(0, 1fr);"><span class="t">1:02:14</span><span class="i-spk i-spk--them">Them</span><span class="x">We can support ARC scale sets, but GPU runners are a separate SKU.</span></div>
+    <span class="st">Draft → final, swapped in the same row</span>
+    <div class="i-utt i-utt--draft"><span class="t">17:30</span><span class="i-spk i-spk--me">Me</span><span class="x">Let's pilot on the k3s two cluster first and keep the VM runners as a</span></div>
+    <div class="i-utt"><span class="t">17:30</span><span class="i-spk i-spk--me">Me</span><span class="x">Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback.</span></div>
+    <span class="st">Linked to (▶ 14:32 from a work item), centred in view</span>
+    <div class="i-utt i-utt--target" aria-current="true"><span class="t">14:32</span><span class="i-spk i-spk--me">Me</span><span class="x">What's the timeline for the ARM images?</span></div>
+    <span class="st">Stacked · under 360</span>
+    <div style="max-width: 300px;" class="i-stack">
+      <div class="i-utt i-utt--stack"><span class="hd"><span class="i-spk i-spk--me">Me</span><span class="t">17:02</span></span><span class="x">I'll send it by Friday.</span></div>
+      <div class="i-utt i-utt--them i-utt--stack i-utt--draft"><span class="hd"><span class="i-spk i-spk--them">Them</span><span class="t">18:38</span></span><span class="x">Understood, read-only is</span></div>
+    </div>
+    <span class="st">Empty</span>
+    <div class="i-block t-caption t-2" style="padding: 24px 16px; text-align: center;">Nothing yet.</div>
+    <span class="cap">A final keeps its draft's place and top edge. If it is longer, the row grows downward, and with follow on the view stays pinned to the bottom. The tag fills when the line is final. The 2 s tint for a swapped row does not apply here, because finals arrive every few seconds.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Marker row</h2>
+    <div class="j-marker"><span>⚑ Pricing</span><span class="t">· 16:05</span></div>
+    <div class="j-marker"><span>⚑ Marker</span><span class="t">· 21:40</span></div>
+    <span class="cap">Amber on the page ground, between lines. With no label, it reads “Marker”.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Copilot findings in the timeline</h2>
+    <div class="i-event"><span class="t">15:00</span><span class="i-chip k">Note</span><span class="t-body"><span class="g">•</span>No date yet for the ARM images.</span><a href="#" class="i-src" title="“ARM is in preview. I can't commit to a date on this call.”">▶ 14:51</a></div>
+    <div class="i-event"><span class="t">16:30</span><span class="i-chip k">Action</span><span class="t-body"><span class="g">☐</span>Confirm GPU runner pricing. <span class="m">Vendor · —</span></span><a href="#" class="i-src">▶ 16:12</a></div>
+    <div class="i-event i-fresh"><span class="t">17:20</span><span class="i-chip k">Action</span><span class="t-body"><span class="g">☐</span>Send the node inventory. <span class="m">Me · Fri 16 Oct</span> <span class="i-new">New</span></span><a href="#" class="i-src">▶ 17:02</a></div>
+    <div class="i-event"><span class="t">17:45</span><span class="i-chip k">Decision</span><span class="t-body"><span class="g">✓</span>Pilot on the k3s2 cluster first. <span class="m">· updated 18:15</span></span><a href="#" class="i-src">▶ 17:30</a></div>
+    <div class="i-event"><span class="t">15:58</span><span class="i-chip k">Related</span><span class="t-body"><span class="g">▶</span>DGX Spark K3s Node — Architecture Capture <span class="m">10 Projects/Jarvis/Infrastructure</span></span><a href="#" class="t-meta" aria-label="Open DGX Spark K3s Node in Obsidian">Obsidian</a></div>
+    <div class="i-event"><span class="t">14:55</span><span class="i-chip k">Work</span><span class="t-body">Add ARM runner scale set to k3s2 <span class="i-chip" style="margin-left: 4px;">Draft</span></span><a href="#" class="i-src">▶ 14:32</a></div>
+    <div class="i-event" style="border-color: var(--inst-accent);"><span class="t">30:41</span><span class="i-chip i-chip--done k">✓ Note</span><span class="t-body t-strong">ARC runner migration vendor call</span><a href="#" class="t-meta">▶ Open</a></div>
+    <div class="i-event" style="border-style: dashed;"><span class="t">19:10</span><span class="i-chip i-chip--progress k">⚑ Copilot</span><span class="t-body t-2">Copilot offline. The transcript continues.</span><span></span></div>
+    <span class="cap">Placed when the copilot found it, never at the source time, so nothing is ever inserted above you. Every 30 s the copilot sends a full replacement. Jarvis matches items by text: an unchanged item keeps its row, and a reworded one changes in place and gains “updated m:ss”. A dropped item is struck through until the next look.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Follow</h2>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+      <span class="t-meta">↓ Following live</span>
+      <span class="t-meta t-2">Paused · you scrolled up</span>
+      <button type="button" class="i-btn i-btn--secondary i-btn--sm i-jump">↓ Jump to Latest · 3 new</button>
+    </div>
+    <div style="position: relative; height: 180px; background: var(--inst-bg); border: 1px solid var(--inst-line); overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;">
+      <div class="i-stack" style="padding: 8px;">
+        <div class="i-utt i-utt--them"><span class="t">13:58</span><span class="i-spk i-spk--them">Them</span><span class="x">We run the controller in its own namespace.</span></div>
+        <div class="i-utt"><span class="t">14:20</span><span class="i-spk i-spk--me">Me</span><span class="x">Org level works for us.</span></div>
+      </div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 60px; display: flex; justify-content: center;"><button type="button" class="i-btn i-btn--secondary i-btn--sm i-jump">↓ Jump to Latest · 3 new</button></div>
+      <div class="i-dock" style="height: 52px; padding-top: 4px;"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="t-caption" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Ask whether ARM images are on the public roadmap.</span></div></div>
+    </div>
+    <span class="cap">Follow is on by default. Scrolling up pauses it, and a pill floats above the dock. Jump to Latest or scrolling back to the bottom turns follow on again. The dock never scrolls.</span>
+  </section>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2000}}'>
+class Component extends DCLogic {
+  renderVals() { return { themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }] }; }
+}
+</script>
+</body>
+</html>

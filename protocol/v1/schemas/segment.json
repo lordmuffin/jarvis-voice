@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/segment.json",
+  "title": "segment",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "segment"
+    },
+    "id": {
+      "type": "string"
+    },
+    "channel": {
+      "enum": [
+        "mic",
+        "system"
+      ]
+    },
+    "speaker": {
+      "enum": [
+        "me",
+        "them"
+      ]
+    },
+    "start_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "end_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "text": {
+      "type": "string"
+    },
+    "stt_tier": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "id",
+    "channel",
+    "speaker",
+    "start_ms",
+    "end_ms",
+    "text",
+    "stt_tier"
+  ],
+  "additionalProperties": false
+}

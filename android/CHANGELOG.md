@@ -1,0 +1,393 @@
+# Changelog
+
+## [1.22.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.21.0...android-v1.22.0) (2026-10-31)
+
+
+### Features
+
+* **server:** user isolation tests, soft delete, trash retention and backups ([92f3023](https://github.com/lordmuffin/jarvis-voice/commit/92f30239048b2a78b82578107bacefae7339f1a5))
+
+
+### Bug Fixes
+
+* **android:** make Wear OS recordings reliable on the Pixel Watch ([5fc2afd](https://github.com/lordmuffin/jarvis-voice/commit/5fc2afdbd07a7b7f3d84b0b69adbafec1b8fa0ba))
+* **android:** make Wear OS recordings reliable on the Pixel Watch ([e9f72b9](https://github.com/lordmuffin/jarvis-voice/commit/e9f72b928bc2aa46cf0058383166fa68672ba837))
+* **android:** the watch tile no longer crashes a running recording ([e5f3256](https://github.com/lordmuffin/jarvis-voice/commit/e5f3256622b99767a38d6bdcf594ae4acf984279))
+
+## [1.21.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.20.1...android-v1.21.0) (2026-10-31)
+
+
+### Features
+
+* **android:** driving-mode trigger, mic recovery, mute and durable markers ([5dd09a1](https://github.com/lordmuffin/jarvis-voice/commit/5dd09a1ae6d8d7902bfa6c5fa65b1148ef135b59))
+* **android:** refuse all Live traffic during a local-only session ([37c385c](https://github.com/lordmuffin/jarvis-voice/commit/37c385c0101a77dc5f0cfdb5522726839278c14d))
+* **android:** upload fallback recordings by themselves; say when offline ([2e503c1](https://github.com/lordmuffin/jarvis-voice/commit/2e503c1929a8e78ba60ea4f1125ef1021f65ddef))
+* driving mode (hands-free capture trigger, mic recovery, durable markers) ([6dbddbf](https://github.com/lordmuffin/jarvis-voice/commit/6dbddbf9c84139c63494c606ae74de0fad4e2ebe))
+* local-only as server-down fallback, visible mode, resumable uploads ([57bed7b](https://github.com/lordmuffin/jarvis-voice/commit/57bed7b6c8bdb53e5d1218169344c7d4e354bc95))
+* local-only gate and restricted sessions for work calls (task 6) ([a89f745](https://github.com/lordmuffin/jarvis-voice/commit/a89f7453fa24b0e2d453b776f08e03fc96c6700f))
+
+
+### Bug Fixes
+
+* **android:** cut open connections at the local-only gate, keep the place while it is shut ([781e719](https://github.com/lordmuffin/jarvis-voice/commit/781e7196a55aecd40afed1f67bc476b0376c2f5f))
+* **android:** register the recording callback with a Handler ([9b5de28](https://github.com/lordmuffin/jarvis-voice/commit/9b5de28bd38345712dca4635514763b9eb0198b6))
+* restore main and the local-only guarantees from the [#214](https://github.com/lordmuffin/jarvis-voice/issues/214) review ([6538f3a](https://github.com/lordmuffin/jarvis-voice/commit/6538f3a1600cbfff4066fcd0b6bf379a0afb7d26))
+* **server:** renumber speakers migration after main's 0011/0012 ([7d05ac6](https://github.com/lordmuffin/jarvis-voice/commit/7d05ac607c243afa9fbd2754f2b2d37ba7a85f15))
+
+## [1.20.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.20.0...android-v1.20.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **android:** keep tap dictation listening through pauses ([0e41d9d](https://github.com/lordmuffin/jarvis-voice/commit/0e41d9d58620d3e07adba2193158f5eb603fd7e6))
+
+## [1.20.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.19.0...android-v1.20.0) (2026-10-30)
+
+
+### Features
+
+* **android:** map a watch button to Jarvis record ([e792002](https://github.com/lordmuffin/jarvis-voice/commit/e792002f6b9d814f6ad431cef32240b072b17598))
+* **android:** map a watch button to Jarvis record to start and stop a recording ([f0326d2](https://github.com/lordmuffin/jarvis-voice/commit/f0326d203b2b9eaa54c4cc394a7524e3b227d12d))
+
+## [1.19.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.18.1...android-v1.19.0) (2026-10-25)
+
+
+### Features
+
+* **android:** make the dictation pill 50% taller in every state ([6bdf0e1](https://github.com/lordmuffin/jarvis-voice/commit/6bdf0e1d122e38d7404dd95804290dd1fc957157))
+* **android:** make the dictation pill 50% taller in every state ([8268515](https://github.com/lordmuffin/jarvis-voice/commit/82685157ac4542f4460e0348052f36f4c45bbe21))
+
+## [1.18.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.18.0...android-v1.18.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **android:** make the idle pill as tall as the listening pill ([7c7c3ed](https://github.com/lordmuffin/jarvis-voice/commit/7c7c3ed19deffb9d504d484a908cc5a01e8c0cc8))
+* **android:** make the idle pill as tall as the listening pill ([956fab0](https://github.com/lordmuffin/jarvis-voice/commit/956fab011429026416a006f6e3f16f709d902dbe))
+
+## [1.18.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.17.0...android-v1.18.0) (2026-10-24)
+
+
+### Features
+
+* **android:** copy a session's summary, its actions, or one action ([33af048](https://github.com/lordmuffin/jarvis-voice/commit/33af04886a4e21e3df2adeb41bb8c906701a6d11))
+* **android:** Transcribe & summarize on the session detail ([d4114dc](https://github.com/lordmuffin/jarvis-voice/commit/d4114dc7593aca0a248342dab6b4c1c545259851))
+* force "Transcribe & summarize" on a session, with a live processing indicator ([cc01f4e](https://github.com/lordmuffin/jarvis-voice/commit/cc01f4ef122e22e4ae0da997cce966824b639385))
+
+
+### Bug Fixes
+
+* Actions tab lists the note's actions; copy summary and actions ([d61de3f](https://github.com/lordmuffin/jarvis-voice/commit/d61de3ffc685660e45fc0d3ff69e186a6511b27b))
+* **android:** show agent task conversation as a full-screen window ([135ce8b](https://github.com/lordmuffin/jarvis-voice/commit/135ce8b1d109154df970bd415a342a99230d0171))
+
+## [1.17.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.16.0...android-v1.17.0) (2026-10-24)
+
+
+### Features
+
+* **android:** Compose Record, History and Session Detail on Instrument ([7bd4737](https://github.com/lordmuffin/jarvis-voice/commit/7bd47378737f7f5f641769278d6573b91ea49761))
+* forward homelab questions to Pi Durable's jarvis session ([f1fca41](https://github.com/lordmuffin/jarvis-voice/commit/f1fca41a6a8cff9e97e1eb4e13b82c0e4b112728))
+
+
+### Bug Fixes
+
+* **android:** add missing Compose and Paparazzi catalog entries, drop stale merge tail ([cbce872](https://github.com/lordmuffin/jarvis-voice/commit/cbce872965498cdfacdb05aeda93a191a4f6e85a))
+
+## [1.16.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.15.0...android-v1.16.0) (2026-10-24)
+
+
+### Features
+
+* **android:** Wear OS companion with watch-to-phone sync ([1af3d89](https://github.com/lordmuffin/jarvis-voice/commit/1af3d897c611e4f6a3a90bb8803ab8d866423b6c))
+* **android:** Wear OS companion with watch-to-phone sync ([37ab227](https://github.com/lordmuffin/jarvis-voice/commit/37ab227eea13e47789165af1f3cd6a6fcdfa9a0e))
+
+## [1.15.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.1...android-v1.15.0) (2026-10-15)
+
+
+### Features
+
+* design-system guardrails (web, Android, Swift) with CI ([8151724](https://github.com/lordmuffin/jarvis-voice/commit/8151724d4f3bb2988bf6ee6b154082c3c61d1d68))
+* design-system guardrails (web, Android, Swift) with CI ([7236e56](https://github.com/lordmuffin/jarvis-voice/commit/7236e566d2a33d15554b4d4b4675356b5135ec2e))
+
+## [1.14.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.14.0...android-v1.14.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* align copy and vocabulary with the Instrument design system ([492b090](https://github.com/lordmuffin/jarvis-voice/commit/492b0906ddf2fae45a3e25d340fb9e36637a1dcb))
+* **android:** align copy with Instrument vocabulary ([341a869](https://github.com/lordmuffin/jarvis-voice/commit/341a8693d69c9868302b8cdcb71c66c048b8647c))
+
+## [1.14.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.13.0...android-v1.14.0) (2026-10-14)
+
+
+### Features
+
+* **android:** adopt Instrument; shared pill with errors, Record as home, fold layouts ([4750f64](https://github.com/lordmuffin/jarvis-voice/commit/4750f64fabec004e30aed24d6a888a3643be4580))
+* **android:** launcher opens Record; Me/Them labels, connection chips, copilot order ([d3b160c](https://github.com/lordmuffin/jarvis-voice/commit/d3b160c9d98d8ec90ba4b8ab1ac2e7e77ea86adb))
+* **android:** shared dictation pill with Error state ([a413f87](https://github.com/lordmuffin/jarvis-voice/commit/a413f878792ce3c3ba20aec6a2f9b897a54eec35))
+* **android:** two-pane Record and Session Detail at 840dp ([6aa192d](https://github.com/lordmuffin/jarvis-voice/commit/6aa192d5d717392fe408e61273cf9f41f6edefef))
+
+
+### Bug Fixes
+
+* **android:** repair the main build broken by the Wear/Instrument merge ([60b898c](https://github.com/lordmuffin/jarvis-voice/commit/60b898cc269ab85e2087658fb06e359b7a713d10))
+* **android:** repair the Wear resources and car screen after the merge ([c1f43b7](https://github.com/lordmuffin/jarvis-voice/commit/c1f43b76e1572bf9c48ea4a90947fe86c978e59f))
+
+## [1.13.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.1...android-v1.13.0) (2026-10-14)
+
+
+### Features
+
+* **android:** adopt Instrument design system on Wear and Android Auto ([791a960](https://github.com/lordmuffin/jarvis-voice/commit/791a9607a0551ff0fb164d12dc7ea0b2ec1c8c68))
+* **android:** adopt Instrument design system on Wear and Android Auto ([9a119fd](https://github.com/lordmuffin/jarvis-voice/commit/9a119fd5ef32306ff2fcae2c20d2b8a826b5d4a5))
+
+
+### Bug Fixes
+
+* **android:** remove double hyphen from Wear drawable comments ([badadd0](https://github.com/lordmuffin/jarvis-voice/commit/badadd0dc94cbaf7c2c576814c45d637da542a68))
+* **android:** remove double hyphen from Wear drawable comments ([65c98fc](https://github.com/lordmuffin/jarvis-voice/commit/65c98fce153f8766d545ecef85d404946472fa10))
+
+## [1.12.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.12.0...android-v1.12.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **android:** point the Record tab's missing-model hint at Settings → STT Model ([77becc0](https://github.com/lordmuffin/jarvis-voice/commit/77becc0f33bc9ba981ce4e675d024f423eb403f8))
+
+## [1.12.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.1...android-v1.12.0) (2026-10-14)
+
+
+### Features
+
+* **android:** show the server's LAB/LIVE channel tag ([80d503e](https://github.com/lordmuffin/jarvis-voice/commit/80d503e048bfc55504a1a5f95d0f3a3ebb3eb46c))
+* **android:** show the server's LAB/LIVE channel tag ([782ddf3](https://github.com/lordmuffin/jarvis-voice/commit/782ddf3b49220b45ad0ce544d308398fc3b65d2c))
+
+## [1.11.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.11.0...android-v1.11.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* **android:** take the app version from version.txt ([8e36818](https://github.com/lordmuffin/jarvis-voice/commit/8e368188ef42ded1f72f7577491434683659ffa6))
+* **android:** take the app version from version.txt ([3922aca](https://github.com/lordmuffin/jarvis-voice/commit/3922acaab11c5ee57a2095141b09111d2f214263))
+
+## [1.11.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.10.0...android-v1.11.0) (2026-10-11)
+
+
+### Features
+
+* **server:** promote live channel to live.apj.dev ([7b61b02](https://github.com/lordmuffin/jarvis-voice/commit/7b61b02a7f68c625cfe431ebca9530cb24edb0ef))
+* **server:** promote live channel to live.apj.dev ([122483a](https://github.com/lordmuffin/jarvis-voice/commit/122483a8f88f570dcfe99554fb83a5d67eb60de5))
+
+## [1.10.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.2...android-v1.10.0) (2026-10-11)
+
+
+### Features
+
+* **android:** turn on Local only automatically away from home ([9849075](https://github.com/lordmuffin/jarvis-voice/commit/9849075c87fd7ede9346ee35f00a18ef9789f9af))
+* turn on Local only automatically away from home (Android + macOS) ([a33ef5d](https://github.com/lordmuffin/jarvis-voice/commit/a33ef5dc6a07334cd11658233773b96d7c06077f))
+
+## [1.9.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.1...android-v1.9.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* **server,android:** fix Pocket-ID admin group name and say which account sign-in refused ([e813152](https://github.com/lordmuffin/jarvis-voice/commit/e813152c72f42dfe75fe5d7b0f9df1a22e576c69))
+* **server,android:** say which account Jarvis Live refused at sign-in ([dc74a90](https://github.com/lordmuffin/jarvis-voice/commit/dc74a90676414ce798b9e54f017b1b91233bfa63))
+
+## [1.9.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.9.0...android-v1.9.1) (2026-10-11)
+
+
+### Bug Fixes
+
+* **android:** keep Record history reachable when signed out ([143c276](https://github.com/lordmuffin/jarvis-voice/commit/143c27683f3fc50587a67abcd2f7348f0a63090a))
+* **android:** keep Record history reachable when signed out ([23eeec9](https://github.com/lordmuffin/jarvis-voice/commit/23eeec9185a295e69f26f6491b6f176505f21821))
+
+## [1.9.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.8.0...android-v1.9.0) (2026-10-11)
+
+
+### Features
+
+* **android:** merge Live into the Record tab ([a7eb5ba](https://github.com/lordmuffin/jarvis-voice/commit/a7eb5ba11a902a740118ba4738012dc6b4c2fa7f))
+* **android:** merge Live into the Record tab ([1861226](https://github.com/lordmuffin/jarvis-voice/commit/186122656986be21356ec45f1d4afa42d36dd7ed))
+
+## [1.8.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.4...android-v1.8.0) (2026-10-11)
+
+
+### Features
+
+* **android:** Pocket-ID sign-in and session history ([c8e1212](https://github.com/lordmuffin/jarvis-voice/commit/c8e12125de86499d14f1bfdf88ba8576512e62a9))
+* multiple users with Pocket-ID sign-in ([23fbd10](https://github.com/lordmuffin/jarvis-voice/commit/23fbd10e48aa1bd06524d57aae47cc337e103ef7))
+
+## [1.7.4](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.3...android-v1.7.4) (2026-10-10)
+
+
+### Documentation
+
+* **android:** document the sherpa-onnx setup step and version pinning ([bf79def](https://github.com/lordmuffin/jarvis-voice/commit/bf79def647d120a2d6f43b4ef4a158aaa537bdf7))
+
+## [1.7.3](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.2...android-v1.7.3) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** run Live drafts on CPU Whisper and log each decode ([dae62e4](https://github.com/lordmuffin/jarvis-voice/commit/dae62e4a491708a32ed7b69c82b1abcc0143d862))
+* **android:** run Live drafts on CPU Whisper and log each decode ([ee5ae6f](https://github.com/lordmuffin/jarvis-voice/commit/ee5ae6f6713fd341a3135eafda942bc489949938))
+
+## [1.7.2](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.1...android-v1.7.2) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** unload the enhancement LLM during a Live session ([f656ee6](https://github.com/lordmuffin/jarvis-voice/commit/f656ee602b22ed57167f2996f4146968cf0f4c51))
+* **android:** unload the enhancement LLM during a Live session ([b3fab5e](https://github.com/lordmuffin/jarvis-voice/commit/b3fab5efc6197f76f05d95c64bcf8d770613c5e6))
+
+## [1.7.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.7.0...android-v1.7.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **android:** keep a Live session failure from crashing the app ([f4c9589](https://github.com/lordmuffin/jarvis-voice/commit/f4c9589eccdbea52a2737f5b0d4e35756cf5f355))
+* Live tab crash on Android and phone sessions missing from the web dashboard ([9e79195](https://github.com/lordmuffin/jarvis-voice/commit/9e791957999a8ede809497bb25c976cba30fcacf))
+
+## [1.7.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.6.0...android-v1.7.0) (2026-10-10)
+
+
+### Features
+
+* **android:** Live session recording, on-device transcription and streaming ([971237f](https://github.com/lordmuffin/jarvis-voice/commit/971237faffba6437bc39d39543e78220d8e52437))
+* **android:** Live session recording, on-device transcription and streaming ([b2738e9](https://github.com/lordmuffin/jarvis-voice/commit/b2738e92206c86a924e79104864ca67c51e27d82))
+
+## [1.6.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.5.1...android-v1.6.0) (2026-10-09)
+
+
+### Features
+
+* add Gemma 4 1B to LLM model registry ([d33c167](https://github.com/lordmuffin/jarvis-voice/commit/d33c16711d92750ff25166db1e410f7d0322a1af))
+* add voice chat tab (Chat tab [#3](https://github.com/lordmuffin/jarvis-voice/issues/3) in bottom nav) ([0b1d5db](https://github.com/lordmuffin/jarvis-voice/commit/0b1d5db1c559789633664406b18677feaa321afb))
+* add voice chat tab (Chat tab [#3](https://github.com/lordmuffin/jarvis-voice/issues/3) in bottom nav) ([3da7bbf](https://github.com/lordmuffin/jarvis-voice/commit/3da7bbf92bc495218b6be52dcc469cabe4243d42))
+* add Wear OS module for offline-first voice capture (v1.5.0) ([c02dba9](https://github.com/lordmuffin/jarvis-voice/commit/c02dba90bdda6a40fd6a59cad2886be6af639619))
+* add Wear OS module for offline-first voice capture (v1.5.0) ([f1927eb](https://github.com/lordmuffin/jarvis-voice/commit/f1927eb0e6067d7cad2e40c065f94f3516bbb454))
+* add Whisper STT model manager with tiny/base/small/medium options ([66f3c74](https://github.com/lordmuffin/jarvis-voice/commit/66f3c7485e349ea4f28de2d9c46f841a4f5f0bcd))
+* agent task delegation with live progress UI and model selection (v1.2.4) ([abadb36](https://github.com/lordmuffin/jarvis-voice/commit/abadb361c916d3dee6b10770b9fbb75b0baffe22))
+* always-on VAD barge-in + AEC + cleartext .155 + (static) filter ([5bafe72](https://github.com/lordmuffin/jarvis-voice/commit/5bafe729608d2b8fba08eda764b22e84ca71427c))
+* always-on VAD barge-in + AEC + cleartext .155 + (static) filter ([ab82b23](https://github.com/lordmuffin/jarvis-voice/commit/ab82b2311e5130ec63dcd4ddd4180e30730598ca))
+* Android Auto UI with mute/stop/record controls (v1.5.1) ([3e320ba](https://github.com/lordmuffin/jarvis-voice/commit/3e320ba37686ed272d9a3fe819a87678b6a9ee99))
+* Android Auto UI with mute/stop/record controls (v1.5.1) ([ad576fd](https://github.com/lordmuffin/jarvis-voice/commit/ad576fd01b42a93078a476712f941a6eb8bbfaad))
+* **android:** add copy button to agent task output (v1.3.0) ([8cfcf76](https://github.com/lordmuffin/jarvis-voice/commit/8cfcf76023dc4de84578c965e4cbb96013302e8c))
+* **android:** add copy button to agent task output (v1.3.0) ([3d0e522](https://github.com/lordmuffin/jarvis-voice/commit/3d0e5224a6298d86a818bcd4e2448712c2c5c56b))
+* **android:** Phase 1 Jarvis Voice overlay app — floating pill + on-device ASR + text injection ([42071b5](https://github.com/lordmuffin/jarvis-voice/commit/42071b53c89cde6f2215eaac33107d58bd0ebf9d))
+* app icon opens Settings; clipboard notification with toggle ([5e02757](https://github.com/lordmuffin/jarvis-voice/commit/5e02757b870f206d7edcb49550f517aa943c6631))
+* baked-in default vault API key — zero-config out of the box ([d049d38](https://github.com/lordmuffin/jarvis-voice/commit/d049d38af2b8bba86f65163a430f851c85fe5033))
+* barge-in — tap to interrupt Kai mid-speech and start next turn ([937d7d0](https://github.com/lordmuffin/jarvis-voice/commit/937d7d0fef506d24a0653f786922feeaeddcd4fb))
+* barge-in — tap to interrupt Kai mid-speech and start next turn ([00a7cc3](https://github.com/lordmuffin/jarvis-voice/commit/00a7cc38697883294672c4e842085cb95d94e188))
+* bottom nav bar + version header (v1.1.9) ([e223859](https://github.com/lordmuffin/jarvis-voice/commit/e223859a759fbb7d5557115eb90888890156cd15))
+* clipboard auto-copy, keyboard-aware overlay, in-app model download ([5a36dbf](https://github.com/lordmuffin/jarvis-voice/commit/5a36dbf1f31e0a7226a014e2de3b669bc5c03d34))
+* compact 56dp circular mic button, hold-to-record, keyboard-aware ([ad38a7b](https://github.com/lordmuffin/jarvis-voice/commit/ad38a7b09cbce47d2c0e56bfa27de8327ed926de))
+* custom model server (S3/Azure Blob/NAS) ([ffa1d64](https://github.com/lordmuffin/jarvis-voice/commit/ffa1d64141dc3588c39f9221949648590c626043))
+* default Kokoro TTS URL to 192.168.1.43:8880 ([be0287f](https://github.com/lordmuffin/jarvis-voice/commit/be0287f1c1a7b7e943abba6e6919f28e3e4061d9))
+* dictionary, history, Metro stats, hold-vs-tap recording modes ([91ba735](https://github.com/lordmuffin/jarvis-voice/commit/91ba735d4006eedc2b2471bfac975126ec8900d0))
+* dual-pass logging and raw transcript history ([732be36](https://github.com/lordmuffin/jarvis-voice/commit/732be3631bebc0433fe8ad131c10611165c57611))
+* exact-timing notifications + agent agentic tool loop (v1.2.8) ([8ca37d4](https://github.com/lordmuffin/jarvis-voice/commit/8ca37d4c19995b0e596922266430220d6a4582b6))
+* Gemma 4 LLM model selection — 2B default, 12B opt-in ([0012da4](https://github.com/lordmuffin/jarvis-voice/commit/0012da4c53c34cad79e2516fc6b315007d198469))
+* inline agent task panel with live model selector on Agent screen (v1.2.5) ([ea4e202](https://github.com/lordmuffin/jarvis-voice/commit/ea4e20214ca51f8f70478b442cf3153b89bf5b23))
+* Kai tools (shell, web, write note) + context UI v1.2.1 ([b36f659](https://github.com/lordmuffin/jarvis-voice/commit/b36f65969d99d65408c72e16aa4b23747df5e581))
+* keep recording through power-button screen-off ([f84ece6](https://github.com/lordmuffin/jarvis-voice/commit/f84ece6e7f98867486fa03f1ad461b25359c81f5))
+* keep screen on during recording, stop on power-button lock (v1.1.3) ([a41a881](https://github.com/lordmuffin/jarvis-voice/commit/a41a881a9f791cfba2ac02edf5929dbb5bd589f9))
+* Kokoro network TTS + v1.1.52 ([6e5793a](https://github.com/lordmuffin/jarvis-voice/commit/6e5793a8843aef530e8ec7ad24a3593ca2dacf48))
+* microphone device selector (earbud support) ([e1a4b4e](https://github.com/lordmuffin/jarvis-voice/commit/e1a4b4e3931ed03383e8c1fd63c3efa81f9646df))
+* migrate LLM engine to LiteRT-LM 0.13.1 + HuggingFace auth ([7728411](https://github.com/lordmuffin/jarvis-voice/commit/77284116faf4ac705d2890c5e59a0fe70d3479f0))
+* multi-session chat with persistent history and session switcher UI (v1.2.3) ([93c29eb](https://github.com/lordmuffin/jarvis-voice/commit/93c29ebb2e9267ed517848e837ef8f4146c44d77))
+* NPU/GPU hardware acceleration for LLM (v1.1.13) ([4f1f583](https://github.com/lordmuffin/jarvis-voice/commit/4f1f583e1ed05eaf25f907f0726cf926d370cddf))
+* persistent data storage that survives app reinstall ([4f1c2bc](https://github.com/lordmuffin/jarvis-voice/commit/4f1c2bc21b38d1847d22622842f3bed80ce3190d))
+* Phase 2 — Sherpa-ONNX offline STT engine ([5e7bfe9](https://github.com/lordmuffin/jarvis-voice/commit/5e7bfe9f0f179ef2eede1b77f6c73e513a36323e))
+* push notifications via server-scheduled timers (v1.2.7) ([baf215b](https://github.com/lordmuffin/jarvis-voice/commit/baf215bf992d5fb01195b9edb0f20f062d76104d))
+* push notifications via server-scheduled timers (v1.2.7) ([9381661](https://github.com/lordmuffin/jarvis-voice/commit/938166110ecf23336f7ff6db2ec697e773f61489))
+* replace launcher icon with waveform + neural network design ([03f6183](https://github.com/lordmuffin/jarvis-voice/commit/03f6183f676ceb442008ed5d58aea66feccd9029))
+* scaffold Jarvis Live (protocol, server, CI, release-please) ([f608c33](https://github.com/lordmuffin/jarvis-voice/commit/f608c335df3a436abf1182339d81e9db5ee1da36))
+* scaffold Jarvis Live protocol, server, CI and release automation ([269ce76](https://github.com/lordmuffin/jarvis-voice/commit/269ce76e18ca644646a5afb11fea81ee27de2ee7))
+* screen-off recording, ambient filter, confidence gate, open source scaffolding ([bf65678](https://github.com/lordmuffin/jarvis-voice/commit/bf6567829b25cba923e20a118f57238c207d7073))
+* show active backend in Models screen row (v1.1.14) ([25fe952](https://github.com/lordmuffin/jarvis-voice/commit/25fe95292e065b5010770b0c53457c36851f79be))
+* single-toggle continuous conversation mode (v1.1.46) ([24447e5](https://github.com/lordmuffin/jarvis-voice/commit/24447e50cf76770c8ef72a33748aeea5ff9c8140))
+* single-toggle continuous conversation mode (v1.1.46) ([171086e](https://github.com/lordmuffin/jarvis-voice/commit/171086e4a0886d805fc76249fd8f7797e90a310b))
+* STT and LLM processing times in history (v1.1.11) ([db0897e](https://github.com/lordmuffin/jarvis-voice/commit/db0897e815009d0804c6f55c0695b6ceecfde21b))
+* tap history item to copy transcript to clipboard ([dc545e4](https://github.com/lordmuffin/jarvis-voice/commit/dc545e40418934cb74bb704d659425a97bc3e90f))
+* **v1.1.31:** in-app Gemini Nano download via ML Kit DownloadStatus Flow ([545c111](https://github.com/lordmuffin/jarvis-voice/commit/545c1113c916e3e839ae891e7f5fa6cc79a56249))
+* **v1.1.32:** default to STT-only; suppress AI Core background error ([98ffdb8](https://github.com/lordmuffin/jarvis-voice/commit/98ffdb8b76f39c7e99187d78e548a6791bd413f7))
+* **v1.1.33:** overlay status + restart button in Settings ([d9289d2](https://github.com/lordmuffin/jarvis-voice/commit/d9289d23ec0ed5fd739815ea512b105072a46c8e))
+* **v1.1.36:** disable silence autostop in VaultCapture (holdMode) ([d9473a0](https://github.com/lordmuffin/jarvis-voice/commit/d9473a084aefb56dedab20172080186ffc47b7b5))
+* **v1.1.36:** disable silence autostop in VaultCapture (holdMode) ([97df2fc](https://github.com/lordmuffin/jarvis-voice/commit/97df2fc6ae3c114488ab7244ddfc02b1d97e6dc9))
+* v1.1.4 — VaultCapture auto-start/scroll/FAB + screen-always-on setting ([549f8ba](https://github.com/lordmuffin/jarvis-voice/commit/549f8ba9e54dab228f6c34cf777f1fe5583d729a))
+* VAD-flush chunked STT + debug log viewer ([589c0ba](https://github.com/lordmuffin/jarvis-voice/commit/589c0ba71828dfbc8cc24d292ad33d08c9d0153a))
+* vault capture, crash hardening, history UX — bump to v1.1.0 ([9e50c4e](https://github.com/lordmuffin/jarvis-voice/commit/9e50c4ef336abca90daeb35046bfc82ce9d51767))
+* vault tool calls in Android chat (v1.1.48) ([eac628d](https://github.com/lordmuffin/jarvis-voice/commit/eac628dfba980f1fc0e4aba34d897160c08844c2))
+* vault tool calls in Android chat (v1.1.48) ([52e6066](https://github.com/lordmuffin/jarvis-voice/commit/52e6066939f1e4f1811f2d957018153e67650ae0))
+* **voice-chat:** voice/type mode toggle + live model switcher ([7ace703](https://github.com/lordmuffin/jarvis-voice/commit/7ace7039e9f3c348ba20ad1744324c630f8e1b1f))
+
+
+### Bug Fixes
+
+* allow cleartext to .155 + filter SherpaOnnx artifact tokens ([5e901d4](https://github.com/lordmuffin/jarvis-voice/commit/5e901d442b946996f9dca5d025b43bf9b0957e59))
+* allow cleartext to .155 + filter SherpaOnnx artifact tokens ([47f7072](https://github.com/lordmuffin/jarvis-voice/commit/47f7072e3d1675ce0e01f62da59e10377579c8e9))
+* **android:** rename package to com.lordmuffin.jarvisvoice, compile with SDK 34 ([024a082](https://github.com/lordmuffin/jarvis-voice/commit/024a082beec149d62cb5976e18facee30bde373c))
+* **battery:** release SpeechEngine + cancel jobs when Chat tab is bac… ([1017b4c](https://github.com/lordmuffin/jarvis-voice/commit/1017b4cdd143626dc3d0775988e51267a6975f26))
+* **battery:** release SpeechEngine + cancel jobs when Chat tab is backgrounded ([d5e3b31](https://github.com/lordmuffin/jarvis-voice/commit/d5e3b318b09f7534cc8a6cc4ddcc10d688875997))
+* bump minSdk 24→26 for genai-prompt library requirement ([fa322ca](https://github.com/lordmuffin/jarvis-voice/commit/fa322ca24d44104246feb350484cf6380827470f))
+* car library deps, LinkMovementMethod import, agent context pruning ([2147e30](https://github.com/lordmuffin/jarvis-voice/commit/2147e30dc8ea2bf1b2b17e44d626291822a9d436))
+* car library deps, LinkMovementMethod import, agent context pruning ([ba2fc64](https://github.com/lordmuffin/jarvis-voice/commit/ba2fc648670776d5bc34a8f4f6790d2c384f35df))
+* catch Throwable in LLM init to prevent START_STICKY crash loop ([f973fcc](https://github.com/lordmuffin/jarvis-voice/commit/f973fcce9717bf25e218b78f4e19e4bb4381b652))
+* **ci:** fall back to KEYSTORE_PASSWORD for key password on PKCS12 ([6656cd2](https://github.com/lordmuffin/jarvis-voice/commit/6656cd22ce3f5c3fa6adb9fd5566bb27c735dc83))
+* **ci:** use KEYSTORE_PASSWORD directly as keyPassword — no Elvis fallback ([8ce06c1](https://github.com/lordmuffin/jarvis-voice/commit/8ce06c11753e46fe2b494fce80ecca7e5f47e318))
+* cleartext LAN policy + tap-to-talk + continuous conversation ([15bcaf1](https://github.com/lordmuffin/jarvis-voice/commit/15bcaf1fb5a0f49a7521c9d8aba9e1d851867b2a))
+* cleartext LAN policy + tap-to-talk + continuous conversation ([3a0f2ad](https://github.com/lordmuffin/jarvis-voice/commit/3a0f2ad2cb88f59ca8e614cfb3023f55dbbb5f8a))
+* context bar layout clipping — split bar and buttons onto separate rows ([992eba3](https://github.com/lordmuffin/jarvis-voice/commit/992eba35c47be50fcb4dc52528e465f824a80517))
+* control panel last in FrameLayout so btn_talk gets touch priority ([7dec524](https://github.com/lordmuffin/jarvis-voice/commit/7dec524619467eae4eed814cda1eaf78bcb3ac71))
+* crash loop + Kokoro barge-in false trigger ([e5a9152](https://github.com/lordmuffin/jarvis-voice/commit/e5a91520843f07b9073f4f8c6d863dcf9eae9d41))
+* DebugLog.d → DebugLog.i (d method does not exist) ([97bc57e](https://github.com/lordmuffin/jarvis-voice/commit/97bc57ede0120d417c259763d0205cd5ab5721f2))
+* download crash — null external storage, missing foreground service type ([efb194c](https://github.com/lordmuffin/jarvis-voice/commit/efb194cfea0763923b0e9af9868ed2a9c170b3d8))
+* drag inversion, commit hash in version, model name in history (v1.1.10) ([ce59016](https://github.com/lordmuffin/jarvis-voice/commit/ce59016defb41733e0bbd973e5c75e2249c1d840))
+* eliminate STT hardware double-release crash (IllegalStateException) ([515e3f1](https://github.com/lordmuffin/jarvis-voice/commit/515e3f176651caada3ef32f983708a923bd9aae3))
+* enable buildConfig generation for BuildConfig.VERSION_NAME ([ebd220c](https://github.com/lordmuffin/jarvis-voice/commit/ebd220cff27631aa7c1063f17c8af1989b67fce7))
+* increase Gradle heap and disable ONNX asset compression ([13763cf](https://github.com/lordmuffin/jarvis-voice/commit/13763cf621c5fd634fbfbdb6945cc89ddd2964e6))
+* increase VAD silence threshold from 1.5s to 3s to reduce premature cutoffs ([3dae2aa](https://github.com/lordmuffin/jarvis-voice/commit/3dae2aa7f58a72f71dcfc713618aa421abf12bea))
+* initialize var n = 0 for Kotlin strict definite-assignment ([e6489ee](https://github.com/lordmuffin/jarvis-voice/commit/e6489eebe02c80d3ed9a39278e1b5eda54ef2267))
+* instant stop response — add PROCESSING state ([1dd2f47](https://github.com/lordmuffin/jarvis-voice/commit/1dd2f47b34f162679d59515b770ba09b7abb1144))
+* Kokoro TTS audio playback over Bluetooth ([3c26d68](https://github.com/lordmuffin/jarvis-voice/commit/3c26d68bc8c9f393b9aea140944e6ca9123e927c))
+* LLM download crash on Android 14+ and model registry corrections ([1fb060c](https://github.com/lordmuffin/jarvis-voice/commit/1fb060c30699e751b6fbc7d8b3b34508ef4d8e71))
+* **llm:** disable Qwen3 thinking mode, enforce concise replies ([e5bee00](https://github.com/lordmuffin/jarvis-voice/commit/e5bee0054994f28ff2b9cac5dd769699ea8c765a))
+* **llm:** disable Qwen3 thinking mode, enforce concise replies ([7f60ba8](https://github.com/lordmuffin/jarvis-voice/commit/7f60ba861ff4f1aa39d54f9ecc9ffae0c04de0db))
+* move overlay pill to center-bottom ([66482eb](https://github.com/lordmuffin/jarvis-voice/commit/66482eb9e1917cc4e64160d51d06c184baffc63a))
+* persist full chat history across app restarts ([ba07ad2](https://github.com/lordmuffin/jarvis-voice/commit/ba07ad28ce8f15e38aa337f000f03a92dee60e7f))
+* pill not appearing when keyboard shows (race condition in AccessibilityService) ([90d6089](https://github.com/lordmuffin/jarvis-voice/commit/90d6089e1409f734196b55888b47995e8a9142d2))
+* preserve tail audio on manual stop ([2d9a737](https://github.com/lordmuffin/jarvis-voice/commit/2d9a7379335963d002e2501ebc30964a7bb46303))
+* recording/done states stay circular (replace setBackgroundColor with drawables) ([07504bc](https://github.com/lordmuffin/jarvis-voice/commit/07504bc68f6bb61662480e92f1fa53af7cc31fba))
+* replace Button with TextView for reply chip to eliminate Material inset clipping ([8ca61b7](https://github.com/lordmuffin/jarvis-voice/commit/8ca61b733f33faa363aa4de27aafbf7a75f71db8))
+* replace Gemma 4 1B (bad URL) with Gemma 4 E2B (2.6 GB, confirmed) ([8705bea](https://github.com/lordmuffin/jarvis-voice/commit/8705bea319f20f06dc1d67de2a256aced025e44a))
+* reply button clipped at card right edge — add 2dp end margin ([770b274](https://github.com/lordmuffin/jarvis-voice/commit/770b274766a2008e6a997f2bf154eedca7fb7655))
+* request response_format=wav from Kokoro TTS — v1.1.53 ([cdda78e](https://github.com/lordmuffin/jarvis-voice/commit/cdda78e61cd0325c5f4d337670eca8ca6641c44a))
+* screen-on tied to recording state only (v1.1.12) ([5a8648a](https://github.com/lordmuffin/jarvis-voice/commit/5a8648a17641c75b6bcc14dac6ded7a24bc34448))
+* service restart loop + silent download failure + missing error UI ([88fbc65](https://github.com/lordmuffin/jarvis-voice/commit/88fbc65273eeee8091d92add14378dd62c78edd4))
+* show granted state on permissions onboarding screen ([1f9473b](https://github.com/lordmuffin/jarvis-voice/commit/1f9473b4b0dc4b57ca2c38eff81fe7c0a255049a))
+* storage path label uses actual device path; All Files Access in onboarding ([21e4be7](https://github.com/lordmuffin/jarvis-voice/commit/21e4be7554aa845f244d128c70862ae7eda2d3f9))
+* **stt:** SherpaOnnx auto-fire onFinal after VAD silence (v1.1.47) ([7c697df](https://github.com/lordmuffin/jarvis-voice/commit/7c697dfa3bccc2bdfcff968976a39952f90d515b))
+* **stt:** SherpaOnnx auto-fire onFinal after VAD silence (v1.1.47) ([f39b9b6](https://github.com/lordmuffin/jarvis-voice/commit/f39b9b6aadeb8235688e89e6b8e0d7ddb7960081))
+* **tts:** remove duplicate setOnInitListener + explicit status type ([dc8a6b5](https://github.com/lordmuffin/jarvis-voice/commit/dc8a6b5ba1c03c9bda68a102574fc55c0601a460))
+* **tts:** remove duplicate setOnInitListener + explicit status type ([1c53f28](https://github.com/lordmuffin/jarvis-voice/commit/1c53f2888ea7d6eb4beb5c6fcc390d19a6aae327))
+* use DatabaseErrorHandler ctor param instead of onCorruption override ([cc18664](https://github.com/lordmuffin/jarvis-voice/commit/cc18664e13d34943489485e270f0d8947313dded))
+* **v1.1.31:** commit missing AiCoreEnhancer changes + fix Flow import ([4163b54](https://github.com/lordmuffin/jarvis-voice/commit/4163b54c9c63963b5181b8e862ce21729a64350b))
+* **v1.1.34:** demote NPU/GPU negotiation failures to W log level ([6900dc3](https://github.com/lordmuffin/jarvis-voice/commit/6900dc3044a0fe48839d3de12aa7f61100fbe02d))
+* **v1.1.35:** fix FGS microphone eligibility crash on Android 14+ ([622ac5b](https://github.com/lordmuffin/jarvis-voice/commit/622ac5b1ae39708f32370c733ddecdbed9245ef3))
+* **v1.1.35:** fix FGS microphone eligibility crash on Android 14+ ([dffe10f](https://github.com/lordmuffin/jarvis-voice/commit/dffe10fdd9de6e93204acd494f9ca69f7710428c))
+* **voice-chat:** audio playback, lifecycle, and persistent history ([482655d](https://github.com/lordmuffin/jarvis-voice/commit/482655dda04533a5e57c355546c37b4dc5c5a82f))
+* **voice-chat:** audio playback, lifecycle, and persistent history ([8c7dcb0](https://github.com/lordmuffin/jarvis-voice/commit/8c7dcb0156cf964966f8dea0aba5c9a238619c86))
+* **voice-chat:** correct EditText hint color attribute ([be2b4f3](https://github.com/lordmuffin/jarvis-voice/commit/be2b4f3202f96f85341a24bdba2801c8d68347cf))
+* **voice-chat:** correct EditText hint color attribute ([ebd3ce6](https://github.com/lordmuffin/jarvis-voice/commit/ebd3ce649d6f52a62de278e0670dc768dbc8ced5))
+* **voice-chat:** switch to Android TTS + auto-silence conversation loop ([8f3fe43](https://github.com/lordmuffin/jarvis-voice/commit/8f3fe43bc2e3b657bef2e75b1533f5ef89803c88))
+* Whisper model extraction hangs — stream bzip2 directly from HTTP ([119162a](https://github.com/lordmuffin/jarvis-voice/commit/119162a2fe050968f77de19ad863cb3ad717cf8f))
+* wrap all SettingsActivity.onResume() refreshes in runCatching ([25fbd82](https://github.com/lordmuffin/jarvis-voice/commit/25fbd8249970b8d27820548953b3b50adbbe586a))
+
+
+### Performance Improvements
+
+* 8 parallel streams + reuse resolved CDN URL for all chunks ([40d27ce](https://github.com/lordmuffin/jarvis-voice/commit/40d27ce59a2832fb23718f0d23ede66c20ca6a41))
+* OkHttp + 16 parallel streams for model downloads (v1.1.2) ([bdf03a8](https://github.com/lordmuffin/jarvis-voice/commit/bdf03a832207f32b640b89c70b3d87a40d9d26a9))
+* parallel chunked download for LLM models (4x speed improvement) ([06cdbe6](https://github.com/lordmuffin/jarvis-voice/commit/06cdbe6205b634f1699d4460b54401cdb4bfd22c))

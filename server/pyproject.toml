@@ -1,0 +1,81 @@
+[project]
+name = "jarvis-live"
+version = "0.29.0"
+description = "Jarvis Live backend service"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx",
+    "pydantic>=2",
+    "websockets",
+]
+
+[project.optional-dependencies]
+# Everything the server needs; the capture client (`pip install jarvis-live`) does not.
+server = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic-settings",
+    "sqlalchemy[asyncio]>=2",
+    "asyncpg",
+    "alembic",
+    "numpy",
+    "webrtcvad-wheels",
+    "pyjwt[crypto]>=2.15.1",
+    "prometheus-client>=0.26.0",
+]
+
+[project.scripts]
+jarvis-live = "jarvis_live.cli:main"
+
+[dependency-groups]
+dev = [
+    "jarvis-live[server]",
+    "pytest",
+    "pytest-asyncio",
+    "ruff",
+    "mypy",
+    "jsonschema",
+    "testcontainers[postgres]",
+    "pytest-cov>=7.1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/jarvis_live"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "live: hits a real Whisper endpoint; skipped unless --live",
+    "integration: needs Postgres (Docker or JARVIS_LIVE_TEST_DATABASE_URL); added automatically to tests using the postgres_url fixture",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/evals/transcripts.py" = ["E501"]  # transcripts are verbatim text
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["webrtcvad"]
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/jarvis_live"]
+branch = true
+# The API tests drive the app in a uvicorn thread, where SQLAlchemy's async layer switches
+# greenlets; without "greenlet" coverage loses track of that code and under-reports it.
+concurrency = ["thread", "greenlet"]

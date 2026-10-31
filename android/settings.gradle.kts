@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "JarvisVoice"
 include(":app")
+include(":wear")
+include(":wearcommon")

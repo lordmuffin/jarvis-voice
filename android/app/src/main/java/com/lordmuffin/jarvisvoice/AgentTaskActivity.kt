@@ -6,12 +6,13 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.res.ColorStateList
 import android.os.Bundle
-import android.widget.Toast
+import com.lordmuffin.jarvisvoice.ui.InstToast
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -52,7 +53,7 @@ class AgentTaskActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_agent_tasks)
-        supportActionBar?.title = "Agent Tasks"
+        supportActionBar?.title = getString(R.string.chat_agent_title)
         BottomNav.wire(this, BottomNav.Tab.AGENT)
 
         rvTasks    = findViewById(R.id.rv_tasks)
@@ -121,7 +122,7 @@ class AgentTaskActivity : AppCompatActivity() {
     private fun submitTask() {
         val prompt = etPrompt.text.toString().trim()
         if (prompt.isEmpty()) {
-            etPrompt.error = "Enter a prompt"
+            etPrompt.error = getString(R.string.chat_agent_prompt_required)
             return
         }
         val name  = etTaskName.text.toString().trim()
@@ -172,6 +173,7 @@ class AgentTaskActivity : AppCompatActivity() {
             h.tvName.text    = task.name
             h.tvModel.text   = task.model.take(22)
             h.tvStatus.text  = task.status.replaceFirstChar { it.titlecase() }
+            h.tvStatus.setTextColor(getColor(statusColor(task.status)))
             h.tvElapsed.text = task.elapsedLabel()
 
             val dotColor = statusColor(task.status)
@@ -186,11 +188,11 @@ class AgentTaskActivity : AppCompatActivity() {
                     h.tvOutput.visibility = View.VISIBLE
                     h.tvOutput.text   = Html.fromHtml(task.output, Html.FROM_HTML_MODE_COMPACT)
                     h.tvOutput.movementMethod = LinkMovementMethod.getInstance()
-                    h.tvExpand.text       = "Hide output ▲"
+                    h.tvExpand.text       = getString(R.string.chat_agent_hide_output)
                     h.btnCopy.visibility  = View.VISIBLE
                 } else {
                     h.tvOutput.visibility = View.GONE
-                    h.tvExpand.text       = "Show output ▼"
+                    h.tvExpand.text       = getString(R.string.chat_agent_show_output)
                     h.btnCopy.visibility  = View.GONE
                 }
             } else {
@@ -210,7 +212,7 @@ class AgentTaskActivity : AppCompatActivity() {
             h.btnCopy.setOnClickListener {
                 val clip = ClipData.newPlainText("agent output", task.output)
                 (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
-                Toast.makeText(this@AgentTaskActivity, "Copied", Toast.LENGTH_SHORT).show()
+                InstToast.show(this@AgentTaskActivity, R.string.chat_agent_copied)
             }
 
             // Reply button — opens conversation thread sheet
@@ -218,10 +220,10 @@ class AgentTaskActivity : AppCompatActivity() {
 
             h.btnDelete.setOnClickListener {
                 AlertDialog.Builder(this@AgentTaskActivity)
-                    .setTitle("Remove task?")
-                    .setMessage("\"${task.name}\" will be cancelled and removed.")
-                    .setPositiveButton("Remove") { _, _ -> viewModel.deleteTask(task.id) }
-                    .setNegativeButton("Cancel", null)
+                    .setTitle(R.string.chat_agent_remove_title)
+                    .setMessage(getString(R.string.chat_agent_remove_message, task.name))
+                    .setPositiveButton(R.string.chat_agent_remove_confirm) { _, _ -> viewModel.deleteTask(task.id) }
+                    .setNegativeButton(R.string.chat_agent_cancel, null)
                     .show()
             }
         }
@@ -248,9 +250,9 @@ class AgentTaskActivity : AppCompatActivity() {
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.bottom_sheet_task_convo)
         dialog.window?.apply {
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            setGravity(Gravity.BOTTOM)
+            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
             setBackgroundDrawableResource(android.R.color.transparent)
+            setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         }
 
         val tvTitle  = dialog.findViewById<TextView>(R.id.tv_convo_title)
@@ -325,11 +327,11 @@ class AgentTaskActivity : AppCompatActivity() {
             if (role == "user") {
                 lp.gravity = Gravity.END
                 h.tvMsg.setBackgroundResource(R.drawable.chat_bubble_user)
-                h.tvMsg.setTextColor(getColor(R.color.jv_bg))
+                h.tvMsg.setTextColor(getColor(R.color.inst_on_accent))
             } else {
                 lp.gravity = Gravity.START
                 h.tvMsg.setBackgroundResource(R.drawable.chat_bubble_ai)
-                h.tvMsg.setTextColor(getColor(R.color.jv_text))
+                h.tvMsg.setTextColor(getColor(R.color.inst_text))
             }
             h.tvMsg.layoutParams = lp
         }
@@ -342,20 +344,20 @@ class AgentTaskActivity : AppCompatActivity() {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private fun statusColor(status: String) = when (status) {
-        "running"   -> R.color.jv_warning
-        "done"      -> R.color.jv_accent
-        "failed"    -> R.color.jv_error
-        else        -> R.color.jv_text2
+        "running"   -> R.color.inst_warning
+        "done"      -> R.color.inst_success
+        "failed"    -> R.color.inst_error
+        else        -> R.color.inst_text_2
     }
 
     private fun AgentTask.elapsedLabel(): String {
         val ms = elapsedMs
         return when {
-            ms == null && !isTerminal -> "running…"
+            ms == null && !isTerminal -> getString(R.string.chat_agent_elapsed_running)
             ms == null -> ""
-            ms < 1_000  -> "${ms}ms"
-            ms < 60_000 -> "${"%.1f".format(ms / 1000.0)}s"
-            else        -> "${ms / 60_000}m ${(ms % 60_000) / 1000}s"
+            ms < 1_000  -> getString(R.string.chat_agent_elapsed_ms, ms)
+            ms < 60_000 -> getString(R.string.chat_agent_elapsed_s, "%.1f".format(ms / 1000.0))
+            else        -> getString(R.string.chat_agent_elapsed_ms_s, ms / 60_000, (ms % 60_000) / 1000)
         }
     }
 

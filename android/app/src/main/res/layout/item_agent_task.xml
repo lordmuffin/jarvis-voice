@@ -3,38 +3,35 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/jv_surface"
-    android:layout_marginStart="8dp"
-    android:layout_marginEnd="8dp"
-    android:layout_marginBottom="6dp"
-    android:padding="12dp"
+    android:background="@drawable/inst_row_surface"
+    android:layout_marginBottom="@dimen/inst_space_4"
+    android:padding="@dimen/inst_space_12"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground">
 
-    <!-- Header: name + status badge + delete -->
+    <!-- Header: name + status dot + delete -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
-        <!-- Status dot -->
+        <!-- Status dot (tinted by state in code; the word beside it carries the state too) -->
         <TextView
             android:id="@+id/tv_status_dot"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
+            android:layout_width="@dimen/inst_dot_live"
+            android:layout_height="@dimen/inst_dot_live"
             android:background="@drawable/status_dot"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
         <!-- Task name -->
         <TextView
             android:id="@+id/tv_task_name"
+            style="@style/Inst.Text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/jv_text"
-            android:textSize="14sp"
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end" />
@@ -42,63 +39,52 @@
         <!-- Delete button -->
         <Button
             android:id="@+id/btn_task_delete"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:text="✕"
-            android:textSize="12sp"
-            android:backgroundTint="@color/jv_surface2"
-            android:textColor="@color/jv_text2"
-            android:stateListAnimator="@null"
+            style="@style/Widget.Inst.Button.Quiet"
+            android:layout_width="@dimen/inst_touch_target_android"
+            android:layout_height="@dimen/inst_touch_target_android"
+            android:text="@string/chat_agent_delete_glyph"
             android:padding="0dp" />
 
     </LinearLayout>
 
-    <!-- Model chip + status text + elapsed -->
+    <!-- Model chip + status word + elapsed -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="4dp">
+        android:layout_marginTop="@dimen/inst_space_4">
 
         <TextView
             android:id="@+id/tv_task_model"
+            style="@style/Widget.Inst.Chip.Live"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_accent"
-            android:textSize="10sp"
-            android:background="@color/jv_surface2"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
         <TextView
             android:id="@+id/tv_task_status"
+            style="@style/Inst.Text.Tag"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textColor="@color/jv_text2"
-            android:textSize="11sp" />
+            android:layout_weight="1" />
 
         <TextView
             android:id="@+id/tv_task_elapsed"
+            style="@style/Inst.Text.Meta"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/jv_text2"
-            android:textSize="11sp" />
+            android:layout_height="wrap_content" />
 
     </LinearLayout>
 
     <!-- Output preview -->
     <TextView
         android:id="@+id/tv_task_output"
+        style="@style/Inst.Text.Caption"
+        android:textColor="@color/inst_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textColor="@color/jv_text"
-        android:textSize="12sp"
-        android:layout_marginTop="6dp"
+        android:layout_marginTop="@dimen/inst_space_8"
         android:maxLines="3"
         android:ellipsize="end"
         android:visibility="gone" />
@@ -110,46 +96,46 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_marginTop="6dp"
-        android:paddingEnd="4dp"
+        android:layout_marginTop="@dimen/inst_space_4"
         android:visibility="gone">
 
         <TextView
             android:id="@+id/tv_expand"
+            style="@style/Inst.Text.Meta"
+            android:textColor="@color/inst_accent"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Show output ▼"
-            android:textColor="@color/jv_accent"
-            android:textSize="11sp" />
+            android:minHeight="@dimen/inst_touch_target_android"
+            android:gravity="center_vertical"
+            android:layout_weight="1" />
 
         <TextView
             android:id="@+id/btn_copy"
+            style="@style/Inst.Text.Meta"
+            android:textColor="@color/inst_accent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="⎘ Copy"
-            android:textSize="11sp"
-            android:textColor="@color/jv_accent"
-            android:background="@color/jv_surface2"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp"
-            android:layout_marginEnd="6dp"
+            android:minHeight="@dimen/inst_touch_target_android"
+            android:gravity="center"
+            android:text="@string/chat_agent_copy"
+            android:background="@color/inst_surface_2"
+            android:paddingStart="@dimen/inst_space_12"
+            android:paddingEnd="@dimen/inst_space_12"
+            android:layout_marginEnd="@dimen/inst_space_8"
             android:visibility="gone" />
 
         <TextView
             android:id="@+id/btn_reply"
+            style="@style/Inst.Text.Meta"
+            android:textColor="@color/inst_accent"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="↩ Reply"
-            android:textSize="11sp"
-            android:textColor="@color/jv_accent"
-            android:background="@color/jv_surface2"
-            android:paddingStart="10dp"
-            android:paddingEnd="10dp"
-            android:paddingTop="5dp"
-            android:paddingBottom="5dp" />
+            android:minHeight="@dimen/inst_touch_target_android"
+            android:gravity="center"
+            android:text="@string/chat_agent_reply"
+            android:background="@color/inst_surface_2"
+            android:paddingStart="@dimen/inst_space_12"
+            android:paddingEnd="@dimen/inst_space_12" />
 
     </LinearLayout>
 

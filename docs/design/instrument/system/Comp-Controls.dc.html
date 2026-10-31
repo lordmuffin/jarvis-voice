@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Buttons and form controls</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 1900px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+  <div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 1900px;">
+    <div class="i-stack" style="gap: 4px;">
+      <span class="t-label">3 · Components · {{th.name}}</span>
+      <h1 class="t-title">Buttons and form controls</h1>
+    </div>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Buttons · every state</h2>
+      <div class="i-block" style="padding: 12px 12px 16px;">
+        <div style="display: grid; grid-template-columns: 92px repeat(6, minmax(0, 1fr)); gap: 10px 8px; align-items: center;">
+          <span></span>
+          <sc-for list="{{stateNames}}" as="s" hint-placeholder-count="6"><span class="t-micro t-2" style="text-align: center;">{{s}}</span></sc-for>
+          <sc-for list="{{variants}}" as="v" hint-placeholder-count="5">
+            <span class="t-caption" style="font-weight: 600;">{{v.name}}</span>
+            <sc-for list="{{v.cells}}" as="c" hint-placeholder-count="6">
+              <span style="display: flex; justify-content: center;">
+                <button type="button" class="{{c.cls}}" disabled="{{c.dis}}" aria-busy="{{c.busy}}">
+                  <sc-if value="{{c.loading}}" hint-placeholder-val="{{false}}"><span class="i-spin" style="width: 10px; height: 10px;"></span></sc-if>{{c.label}}
+                </button>
+              </span>
+            </sc-for>
+          </sc-for>
+        </div>
+      </div>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+        <button type="button" class="i-btn i-btn--secondary i-btn--sm">Small 32</button>
+        <button type="button" class="i-btn i-btn--secondary">Medium 36</button>
+        <button type="button" class="i-btn i-btn--primary i-btn--lg">Large 52</button>
+        <span class="t-caption t-2">One primary per screen. Labels are Title Case verbs.</span>
+      </div>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;">
+        <button type="button" class="i-btn i-btn--primary" disabled aria-describedby="r-{{th.id}}">Save Correction</button>
+        <span id="r-{{th.id}}" class="i-reason">⚑ LAB: writes disabled.</span>
+        <span class="t-caption t-2" style="flex-basis: 100%;">Disabled with a reason: a dashed outline, and the reason sits beside the control and is linked to it by aria-describedby. A disabled control is never left unexplained.</span>
+      </div>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Text fields</h2>
+      <div class="i-block" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 16px; padding: 16px;">
+        <div class="i-field"><label class="i-label" for="f1-{{th.id}}">Display name</label><input id="f1-{{th.id}}" class="i-input" placeholder="Sam"><span class="i-help">Shown to admins only.</span></div>
+        <div class="i-field"><label class="i-label" for="f2-{{th.id}}">Display name</label><input id="f2-{{th.id}}" class="i-input is-hover" value="Sam"><span class="i-help">Hover.</span></div>
+        <div class="i-field"><label class="i-label" for="f3-{{th.id}}">Display name</label><input id="f3-{{th.id}}" class="i-input is-focus" value="Sam Jackson"><span class="i-help">Focus: accent border and 2 px ring.</span></div>
+        <div class="i-field"><label class="i-label" for="f4-{{th.id}}">Bedtime</label><input id="f4-{{th.id}}" class="i-input t-mono" aria-invalid="true" aria-describedby="f4e-{{th.id}}" value="25:10"><span id="f4e-{{th.id}}" class="i-msg-error">✕ Enter a time from 00:00 to 23:59.</span></div>
+        <div class="i-field"><label class="i-label" for="f5-{{th.id}}">Email</label><input id="f5-{{th.id}}" class="i-input" disabled value="sam@home.example" aria-describedby="f5r-{{th.id}}"><span id="f5r-{{th.id}}" class="i-reason">⚑ Set by Pocket ID.</span></div>
+        <div class="i-field"><label class="i-label" for="f6-{{th.id}}">Webhook URL</label><input id="f6-{{th.id}}" class="i-input i-input--mono" readonly value="https://hooks.lab.apj.dev/s/9f2c…"><span class="i-help">Read-only. Select to copy.</span></div>
+        <div class="i-field"><label class="i-label" for="f7-{{th.id}}">Went to bed</label><input id="f7-{{th.id}}" type="datetime-local" class="i-input t-mono" value="2026-10-13T23:14"><span class="i-msg-ok">✓ Saved.</span></div>
+        <div class="i-field"><label class="i-label" for="f8-{{th.id}}">Role</label><span class="i-select"><select id="f8-{{th.id}}" class="i-input"><option>Member</option><option>Admin</option></select></span><span class="i-help">Admins can view everyone’s data.</span></div>
+        <div class="i-field" style="grid-column: 1 / -1;"><label class="i-label" for="f9-{{th.id}}">Note <span class="opt">(optional)</span></label><textarea id="f9-{{th.id}}" class="i-input" aria-describedby="f9h-{{th.id}}">Woke at 03:00 for the dog.</textarea><span id="f9h-{{th.id}}" class="i-help" style="display: flex; justify-content: space-between;"><span>Notes are visible to you and admins.</span><span class="t-mono">26 / 280</span></span></div>
+      </div>
+      <span class="t-caption t-2">Validation runs on blur and on submit, never while you type. The message replaces the help text, starts with ✕, and says what to enter.</span>
+    </section>
+
+    <section class="i-stack">
+      <h2 class="t-label" style="padding-bottom: 4px;">Choices</h2>
+      <div class="i-block" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 16px;">
+        <fieldset class="i-fieldset">
+          <legend>Checkboxes</legend>
+          <label class="i-choice"><input type="checkbox"><span>Unchecked</span></label>
+          <label class="i-choice"><input type="checkbox" checked><span>Checked</span></label>
+          <label class="i-choice"><input type="checkbox" disabled><span>Disabled</span></label>
+          <label class="i-choice"><input type="checkbox" checked disabled><span>Checked, disabled</span></label>
+        </fieldset>
+        <fieldset class="i-fieldset">
+          <legend>Night was</legend>
+          <label class="i-choice"><input type="radio" name="rg-{{th.id}}" checked><span>As recorded</span></label>
+          <label class="i-choice"><input type="radio" name="rg-{{th.id}}"><span>Corrected</span></label>
+          <label class="i-choice"><input type="radio" name="rg-{{th.id}}"><span>Not slept here</span></label>
+          <label class="i-choice"><input type="radio" name="rg-{{th.id}}" disabled><span>Disabled</span></label>
+        </fieldset>
+        <div class="i-fieldset">
+          <span class="i-label" style="padding-bottom: 4px;">Switches</span>
+          <button type="button" role="switch" aria-checked="true" class="i-switch"><span class="track"><span class="knob"></span></span><span class="state">ON</span><span>Publish notes</span></button>
+          <button type="button" role="switch" aria-checked="false" class="i-switch"><span class="track"><span class="knob"></span></span><span class="state">OFF</span><span>Auto-scroll</span></button>
+          <button type="button" role="switch" aria-checked="false" class="i-switch" disabled><span class="track"><span class="knob"></span></span><span class="state">OFF</span><span>Context writes</span></button>
+        </div>
+      </div>
+      <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px;">
+        <div class="i-seg" role="radiogroup" aria-label="Range"><button type="button" role="radio" aria-checked="false">7 nights</button><button type="button" role="radio" aria-checked="true">14 nights</button><button type="button" role="radio" aria-checked="false">90 nights</button></div>
+        <div class="i-seg" role="radiogroup" aria-label="Theme"><button type="button" role="radio" aria-checked="true">System</button><button type="button" role="radio" aria-checked="false">Light</button><button type="button" role="radio" aria-checked="false">Dark</button></div>
+        <span class="t-caption t-2">Segmented control: square track, current item raised with an accent underline. The theme toggle is web only.</span>
+      </div>
+    </section>
+  </div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const states = [
+      { k: '', name: 'Default' }, { k: 'is-hover', name: 'Hover' }, { k: 'is-focus', name: 'Focus' },
+      { k: 'is-pressed', name: 'Pressed' }, { k: 'dis', name: 'Disabled' }, { k: 'load', name: 'Loading' }
+    ];
+    const V = (name, cls, label) => ({
+      name,
+      cells: states.map((s) => ({
+        cls: 'i-btn ' + cls + ' ' + (s.k === 'dis' || s.k === 'load' ? '' : s.k),
+        dis: s.k === 'dis',
+        busy: s.k === 'load' ? 'true' : 'false',
+        loading: s.k === 'load',
+        label: s.k === 'load' ? 'Saving' : label
+      }))
+    });
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      stateNames: states.map((s) => s.name),
+      variants: [
+        V('Primary', 'i-btn--primary', 'Save'),
+        V('Secondary', 'i-btn--secondary', 'Cancel'),
+        V('Quiet', 'i-btn--quiet', 'Edit'),
+        V('Destructive', 'i-btn--danger', 'Delete'),
+        V('Destr. quiet', 'i-btn--danger-quiet', '✕ Remove')
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

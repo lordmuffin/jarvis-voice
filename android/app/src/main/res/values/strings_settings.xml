@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen -->
+    <string name="settings_title">Jarvis Voice Settings</string>
+    <string name="settings_version_default">Jarvis Voice</string>
+    <string name="settings_version_format">"Jarvis Voice  v%1$s  (%2$s)"</string>
+
+    <!-- Overlay -->
+    <string name="settings_overlay_header">Overlay</string>
+    <string name="settings_overlay_checking">Checking…</string>
+    <string name="settings_overlay_restart">Restart</string>
+    <string name="settings_overlay_start">Start</string>
+    <string name="settings_overlay_running">● Running</string>
+    <string name="settings_overlay_not_running">○ Not running</string>
+    <string name="settings_overlay_restarting">Overlay restarting…</string>
+
+    <!-- Metro -->
+    <string name="settings_metro_header">Metro</string>
+    <string name="settings_stat_none" translatable="false">—</string>
+    <string name="settings_stat_zero" translatable="false">0</string>
+    <string name="settings_stat_last_words">last words</string>
+    <string name="settings_stat_last_wpm">last wpm</string>
+    <string name="settings_stat_total_words">total words</string>
+    <string name="settings_stat_avg_wpm">avg wpm</string>
+
+    <!-- Speech recognition / LLM -->
+    <string name="settings_stt_header">Speech Recognition</string>
+    <string name="settings_stt_model">STT Model</string>
+    <string name="settings_stt_none">—</string>
+    <string name="settings_stt_active">Active: %1$s</string>
+    <string name="settings_llm_header">LLM Enhancement</string>
+    <string name="settings_llm_model">LLM Model</string>
+    <string name="settings_llm_off">Enhancement: Off</string>
+    <string name="settings_llm_active">Enhancement: %1$s</string>
+    <string name="settings_llm_active_backend">Enhancement: %1$s [%2$s]</string>
+    <string name="settings_hf_label">HuggingFace Token</string>
+    <string name="settings_hf_hint" translatable="false">hf_xxxxxxxxxxxxxxxx</string>
+    <string name="settings_hf_help">Only needed when using HuggingFace with no custom URL set below.</string>
+
+    <!-- Jarvis Live status lines -->
+    <string name="settings_live_url_scheme">Server URL must start with https://.</string>
+    <string name="settings_live_invalid_url">Invalid server URL.</string>
+    <string name="settings_live_saved">Saved.</string>
+    <string name="settings_live_saved_need_token">Saved. Sign in or add a device token to stream.</string>
+    <string name="settings_live_need_token">Sign in or enter a device token first.</string>
+    <string name="settings_live_testing">Testing…</string>
+    <string name="settings_live_connected">Live: %1$s</string>
+    <string name="settings_live_token_rejected">Offline. Token rejected.</string>
+    <string name="settings_live_http_error">Offline. HTTP %1$d.</string>
+    <string name="settings_live_error">Offline. %1$s</string>
+    <string name="settings_http_status">HTTP %1$d</string>
+
+    <!-- Custom model server -->
+    <string name="settings_server_header">Custom Model Server</string>
+    <string name="settings_llm_url_label">LLM Models URL</string>
+    <string name="settings_llm_url_hint" translatable="false">https://your-bucket/models/llm/</string>
+    <string name="settings_stt_url_label">STT Models URL</string>
+    <string name="settings_stt_url_hint" translatable="false">https://your-bucket/models/stt/</string>
+    <string name="settings_server_token_label">Auth Token (optional)</string>
+    <string name="settings_server_token_hint" translatable="false">Bearer abc123...</string>
+    <string name="settings_server_help">Sent as the Authorization header. Leave blank for public buckets. LLM bucket expects: gemma4-12b.litertlm, gemma4-2b.litertlm, gemma3-1b.litertlm. STT bucket expects: sherpa-onnx-whisper-{tiny,base,small,medium}.en.tar.bz2</string>
+    <string name="settings_capture_label">Capture key</string>
+    <string name="settings_capture_hint">Capture key (JARVIS_CAPTURE_KEY on the server)</string>
+    <string name="settings_capture_help">Key from /home/lordmuffin/.jarvis-capture.env on GamingPC. Required for vault note tools (read, search, write).</string>
+
+    <!-- Voice TTS -->
+    <string name="settings_tts_header">Voice (TTS)</string>
+    <string name="settings_tts_url_hint" translatable="false">http://192.168.1.43:8880</string>
+    <string name="settings_tts_voice_hint" translatable="false">af_sky</string>
+    <string name="settings_tts_help">Kokoro TTS server URL + voice name. Leave URL blank to use Android TTS. Kokoro voices: af_sky, af_heart, am_michael, etc.</string>
+
+    <!-- Features -->
+    <string name="settings_features_header">Features</string>
+    <string name="settings_features_history">Dictation History</string>
+    <string name="settings_features_dictionary">Custom Dictionary</string>
+    <string name="settings_features_debug_log">Debug Log</string>
+
+    <!-- Data storage -->
+    <string name="settings_storage_header">Data Storage</string>
+    <string name="settings_storage_grant">Grant All Files Access</string>
+    <string name="settings_storage_help">Grant once to store history and logs in /sdcard/Documents/JarvisVoice/. Existing data migrates automatically.</string>
+
+    <!-- Notifications / backend -->
+    <string name="settings_notifications_header">Notifications</string>
+    <string name="settings_clipboard_title">Clipboard notification</string>
+    <string name="settings_clipboard_desc">Show in the tray when dictation is copied to the clipboard.</string>
+    <string name="settings_backend_header">STT Backend</string>
+    <string name="settings_offline_title">On-device STT (Offline)</string>
+    <string name="settings_offline_desc">Uses a local Whisper model. No internet is required.</string>
+
+    <!-- Vault folder -->
+    <string name="settings_vault_header">Vault Folder</string>
+    <string name="settings_vault_pick">Pick Vault Folder</string>
+    <string name="settings_vault_help">Pick any local folder. Record session notes are saved inside it. It works well with a Syncthing-synced vault folder.</string>
+    <string name="settings_vault_folder">Folder: %1$s</string>
+    <string name="settings_vault_none">—</string>
+
+    <!-- Audio input -->
+    <string name="settings_audio_header">Audio Input</string>
+    <string name="settings_mic_title">Microphone</string>
+    <string name="settings_mic_default">System Default</string>
+    <string name="settings_mic_change">Change</string>
+    <string name="settings_mic_help">Select your earbud or headset mic. Bluetooth devices must be connected before tapping Change.</string>
+    <string name="settings_cancel">Cancel</string>
+
+    <!-- Appearance -->
+    <string name="settings_appearance_header">Appearance</string>
+    <string name="settings_appearance_caption">System follows your device\'s light or dark setting.</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_group_dictation">Dictation</string>
+    <string name="settings_group_models">Models</string>
+    <string name="settings_group_kai">Kai</string>
+    <string name="settings_group_device">Device</string>
+    <string name="settings_group_about">About</string>
+</resources>

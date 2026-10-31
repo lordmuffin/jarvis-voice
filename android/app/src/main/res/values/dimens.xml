@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App-specific sizes with no Instrument token. Everything else is @dimen/inst_*. -->
+<resources>
+    <dimen name="app_empty_glyph">40sp</dimen>
+    <dimen name="app_nav_icon">20sp</dimen>
+    <dimen name="app_nav_indicator">2dp</dimen>
+    <dimen name="app_toast_max_width">360dp</dimen>
+    <dimen name="app_pill_height">48dp</dimen>
+    <dimen name="app_pill_min_width">72dp</dimen>
+    <dimen name="app_pill_elevation">12dp</dimen>
+    <dimen name="app_pill_spinner">12dp</dimen>
+    <dimen name="app_pill_meter_width">20dp</dimen>
+    <dimen name="app_pill_meter_height">14dp</dimen>
+    <dimen name="app_nav_total">57dp</dimen>
+    <dimen name="app_detail_left_pane">380dp</dimen>
+    <dimen name="app_time_column">44dp</dimen>
+    <dimen name="app_live_copilot_height">140dp</dimen>
+    <dimen name="app_pill_time_text">13sp</dimen>
+    <!-- Compose layout (Instrument artboards: Jarvis-And-Record, Jarvis-And-Record-Unfolded). -->
+    <dimen name="app_appbar">56dp</dimen>
+    <dimen name="app_rail_width">80dp</dimen>
+    <dimen name="app_rail_item">72dp</dimen>
+    <dimen name="app_rail_edge">3dp</dimen>
+    <dimen name="app_session_pane">320dp</dimen>
+    <dimen name="app_list_pane">360dp</dimen>
+    <dimen name="app_waveform_height">28dp</dimen>
+    <dimen name="app_waveform_bar">3dp</dimen>
+    <dimen name="app_state_glyph">32dp</dimen>
+    <dimen name="app_state_text_max">280dp</dimen>
+    <dimen name="app_play_button">48dp</dimen>
+</resources>

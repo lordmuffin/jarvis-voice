@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Copilot components</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.h{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inst-text);padding-bottom:4px}
+.st{font-size:10px;color:var(--inst-text-2);padding:8px 0 2px}
+.cap{font-size:11px;color:var(--inst-text-2);padding-top:4px}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2200px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+<div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 2200px;">
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · 3 · Components · {{th.name}}</span>
+    <h1 class="t-title">Copilot: suggestions, items, related</h1>
+  </div>
+
+  <section class="i-stack">
+    <h2 class="h">Suggestion in the Now dock · kinds</h2>
+    <sc-for list="{{kinds}}" as="k" hint-placeholder-count="4">
+      <div class="i-dock">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">{{k.kind}}</span><span class="t-mono t-meta t-2" style="margin-left: auto;">{{k.age}}</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+        <p class="txt">{{k.text}}</p>
+      </div>
+    </sc-for>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Suggestion · life</h2>
+    <span class="st">Arrives · new since you looked</span>
+    <div class="i-dock i-fresh"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:04</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div><p class="txt">Ask whether ARM images are on the public roadmap.</p></div>
+    <span class="st">A newer one arrives · the older moves to the line below, ageing</span>
+    <div class="i-dock">
+      <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+      <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+      <div class="more"><span class="t-tag t-2">Gap</span><span class="t-caption t-2" style="flex: 1;">You haven't discussed egress costs.</span><span class="t-mono t-meta t-2">1:32</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+    </div>
+    <span class="st">Expired · 2 min · removed at the next update</span>
+    <div class="i-dock"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-text-disabled);">Gap</span><span class="t-mono t-meta" style="margin-left: auto; color: var(--inst-text-disabled);">Expired</span></div><p class="txt" style="font-weight: 400; font-size: 14px; color: var(--inst-text-disabled); text-decoration: line-through;">You haven't discussed egress costs.</p></div>
+    <span class="st">Dismissed · keeps its place until the next update</span>
+    <div class="i-dock i-dock--quiet"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-meta t-2">Dismissed · Question</span><button type="button" class="i-btn i-btn--quiet i-btn--sm" style="margin-left: auto;">↩ Undo</button></div><p class="txt">Nothing else waiting.</p></div>
+    <span class="st">Empty · copilot offline · local only</span>
+    <div class="i-dock i-dock--quiet"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span></div><p class="txt">Nothing waiting. Suggestions show up here.</p></div>
+    <div class="i-dock i-dock--quiet"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="i-chip i-chip--progress">⚑ Copilot offline</span></div><p class="txt">The transcript continues. Suggestions return when the copilot does.</p></div>
+    <div class="i-dock i-dock--quiet"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="i-chip" style="color: var(--inst-text);"><span class="i-sq"></span>Local only</span></div><p class="txt">The copilot is off in Local only. The server writes the note after you upload.</p></div>
+    <span class="cap">Dismissals are saved with the session, so a dismissed suggestion stays gone on every device and after a reload.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Collapsed capsule</h2>
+    <div class="i-capsule"><span class="i-dot i-breathe" style="width: 10px; height: 10px; background: var(--inst-accent);"></span><span class="t-mono" style="font-size: 14px;">18:42</span><span class="i-meter" style="color: var(--inst-accent);"><span></span><span></span><span></span></span><span class="rule"></span><span class="body"><span><span class="t-tag" style="color: var(--inst-accent);">Question</span> <span class="i-new">· 3 new</span></span><span class="one">Ask whether ARM images are on the public roadmap.</span></span><button type="button" class="i-btn i-btn--secondary" aria-label="Expand" style="width: 32px; height: 32px; padding: 0;">▲</button></div>
+    <div class="i-capsule" style="border-color: var(--inst-warning);"><span class="i-spin"></span><span class="t-mono" style="font-size: 14px;">18:42</span><span class="rule"></span><span class="body"><span class="t-tag" style="color: var(--inst-warning);">Reconnecting · 3.2 s queued</span><span class="one t-2">Still recording. Nothing is lost.</span></span><button type="button" class="i-btn i-btn--secondary" aria-label="Expand" style="width: 32px; height: 32px; padding: 0;">▲</button></div>
+    <div class="i-capsule" style="border-color: var(--inst-control);"><span class="i-sq" style="width: 10px; height: 10px; color: var(--inst-text);"></span><span class="t-mono" style="font-size: 14px;">18:42</span><span class="i-meter" style="color: var(--inst-accent);"><span></span><span></span><span></span></span><span class="rule"></span><span class="body"><span class="t-tag">Local only</span><span class="one t-2">Recording on this Mac.</span></span><button type="button" class="i-btn i-btn--secondary" aria-label="Expand" style="width: 32px; height: 32px; padding: 0;">▲</button></div>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Action, decision and note items</h2>
+    <span class="st">Grouped lists: the filter, the past view, Android's Actions tab</span>
+    <div class="j-sec" style="padding-top: 0;"><h3 class="t-label">Actions</h3><span class="t-mono t-meta t-2">2</span></div>
+    <div class="j-item i-fresh"><span class="g">☐</span><span class="t-body">Send the node inventory. <span class="i-new">New</span></span><span class="m">Me · Fri 16 Oct</span></div>
+    <div class="j-item"><span class="g">☐</span><span class="t-body">Confirm GPU runner pricing.</span><span class="m">Vendor · —</span></div>
+    <div class="j-sec"><h3 class="t-label">Decisions</h3><span class="t-mono t-meta t-2">1</span></div>
+    <div class="j-item"><span class="g">✓</span><span class="t-body">Pilot on the k3s2 cluster first.</span><a href="#" class="i-src">▶ 17:30</a></div>
+    <div class="j-sec"><h3 class="t-label">Notes</h3><span class="t-mono t-meta t-2">3</span></div>
+    <div class="j-item"><span class="g">•</span><span class="t-body">The vendor supports ARC scale sets on Kubernetes.</span><a href="#" class="i-src">▶ 13:58</a></div>
+    <div class="j-item"><span class="g">•</span><span class="t-body" style="text-decoration: line-through; color: var(--inst-text-disabled);">GPU runners need a separate contract.</span><span class="m">Dropped</span></div>
+    <span class="cap">Order everywhere: Suggestions, Actions, Decisions, Notes, Related, Final note. An action with no owner or due date shows “—”.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Related note card</h2>
+    <div class="j-related">
+      <div class="i-row" style="justify-content: space-between; gap: 8px;"><span class="t-body t-strong">DGX Spark K3s Node — Architecture Capture</span><a href="#" class="t-meta" aria-label="Open DGX Spark K3s Node in Obsidian">▶ Open in Obsidian</a></div>
+      <span class="t-mono t-meta t-2">10 Projects/Jarvis/Infrastructure</span>
+      <p class="snip">The Spark joins k3s2 as an agent. GPU roles swap by profile, so a runner pool would share the card with whisper. Plan the runner pool around the active profile.</p>
+    </div>
+    <div class="j-related i-fresh">
+      <div class="i-row" style="justify-content: space-between; gap: 8px;"><span class="t-body t-strong">GitHub ARC on k3s — Build Spec <span class="i-new">New</span></span><a href="#" class="t-meta" aria-label="Open GitHub ARC on k3s in Obsidian">▶ Open in Obsidian</a></div>
+      <span class="t-mono t-meta t-2">10 Projects/Homelab</span>
+      <p class="snip">One scale set per org, the controller in its own namespace, ephemeral runner pods.</p>
+    </div>
+    <span class="cap">Opens obsidian://open with the vault and path. The snippet is at most 2 lines. There is no image or favicon.</span>
+  </section>
+
+  <section class="i-stack">
+    <h2 class="h">Title suggestion and final note</h2>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px;"><span class="t-body-lg t-strong t-2">Untitled session</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Rename</button><span style="flex-basis: 100%; height: 0;"></span><span class="t-caption t-2">Suggested title:</span><span class="t-caption">ARC runner migration vendor call</span><button type="button" class="i-btn i-btn--secondary i-btn--sm" style="height: 28px;">Use Title</button></div>
+    <div class="i-block" style="display: flex; align-items: center; gap: 10px;"><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span><span class="t-caption t-2">Writing the note. This takes about a minute.</span></div>
+    <div class="i-block" style="display: flex; align-items: center; gap: 10px;"><span class="t-label">Final note</span><span class="t-body t-strong" style="flex: 1;">ARC runner migration vendor call</span><a href="#" class="t-meta">▶ Open</a></div>
+    <span class="cap">The suggestion shows only while the title is empty. It never replaces a title you typed.</span>
+  </section>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }],
+      kinds: [
+        { kind: 'Question', age: '0:22', text: 'Ask whether ARM images are on the public roadmap.' },
+        { kind: 'Gap', age: '0:40', text: "You haven't discussed egress costs." },
+        { kind: 'Counterpoint', age: '0:12', text: 'GPU runners on the DGX would share the card with whisper.' },
+        { kind: 'Fact check', age: '0:08', text: 'They said ARC is supported, then that ARM is in preview. Ask which one covers ARM runners.' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

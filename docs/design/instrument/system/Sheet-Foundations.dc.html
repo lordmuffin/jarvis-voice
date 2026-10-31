@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Instrument foundations</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+</style>
+</helmet>
+<div class="inst" data-theme="light" style="width: 1440px; min-height: 1900px; padding: 48px; display: flex; flex-direction: column; gap: 32px;">
+
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-label">Instrument · v0.1.0 · 2 · System sheet</span>
+    <h1 class="t-display">Type, space, shape, motion</h1>
+    <p class="t-body-lg t-2" style="max-width: 760px;">The system uses one sans (the platform system font) and one mono, with no web fonts. Hierarchy comes from size and weight. Numbers, times, versions and IDs are set in mono with tabular figures.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: start;">
+
+    <section aria-labelledby="f-type" class="i-stack">
+      <h2 id="f-type" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Type scale</h2>
+      <sc-for list="{{type}}" as="t" hint-placeholder-count="12">
+        <div class="i-block" style="display: grid; grid-template-columns: 96px minmax(0, 1fr) 150px; gap: 16px; align-items: center; padding: 10px 12px;">
+          <span class="t-mono t-meta" style="font-weight: 700;">{{t.name}}</span>
+          <span style="display: block; {{t.css}}">{{t.sample}}</span>
+          <span class="t-mono t-meta t-2" style="text-align: right;">{{t.spec}}</span>
+        </div>
+      </sc-for>
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 6px; padding: 12px;">
+        <span class="t-caption"><b>Families.</b> Sans: <span class="t-mono">system-ui</span> → SF Pro on Apple, Roboto on Android. Mono: <span class="t-mono">ui-monospace</span> → SF Mono, Roboto Mono.</span>
+        <span class="t-caption"><b>Weights.</b> 400 and 700, plus 600 for the current nav item, field labels and button text. Uppercase always gets tracking.</span>
+        <span class="t-caption"><b>Mono for readouts.</b> Use it for stats, times, durations, versions, hashes, tokens and URLs. Never for sentences.</span>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-direction: column; gap: 32px;">
+      <section aria-labelledby="f-space" class="i-stack">
+        <h2 id="f-space" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Spacing and sizes</h2>
+        <sc-for list="{{space}}" as="s" hint-placeholder-count="7">
+          <div class="i-block" style="display: grid; grid-template-columns: 72px 56px minmax(0, 1fr); gap: 12px; align-items: center; padding: 8px 12px;">
+            <span class="t-mono t-meta" style="font-weight: 700;">{{s.name}}</span>
+            <span style="height: 12px; width: {{s.v}}px; background: var(--inst-accent);"></span>
+            <span class="t-caption t-2">{{s.use}}</span>
+          </div>
+        </sc-for>
+        <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 12px;">
+          <div class="i-stack" style="align-items: center;"><span class="i-btn i-btn--secondary i-btn--sm">32</span><span class="t-micro t-2">control-sm</span></div>
+          <div class="i-stack" style="align-items: center;"><span class="i-btn i-btn--secondary">36</span><span class="t-micro t-2">control-md</span></div>
+          <div class="i-stack" style="align-items: center;"><span class="i-btn i-btn--primary i-btn--lg">52</span><span class="t-micro t-2">control-lg</span></div>
+          <div class="i-stack" style="flex: 1; min-width: 160px;"><span class="t-caption t-2">Rows 40 · header 44 · bottom bar 56. Touch platforms pad every hit area to 44 (iOS/macOS) or 48 (Android).</span></div>
+        </div>
+      </section>
+
+      <section aria-labelledby="f-shape" class="i-stack">
+        <h2 id="f-shape" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Shape: square holds, round means touch me or alive</h2>
+        <div class="i-block" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 16px;">
+          <div class="i-stack" style="gap: 8px;">
+            <span class="t-tag t-2">Square · radius 0</span>
+            <div style="background: var(--inst-surface-2); height: 28px;"></div>
+            <div style="display: flex; gap: 6px;"><span class="i-chip">Neutral</span><span class="i-chip i-chip--done">✓ Done</span></div>
+            <span class="t-caption t-2">Rows, panels, tables, chips, dialogs, toasts, segmented tracks.</span>
+          </div>
+          <div class="i-stack" style="gap: 8px;">
+            <span class="t-tag t-2">Round</span>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+              <span class="i-btn i-btn--primary i-btn--sm">pill 24</span>
+              <span style="padding: 6px 10px; background: var(--inst-accent); color: var(--inst-on-accent); border-radius: 18px 18px 4px 18px; font-size: 12px;">bubble 18 · tail 4</span>
+              <span style="height: 28px; width: 72px; border: 1px solid var(--inst-control); border-radius: 12px; background: var(--inst-bg);"></span>
+              <span class="i-dot" style="width: 10px; height: 10px; background: var(--inst-accent);"></span>
+            </div>
+            <span class="t-caption t-2">Buttons, badges, the live pill, chat bubbles, fields (12), dots, switch tracks.</span>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="f-elev" class="i-stack">
+        <h2 id="f-elev" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Elevation: flat by tone, shadow only when floating</h2>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 8px 0 16px;">
+          <div style="background: var(--inst-surface); padding: 12px; height: 96px; display: flex; flex-direction: column; gap: 4px;"><span class="t-mono t-meta" style="font-weight: 700;">0 · tone</span><span class="t-caption t-2">bg → surface → surface-2. Everything in a page.</span></div>
+          <div class="i-popover" style="padding: 12px; height: 96px; display: flex; flex-direction: column; gap: 4px;"><span class="t-mono t-meta" style="font-weight: 700;">1 · float</span><span class="t-caption t-2">Switcher, menus, select lists, tooltips, toasts.</span></div>
+          <div class="i-dialog" style="padding: 12px; height: 96px; gap: 4px;"><span class="t-mono t-meta" style="font-weight: 700;">2 · overlay</span><span class="t-caption t-2">Dialogs, macOS panels and HUD, the floating pill.</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; align-items: start;">
+
+    <section aria-labelledby="f-motion" class="i-stack">
+      <h2 id="f-motion" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Motion: three things move</h2>
+      <div class="i-block" style="display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; align-items: center;">
+        <span style="display: flex; justify-content: center;"><span class="i-dot i-breathe" style="width: 10px; height: 10px; background: var(--inst-accent);"></span></span>
+        <span class="t-caption"><b>Breathe.</b> Scale 1 → 1.4, opacity .85 → 1, 1400 ms ease-in-out, alternating. Ready and live only.</span>
+      </div>
+      <div class="i-block" style="display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; align-items: center;">
+        <span style="display: flex; justify-content: center; color: var(--inst-accent);"><span class="i-meter"><span></span><span></span><span></span></span></span>
+        <span class="t-caption"><b>Level meter.</b> 3 bars, 20 → 100%, 600 + 120·i ms, delay 80·i ms. While audio is captured.</span>
+      </div>
+      <div class="i-block" style="display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 12px; align-items: center;">
+        <span style="display: flex; justify-content: center;"><span class="i-spin"></span></span>
+        <span class="t-caption"><b>Spinner.</b> 12 px ring, 800 ms linear, always beside a word (“Saving”). Processing only.</span>
+      </div>
+      <div class="i-block t-caption t-2">Nothing else moves. Dialogs, toasts and swapped rows appear without a transition. A swapped row holds accent-tint for 2 s. With reduced motion, the dot rests at 1.2, the bars hold at 60% and the spinner stops; the words still say what is happening.</div>
+    </section>
+
+    <section aria-labelledby="f-glyph" class="i-stack">
+      <h2 id="f-glyph" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Glyphs and icons</h2>
+      <div class="i-block" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px;">
+        <sc-for list="{{glyphs}}" as="g" hint-placeholder-count="10">
+          <span style="display: flex; align-items: center; gap: 10px;"><span style="width: 20px; text-align: center; font-size: 15px;">{{g.c}}</span><span class="t-caption">{{g.m}}</span></span>
+        </sc-for>
+      </div>
+      <div class="i-block" style="display: flex; align-items: center; gap: 16px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6"></circle><line x1="15" y1="15" x2="20" y2="20"></line></svg>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0"></path><line x1="12" y1="17.5" x2="12" y2="21"></line></svg>
+        <span class="t-caption t-2">Drawn icons only where no glyph fits: 24 grid, 1.5 stroke, square caps, currentColor, sizes 16 / 20 / 24.</span>
+      </div>
+      <div class="i-block t-caption t-2">Emoji are used only as bottom-bar and mode icons on phone, Wear and Auto (🎙 💬 📋 ⚙️). Nav labels still carry the meaning, because emoji ignore tint.</div>
+    </section>
+
+    <section aria-labelledby="f-word" class="i-stack">
+      <h2 id="f-word" class="t-label" style="color: var(--inst-text); font-weight: 700; padding-bottom: 4px;">Wordmark: typeset, never drawn</h2>
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 10px; padding: 12px 12px 16px;">
+        <sc-for list="{{marks}}" as="m" hint-placeholder-count="4">
+          <span style="display: flex; align-items: center; gap: 8px; height: 32px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#57606A" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg>
+            <span class="i-wordmark">{{m.name}}</span>
+            <sc-if value="{{m.live}}" hint-placeholder-val="{{true}}"><span class="i-badge i-badge--live">Live</span></sc-if>
+            <sc-if value="{{m.lab}}" hint-placeholder-val="{{false}}"><span class="i-badge i-badge--lab">Lab</span></sc-if>
+            <sc-if value="{{m.other}}" hint-placeholder-val="{{false}}"><span class="i-badge">{{m.ch}}</span></sc-if>
+          </span>
+        </sc-for>
+      </div>
+      <div class="i-block" style="display: flex; flex-direction: column; gap: 6px;">
+        <span class="t-caption"><b>Set it as text.</b> The app's name in sans 700 with −0.01em tracking, coloured text. It is never teal, never italic, and never has a logo, icon or gradient.</span>
+        <span class="t-caption"><b>Name it plainly.</b> Use the proper name in Title Case: 1–2 words, at most 18 characters. No “the”, no version.</span>
+        <span class="t-caption"><b>Sizes.</b> Header 15 · mobile app bar 16 · sign-in and Home tiles 32 (display) · macOS menu-bar menus use the system menu font.</span>
+        <span class="t-caption"><b>Always in this order.</b> Switcher ▦, the name, 8 px, then the channel badge. The badge is never dropped, not even on LIVE.</span>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (name, size, weight, extra, sample, spec) => ({ name, sample, spec, css: 'font-size:' + size + 'px;font-weight:' + weight + ';' + extra });
+    const mono = 'font-family:var(--inst-mono);';
+    const up = 'text-transform:uppercase;';
+    return {
+      type: [
+        S('display', 32, 700, 'letter-spacing:-.01em;line-height:1.2;', 'Sleep Dashboard', '32 / 700 / 1.2'),
+        S('title', 26, 700, 'line-height:1.25;', 'Today', '26 / 700 / 1.25'),
+        S('stat', 22, 700, mono, '7h 12m · 06:58', '22 / 700 mono'),
+        S('body-lg', 16, 400, '', 'Dictate anywhere. No cloud required.', '16 / 400 / 1.45'),
+        S('chat', 15, 400, 'line-height:1.45;', 'Two cron jobs still point at it.', '15 / 400 / 1.45'),
+        S('body', 14, 400, '', 'Reviews are made in LIVE.', '14 / 400 / 1.45'),
+        S('caption', 12, 400, '', 'Answers use this meeting only.', '12 / 400'),
+        S('meta', 11, 400, mono, 'Started 14:02 · server-v2.14.0', '11 / 400'),
+        S('label', 11, 400, up + 'letter-spacing:.08em;color:var(--inst-text-2);', 'Last 14 nights', '11 / 400 / +.08em UC'),
+        S('micro', 10, 400, '', 'last wpm · 8h', '10 / 400'),
+        S('tag', 9, 700, up + 'letter-spacing:.1em;', 'Enhanced · Live', '9 / 700 / +.1em UC'),
+        S('wordmark', 15, 700, 'letter-spacing:-.01em;', 'Jarvis Live', '15 / 700 / −.01em')
+      ],
+      space: [
+        { name: 'space-4', v: 4, use: 'Gap between stacked blocks, label to value.' },
+        { name: 'space-8', v: 8, use: 'Between controls in a row; section label to its block.' },
+        { name: 'space-12', v: 12, use: 'Inner padding of rows, blocks and table cells.' },
+        { name: 'space-16', v: 16, use: 'Page gutter, gap between sections, dialog padding.' },
+        { name: 'space-24', v: 24, use: 'Between header groups; large section breaks.' },
+        { name: 'space-32', v: 32, use: 'Sign-in and empty-state padding.' },
+        { name: 'space-48', v: 48, use: 'Spec sheets and full-page states only.' }
+      ],
+      glyphs: [
+        { c: '▼', m: 'Expand, show more' }, { c: '▾', m: 'Menu, select' },
+        { c: '✓', m: 'Done, success, saved' }, { c: '✕', m: 'Failed, remove, close' },
+        { c: '↩', m: 'Back, reply, undo' }, { c: '⎘', m: 'Copy' },
+        { c: '▶', m: 'Run, open, play' }, { c: '■', m: 'Stop' },
+        { c: '⚑', m: 'Attention, warning, reason' }, { c: 'ⓘ', m: 'Information (new)' }
+      ],
+      marks: [
+        { name: 'Jarvis Live', live: true, lab: false, other: false },
+        { name: 'Sleep Dashboard', live: false, lab: true, other: false },
+        { name: 'Home', live: true, lab: false, other: false },
+        { name: '[App name]', live: false, lab: false, other: true, ch: 'PR 214' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+{
+  "type": "copilot",
+  "version": 3,
+  "notes": [
+    {
+      "id": "n1",
+      "text": "Kickoff"
+    }
+  ],
+  "actions": [
+    {
+      "id": "a1",
+      "text": "Send deck",
+      "owner": "sam",
+      "due": "2026-10-16"
+    },
+    {
+      "id": "a2",
+      "text": "Book room"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "d1",
+      "text": "Ship on Friday"
+    }
+  ],
+  "suggestions": [
+    {
+      "id": "s1",
+      "kind": "question",
+      "text": "Who owns QA?",
+      "expires_at_ms": 90000
+    }
+  ],
+  "related": [
+    {
+      "path": "Projects/Alpha.md",
+      "title": "Alpha",
+      "snippet": "Launch plan...",
+      "uri": "obsidian://open?file=Alpha"
+    }
+  ]
+}

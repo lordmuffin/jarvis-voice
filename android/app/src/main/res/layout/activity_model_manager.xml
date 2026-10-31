@@ -3,28 +3,24 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/jv_bg">
+    android:background="@color/inst_bg">
 
     <TextView
+        style="@style/Inst.Text.Label"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="LLM MODEL"
-        android:textColor="@color/jv_text2"
-        android:textSize="11sp"
-        android:textAllCaps="true"
-        android:letterSpacing="0.08"
-        android:paddingHorizontal="24dp"
-        android:paddingTop="24dp"
-        android:paddingBottom="8dp" />
+        android:text="@string/models_llm_model"
+        android:paddingHorizontal="@dimen/inst_space_16"
+        android:paddingTop="@dimen/inst_space_24"
+        android:paddingBottom="@dimen/inst_space_8" />
 
     <TextView
+        style="@style/Inst.Text.Caption"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Selected model enhances transcription quality after dictation. Leave unset to use raw output."
-        android:textColor="@color/jv_text2"
-        android:textSize="12sp"
-        android:paddingHorizontal="24dp"
-        android:paddingBottom="16dp" />
+        android:text="@string/models_llm_intro"
+        android:paddingHorizontal="@dimen/inst_space_16"
+        android:paddingBottom="@dimen/inst_space_16" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_models"
@@ -32,8 +28,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingHorizontal="16dp"
-        android:paddingBottom="24dp" />
+        android:paddingBottom="@dimen/inst_space_24" />
 
     <include layout="@layout/bottom_nav" />
 

@@ -1,0 +1,40 @@
+# jarvis-live, shared by both release channels. Not applied on its own: Flux
+# applies an overlay, which sets the namespace and adds its Namespace object.
+#
+#   ../jarvis-live/      live channel: namespace jarvis-live, live.apj.dev,
+#                        image pinned by release-please (deployment.yaml).
+#   ../jarvis-live-lab/  lab channel: namespace jarvis-live-lab,
+#                        live.lab.apj.dev, image = the main commit being tested.
+#
+# No Ingress here: each channel owns its host, so each overlay brings its own.
+#
+# See server/deploy/README.md §Release channels.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - onepassword-items.yaml
+  - secret-oidc.yaml
+  - configmap.yaml
+  - pvc-data.yaml
+  - pvc-outbox.yaml
+  - pvc-vault-clone.yaml
+  - deployment.yaml
+  - service.yaml
+  - cronjob-vault-clone.yaml
+  - dispatch.yaml
+  - pvc-dispatch-mirrors.yaml
+  - pvc-backups.yaml
+  - cronjob-backup.yaml
+# The backup CronJob runs the Deployment's image, so release-please's one version bump
+# moves both.
+replacements:
+  - source:
+      kind: Deployment
+      name: jarvis-live
+      fieldPath: spec.template.spec.containers.0.image
+    targets:
+      - select:
+          kind: CronJob
+          name: jarvis-live-backup
+        fieldPaths:
+          - spec.jobTemplate.spec.template.spec.containers.0.image

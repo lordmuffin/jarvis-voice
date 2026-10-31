@@ -1,0 +1,48 @@
+name: Design lint
+
+# Guardrails against drifting from the family design system (lordmuffin/instrument): no hard-coded
+# colours, sizes or fonts outside the vendored Instrument trees. The vendored files themselves are
+# checked by the managed Instrument workflow.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    name: Web (stylelint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint:css
+
+  android:
+    name: Android (token check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m pip install pytest
+      - run: python3 -m pytest -q scripts/lint
+      - run: python3 scripts/lint/check_android_design.py .
+
+  swift:
+    name: Swift (SwiftLint)
+    runs-on: ubuntu-latest
+    # Official image: ships SwiftLint with the SourceKit it needs, so no macOS runner is required.
+    container: ghcr.io/realm/swiftlint:0.57.0
+    steps:
+      - uses: actions/checkout@v4
+      - run: swiftlint lint --strict --config .swiftlint.yml
+        working-directory: macos

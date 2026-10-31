@@ -1,0 +1,7 @@
+{
+  "type": "speaker_update",
+  "speakers": [],
+  "assignments": [
+    {"segment_id": "seg_1", "speaker_id": "spk_0", "rev": -1, "final": false}
+  ]
+}

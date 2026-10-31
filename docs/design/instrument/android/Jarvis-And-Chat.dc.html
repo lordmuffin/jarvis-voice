@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android Kai Chat</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.dv{width:412px;height:892px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-1);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.ab{flex:none;display:flex;align-items:center;gap:4px;height:56px;padding:0 8px 0 4px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.ab .i-switcher{width:48px;height:48px}
+.ab h1{font-size:18px}
+.tb{flex:none;display:flex;align-items:center;gap:2px;padding:4px 4px 4px 16px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.mode{flex:none;display:flex;align-items:center;gap:8px;padding:8px 16px}
+.th{flex:1;min-height:0;overflow:hidden;padding:8px 16px;display:flex;flex-direction:column;justify-content:flex-end;gap:6px}
+.bu{max-width:84%;padding:10px 14px}
+.bu--me{align-self:flex-end;background:var(--inst-accent);color:var(--inst-on-accent);border-radius:var(--inst-radius-bubble) var(--inst-radius-bubble) var(--inst-radius-tail) var(--inst-radius-bubble)}
+.bu--kai{align-self:flex-start;background:var(--inst-surface-2);color:var(--inst-text);border-radius:var(--inst-radius-bubble) var(--inst-radius-bubble) var(--inst-radius-bubble) var(--inst-radius-tail)}
+.who{font-size:11px;color:var(--inst-text-2);padding:4px 4px 0}
+.stl{flex:none;display:flex;align-items:center;gap:8px;min-height:32px;padding:0 16px}
+.ctl{flex:none;display:flex;align-items:center;gap:8px;padding:8px 16px 12px}
+.rb{width:48px;height:48px;padding:0;flex:none;font-size:16px}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:610px;background:var(--inst-surface);border-top:1px solid var(--inst-line);box-shadow:var(--inst-shadow-2);display:flex;flex-direction:column}
+.i-block.cv{display:flex;align-items:center;gap:2px;padding:6px 4px 6px 12px;min-height:72px}
+.cv a{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px;min-height:48px;justify-content:center;text-decoration:none}
+.inst .cv a{color:var(--inst-text)}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1440px; height: 1000px; padding: 40px 78px; display: flex; gap: 24px; align-items: flex-start; background: var(--inst-bg);">
+
+  <!-- 1 · Voice, speaking -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Folded · 412 · Voice · Speaking</span>
+    <section class="inst dv" aria-label="Kai chat, voice mode, speaking">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">Chat</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div class="tb">
+        <div class="i-stack" style="gap: 4px; flex: 1; min-width: 0; padding-right: 8px;">
+          <div style="display: flex; justify-content: space-between;"><span class="t-caption">Context</span><span class="t-mono t-meta t-2">12.4k tkns</span></div>
+          <div class="i-progress" role="meter" aria-label="Context used, 12.4 thousand tokens" aria-valuenow="12.4" aria-valuemin="0" aria-valuemax="32"><span style="width: 39%;"></span></div>
+        </div>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Chats</button>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">New</button>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Compact</button>
+      </div>
+      <div class="mode">
+        <div class="i-seg" role="radiogroup" aria-label="Mode">
+          <button type="button" role="radio" aria-checked="true" style="height: 44px; font-size: 13px;">🎙 Voice</button>
+          <button type="button" role="radio" aria-checked="false" style="height: 44px; font-size: 13px;">⌨️ Type</button>
+        </div>
+        <button type="button" class="i-btn i-btn--secondary" style="height: 48px; margin-left: auto;" aria-haspopup="listbox">Model <span class="t-mono" style="font-weight: 400;">kai-default</span> ▾</button>
+      </div>
+      <div class="th" role="log" aria-label="Conversation">
+        <span class="who" style="align-self: flex-end;">You · voice · 3:41 PM</span>
+        <p class="bu bu--me t-chat">What did the vendor say about GPU runners?</p>
+        <span class="t-meta t-2" style="padding: 2px 4px;">✓ Searched vault · 2 notes</span>
+        <span class="who">Kai</span>
+        <p class="bu bu--kai t-chat">On today's ARC runner call, they said they can support ARC scale sets, but GPU runners are a separate SKU.</p>
+        <p class="bu bu--kai t-chat">You asked for GPU runner pricing to size it against the DGX node. They want the node inventory first, and you said you'd send it by Friday.</p>
+        <a href="#" class="t-meta" style="align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 4px;">ARC runner migration vendor call <span class="t-mono">▶ 15:40</span></a>
+      </div>
+      <div class="stl" role="status">
+        <span class="i-meter" style="color: var(--inst-accent);" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="t-caption t-strong">Speaking…</span>
+        <span class="t-meta t-2" style="margin-left: auto;">Hands-free · talk to interrupt</span>
+      </div>
+      <div class="ctl" style="flex-direction: column; align-items: stretch;">
+        <button type="button" class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">🎙 Interrupt Kai</button>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px; align-self: center;">■ End Conversation</button>
+      </div>
+      <nav class="i-bottombar" aria-label="Main" style="flex: none;">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+    </section>
+  </div>
+
+  <!-- 2 · Type, tool running -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Type · tool running · context near the first threshold</span>
+    <section class="inst dv" aria-label="Kai chat, type mode, searching vault">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">Chat</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div class="tb">
+        <div class="i-stack" style="gap: 4px; flex: 1; min-width: 0; padding-right: 8px;">
+          <div style="display: flex; justify-content: space-between;"><span class="t-caption t-strong" style="color: var(--inst-warning);">⚑ Context · compact soon</span><span class="t-mono t-meta t-2">18.9k tkns</span></div>
+          <div class="i-progress i-progress--warn" role="meter" aria-label="Context used, 18.9 thousand tokens, compact soon" aria-valuenow="18.9" aria-valuemin="0" aria-valuemax="32"><span style="width: 59%;"></span></div>
+        </div>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Chats</button>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">New</button>
+        <button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Compact</button>
+      </div>
+      <div class="mode">
+        <div class="i-seg" role="radiogroup" aria-label="Mode">
+          <button type="button" role="radio" aria-checked="false" style="height: 44px; font-size: 13px;">🎙 Voice</button>
+          <button type="button" role="radio" aria-checked="true" style="height: 44px; font-size: 13px;">⌨️ Type</button>
+        </div>
+        <button type="button" class="i-btn i-btn--secondary" style="height: 48px; margin-left: auto;" aria-haspopup="listbox">Model <span class="t-mono" style="font-weight: 400;">kai-default</span> ▾</button>
+      </div>
+      <div class="th" role="log" aria-label="Conversation">
+        <span class="who" style="align-self: flex-end;">You · 9:12 AM</span>
+        <p class="bu bu--me t-chat">Summarize yesterday's platform sync.</p>
+        <span class="t-meta t-2" style="padding: 2px 4px;">✓ Read vault · 1 note</span>
+        <span class="who">Kai</span>
+        <p class="bu bu--kai t-chat">Three points. The k3s2 etcd upgrade is done. Harbor now caches nvcr.io. The Velero restore test passed.</p>
+        <span class="who" style="align-self: flex-end;">You · 3:41 PM</span>
+        <p class="bu bu--me t-chat">What did the vendor say about GPU runners?</p>
+      </div>
+      <div class="stl" role="status">
+        <span class="i-spin" aria-hidden="true" style="border-top-color: var(--inst-warning);"></span>
+        <span class="t-caption t-strong" style="color: var(--inst-warning);">Searching vault…</span>
+        <span class="t-meta t-mono t-2" style="margin-left: auto;">lordmuffin/obsidian-vault</span>
+      </div>
+      <div class="ctl">
+        <button type="button" class="i-btn i-btn--secondary rb" aria-label="Hand off to Agent">🤖</button>
+        <label for="ch-msg" class="i-sr">Message</label>
+        <input id="ch-msg" class="i-input" style="height: 48px; flex: 1; min-width: 0;" placeholder="Type a message…">
+        <button type="button" class="i-btn i-btn--primary rb" aria-label="Send">▶</button>
+      </div>
+      <nav class="i-bottombar" aria-label="Main" style="flex: none;">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+    </section>
+  </div>
+
+  <!-- 3 · Conversations sheet -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Conversations sheet over Voice, idle</span>
+    <section class="inst dv" aria-label="Kai chat, conversations sheet open">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true" tabindex="-1"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">Chat</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div class="tb" aria-hidden="true">
+        <div class="i-stack" style="gap: 4px; flex: 1; min-width: 0; padding-right: 8px;">
+          <div style="display: flex; justify-content: space-between;"><span class="t-caption">Context</span><span class="t-mono t-meta t-2">4.1k tkns</span></div>
+          <div class="i-progress"><span style="width: 13%;"></span></div>
+        </div>
+        <span class="i-btn i-btn--quiet" style="height: 48px;">Chats</span>
+        <span class="i-btn i-btn--quiet" style="height: 48px;">New</span>
+        <span class="i-btn i-btn--quiet" style="height: 48px;">Compact</span>
+      </div>
+      <div class="th" aria-hidden="true">
+        <p class="bu bu--kai t-chat">Hi Andrew. Ask me about your sessions, the vault or the sprint board.</p>
+      </div>
+      <div class="ctl" aria-hidden="true">
+        <span class="i-btn i-btn--primary i-btn--lg" style="width: 100%;">🎙 Talk to Kai</span>
+      </div>
+      <nav class="i-bottombar" aria-hidden="true" style="flex: none;">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" tabindex="-1" aria-current="{{tb.cur}}"><span class="i-ico">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+      <div style="position: absolute; inset: 0; background: var(--inst-scrim);"></div>
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cv-h">
+        <div style="display: flex; justify-content: center; padding-top: 8px;"><span aria-hidden="true" style="width: 32px; height: 4px; background: var(--inst-control); border-radius: var(--inst-radius-full);"></span></div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 16px 8px;">
+          <h2 id="cv-h" class="t-body-lg t-strong" style="flex: 1;">Conversations</h2>
+          <button type="button" class="i-btn i-btn--primary" style="height: 48px;">+ New</button>
+        </div>
+        <div class="i-stack" style="padding: 0 16px 16px; overflow: hidden;">
+          <div class="i-block cv" style="box-shadow: inset 0 0 0 1.5px var(--inst-accent);">
+            <a href="#" aria-current="true"><span class="t-body t-strong ell">GPU runners and the vendor call</span><span class="t-meta t-2"><span class="t-mono">6</span> msgs · Today, 3:41 PM · <span style="color: var(--inst-accent);">Current</span></span><span class="t-caption t-2 ell">Kai: On today's ARC runner call, they said…</span></a>
+            <button type="button" class="i-btn i-btn--quiet" style="height: 48px; padding: 0 8px;">Rename</button>
+            <button type="button" class="i-btn i-btn--danger-quiet" style="height: 48px;">Delete</button>
+          </div>
+          <sc-for list="{{convs}}" as="c" hint-placeholder-count="5">
+            <div class="i-block cv">
+              <a href="#"><span class="t-body t-strong ell">{{c.title}}</span><span class="t-meta t-2"><span class="t-mono">{{c.n}}</span> {{c.unit}} · {{c.when}}</span><span class="t-caption t-2 ell">{{c.preview}}</span></a>
+              <button type="button" class="i-btn i-btn--quiet" style="height: 48px; padding: 0 8px;">Rename</button>
+              <button type="button" class="i-btn i-btn--danger-quiet" style="height: 48px;">Delete</button>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const C = (title, n, when, preview) => ({ title, n: String(n), unit: n === 1 ? 'msg' : 'msgs', when, preview });
+    const T = (ico, label, cur) => ({ ico, label, cur: cur ? 'page' : 'false' });
+    return {
+      convs: [
+        C('Platform sync recap', 4, 'Today, 9:12 AM', 'Kai: Three points. The k3s2 etcd upgrade is done…'),
+        C('Sleep pipeline backfill', 14, 'Oct 12', 'You: Which nights are still missing?'),
+        C('Homelab power budget', 9, 'Oct 11', 'Kai: pve3 idles at 68 W with its guests running.'),
+        C('Kai voice latency', 22, 'Oct 10', 'Kai: First audio arrives in about 640 ms.'),
+        C('Untitled chat', 1, 'Oct 9', 'You: Test.')
+      ],
+      tabs: [T('🎙', 'Record'), T('💬', 'Chat', true), T('📋', 'History'), T('🤖', 'Agent'), T('⚙️', 'Settings')]
+    };
+  }
+}
+</script>
+</body>
+</html>

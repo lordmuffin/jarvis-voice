@@ -1,61 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/jv_surface">
+    android:background="@drawable/inst_sheet_bg">
 
     <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="@dimen/inst_touch_target_android"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="12dp">
+        android:paddingStart="@dimen/inst_space_16"
+        android:paddingEnd="@dimen/inst_space_12">
 
         <TextView
             android:id="@+id/tv_convo_title"
+            style="@style/Inst.Text.BodyLg"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="@color/jv_text"
-            android:textSize="15sp"
             android:textStyle="bold"
             android:maxLines="1"
             android:ellipsize="end" />
 
         <TextView
             android:id="@+id/tv_convo_model"
+            style="@style/Widget.Inst.Chip.Live"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textColor="@color/jv_accent"
-            android:textSize="11sp"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
     </LinearLayout>
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/jv_surface2" />
+        android:layout_height="@dimen/inst_border_hairline"
+        android:background="@color/inst_line" />
 
     <!-- Conversation message list -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_convo"
         android:layout_width="match_parent"
-        android:layout_height="340dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:overScrollMode="never"
         android:clipToPadding="false"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp" />
+        android:background="@color/inst_bg"
+        android:paddingStart="@dimen/inst_space_12"
+        android:paddingEnd="@dimen/inst_space_12"
+        android:paddingTop="@dimen/inst_space_8"
+        android:paddingBottom="@dimen/inst_space_8" />
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="@color/jv_surface2" />
+        android:layout_height="@dimen/inst_border_hairline"
+        android:background="@color/inst_line" />
 
     <!-- Reply input row -->
     <LinearLayout
@@ -63,7 +63,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="bottom"
-        android:padding="10dp">
+        android:padding="@dimen/inst_space_12">
 
         <EditText
             android:id="@+id/et_reply"
@@ -72,28 +72,22 @@
             android:layout_weight="1"
             android:minLines="1"
             android:maxLines="4"
-            android:background="@drawable/pill_background_dim"
-            android:hint="Follow up…"
-            android:textColorHint="@color/jv_text2"
-            android:textColor="@color/jv_text"
-            android:textSize="14sp"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
+            android:hint="@string/chat_agent_followup_hint"
+            android:paddingTop="@dimen/inst_space_12"
+            android:paddingBottom="@dimen/inst_space_12"
             android:inputType="textMultiLine|textCapSentences"
             android:gravity="top"
-            android:layout_marginEnd="8dp" />
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
         <Button
             android:id="@+id/btn_send_reply"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:text="▶"
-            android:textSize="16sp"
-            android:background="@drawable/pill_background_accent"
-            android:textColor="@color/jv_bg"
-            android:stateListAnimator="@null"
+            style="@style/Widget.Inst.Button.Primary"
+            android:layout_width="@dimen/app_chat_send_width"
+            android:layout_height="@dimen/inst_control_lg"
+            android:text="@string/chat_send_glyph"
+            android:textSize="@dimen/inst_type_body_lg"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
             android:layout_gravity="bottom" />
 
     </LinearLayout>

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Home: family dashboard</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="min-height: 1000px; display: flex; flex-direction: column;">
+
+<header class="i-header">
+  <div class="i-header-in">
+    <div class="i-brand">
+      <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true" aria-expanded="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg>
+      </button>
+      <a href="#" class="i-wordmark">Home</a>
+      <span class="i-badge i-badge--live">Live</span>
+    </div>
+    <nav class="i-nav i-nav--wide" aria-label="Main">
+      <a href="#" aria-current="page">Apps</a><a href="#">Activity</a><a href="#">People</a>
+    </nav>
+    <div class="i-user"><span>Andrew</span><button type="button" class="i-btn i-btn--quiet i-btn--sm">Sign out</button></div>
+  </div>
+</header>
+
+<main class="i-page" style="flex: 1; width: 100%;">
+  <div style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px;">
+    <h1 class="t-title">Your apps</h1>
+    <span class="t-mono t-caption t-2">3 apps · opening in LIVE</span>
+  </div>
+
+  <section aria-labelledby="h-needs" class="i-stack">
+    <h2 id="h-needs" class="t-label" style="padding-bottom: 4px;">Needs you</h2>
+    <sc-for list="{{needs}}" as="n" hint-placeholder-count="3">
+      <a href="#" class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 10px 12px; color: var(--inst-text); text-decoration: none;">
+        <span style="font-weight: 700; color: var(--inst-warning);">⚑</span>
+        <span style="flex: 1 1 280px; font-size: 14px;">{{n.text}}</span>
+        <span class="t-meta t-2">{{n.app}}</span>
+        <span style="font-size: 12px; color: var(--inst-accent);">Open ▶</span>
+      </a>
+    </sc-for>
+  </section>
+
+  <section aria-labelledby="h-apps" class="i-stack">
+    <h2 id="h-apps" class="t-label" style="padding-bottom: 4px;">Apps</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); gap: 4px;">
+
+      <article class="i-block" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 class="t-display" style="font-size: 24px;">Jarvis Live</h3><span class="i-badge i-badge--live">Live</span>
+          <span class="i-chip i-chip--live" style="margin-left: auto;"><span class="i-dot i-breathe"></span>Ready</span>
+        </div>
+        <div class="i-stack" style="gap: 0;"><span class="t-stat">41 min</span><span class="t-caption t-2">since your last session, Platform sync</span></div>
+        <div class="i-row" style="margin-top: auto;"><a href="#" class="i-btn i-btn--secondary i-btn--sm">Open ▶</a><a href="#" class="i-btn i-btn--quiet i-btn--sm">LAB copy</a></div>
+      </article>
+
+      <article class="i-block" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 class="t-display" style="font-size: 24px;">Sleep Dashboard</h3><span class="i-badge i-badge--live">Live</span>
+          <span class="i-chip i-chip--done" style="margin-left: auto;">✓ Fresh</span>
+        </div>
+        <div class="i-stack" style="gap: 0;"><span class="t-stat">7h 12m</span><span class="t-caption t-2">asleep last night, 8 min over your mean</span></div>
+        <div class="i-row" style="margin-top: auto;"><a href="#" class="i-btn i-btn--secondary i-btn--sm">Open ▶</a><a href="#" class="i-btn i-btn--quiet i-btn--sm">LAB copy</a></div>
+      </article>
+
+      <article class="i-block" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 class="t-display" style="font-size: 24px;">[App name]</h3><span class="i-badge">Dev</span>
+          <span class="i-chip" style="margin-left: auto;"><span class="i-dot i-dot--hollow"></span>Offline</span>
+        </div>
+        <div class="i-stack" style="gap: 0;"><span class="t-stat">—</span><span class="t-caption t-2">No LIVE copy yet. It opens in DEV.</span></div>
+        <div class="i-row" style="margin-top: auto;"><a href="#" class="i-btn i-btn--secondary i-btn--sm">Open in DEV ▶</a></div>
+      </article>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-ver" class="i-stack">
+    <h2 id="h-ver" class="t-label" style="padding-bottom: 4px;">Channels</h2>
+    <div class="i-table-wrap">
+      <table class="i-table">
+        <thead><tr><th scope="col">App</th><th scope="col">LIVE</th><th scope="col">LAB</th><th scope="col" class="i-hide-sm">LAB ahead by</th><th scope="col">Health</th></tr></thead>
+        <tbody>
+          <sc-for list="{{chan}}" as="c" hint-placeholder-count="3">
+            <tr>
+              <th scope="row" style="font-weight: 700;">{{c.app}}</th>
+              <td class="t-mono" style="font-size: 12px;">{{c.live}}</td>
+              <td class="t-mono" style="font-size: 12px;">{{c.lab}}</td>
+              <td class="t-mono i-hide-sm" style="font-size: 12px;">{{c.ahead}}</td>
+              <td><span class="i-chip {{c.cls}}">{{c.health}}</span></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<footer class="i-footer"><span>Private. Self-hosted. Open source.</span><span class="t-mono">home v0.1.0 · e2d4f10</span></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      needs: [
+        { text: '2 nights are waiting for review.', app: 'Sleep Dashboard' },
+        { text: 'Notes from Platform sync are waiting in a pull request.', app: 'Jarvis Live' },
+        { text: 'Riley’s invite expires in 2 days.', app: '[App name]' }
+      ],
+      chan: [
+        { app: 'Jarvis Live', live: 'server-v2.14.0', lab: 'main · 7c1e0aa', ahead: '3 commits', health: '✓ OK', cls: 'i-chip--done' },
+        { app: 'Sleep Dashboard', live: 'v0.9.0', lab: 'main · a41c0d2', ahead: '5 commits', health: '✓ OK', cls: 'i-chip--done' },
+        { app: '[App name]', live: '—', lab: '—', ahead: '—', health: 'Dev only', cls: '' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

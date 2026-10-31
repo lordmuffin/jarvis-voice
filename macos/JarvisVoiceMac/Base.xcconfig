@@ -1,0 +1,2 @@
+// Committed. Personal settings (DEVELOPMENT_TEAM) live in the gitignored Local.xcconfig.
+#include? "Local.xcconfig"

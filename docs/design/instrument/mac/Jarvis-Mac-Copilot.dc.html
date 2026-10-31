@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mac copilot panel</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.pn{background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-2);display:flex;flex-direction:column;overflow:hidden}
+.pn-tb{height:32px;flex:none;display:flex;align-items:center;gap:8px;padding:0 8px 0 12px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.pn-tb .ttl{font-size:13px;font-weight:700}
+.pn-tb .i-switch{margin-left:auto;font-size:12px;min-height:28px}
+.pn-hd{flex:none;background:var(--inst-surface);padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.pn-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+.pn-feed{flex:1;min-height:0;overflow:hidden;padding:8px 8px 4px;display:flex;flex-direction:column;justify-content:flex-end;gap:4px}
+.pn-flt{flex:none;padding:8px 8px 0}
+.seg-tight button{padding:0 8px}
+.ib{width:32px;height:32px;padding:0}
+.pn .i-dock{flex:none}
+.rail{width:240px;flex:none;border-left:1px solid var(--inst-line);overflow:hidden;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.rh{display:flex;align-items:baseline;gap:6px;padding:8px 0 2px}
+.rx{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:6px;align-items:baseline;padding:5px 8px;background:var(--inst-surface);text-decoration:none;font-size:12px}
+.inst a.rx{color:var(--inst-text)}
+.inst a.rx:hover{color:var(--inst-text);background:var(--inst-surface-2)}
+.rx .one{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rx .g{color:var(--inst-text-2)}
+</style>
+</helmet>
+<div class="inst" data-theme="{{theme}}" style="width: 2000px; height: 900px; padding: 24px 20px; display: flex; gap: 20px; align-items: flex-start;">
+
+  <!-- Strip 320 -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Strip · 320</span>
+    <section aria-label="Jarvis Live copilot panel, 320 wide" class="pn" style="width: 320px; height: 820px;">
+      <div class="pn-tb">
+        <span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span>
+        <button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button>
+      </div>
+      <div class="pn-hd" style="padding: 8px 10px;">
+        <div class="pn-row" style="gap: 6px;">
+          <span class="i-chip i-chip--live" style="border-radius: 24px; padding: 0 8px;"><span class="i-dot i-breathe"></span>Rec 18:42</span>
+          <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+          <button type="button" class="i-btn i-btn--secondary ib" aria-label="Add marker" style="margin-left: auto;">⚑</button>
+          <button type="button" class="i-btn i-btn--secondary ib" aria-label="Stop session">■</button>
+        </div>
+      </div>
+      <div class="pn-feed" role="log" aria-label="Transcript and copilot">
+        <sc-for list="{{tail}}" as="r" hint-placeholder-count="9">
+          <sc-if value="{{r.rule}}" hint-placeholder-val="{{false}}">
+            <div class="i-unseen" role="separator"><span class="i-new">3 new · since 17:15</span></div>
+          </sc-if>
+          <sc-if value="{{r.marker}}" hint-placeholder-val="{{false}}">
+            <div class="j-marker" style="padding: 4px 13px;"><span>⚑ {{r.text}}</span><span class="t">· {{r.t}}</span></div>
+          </sc-if>
+          <sc-if value="{{r.speech}}" hint-placeholder-val="{{true}}">
+            <div class="{{r.cls}} i-utt--stack"><span class="hd"><span class="{{r.spk}}">{{r.who}}</span><span class="t">{{r.t}}</span></span><span class="x">{{r.text}}</span></div>
+          </sc-if>
+          <sc-if value="{{r.event}}" hint-placeholder-val="{{false}}">
+            <div class="{{r.cls}} i-event--stack"><span class="hd"><span class="i-chip">{{r.kind}}</span><span class="t">{{r.t}}</span><sc-if value="{{r.fresh}}" hint-placeholder-val="{{false}}"><span class="i-new">New</span></sc-if></span><span class="t-body"><span class="g">{{r.g}}</span>{{r.text}} <span class="m">{{r.meta}}</span></span><a href="#" class="i-src" title="{{r.quote}}">{{r.src}}</a></div>
+          </sc-if>
+        </sc-for>
+      </div>
+      <div class="i-dock" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+        <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+        <span class="t-meta t-2">1 more waiting · Gap</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- Standard 480 -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Standard · 480</span>
+    <section aria-label="Jarvis Live copilot panel, 480 wide" class="pn" style="width: 480px; height: 820px;">
+      <div class="pn-tb">
+        <span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span>
+        <button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button>
+      </div>
+      <div class="pn-hd">
+        <div class="pn-row">
+          <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+        </div>
+        <div class="pn-row">
+          <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+          <span class="t-mono t-meta t-2">STT: server pve · lag 840 ms</span>
+          <span class="t-meta t-2" style="margin-left: auto;">↓ Following</span>
+        </div>
+      </div>
+      <div class="pn-flt">
+        <div class="i-seg seg-tight" role="radiogroup" aria-label="Show">
+          <button type="button" role="radio" aria-checked="true">All</button>
+          <button type="button" role="radio" aria-checked="false">Actions <span class="t-mono">2</span></button>
+          <button type="button" role="radio" aria-checked="false">Decisions <span class="t-mono">1</span></button>
+          <button type="button" role="radio" aria-checked="false">Notes <span class="t-mono">3</span></button>
+          <button type="button" role="radio" aria-checked="false">Related <span class="t-mono">2</span></button>
+          <button type="button" role="radio" aria-checked="false">Work <span class="t-mono">1</span></button>
+        </div>
+      </div>
+      <div class="pn-feed" role="log" aria-label="Transcript and copilot">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+          <sc-if value="{{r.rule}}" hint-placeholder-val="{{false}}">
+            <div class="i-unseen" role="separator"><span class="i-new">3 new since you looked at 17:15</span></div>
+          </sc-if>
+          <sc-if value="{{r.marker}}" hint-placeholder-val="{{false}}">
+            <div class="j-marker"><span>⚑ {{r.text}}</span><span class="t">· {{r.t}}</span></div>
+          </sc-if>
+          <sc-if value="{{r.speech}}" hint-placeholder-val="{{true}}">
+            <div class="{{r.cls}}"><span class="t">{{r.t}}</span><span class="{{r.spk}}">{{r.who}}</span><span class="x">{{r.text}}</span></div>
+          </sc-if>
+          <sc-if value="{{r.event}}" hint-placeholder-val="{{false}}">
+            <div class="{{r.cls}}"><span class="t">{{r.t}}</span><span class="i-chip k">{{r.kind}}</span><span class="t-body"><span class="g">{{r.g}}</span>{{r.text}} <span class="m">{{r.meta}}</span><sc-if value="{{r.fresh}}" hint-placeholder-val="{{false}}"> <span class="i-new">New</span></sc-if></span><a href="#" class="i-src" title="{{r.quote}}">{{r.src}}</a></div>
+          </sc-if>
+        </sc-for>
+      </div>
+      <div class="i-dock" role="region" aria-label="Now">
+        <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+        <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+        <div class="more"><span class="t-tag t-2">Gap</span><span class="t-caption t-2" style="flex: 1; min-width: 0;">You haven't discussed egress costs.</span><span class="t-mono t-meta t-2">1:32</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Two-column 760 -->
+  <div class="i-stack" style="gap: 8px;">
+    <span class="t-micro t-2">Two-column · 760 · feed + by-kind rail</span>
+    <section aria-label="Jarvis Live copilot panel, 760 wide" class="pn" style="width: 760px; height: 820px;">
+      <div class="pn-tb">
+        <span class="ttl">Jarvis Live</span><span class="i-badge i-badge--live">Live</span>
+        <span class="t-meta t-2" style="margin-left: 8px;">ARC runner migration vendor call</span>
+        <button type="button" class="i-switch" role="switch" aria-checked="true"><span class="track"><span class="knob"></span></span>On top</button>
+      </div>
+      <div class="pn-hd" style="border-bottom: 1px solid var(--inst-line);">
+        <div class="pn-row">
+          <span class="i-live" role="status" aria-label="Recording, 18 minutes 42 seconds"><span class="i-dot i-breathe"></span><span class="lbl">REC</span><span class="time">18:42</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+          <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+          <span class="t-mono t-meta t-2">STT: server pve · lag 840 ms</span>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm" style="margin-left: auto;">⚑ Marker</button>
+          <button type="button" class="i-btn i-btn--secondary i-btn--sm">■ Stop</button>
+        </div>
+      </div>
+      <div style="flex: 1; min-height: 0; display: flex;">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+          <div class="pn-flt" style="display: flex; align-items: center; gap: 8px;">
+            <div class="i-seg seg-tight" role="radiogroup" aria-label="Show">
+              <button type="button" role="radio" aria-checked="true">All</button>
+              <button type="button" role="radio" aria-checked="false">Actions <span class="t-mono">2</span></button>
+              <button type="button" role="radio" aria-checked="false">Decisions <span class="t-mono">1</span></button>
+              <button type="button" role="radio" aria-checked="false">Notes <span class="t-mono">3</span></button>
+              <button type="button" role="radio" aria-checked="false">Related <span class="t-mono">2</span></button>
+              <button type="button" role="radio" aria-checked="false">Work <span class="t-mono">1</span></button>
+            </div>
+            <span class="t-meta t-2" style="margin-left: auto;">↓ Following</span>
+          </div>
+          <div class="pn-feed" role="log" aria-label="Transcript and copilot">
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="14">
+              <sc-if value="{{r.rule}}" hint-placeholder-val="{{false}}">
+                <div class="i-unseen" role="separator"><span class="i-new">3 new since you looked at 17:15</span></div>
+              </sc-if>
+              <sc-if value="{{r.marker}}" hint-placeholder-val="{{false}}">
+                <div class="j-marker"><span>⚑ {{r.text}}</span><span class="t">· {{r.t}}</span></div>
+              </sc-if>
+              <sc-if value="{{r.speech}}" hint-placeholder-val="{{true}}">
+                <div class="{{r.cls}}"><span class="t">{{r.t}}</span><span class="{{r.spk}}">{{r.who}}</span><span class="x">{{r.text}}</span></div>
+              </sc-if>
+              <sc-if value="{{r.event}}" hint-placeholder-val="{{false}}">
+                <div class="{{r.cls}}"><span class="t">{{r.t}}</span><span class="i-chip k">{{r.kind}}</span><span class="t-body"><span class="g">{{r.g}}</span>{{r.text}} <span class="m">{{r.meta}}</span><sc-if value="{{r.fresh}}" hint-placeholder-val="{{false}}"> <span class="i-new">New</span></sc-if></span><a href="#" class="i-src" title="{{r.quote}}">{{r.src}}</a></div>
+              </sc-if>
+            </sc-for>
+          </div>
+          <div class="i-dock" role="region" aria-label="Now">
+            <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+            <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+            <div class="more"><span class="t-tag t-2">Gap</span><span class="t-caption t-2" style="flex: 1; min-width: 0;">You haven't discussed egress costs.</span><span class="t-mono t-meta t-2">1:32</span><button type="button" class="i-x" aria-label="Dismiss suggestion">✕</button></div>
+          </div>
+        </div>
+
+        <aside class="rail" aria-label="By kind">
+          <span class="t-label">By kind</span>
+          <div class="rh"><span class="t-caption t-strong">Actions</span><span class="t-mono t-meta t-2">2</span></div>
+          <a href="#" class="rx i-fresh"><span class="g">☐</span><span class="one">Send the node inventory.</span><span class="i-src">▶ 17:02</span></a>
+          <a href="#" class="rx"><span class="g">☐</span><span class="one">Confirm GPU runner pricing.</span><span class="i-src">▶ 16:12</span></a>
+          <div class="rh"><span class="t-caption t-strong">Decisions</span><span class="t-mono t-meta t-2">1</span></div>
+          <a href="#" class="rx i-fresh"><span class="g">✓</span><span class="one">Pilot on the k3s2 cluster first.</span><span class="i-src">▶ 17:30</span></a>
+          <div class="rh"><span class="t-caption t-strong">Notes</span><span class="t-mono t-meta t-2">3</span></div>
+          <a href="#" class="rx"><span class="g">•</span><span class="one">GPU runners are a separate SKU.</span><span class="i-src">▶ 15:40</span></a>
+          <a href="#" class="rx"><span class="g">•</span><span class="one">No date yet for the ARM images.</span><span class="i-src">▶ 14:51</span></a>
+          <a href="#" class="rx"><span class="g">•</span><span class="one">The vendor supports ARC scale sets on Kubernetes.</span><span class="i-src">▶ 13:58</span></a>
+          <div class="rh"><span class="t-caption t-strong">Related</span><span class="t-mono t-meta t-2">2</span></div>
+          <div class="j-related">
+            <span class="t-caption t-strong">DGX Spark K3s Node — Architecture Capture</span>
+            <span class="t-mono t-micro t-2">10 Projects/Jarvis/Infrastructure</span>
+            <span class="snip">The Spark joins k3s2 as an agent. GPU roles swap by profile, so a runner pool would share the card with whisper.</span>
+            <span style="display: flex; gap: 12px; padding-top: 2px;"><a href="#" class="t-meta">▶ Obsidian</a><a href="#" class="i-src">▶ 15:40</a></span>
+          </div>
+          <div class="j-related">
+            <span class="t-caption t-strong">GitHub ARC on k3s — Build Spec</span>
+            <span class="t-mono t-micro t-2">10 Projects/Homelab</span>
+            <span class="snip">One scale set per org, the controller in its own namespace, ephemeral runner pods.</span>
+            <span style="display: flex; gap: 12px; padding-top: 2px;"><a href="#" class="t-meta">▶ Obsidian</a><a href="#" class="i-src">▶ 13:58</a></span>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <!-- Collapsed -->
+  <div class="i-stack" style="gap: 8px; width: 340px;">
+    <span class="t-micro t-2">Collapsed · newest suggestion</span>
+    <div class="i-capsule" role="group" aria-label="Jarvis Live, collapsed">
+      <span class="i-dot i-breathe" style="width: 10px; height: 10px; background: var(--inst-accent);"></span>
+      <span class="t-mono" style="font-size: 14px;">18:42</span>
+      <span class="i-meter" style="color: var(--inst-accent);"><span></span><span></span><span></span></span>
+      <span class="rule"></span>
+      <span class="body"><span><span class="t-tag" style="color: var(--inst-accent);">Question</span> <span class="i-new">· 3 new</span></span><span class="one" title="Ask whether ARM images are on the public roadmap.">Ask whether ARM images are on the public roadmap.</span></span>
+      <button type="button" class="i-btn i-btn--secondary ib" aria-label="Expand copilot">▲</button>
+    </div>
+    <span class="t-micro t-2" style="padding-top: 24px;">Collapsed · nothing waiting</span>
+    <div class="i-capsule" role="group" aria-label="Jarvis Live, collapsed">
+      <span class="i-dot i-breathe" style="width: 10px; height: 10px; background: var(--inst-accent);"></span>
+      <span class="t-mono" style="font-size: 14px;">18:42</span>
+      <span class="i-meter" style="color: var(--inst-accent);"><span></span><span></span><span></span></span>
+      <span class="rule"></span>
+      <span class="body"><span class="one t-2">Nothing waiting.</span></span>
+      <button type="button" class="i-btn i-btn--secondary ib" aria-label="Expand copilot">▲</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":2000,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const S = (who, t, text, draft) => ({
+      speech: true, t, text, who: who === 'me' ? 'Me' : 'Them',
+      cls: 'i-utt' + (who === 'them' ? ' i-utt--them' : '') + (draft ? ' i-utt--draft' : ''),
+      spk: 'i-spk i-spk--' + who
+    });
+    const E = (t, kind, g, text, meta, src, quote, fresh) => ({
+      event: true, t, kind, g, text, meta: meta ? '· ' + meta : '', src: '▶ ' + src,
+      quote: '“' + quote + '”', fresh: !!fresh, cls: 'i-event' + (fresh ? ' i-fresh' : '')
+    });
+    const q1358 = 'We run the controller in its own namespace. Scale sets register per repository or per org.';
+    const q1540 = 'We can support ARC scale sets, but GPU runners are a separate SKU.';
+    const rows = [
+      S('them', '13:58', q1358),
+      E('14:05', 'Related', '▶', 'GitHub ARC on k3s — Build Spec', '10 Projects/Homelab', '13:58', q1358),
+      E('14:10', 'Note', '•', 'The vendor supports ARC scale sets on Kubernetes.', '', '13:58', q1358),
+      S('me', '14:20', 'Org level works for us. Four repos need runners.'),
+      S('me', '14:32', "What's the timeline for the ARM images?"),
+      S('them', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+      E('14:55', 'Work', '▶', 'Add ARM runner scale set to k3s2', 'Draft', '14:32', "What's the timeline for the ARM images?"),
+      E('15:00', 'Note', '•', 'No date yet for the ARM images.', '', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+      S('them', '15:40', q1540),
+      E('15:52', 'Note', '•', 'GPU runners are a separate SKU.', '', '15:40', q1540),
+      E('15:58', 'Related', '▶', 'DGX Spark K3s Node — Architecture Capture', '10 Projects/Jarvis/Infrastructure', '15:40', q1540),
+      { marker: true, t: '16:05', text: 'Pricing' },
+      S('me', '16:12', "Send me the GPU runner pricing and we'll size it against the DGX node."),
+      E('16:30', 'Action', '☐', 'Confirm GPU runner pricing.', 'Vendor · —', '16:12', "Send me the GPU runner pricing and we'll size it against the DGX node."),
+      S('them', '16:40', 'Sure. Can you send the node inventory so we can quote?'),
+      S('me', '17:02', "I'll send it by Friday."),
+      { rule: true },
+      E('17:20', 'Action', '☐', 'Send the node inventory.', 'Me · Fri 16 Oct', '17:02', "I'll send it by Friday.", true),
+      S('me', '17:30', "Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback."),
+      E('17:45', 'Decision', '✓', 'Pilot on the k3s2 cluster first.', '', '17:30', "Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback.", true),
+      S('them', '18:05', "That works. We'd want read access to the cluster metrics during the pilot."),
+      S('me', '18:31', 'Metrics are fine, but nothing with write access to the', true),
+      S('them', '18:38', 'Understood, read-only is', true)
+    ];
+    return { theme: this.props.theme ?? 'dark', rows, tail: rows.slice(-11) };
+  }
+}
+</script>
+</body>
+</html>

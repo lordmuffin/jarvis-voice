@@ -1,0 +1,5 @@
+{
+  "type": "ack",
+  "channel": "mic",
+  "seq": 42
+}

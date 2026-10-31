@@ -23,6 +23,7 @@ private fun toolLabel(name: String) = when (name) {
     "write_note"       -> "Saving note…"
     "web_fetch"        -> "Fetching page…"
     "run_command"      -> "Running command…"
+    "ask_homelab"      -> "Asking the homelab assistant…"
     else               -> "Using tools…"
 }
 
@@ -58,7 +59,7 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
     init {
         val prefs = app.getSharedPreferences(VoiceOverlayService.PREF_FILE, Context.MODE_PRIVATE)
         val storedKey = prefs.getString(PREF_VAULT_KEY, "") ?: ""
-        llm.vaultApiKey = storedKey.ifBlank { DEFAULT_VAULT_KEY }
+        llm.vaultApiKey = storedKey
 
         val kokoroUrl   = (prefs.getString(PREF_TTS_URL, "") ?: "").ifBlank { DEFAULT_TTS_URL }
         val kokoroVoice = prefs.getString(PREF_TTS_VOICE, DEFAULT_TTS_VOICE) ?: DEFAULT_TTS_VOICE
@@ -189,6 +190,9 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
                 val full = llm.chatWithTools(
                     history    = allMessages.takeLast(10),
                     model      = _selectedModel.value,
+                    // The ask_homelab tool reuses this verbatim as its requestId, so a retried
+                    // turn is answered once by dpi-backend's idempotency.
+                    conversationId = "$sessionId-${allMessages.size}",
                     onToolCall = { toolName ->
                         _status.value = ChatStatus.TOOL_CALL
                         _toolStatusText.value = toolLabel(toolName)
@@ -307,6 +311,5 @@ class VoiceChatViewModel(app: Application) : AndroidViewModel(app) {
         const val PREF_TTS_VOICE    = "tts_voice"
         const val DEFAULT_TTS_VOICE = "af_sky"
         const val DEFAULT_TTS_URL   = "http://192.168.1.43:8880"
-        const val DEFAULT_VAULT_KEY = "0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo"
     }
 }

@@ -1,0 +1,55 @@
+name: macOS CI
+
+on:
+  # Push builds main only; branches get CI through their PR, not twice.
+  push:
+    branches: [main]
+    paths: ["macos/**", "protocol/**", ".github/workflows/macos-ci.yml"]
+  pull_request:
+    paths: ["macos/**", "protocol/**", ".github/workflows/macos-ci.yml"]
+
+# One run per PR or branch: a newer push cancels the older PR run. Runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  jarvis-live-kit:
+    # macos-26 is a GitHub-hosted arm64 image with Xcode 26 / Swift 6.2 (verified in actions/runner-images).
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: macos/JarvisLiveKit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+      - run: swift build
+      - run: swift test
+
+  # The menu-bar app: generated from project.yml with XcodeGen, built unsigned (no
+  # Local.xcconfig). Catches a broken app build here rather than at release time.
+  jarvis-voice-mac:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: macos/JarvisVoiceMac
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: make build
+      # The ad-hoc signed Release build that macOS Release ships, with its signature checked.
+      - run: make release
+
+  notify-failure:
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: [jarvis-live-kit, jarvis-voice-mac]
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "macOS CI failed on main"
+      message: "${{ github.event.head_commit.message }}"
+      priority: 7
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

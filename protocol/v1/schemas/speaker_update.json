@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/speaker_update.json",
+  "title": "speaker_update",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "speaker_update"
+    },
+    "speakers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "enrolled": {
+            "type": "boolean"
+          },
+          "is_owner": {
+            "type": "boolean"
+          },
+          "ordinal": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "enrolled",
+          "is_owner"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "assignments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "segment_id": {
+            "type": "string"
+          },
+          "speaker_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "final": {
+            "type": "boolean"
+          },
+          "mixed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "segment_id",
+          "speaker_id",
+          "rev",
+          "final"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "type",
+    "speakers",
+    "assignments"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.wear.widget.BoxInsetLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/inst_bg"
+    app:boxedEdges="all">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="@dimen/inst_space_12"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/wear_settings"
+                android:textColor="@color/inst_text"
+                android:textStyle="bold"
+                android:textSize="@dimen/inst_type_label"
+                android:gravity="center"
+                android:layout_marginBottom="@dimen/inst_space_8" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/inst_space_12"
+                android:text="@string/wear_settings_server"
+                android:textColor="@color/inst_text_2"
+                android:textSize="@dimen/inst_type_meta" />
+
+            <TextView
+                android:id="@+id/tv_server"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/inst_space_12"
+                android:paddingEnd="@dimen/inst_space_12"
+                android:fontFamily="monospace"
+                android:textColor="@color/inst_text"
+                android:textSize="@dimen/inst_type_meta"
+                android:layout_marginBottom="@dimen/inst_space_8" />
+
+            <TextView
+                android:id="@+id/tv_queue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="@dimen/inst_space_12"
+                android:paddingEnd="@dimen/inst_space_12"
+                android:textColor="@color/inst_text"
+                android:textSize="@dimen/inst_type_meta"
+                android:layout_marginBottom="@dimen/inst_space_12" />
+
+            <Button
+                android:id="@+id/btn_sync"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/inst_touch_target_android"
+                android:text="@string/wear_settings_sync_now"
+                android:textColor="@color/inst_on_accent"
+                android:textSize="@dimen/inst_type_body"
+                android:background="@drawable/btn_save_bg" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</androidx.wear.widget.BoxInsetLayout>

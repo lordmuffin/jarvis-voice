@@ -1,0 +1,20 @@
+# jarvis-live, live channel: live-session transcription / copilot service. See
+# np-home-homelab docs/jarvis-live.md. Flux applies this path from the deploy/live
+# branch, which moves only when a server-v* release is promoted (server/deploy/README.md).
+# Everything but the Namespace and the live.apj.dev Ingress is in ../base, shared
+# with the lab channel.
+#
+# Own namespace (not jarvis-ai, which is created by a bare-metal workflow and must
+# never be pruned by Flux -- see np-home-homelab apps/ai/model-dashboard/kustomization.yaml).
+# `jarvis-live` is created here, so it is safe for this Kustomization to own it.
+#
+# Flux deploy alerts to Gotify are deliberately absent: Flux v2.7.5's Provider
+# has no `gotify` type. See np-home-homelab docs/jarvis-live.md §Notifications.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: jarvis-live
+resources:
+  - namespace.yaml
+  - ../base
+  - ingress-promoted.yaml
+  - onepassword-forgejo.yaml

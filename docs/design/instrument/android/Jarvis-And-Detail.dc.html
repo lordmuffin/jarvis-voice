@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android History and Detail</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.dv{width:412px;height:892px;background:var(--inst-bg);border:1px solid var(--inst-line);box-shadow:var(--inst-shadow-1);display:flex;flex-direction:column;overflow:hidden}
+.dv--sm{height:287px}
+.dv--wide{width:840px}
+.ab{flex:none;display:flex;align-items:center;gap:4px;height:56px;padding:0 8px 0 4px;background:var(--inst-surface);border-bottom:1px solid var(--inst-line)}
+.ab .i-switcher{width:48px;height:48px}
+.ab h1{font-size:18px}
+.bd{flex:1;min-height:0;overflow:hidden;padding:8px 16px 12px;display:flex;flex-direction:column;gap:8px}
+.back{display:inline-flex;align-items:center;min-height:48px;align-self:flex-start;font-size:13px}
+.st{background:var(--inst-surface);padding:14px 16px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px}
+.st .gl{width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:var(--inst-surface-2);font-size:13px;font-weight:700}
+.inst .i-player .play{width:48px;height:48px}
+.i-bottombar.rail{flex:none;flex-direction:column;width:80px;height:auto;border-top:0;border-right:1px solid var(--inst-line);padding-top:8px}
+.i-bottombar.rail a{flex:none;height:72px;margin-top:0;border-top:0}
+.i-bottombar.rail a[aria-current="page"]{border-top:0;box-shadow:inset 3px 0 0 var(--inst-accent)}
+.j-item.jrow{min-height:48px;align-items:center;color:var(--inst-text);text-decoration:none}
+.inst a.jrow{color:var(--inst-text)}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 2200px; height: 1000px; padding: 20px 24px; display: flex; gap: 24px; align-items: flex-start; background: var(--inst-bg);">
+
+  <!-- A · History list -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Folded · 412 · Session History</span>
+    <section class="inst dv" aria-label="Session History">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">History</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div class="bd">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="t-caption t-2" style="flex: 1; min-width: 0;">Your Jarvis Live sessions on <span class="t-mono">live.apj.dev</span> <span class="i-badge i-badge--live">Live</span></span>
+          <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Refresh</button>
+        </div>
+        <div class="i-stack">
+          <sc-for list="{{sessions}}" as="s" hint-placeholder-count="10">
+            <a href="#" class="j-srow">
+              <span class="i-stack" style="gap: 2px; flex: 1; min-width: 0;"><span class="{{s.tcls}}">{{s.title}}</span><span class="mt">{{s.meta}}</span></span>
+              <sc-if value="{{s.done}}" hint-placeholder-val="{{true}}"><span class="i-chip i-chip--done">✓ Done</span></sc-if>
+              <sc-if value="{{s.failed}}" hint-placeholder-val="{{false}}"><span class="i-chip i-chip--failed">✕ Failed</span></sc-if>
+              <sc-if value="{{s.fin}}" hint-placeholder-val="{{false}}"><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span></sc-if>
+            </a>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding-top: 4px;">
+          <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Load More</button>
+          <span class="t-meta t-2">20 per page · 46 sessions</span>
+        </div>
+      </div>
+      <nav class="i-bottombar" aria-label="Main" style="flex: none;">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+    </section>
+  </div>
+
+  <!-- B · small states -->
+  <div style="display: flex; flex-direction: column; gap: 16px;">
+    <div class="i-stack" style="gap: 6px;">
+      <span class="t-micro t-2">History · empty (top of screen)</span>
+      <section class="inst dv dv--sm" aria-label="Session History, empty">
+        <header class="ab">
+          <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+          <h1 class="i-wordmark">History</h1>
+          <span class="i-badge i-badge--live">Live</span>
+        </header>
+        <div class="bd">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="t-caption t-2" style="flex: 1; min-width: 0;">Your Jarvis Live sessions on <span class="t-mono">live.apj.dev</span> <span class="i-badge i-badge--live">Live</span></span>
+            <button type="button" class="i-btn i-btn--secondary" style="height: 48px;">Refresh</button>
+          </div>
+          <div class="st" role="region" aria-label="No sessions">
+            <span class="gl t-2" aria-hidden="true">—</span>
+            <span class="t-body t-strong">No sessions yet</span>
+            <span class="t-caption t-2" style="max-width: 280px;">Sessions you stream to Jarvis Live show up here.</span>
+            <a href="#" class="i-btn i-btn--secondary" style="height: 48px;">Go to Record</a>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="i-stack" style="gap: 6px;">
+      <span class="t-micro t-2">History · sign-in expired</span>
+      <section class="inst dv dv--sm" aria-label="Session History, sign-in expired">
+        <header class="ab">
+          <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+          <h1 class="i-wordmark">History</h1>
+          <span class="i-badge i-badge--live">Live</span>
+        </header>
+        <div class="bd" style="padding-top: 16px;">
+          <div class="st" role="alert" style="padding: 20px 16px;">
+            <span class="gl" aria-hidden="true" style="color: var(--inst-warning);">⚑</span>
+            <span class="t-body t-strong">Your sign-in has expired.</span>
+            <span class="t-caption t-2" style="max-width: 280px;">Sign in again in Settings. Your sessions are safe on the server.</span>
+            <a href="#" class="i-btn i-btn--primary" style="height: 48px;">Open Settings</a>
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="i-stack" style="gap: 6px;">
+      <span class="t-micro t-2">Detail · finalizing (top of screen)</span>
+      <section class="inst dv dv--sm" aria-label="Session Detail, finalizing">
+        <header class="ab">
+          <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+          <h1 class="i-wordmark">History</h1>
+          <span class="i-badge i-badge--live">Live</span>
+        </header>
+        <div class="bd" style="padding-top: 0; gap: 6px;">
+          <a href="#" class="back">↩ History</a>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: -8px;">
+            <h2 class="t-body t-strong" style="flex: 1; min-width: 0;">Harbor cache review</h2>
+            <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span>
+          </div>
+          <div class="i-seg" role="radiogroup" aria-label="Session" style="display: flex;">
+            <button type="button" role="radio" aria-checked="true" style="flex: 1; height: 44px;">Summary</button>
+            <button type="button" role="radio" aria-checked="false" style="flex: 1; height: 44px;">Transcript</button>
+            <button type="button" role="radio" aria-checked="false" style="flex: 1; height: 44px;">Actions</button>
+          </div>
+          <div class="i-block" style="padding: 14px 12px;"><p class="t-caption t-2">The summary appears here when the session is finalized.</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- C · Detail folded, Summary -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Folded · 412 · Session Detail · Summary</span>
+    <section class="inst dv" aria-label="Session Detail, Summary">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">History</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div class="bd" style="padding-top: 0;">
+        <a href="#" class="back">↩ History</a>
+        <div class="i-stack" style="gap: 2px; margin-top: -8px;">
+          <span class="t-label">Meeting · Oct 14, 2026, 3:05 PM</span>
+          <h2 class="t-body-lg t-strong">ARC runner migration vendor call</h2>
+          <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;"><span class="i-chip i-chip--done">✓ Done</span><span class="t-meta t-mono t-2">30:04</span><span class="t-meta t-2">· Owner Andrew</span></div>
+        </div>
+        <div class="i-stack">
+          <div class="i-player"><button type="button" class="play" aria-label="Play Me">▶</button><span class="i-spk i-spk--me">Me</span><span class="trk"><span style="width: 47%;"></span><i style="left: 47%;"></i></span><span class="t-mono t-meta t-2">14:20 / 30:04</span></div>
+          <div class="i-player i-player--them"><button type="button" class="play" aria-label="Play Them">▶</button><span class="i-spk i-spk--them">Them</span><span class="trk"><span style="width: 47%;"></span><i style="left: 47%;"></i></span><span class="t-mono t-meta t-2">14:20 / 30:04</span></div>
+        </div>
+        <div class="i-seg" role="radiogroup" aria-label="Session" style="display: flex;">
+          <button type="button" role="radio" aria-checked="true" style="flex: 1; height: 44px;">Summary</button>
+          <button type="button" role="radio" aria-checked="false" style="flex: 1; height: 44px;">Transcript</button>
+          <button type="button" role="radio" aria-checked="false" style="flex: 1; height: 44px;">Actions <span class="t-mono">6</span></button>
+        </div>
+        <article class="j-note" style="padding: 12px 14px;">
+          <p>The vendor supports ARC scale sets on Kubernetes, with the controller in its own namespace. GPU runners are a separate SKU.</p>
+          <p>You agreed to pilot on the k3s2 cluster first and keep the VM runners as a fallback. The vendor wants read-only access to cluster metrics during the pilot.</p>
+          <h2>Open questions</h2>
+          <ul><li>No date yet for the ARM images.</li><li>Egress costs were not discussed.</li></ul>
+          <h2>Related</h2>
+          <ul><li><span class="wiki">[[DGX Spark K3s Node — Architecture Capture]]</span></li><li><span class="wiki">[[GitHub ARC on k3s — Build Spec]]</span></li></ul>
+        </article>
+      </div>
+      <nav class="i-bottombar" aria-label="Main" style="flex: none;">
+        <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+      </nav>
+    </section>
+  </div>
+
+  <!-- D · Detail unfolded -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Unfolded · 840 · Session Detail · Summary left, Transcript right</span>
+    <section class="inst dv dv--wide" aria-label="Session Detail, unfolded">
+      <header class="ab">
+        <button type="button" class="i-switcher" aria-label="Switch app" aria-haspopup="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5"></rect><rect x="13.5" y="4" width="6.5" height="6.5"></rect><rect x="4" y="13.5" width="6.5" height="6.5"></rect><rect x="13.5" y="13.5" width="6.5" height="6.5"></rect></svg></button>
+        <h1 class="i-wordmark">History</h1>
+        <span class="i-badge i-badge--live">Live</span>
+      </header>
+      <div style="flex: 1; min-height: 0; display: flex;">
+        <nav class="i-bottombar rail" aria-label="Main">
+          <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="5"><a href="#" aria-current="{{tb.cur}}"><span class="i-ico" aria-hidden="true">{{tb.ico}}</span>{{tb.label}}</a></sc-for>
+        </nav>
+        <div style="width: 380px; flex: none; overflow: hidden; border-right: 1px solid var(--inst-line); padding: 0 16px 12px; display: flex; flex-direction: column; gap: 8px;">
+          <a href="#" class="back">↩ History</a>
+          <div class="i-stack" style="gap: 2px; margin-top: -8px;">
+            <span class="t-label">Meeting · Oct 14, 2026, 3:05 PM</span>
+            <h2 class="t-body-lg t-strong">ARC runner migration vendor call</h2>
+            <div style="display: flex; align-items: center; gap: 8px; padding-top: 2px;"><span class="i-chip i-chip--done">✓ Done</span><span class="t-meta t-mono t-2">30:04</span><span class="t-meta t-2">· Owner Andrew</span></div>
+          </div>
+          <h3 class="t-label" style="padding-top: 4px;">Summary</h3>
+          <article class="j-note" style="padding: 12px 14px; gap: 8px;">
+            <p>The vendor supports ARC scale sets on Kubernetes. GPU runners are a separate SKU.</p>
+            <p>You agreed to pilot on the k3s2 cluster first and keep the VM runners as a fallback. The vendor wants read-only access to cluster metrics.</p>
+          </article>
+          <section class="i-stack" aria-labelledby="ua-h">
+            <h3 id="ua-h" class="t-label" style="padding: 4px 0 2px;">Actions · 2</h3>
+            <a href="#" class="j-item jrow" title="I'll send it by Friday."><span class="g">☐</span><span>Send the node inventory.</span><span class="m">Me · Fri 16 Oct · <span style="color: var(--inst-accent);">▶ 17:02</span></span></a>
+            <a href="#" class="j-item jrow" title="Send me the GPU runner pricing and we'll size it against the DGX node."><span class="g">☐</span><span>Confirm GPU runner pricing.</span><span class="m">Vendor · — · <span style="color: var(--inst-accent);">▶ 16:12</span></span></a>
+          </section>
+          <section class="i-stack" aria-labelledby="ud-h">
+            <h3 id="ud-h" class="t-label" style="padding: 4px 0 2px;">Decisions · 1</h3>
+            <a href="#" class="j-item jrow" title="Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback."><span class="g">✓</span><span>Pilot on the k3s2 cluster first.</span><span class="m" style="color: var(--inst-accent);">▶ 17:30</span></a>
+          </section>
+          <section class="i-stack" aria-labelledby="un-h">
+            <h3 id="un-h" class="t-label" style="padding: 4px 0 2px;">Notes · 3</h3>
+            <a href="#" class="j-item jrow"><span class="g">•</span><span>The vendor supports ARC scale sets on Kubernetes.</span><span class="m" style="color: var(--inst-accent);">▶ 15:40</span></a>
+            <a href="#" class="j-item jrow"><span class="g">•</span><span>GPU runners are a separate SKU.</span><span class="m" style="color: var(--inst-accent);">▶ 15:40</span></a>
+            <a href="#" class="j-item jrow"><span class="g">•</span><span>No date yet for the ARM images.</span><span class="m" style="color: var(--inst-accent);">▶ 14:51</span></a>
+          </section>
+        </div>
+        <div style="flex: 1; min-width: 0; overflow: hidden; padding: 12px 12px; display: flex; flex-direction: column; gap: 8px;">
+          <h3 class="t-label">Transcript</h3>
+          <div class="i-stack">
+            <div class="i-player"><button type="button" class="play" aria-label="Pause Me">■</button><span class="i-spk i-spk--me">Me</span><span class="trk"><span style="width: 47%;"></span><i style="left: 47%;"></i></span><span class="t-mono t-meta t-2">14:20 / 30:04</span></div>
+            <div class="i-player i-player--them"><button type="button" class="play" aria-label="Pause Them">■</button><span class="i-spk i-spk--them">Them</span><span class="trk"><span style="width: 47%;"></span><i style="left: 47%;"></i></span><span class="t-mono t-meta t-2">14:20 / 30:04</span></div>
+          </div>
+          <div class="i-stack" role="log" aria-label="Transcript">
+            <sc-for list="{{lines}}" as="r" hint-placeholder-count="12">
+              <sc-if value="{{r.marker}}" hint-placeholder-val="{{false}}"><div class="j-marker"><span>⚑ {{r.text}}</span><span class="t">· {{r.t}}</span></div></sc-if>
+              <sc-if value="{{r.speech}}" hint-placeholder-val="{{true}}"><div class="{{r.cls}}" aria-current="{{r.cur}}"><span class="t">{{r.t}}</span><span class="{{r.spk}}">{{r.who}}</span><span class="x">{{r.text}}</span></div></sc-if>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":2200,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const R = (title, meta, kind) => ({
+      title, meta, done: kind === 'done', failed: kind === 'failed', fin: kind === 'fin',
+      tcls: title === 'Untitled session' ? 'ti ti--none' : 'ti'
+    });
+    const S = (who, t, text, target) => ({
+      speech: true, t, text, who: who === 'me' ? 'Me' : 'Them', cur: target ? 'true' : 'false',
+      cls: 'i-utt' + (who === 'them' ? ' i-utt--them' : '') + (target ? ' i-utt--target' : ''),
+      spk: 'i-spk i-spk--' + who
+    });
+    const T = (ico, label, cur) => ({ ico, label, cur: cur ? 'page' : 'false' });
+    return {
+      sessions: [
+        R('ARC runner migration vendor call', 'Oct 14, 2026, 3:05 PM · 30:04 · Meeting', 'done'),
+        R('Harbor cache review', 'Oct 14, 2026, 1:20 PM · 9:48 · Solo', 'fin'),
+        R('Platform sync', 'Oct 13, 2026, 10:00 AM · 42:10 · Meeting', 'done'),
+        R('Untitled session', 'Oct 13, 2026, 8:12 AM · 0:41 · Solo', 'failed'),
+        R('Sleep pipeline backfill plan', 'Oct 12, 2026, 9:40 PM · 12:06 · Solo', 'done'),
+        R('Homelab power budget', 'Oct 11, 2026, 2:15 PM · 28:13 · Meeting', 'done'),
+        R('Kai voice latency notes', 'Oct 10, 2026, 7:05 AM · 6:02 · Solo', 'done'),
+        R('Rack cooling options', 'Oct 9, 2026, 4:30 PM · 35:20 · Meeting', 'done'),
+        R('Weekly review', 'Oct 8, 2026, 6:00 PM · 18:45 · Solo', 'done'),
+        R('Pocket ID rollout', 'Oct 7, 2026, 11:00 AM · 51:30 · Meeting', 'done')
+      ],
+      lines: [
+        S('them', '13:58', 'We run the controller in its own namespace. Scale sets register per repository or per org.'),
+        S('me', '14:20', 'Org level works for us. Four repos need runners.', true),
+        S('me', '14:32', "What's the timeline for the ARM images?"),
+        S('them', '14:51', "ARM is in preview. I can't commit to a date on this call."),
+        S('them', '15:40', 'We can support ARC scale sets, but GPU runners are a separate SKU.'),
+        { marker: true, t: '16:05', text: 'Pricing' },
+        S('me', '16:12', "Send me the GPU runner pricing and we'll size it against the DGX node."),
+        S('them', '16:40', 'Sure. Can you send the node inventory so we can quote?'),
+        S('me', '17:02', "I'll send it by Friday."),
+        S('me', '17:30', "Let's pilot on the k3s2 cluster first and keep the VM runners as a fallback."),
+        S('them', '18:05', "That works. We'd want read access to the cluster metrics during the pilot."),
+        S('me', '18:31', 'Metrics are fine, but nothing with write access to the nodes.'),
+        S('them', '18:38', 'Understood, read-only is fine for us.')
+      ],
+      tabs: [T('🎙', 'Record'), T('💬', 'Chat'), T('📋', 'History', true), T('🤖', 'Agent'), T('⚙️', 'Settings')]
+    };
+  }
+}
+</script>
+</body>
+</html>

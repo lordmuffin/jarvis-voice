@@ -1,0 +1,22 @@
+# Read-only mirror of lordmuffin/Notes: written by the vault-clone CronJob (read-only
+# PAT), mounted read-only by the app so it can search the vault for context.
+#
+# RWX for the same reason as the outbox. Disposable: the CronJob re-clones if the
+# tree is missing or unusable.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jarvis-live-vault-clone
+  annotations:
+    # Never pruned by Flux: freenas-nfs-csi is reclaimPolicy Delete, so removing
+    # this object (a moved path, a deleted file) would destroy its data.
+    kustomize.toolkit.fluxcd.io/prune: disabled
+  labels:
+    app: jarvis-live
+spec:
+  accessModes: ["ReadWriteMany"]
+  storageClassName: freenas-nfs-csi
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,8 @@
+{
+  "type": "draft_segment",
+  "channel": "mic",
+  "start_ms": 1000,
+  "end_ms": 2400,
+  "text": "let's get started",
+  "final": false
+}

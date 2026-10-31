@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "include-component-in-tag": true,
+  "include-v-in-tag": false,
+  "tag-separator": "-v",
+  "packages": {
+    "server": {
+      "release-type": "python", "package-name": "server", "component": "server",
+      "extra-files": [
+        { "type": "generic", "path": "deploy/k8s/base/deployment.yaml" },
+        { "type": "toml", "path": "uv.lock", "jsonpath": "$.package[?(@.name.value=='jarvis-live')].version" }
+      ]
+    },
+    "macos": { "release-type": "simple", "package-name": "macos", "component": "macos" },
+    "android": { "release-type": "simple", "package-name": "android", "component": "android" },
+    "web": { "release-type": "simple", "package-name": "web", "component": "web" }
+  },
+  "plugins": [
+    { "type": "linked-versions", "groupName": "server and web", "components": ["server", "web"] }
+  ]
+}

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="live_title">Record</string>
+    <string name="live_subtitle">Record a session, transcribe it on-device and stream it to Jarvis Live.</string>
+    <string name="live_mode_solo">Solo</string>
+    <string name="live_mode_meeting">Meeting</string>
+    <string name="live_title_hint">Title (optional)</string>
+    <string name="live_local_only">Local-only (record here, upload later)</string>
+    <string name="live_away_checking">Checking whether Jarvis Live is reachable…</string>
+    <string name="live_away_home">Home network</string>
+    <string name="live_away_netbird">On NetBird</string>
+    <string name="live_away_away">Away from home</string>
+    <string name="live_away_streaming">streaming to Jarvis Live</string>
+    <string name="live_away_local">Local-only is on</string>
+    <string name="live_away_manual_until_back">your choice until you\'re home or on NetBird</string>
+    <string name="live_away_manual_until_leave">your choice until you leave home</string>
+    <string name="live_away_rechecking">checking…</string>
+    <string name="live_start">Start Session</string>
+    <string name="live_stop">Stop</string>
+    <string name="live_marker">Marker</string>
+    <string name="live_marker_added">Marker added.</string>
+    <string name="live_copilot">Copilot</string>
+    <string name="live_transcript_empty">The transcript appears here as you speak.</string>
+    <string name="live_pending">Pending sessions</string>
+    <string name="live_upload">Upload</string>
+    <string name="live_delete">Delete</string>
+    <string name="live_delete_confirm">Delete this session\'s recorded audio? This can\'t be undone.</string>
+    <string name="live_upload_queued">Upload queued. It runs when you\'re online.</string>
+    <string name="live_not_configured">Sign in to Jarvis Live in Settings to stream. Local-only works without it.</string>
+    <string name="live_mic_busy">A Jarvis Live session is using the microphone.</string>
+    <string name="live_mic_permission">Microphone permission is required for Live sessions.</string>
+
+    <string name="live_notif_title">Jarvis Live session</string>
+    <string name="live_notif_streaming">Recording and streaming</string>
+    <string name="live_notif_local">Recording locally (not streaming)</string>
+    <string name="live_notif_buffering">Recording, server offline: buffering</string>
+    <string name="live_notif_finishing">Finishing upload…</string>
+    <string name="live_channel_name">Jarvis Live session</string>
+
+    <string name="live_settings_header">Jarvis Live</string>
+    <string name="live_settings_desc">Stream Live sessions to your Jarvis Live server and see your history.</string>
+    <string name="live_settings_url_hint">https://live.apj.dev</string>
+    <string name="live_settings_token_hint">Device token</string>
+    <string name="live_settings_token_saved">Token saved. Enter a new one to replace it.</string>
+    <string name="live_away_setting">Local-only away from home</string>
+    <string name="live_away_setting_desc">Records on the phone when Jarvis Live can\'t be reached and NetBird is off. Flip the switch on the Record tab to override.</string>
+    <string name="live_settings_save">Save</string>
+    <string name="live_settings_test">Test Connection</string>
+
+    <!-- Pocket-ID sign-in -->
+    <string name="live_signin_button">Sign In with Pocket-ID</string>
+    <string name="live_signin_desc">Sign in to stream sessions and see your history. Or paste a device token below.</string>
+    <string name="live_signin_token_label">Device token</string>
+    <string name="live_signin_as">Signed in as %1$s</string>
+    <string name="live_signin_checking">Signed in. Checking account…</string>
+    <string name="live_signin_rejected">Sign-in expired or revoked. Sign in again.</string>
+    <string name="live_signin_offline">Offline. %1$s</string>
+    <string name="live_signin_need_url">Enter the server URL first.</string>
+    <string name="live_signin_no_browser">No browser available to sign in.</string>
+    <string name="live_signin_working">Signing in…</string>
+    <string name="live_signin_success">Signed in as %1$s</string>
+    <string name="live_signin_success_unknown">Signed in.</string>
+    <string name="live_signin_no_pending">No sign-in in progress. Start again from Settings.</string>
+    <string name="live_signin_denied">This account is not allowed to use Jarvis Live.</string>
+    <string name="live_signin_denied_as">Pocket-ID signed you in as %1$s, which isn\'t allowed to use Jarvis Live. Check which account the browser uses, or ask an admin to add it to an allowed group.</string>
+    <string name="live_signin_cancelled">Sign-in cancelled.</string>
+    <string name="live_signin_server_error">Sign-in failed on the server. Try again.</string>
+    <string name="live_signin_failed">Sign-in failed: %1$s</string>
+    <string name="live_signin_code_rejected">The sign-in link expired or was already used. Try again.</string>
+    <string name="live_history">History</string>
+</resources>

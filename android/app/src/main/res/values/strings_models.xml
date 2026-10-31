@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Model managers -->
+    <string name="models_llm_model">LLM Model</string>
+    <string name="models_stt_model">STT Model</string>
+    <string name="models_llm_intro">The selected model enhances transcription quality after dictation. Leave it unset to use raw output.</string>
+    <string name="models_stt_intro">Larger models are more accurate but slower and use more storage. Keep the screen open while downloading.</string>
+    <string name="models_default_badge">" DEFAULT"</string>
+    <string name="models_download">Download</string>
+    <string name="models_hint_join">%1$s · %2$s</string>
+    <string name="models_hint_download_first">Download it to select it.</string>
+    <string name="models_hint_other_download">Another download is running.</string>
+    <string name="models_cancel">Cancel</string>
+    <string name="models_delete">Delete</string>
+    <string name="models_remove">Remove</string>
+    <string name="models_downloading">Downloading…</string>
+    <string name="models_connecting">Connecting…</string>
+    <string name="models_extracting">Extracting…</string>
+    <string name="models_download_failed_default">Download failed</string>
+    <string name="models_unknown_error">Unknown error</string>
+    <string name="models_toast_model_error">%1$s: %2$s</string>
+    <string name="models_toast_selected">%1$s selected</string>
+    <string name="models_toast_ready">%1$s ready</string>
+    <string name="models_toast_llm_disabled">LLM enhancement disabled</string>
+    <string name="models_toast_download_start_failed">Could not start the download. Try again.</string>
+    <string name="models_toast_gemini_ready">Gemini Nano ready.</string>
+    <string name="models_toast_download_failed">Download failed: %1$s</string>
+    <string name="models_toast_download_error">Download error: %1$s</string>
+    <string name="models_delete_title">Delete %1$s?</string>
+    <string name="models_delete_message">%1$d MB will be freed.</string>
+    <string name="models_status_installed_backend">%1$s  [%2$s]</string>
+    <string name="models_status_not_installed_llm">%1$d MB · min %2$d GB RAM</string>
+    <string name="models_status_not_installed_stt">%1$d MB</string>
+    <string name="models_progress_pct">%1$d%%</string>
+    <string name="models_progress_speed">  ·  %1$s</string>
+    <string name="models_progress_eta">  ·  ETA %1$s</string>
+    <string name="models_speed_bps">%1$d B/s</string>
+    <string name="models_speed_kbps">%1$d KB/s</string>
+    <string name="models_speed_mbps">%1$.1f MB/s</string>
+    <string name="models_eta_s">%1$ds</string>
+    <string name="models_eta_ms">%1$dm %2$ds</string>
+    <string name="models_eta_hm">%1$dh %2$dm</string>
+    <string name="models_aicore_downloading_pct">Downloading %1$d%%  ·  %2$d MB / %3$d MB</string>
+    <string name="models_aicore_ready">Ready · Gemini Nano · AI Core%1$s</string>
+    <string name="models_aicore_backend_suffix">  [aicore]</string>
+    <string name="models_aicore_unavailable">Not available on this device</string>
+    <string name="models_aicore_checking">Checking availability…</string>
+    <string name="models_aicore_download_required">Download required. Tap Download to install Gemini Nano.</string>
+
+    <!-- Overlay service toasts -->
+    <string name="models_overlay_gemini_unavailable">Gemini Nano is not available. Open device AI settings to check AI Core status.</string>
+    <string name="models_overlay_npu_required">%1$s requires an NPU, which is not available on this device or OS. Switch to AI Core or a CPU model in Settings → LLM Model.</string>
+    <string name="models_overlay_load_failed">%1$s failed to load. Switch to another model in Settings → LLM Model.</string>
+    <string name="models_overlay_copied_stats">Copied · %1$d words · %2$s wpm%3$s</string>
+    <string name="models_overlay_stats">%1$d words · %2$s wpm%3$s</string>
+    <string name="models_overlay_enhanced_suffix"> · Enhanced</string>
+    <string name="models_overlay_copied">Copied to clipboard</string>
+
+    <string name="models_overlay_stopped_title">Jarvis Voice stopped</string>
+    <string name="models_overlay_stopped_text">Tap to restart the dictation overlay</string>
+    <string name="models_overlay_ongoing_text">Tap mic when keyboard appears to dictate</string>
+    <string name="models_overlay_action_settings">Settings</string>
+    <string name="models_overlay_channel_desc">Persistent notification for dictation overlay</string>
+    <string name="models_overlay_channel_transcript">Dictation Clipboard Alerts</string>
+    <string name="models_overlay_channel_transcript_desc">Shows when dictation text is copied to clipboard</string>
+
+    <!-- Main activity dialogs -->
+    <string name="models_main_overlay_title">Overlay Permission Required</string>
+    <string name="models_main_overlay_message">Jarvis Voice needs permission to draw over other apps to show the dictation pill.</string>
+    <string name="models_main_grant">Grant</string>
+    <string name="models_main_a11y_title">Accessibility Service Required</string>
+    <string name="models_main_a11y_message">Enable \'Jarvis Voice\' in Accessibility Settings so the overlay knows when text fields are focused.</string>
+    <string name="models_main_open_settings">Open Settings</string>
+
+    <!-- Onboarding -->
+    <string name="models_onb_tagline">Dictate anywhere. No cloud required.</string>
+    <string name="models_onb_get_started">Get Started</string>
+    <string name="models_onb_permissions_title">Permissions</string>
+    <string name="models_onb_permissions_intro">Jarvis needs these to show up when you need it.</string>
+    <string name="models_onb_mic">Microphone</string>
+    <string name="models_onb_mic_desc">Required to capture your voice</string>
+    <string name="models_onb_a11y">Accessibility</string>
+    <string name="models_onb_a11y_desc">Detects focused text fields</string>
+    <string name="models_onb_overlay_cd">Overlay</string>
+    <string name="models_onb_overlay">Draw over apps</string>
+    <string name="models_onb_overlay_desc">Shows pill over keyboard</string>
+    <string name="models_onb_storage_cd">Storage</string>
+    <string name="models_onb_storage">All Files Access</string>
+    <string name="models_onb_storage_desc">Keeps history after reinstall</string>
+    <string name="models_onb_optional">optional</string>
+    <string name="models_onb_grant">Grant</string>
+    <string name="models_onb_granted">✓ Granted</string>
+    <string name="models_onb_continue">Continue</string>
+    <string name="models_onb_check" translatable="false">✓</string>
+    <string name="models_onb_all_set">You\'re all set</string>
+    <string name="models_onb_all_set_desc">The pill appears whenever your keyboard is open. Tap it to start dictating.</string>
+    <string name="models_onb_start_dictating">Start Dictating</string>
+    <string name="models_onb_open_settings">Open Settings</string>
+</resources>

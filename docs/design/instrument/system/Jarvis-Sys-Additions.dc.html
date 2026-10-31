@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Proposed Instrument additions</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#F6F8FA}
+.spec{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding-bottom:4px}
+.spec h2{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inst-text)}
+.spec code{font-family:var(--inst-mono);font-size:11px;color:var(--inst-text-2)}
+.flag{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;background:var(--inst-warning-tint);color:var(--inst-warning)}
+.cap{font-size:11px;color:var(--inst-text-2)}
+</style>
+</helmet>
+<div style="width: 1440px; min-height: 2560px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #F6F8FA;">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="2">
+<div class="inst" data-theme="{{th.id}}" style="padding: 40px 32px; display: flex; flex-direction: column; gap: 28px; min-height: 2560px;">
+
+  <div class="i-stack" style="gap: 4px;">
+    <span class="t-label">Jarvis Live · 2 · Added to Instrument · {{th.name}}</span>
+    <h1 class="t-title">What Jarvis adds to the system</h1>
+    <p class="t-caption t-2" style="max-width: 600px;">Ten parts, none tied to Jarvis. They use only Instrument tokens. They are now part of instrument.css.</p>
+  </div>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>1 · Utterance line</h2><code>.i-utt · .i-spk</code></div>
+    <div class="i-utt"><span class="t">14:32</span><span class="i-spk i-spk--me">Me</span><span class="x">What's the timeline for the ARM images?</span></div>
+    <div class="i-utt i-utt--them"><span class="t">15:40</span><span class="i-spk i-spk--them">Them</span><span class="x">We can support ARC scale sets, but GPU runners are a separate SKU.</span></div>
+    <div class="i-utt i-utt--draft"><span class="t">18:31</span><span class="i-spk i-spk--me">Me</span><span class="x">Metrics are fine, but nothing with write access to the</span></div>
+    <div class="i-utt i-utt--them i-utt--draft"><span class="t">18:38</span><span class="i-spk i-spk--them">Them</span><span class="x">Understood, read-only is</span></div>
+    <div class="i-utt i-utt--target" aria-current="true"><span class="t">14:32</span><span class="i-spk i-spk--me">Me</span><span class="x">What's the timeline for the ARM images?</span></div>
+    <div style="max-width: 300px;"><div class="i-utt i-utt--them i-utt--stack"><span class="hd"><span class="i-spk i-spk--them">Them</span><span class="t">15:40</span></span><span class="x">We can support ARC scale sets, but GPU runners are a separate SKU.</span></div></div>
+    <span class="cap">Final · Them · draft (italic, outlined tag) · linked-to (tint + ring) · stacked under 360. Draft and final differ in shape and style, not colour alone. A final replaces its draft in the same row, and the row only grows downward.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>2 · Event row and source link</h2><code>.i-event · .i-src</code></div>
+    <div class="i-event"><span class="t">16:30</span><span class="i-chip k">Action</span><span class="t-body"><span class="g">☐</span>Confirm GPU runner pricing. <span class="m">Vendor · —</span></span><a href="#" class="i-src" title="“Send me the GPU runner pricing and we'll size it against the DGX node.”">▶ 16:12</a></div>
+    <div class="i-event i-fresh"><span class="t">17:45</span><span class="i-chip k">Decision</span><span class="t-body"><span class="g">✓</span>Pilot on the k3s2 cluster first. <span class="i-new">New</span></span><a href="#" class="i-src" title="“Let's pilot on the k3s2 cluster first.”">▶ 17:30</a></div>
+    <div class="i-event"><span class="t">15:00</span><span class="i-chip k">Note</span><span class="t-body"><span class="g">•</span>No date yet for the ARM images.</span><a href="#" class="i-src">▶ 14:51</a></div>
+    <div style="max-width: 300px;"><div class="i-event i-event--stack"><span class="hd"><span class="i-chip">Related</span><span class="t">15:58</span></span><span class="t-body">DGX Spark K3s Node — Architecture Capture</span><a href="#" class="i-src">▶ 15:40</a></div></div>
+    <span class="cap">Something the system noticed, placed at the time it noticed it. It sits on the page ground, not a surface, so it never reads as speech. ▶ m:ss jumps to its source, and the tooltip quotes it.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>3 · Unseen</h2><code>.i-unseen · .i-new · .i-fresh</code></div>
+    <div class="i-unseen" role="separator"><span class="i-new">3 new since you looked at 17:15</span></div>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+      <span class="i-new">New</span>
+      <span class="t-meta"><span class="i-new">3 new</span> <span class="t-2">since 17:15</span></span>
+      <span class="i-fresh" style="padding: 6px 10px; font-size: 13px;">A fresh row</span>
+    </div>
+    <span class="cap">One line marks where you last looked. It moves only on your next look: the panel visible and focused for 2 s. Nothing animates. The word “New” always comes with the tint.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>4 · Ephemeral card</h2><code>.i-eph</code></div>
+    <div class="i-eph i-fresh"><div class="hd"><span class="kind">Question</span><span class="i-new">· New</span><span class="age">0:22</span><button type="button" class="i-x" aria-label="Dismiss">✕</button></div><p class="txt">Ask whether ARM images are on the public roadmap.</p></div>
+    <div class="i-eph"><div class="hd"><span class="kind">Question</span><span class="age">0:48</span><button type="button" class="i-x" aria-label="Dismiss">✕</button></div><p class="txt">Ask whether ARM images are on the public roadmap.</p></div>
+    <div class="i-eph i-eph--age"><div class="hd"><span class="kind">Gap</span><span class="age">1:32</span><button type="button" class="i-x" aria-label="Dismiss">✕</button></div><p class="txt">You haven't discussed egress costs.</p></div>
+    <div class="i-eph i-eph--expired"><div class="hd"><span class="kind">Counterpoint</span><span class="age">Expired</span></div><p class="txt">GPU runners on the DGX would compete with whisper.</p></div>
+    <div class="i-eph i-eph--gone"><span>Dismissed · Fact check</span><button type="button" class="i-btn i-btn--quiet i-btn--sm" style="margin-left: auto;">↩ Undo</button></div>
+    <span class="cap">New · fresh · ageing after 60 s · expired after 2 min, gone at the next update · dismissed, keeping its slot until then. The states step; they never fade.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>5 · Now dock and capsule</h2><code>.i-dock · .i-capsule</code></div>
+    <div class="i-dock" role="region" aria-label="Now">
+      <div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span><span class="t-tag" style="color: var(--inst-accent);">Question</span><span class="i-new">· New</span><span class="t-mono t-meta t-2" style="margin-left: auto;">0:22</span><button type="button" class="i-x" aria-label="Dismiss">✕</button></div>
+      <p class="txt">Ask whether ARM images are on the public roadmap.</p>
+      <div class="more"><span class="t-tag t-2">Gap</span><span class="t-caption t-2" style="flex: 1;">You haven't discussed egress costs.</span><span class="t-mono t-meta t-2">1:32</span><button type="button" class="i-x" aria-label="Dismiss">✕</button></div>
+    </div>
+    <div class="i-dock i-dock--quiet"><div class="hd"><span class="t-label" style="color: var(--inst-text);">Now</span></div><p class="txt">Nothing waiting. Suggestions show up here.</p></div>
+    <div class="i-capsule" role="group" aria-label="Collapsed">
+      <span class="i-dot i-breathe" style="width: 10px; height: 10px; background: var(--inst-accent);"></span>
+      <span class="t-mono" style="font-size: 14px;">18:42</span>
+      <span class="i-meter" style="color: var(--inst-accent);"><span></span><span></span><span></span></span>
+      <span class="rule"></span>
+      <span class="body"><span><span class="t-tag" style="color: var(--inst-accent);">Question</span> <span class="i-new">· 3 new</span></span><span class="one">Ask whether ARM images are on the public roadmap.</span></span>
+      <button type="button" class="i-btn i-btn--secondary" aria-label="Expand" style="width: 32px; height: 32px; padding: 0;">▲</button>
+    </div>
+    <span class="cap">The dock always has the same height and place, at the bottom edge. Collapsed, it becomes the live pill at HUD size: the same object as the dictation pill and the menu-bar indicator.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>6 · Connection chip</h2><code>.i-chip + .i-sq · .i-chip-spin</code></div>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 12px;">
+      <span class="i-chip i-chip--live"><span class="i-dot"></span>Connected</span>
+      <span class="i-chip"><span class="i-spin i-chip-spin"></span>Connecting</span>
+      <span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Reconnecting · 3.2 s queued</span>
+      <span class="i-chip" style="color: var(--inst-text);"><span class="i-sq"></span>Local only</span>
+      <span class="i-chip i-chip--progress">⚑ Degraded · gamingpc</span>
+      <span class="i-chip"><span class="i-dot i-dot--hollow"></span>Offline</span>
+      <span class="i-chip i-chip--failed">✕ Failed</span>
+      <span class="i-chip">Idle</span>
+    </div>
+    <span class="cap">One vocabulary on web, Mac, Android and Wear. Reconnecting means still recording and nothing is lost. Local only is a choice you made, so it's neutral with a square, never a warning.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>7 · Lifecycle chips</h2><code>.i-chip vocabularies</code></div>
+    <div class="i-block" style="display: flex; flex-direction: column; gap: 10px; padding: 14px 12px;">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="t-micro t-2" style="width: 76px;">Publication</span>
+        <span class="i-chip">Not published</span><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Publishing</span><span class="i-chip i-chip--live">PR open</span><span class="i-chip i-chip--done">✓ Merged</span><span class="i-chip">PR closed</span><span class="i-chip">Skipped</span><span class="i-chip i-chip--failed">✕ Publish failed</span></div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="t-micro t-2" style="width: 76px;">Run</span>
+        <span class="i-chip">Queued</span><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Running</span><span class="i-chip i-chip--progress">⚑ Needs your input</span><span class="i-chip i-chip--done">✓ Draft PR opened</span><span class="i-chip">No changes</span><span class="i-chip">■ Cancelled</span><span class="i-chip i-chip--failed">✕ Failed</span><span class="i-chip i-chip--failed">✕ Timed out</span><span class="i-chip i-chip--failed">✕ Hit the Claude usage limit</span></div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="t-micro t-2" style="width: 76px;">Work item</span>
+        <span class="i-chip">Draft</span><span class="i-chip i-chip--live">✓ Approved</span><span class="i-chip" style="color: var(--inst-text-disabled);">Discarded</span><span class="i-chip" style="color: var(--inst-text-disabled);">✓ Merged</span></div>
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px;"><span class="t-micro t-2" style="width: 76px;">Session</span>
+        <span class="i-chip i-chip--live"><span class="i-dot i-breathe"></span>Live</span><span class="i-chip"><span class="i-dot i-dot--hollow"></span>Offline</span><span class="i-chip i-chip--progress"><span class="i-spin i-chip-spin"></span>Finalizing</span><span class="i-chip i-chip--done">✓ Done</span><span class="i-chip i-chip--failed">✕ Failed</span><span class="i-chip">Paused</span></div>
+    </div>
+    <span class="cap">A rule for any outside process (pull request, job, export). In progress is amber with a spinner. Waiting on you is amber with ⚑. Your turn is accent, success is ✓, failure is ✕. Ended and inert states are neutral. Retired states use the disabled text colour, not opacity.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>8 · Progress and budget</h2><code>.i-progress</code></div>
+    <div class="i-block" style="display: flex; flex-direction: column; gap: 12px;">
+      <div class="i-stack"><div style="display: flex; justify-content: space-between;"><span class="t-caption">Whisper Small · Downloading</span><span class="t-mono t-meta t-2">42% · 3.1 MB/s · 1:38 left</span></div><div class="i-progress" role="progressbar" aria-valuenow="42" aria-valuemin="0" aria-valuemax="100" aria-label="Whisper Small download"><span style="width: 42%;"></span></div></div>
+      <div class="i-stack"><div style="display: flex; justify-content: space-between;"><span class="t-caption">Context</span><span class="t-mono t-meta t-2">12.4k tkns</span></div><div class="i-progress" role="meter" aria-label="Context used, 12.4 thousand tokens"><span style="width: 39%;"></span></div></div>
+      <div class="i-stack"><div style="display: flex; justify-content: space-between;"><span class="t-caption" style="color: var(--inst-warning); font-weight: 600;">⚑ Context · compact soon</span><span class="t-mono t-meta t-2">18.9k tkns</span></div><div class="i-progress i-progress--warn"><span style="width: 59%;"></span></div></div>
+      <div class="i-stack"><div style="display: flex; justify-content: space-between;"><span class="t-caption" style="color: var(--inst-error); font-weight: 600;">✕ Context · over budget</span><span class="t-mono t-meta t-2">29.2k tkns</span></div><div class="i-progress i-progress--over"><span style="width: 91%;"></span></div></div>
+    </div>
+    <span class="cap">4 px and square. Determinate only. The spinner stays for unknown durations. Budget thresholds belong to the app, here 16k and 28k. Past a threshold, the label gains a glyph and a word.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Extends</span><h2>9 · Live pill: new states</h2><code>.i-live</code></div>
+    <div class="i-block" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 12px;">
+      <span class="i-live" role="status"><span class="i-dot i-breathe"></span><span class="lbl">LISTENING</span><span class="i-meter"><span></span><span></span><span></span></span></span>
+      <span class="i-live" role="status"><span class="lbl" style="color: var(--inst-accent);">✓ COPIED</span><span class="t-meta t-2">14 words</span></span>
+      <span class="i-live" role="status" style="border-color: var(--inst-error);"><span class="lbl" style="color: var(--inst-error);">✕ DIDN'T CATCH THAT</span></span>
+      <span class="i-live" role="status" style="border-color: var(--inst-control); border-style: dashed;"><span class="lbl" style="color: var(--inst-text-2);">PAUSED</span><span class="time t-2">18:42</span></span>
+      <span class="i-live" role="status" style="border-color: var(--inst-warning);"><span class="i-dot" style="background: var(--inst-warning);"></span><span class="lbl" style="color: var(--inst-warning);">⚑ NOT SAVING</span></span>
+    </div>
+    <span class="cap">Done and Error are new outcomes. Paused and Not saving are planned, with their slots kept. Recording stays accent on every device. Red is kept for LIVE and for failure, so recording never reads as production.</span>
+  </section>
+
+  <section class="i-stack">
+    <div class="spec"><span class="flag">Added</span><h2>10 · Track player</h2><code>.i-player</code></div>
+    <div class="i-player"><button type="button" class="play" aria-label="Play Me">▶</button><span class="i-spk i-spk--me">Me</span><span class="trk"><span style="width: 38%;"></span><i style="left: 38%;"></i></span><span class="t-mono t-meta t-2">11:26 / 30:04</span></div>
+    <div class="i-player i-player--them"><button type="button" class="play" aria-label="Pause Them">■</button><span class="i-spk i-spk--them">Them</span><span class="trk"><span style="width: 38%;"></span><i style="left: 38%;"></i></span><span class="t-mono t-meta t-2">11:26 / 30:04</span></div>
+    <div class="i-banner"><b>ⓘ Audio deleted</b><span>Audio is kept for 90 days. The transcript and note are kept.</span></div>
+  </section>
+</div>
+</sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2560}}'>
+class Component extends DCLogic {
+  renderVals() { return { themes: [{ id: 'dark', name: 'Dark' }, { id: 'light', name: 'Light' }] }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true">
+        <shape>
+            <size android:width="@dimen/inst_switch_width" android:height="@dimen/inst_switch_height" />
+            <solid android:color="@color/inst_accent" />
+            <stroke android:width="@dimen/inst_border_hairline" android:color="@color/inst_accent" />
+            <corners android:radius="@dimen/inst_radius_pill" />
+        </shape>
+    </item>
+    <item android:state_enabled="false">
+        <shape>
+            <size android:width="@dimen/inst_switch_width" android:height="@dimen/inst_switch_height" />
+            <solid android:color="@color/inst_surface_2" />
+            <stroke android:width="@dimen/inst_border_hairline" android:color="@color/inst_control"
+                android:dashWidth="3dp" android:dashGap="2dp" />
+            <corners android:radius="@dimen/inst_radius_pill" />
+        </shape>
+    </item>
+    <item>
+        <shape>
+            <size android:width="@dimen/inst_switch_width" android:height="@dimen/inst_switch_height" />
+            <solid android:color="@color/inst_surface_2" />
+            <stroke android:width="@dimen/inst_border_hairline" android:color="@color/inst_control" />
+            <corners android:radius="@dimen/inst_radius_pill" />
+        </shape>
+    </item>
+</selector>

@@ -10,7 +10,7 @@ import java.net.URL
 class AgentTaskRepository {
 
     var vaultBase   = "http://192.168.1.155:8881"
-    var vaultApiKey = "0WBpWVdLsieaJPpTI7JEjKBZZMd2G-9WWZM2Iiq_wMo"
+    var vaultApiKey = ""
 
     suspend fun listTasks(): List<AgentTask> = withContext(Dispatchers.IO) {
         runCatching {

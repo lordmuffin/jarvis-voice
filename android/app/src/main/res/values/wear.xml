@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tells the watch app this phone can receive its recordings (WearPaths.CAPABILITY_PHONE). -->
+    <string-array name="android_wear_capabilities">
+        <item>jarvis_phone_receiver</item>
+    </string-array>
+</resources>

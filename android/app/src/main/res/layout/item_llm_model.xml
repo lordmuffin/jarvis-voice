@@ -3,9 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@color/jv_surface"
-    android:padding="16dp"
-    android:layout_marginBottom="8dp">
+    android:background="@drawable/inst_row_surface"
+    android:padding="@dimen/inst_space_12"
+    android:layout_marginBottom="@dimen/inst_space_4">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -17,8 +17,9 @@
             android:id="@+id/rb_select"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:buttonTint="@color/jv_accent"
-            android:layout_marginEnd="12dp" />
+            android:minWidth="@dimen/inst_space_48"
+            android:minHeight="@dimen/inst_space_48"
+            android:layout_marginEnd="@dimen/inst_space_8" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -34,49 +35,45 @@
 
                 <TextView
                     android:id="@+id/tv_model_name"
+                    style="@style/Inst.Text.BodyLg"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/jv_text"
-                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tv_default_badge"
+                    style="@style/Inst.Text.Tag"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text=" DEFAULT"
-                    android:textColor="@color/jv_accent"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
+                    android:text="@string/models_default_badge"
+                    android:textColor="@color/inst_accent"
                     android:visibility="gone" />
 
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tv_model_desc"
+                style="@style/Inst.Text.Caption"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/jv_text2"
-                android:textSize="12sp"
-                android:layout_marginTop="2dp" />
+                android:layout_marginTop="@dimen/inst_space_4" />
 
             <TextView
                 android:id="@+id/tv_model_status"
+                style="@style/Inst.Text.Meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/jv_text2"
-                android:textSize="11sp"
-                android:layout_marginTop="4dp" />
+                android:layout_marginTop="@dimen/inst_space_4" />
 
         </LinearLayout>
 
         <Button
             android:id="@+id/btn_action"
+            style="@style/Widget.Inst.Button.Secondary.Sm"
             android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:textSize="12sp"
-            android:paddingHorizontal="12dp"
-            android:layout_marginStart="8dp" />
+            android:layout_height="wrap_content"
+            android:minHeight="@dimen/inst_space_48"
+            android:layout_marginStart="@dimen/inst_space_8" />
 
     </LinearLayout>
 
@@ -86,19 +83,18 @@
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:progressTint="@color/jv_accent"
-        android:indeterminateTint="@color/jv_accent"
-        android:progressBackgroundTint="@color/jv_surface2"
+        android:layout_marginTop="@dimen/inst_space_12"
+        android:progressTint="@color/inst_accent"
+        android:indeterminateTint="@color/inst_accent"
+        android:progressBackgroundTint="@color/inst_line"
         android:visibility="gone" />
 
     <TextView
         android:id="@+id/tv_progress_label"
+        style="@style/Inst.Text.Meta"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textColor="@color/jv_text2"
-        android:textSize="11sp"
-        android:layout_marginTop="4dp"
+        android:layout_marginTop="@dimen/inst_space_4"
         android:visibility="gone" />
 
 </LinearLayout>

@@ -8,7 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
-import android.widget.Toast
+import com.lordmuffin.jarvisvoice.ui.InstToast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +21,7 @@ class HistoryActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_history)
-        supportActionBar?.title = "Dictation History"
+        supportActionBar?.title = getString(R.string.chat_history_title)
         BottomNav.wire(this, BottomNav.Tab.HISTORY)
 
         val db       = DictationHistoryManager(this)
@@ -30,9 +30,9 @@ class HistoryActivity : AppCompatActivity() {
         val last     = db.getLastSession()
 
         findViewById<TextView>(R.id.tv_last_words).text =
-            last?.wordCount?.toString() ?: "—"
+            last?.wordCount?.toString() ?: getString(R.string.chat_history_dash)
         findViewById<TextView>(R.id.tv_last_wpm).text =
-            last?.let { "%.0f".format(it.wpm) } ?: "—"
+            last?.let { "%.0f".format(it.wpm) } ?: getString(R.string.chat_history_dash)
         findViewById<TextView>(R.id.tv_total_words).text =
             lifetime.totalWords.toString()
         findViewById<TextView>(R.id.tv_avg_wpm).text =
@@ -46,7 +46,7 @@ class HistoryActivity : AppCompatActivity() {
     private fun copyToClipboard(text: String, label: String = "dictation") {
         val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(ClipData.newPlainText(label, text))
-        Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+        InstToast.show(this, R.string.chat_history_copied)
     }
 
     private inner class SessionAdapter(private val items: List<DictationSession>) :
@@ -90,11 +90,11 @@ class HistoryActivity : AppCompatActivity() {
 
             holder.tvTime.text       = sdf.format(Date(s.timestamp))
             holder.tvStats.text      = buildString {
-                append("${s.wordCount} words · ${"%.0f".format(s.wpm)} wpm")
-                if (!wasEnhanced && s.durationMs > 0) append(" · STT ${fmtMs(s.durationMs)}")
+                append(getString(R.string.chat_history_stats, s.wordCount, "%.0f".format(s.wpm)))
+                if (!wasEnhanced && s.durationMs > 0) append(" · ").append(getString(R.string.chat_history_stt, fmtMs(s.durationMs)))
             }
             holder.tvTranscript.text = s.transcript
-            holder.tvChevron.text    = if (isExpanded) "▲" else "▼"
+            holder.tvChevron.text    = getString(if (isExpanded) R.string.chat_history_chevron_up else R.string.chat_history_chevron_down)
 
             // Dual-pass section
             if (wasEnhanced) {
@@ -103,12 +103,12 @@ class HistoryActivity : AppCompatActivity() {
                 val sttTime = fmtMs(s.durationMs)
                 val llmTime = fmtMs(s.llmMs)
                 holder.tvWhisperLabel.text = buildString {
-                    append("WHISPER")
+                    append(getString(R.string.chat_history_whisper))
                     if (s.sttBackend.isNotBlank()) append("  [${s.sttBackend}]")
                     if (sttTime.isNotEmpty()) append("  $sttTime")
                 }
                 holder.tvEnhancedLabel.text = buildString {
-                    append(if (s.llmModel.isNotBlank()) s.llmModel else "Enhanced")
+                    append(if (s.llmModel.isNotBlank()) s.llmModel else getString(R.string.chat_history_enhanced_fallback))
                     if (s.llmBackend.isNotBlank() && s.llmBackend != "none") append("  [${s.llmBackend}]")
                     if (llmTime.isNotEmpty()) append("  $llmTime")
                 }

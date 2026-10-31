@@ -1,0 +1,73 @@
+"""LLM output schemas. Deliberately tolerant (unknown keys ignored, over-long lists trimmed) so a
+slightly chatty model does not burn the single retry."""
+
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from jarvis_live.actions.schema import Proposals
+
+MAX_TOPICS = 5
+MAX_TITLE_CHARS = 80
+
+
+class _LLMModel(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+
+class NoteUpsert(_LLMModel):
+    id: str | None = None
+    text: str = Field(min_length=1)
+
+
+class ActionUpsert(_LLMModel):
+    id: str | None = None
+    text: str = Field(min_length=1)
+    owner: str | None = None
+    due: str | None = None
+
+
+class SuggestionIn(_LLMModel):
+    kind: Literal["question", "gap", "counterpoint", "fact_check"]
+    text: str = Field(min_length=1)
+    ttl_s: Annotated[int, Field(ge=1, le=3600)] = 120
+
+
+class CopilotDelta(_LLMModel):
+    notes_upsert: list[NoteUpsert] = Field(default_factory=list)
+    actions_upsert: list[ActionUpsert] = Field(default_factory=list)
+    decisions_upsert: list[NoteUpsert] = Field(default_factory=list)
+    remove_ids: list[str] = Field(default_factory=list)
+    suggestions: list[SuggestionIn] = Field(default_factory=list)
+    proposals: Proposals = Field(default_factory=list)
+    topics: list[str] = Field(default_factory=list)
+    title: str | None = None  # only asked for while the session is untitled
+
+    @field_validator("topics")
+    @classmethod
+    def _trim_topics(cls, v: list[str]) -> list[str]:
+        return [t.strip() for t in v if t.strip()][:MAX_TOPICS]
+
+    @field_validator("title")
+    @classmethod
+    def _trim_title(cls, v: str | None) -> str | None:
+        v = " ".join((v or "").split()).strip("\"'")
+        return v[:MAX_TITLE_CHARS].rstrip() or None
+
+
+class FinalAction(_LLMModel):
+    text: str = Field(min_length=1)
+    owner: str | None = None
+    due: str | None = None
+
+
+class FinalNote(_LLMModel):
+    title: str = Field(min_length=1)
+    summary: str
+    decisions: list[str] = Field(default_factory=list)
+    actions: list[FinalAction] = Field(default_factory=list)
+    open_questions: list[str] = Field(default_factory=list)
+    follow_ups: list[str] = Field(default_factory=list)
+    # Names of existing vault notes. The finalizer drops anything it cannot resolve in the index.
+    related: list[str] = Field(default_factory=list)
+    proposals: Proposals = Field(default_factory=list)

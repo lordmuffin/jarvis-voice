@@ -1,0 +1,195 @@
+"""Dispatch through the API: the real app and Postgres, a fake Kubernetes and token source."""
+
+import asyncio
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import pytest
+from sqlalchemy import delete
+
+from jarvis_live.config import Settings
+from jarvis_live.db.models import OWNER_USER_ID, WorkItemDispatch
+from jarvis_live.dispatch.service import dispatch_config_problems
+from tests.conftest import ServerHandle
+from tests.fake_kube import FakeKube, FakeTokens
+from tests.work_item_helpers import SETTINGS, SM, owner_with_session, seed_item, web_client
+
+DISPATCH = {**SETTINGS, "dispatch_enabled": True, "git_sha": "abc1234", "dispatch_poll_s": 0.05}
+
+
+@pytest.fixture
+async def kube(sm: SM) -> FakeKube:
+    async with sm() as db:  # the loop is deployment-wide: no runs left by other tests
+        await db.execute(delete(WorkItemDispatch))
+        await db.commit()
+    return FakeKube()
+
+
+@pytest.fixture
+def dserver(make_server: Callable[..., ServerHandle], kube: FakeKube) -> ServerHandle:
+    return make_server(kube=kube, app_tokens=FakeTokens(), **DISPATCH)
+
+
+async def until(cond: Callable[[], Any], timeout: float = 10.0) -> None:
+    deadline = asyncio.get_running_loop().time() + timeout
+    while not await cond():
+        assert asyncio.get_running_loop().time() < deadline, "timed out"
+        await asyncio.sleep(0.05)
+
+
+async def test_dispatch_runs_and_the_outcome_shows_on_the_item(
+    dserver: ServerHandle, sm: SM, kube: FakeKube
+) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(dserver, sm, OWNER_USER_ID) as web:
+        page = (await web.get(f"/v1/sessions/{sid}/work-items")).json()
+        assert page["dispatch_enabled"] is True and page["items"][0]["dispatch"] is None
+        await web.post(f"/v1/work-items/{item}/approve")
+        r = await web.post(f"/v1/work-items/{item}/dispatch")
+        assert r.status_code == 202, r.text
+        assert r.json()["dispatch"]["state"] in ("queued", "running")
+
+        async def started() -> bool:
+            return bool(kube.jobs)
+
+        await until(started)
+        (job,) = kube.jobs
+        kube.report(job, outcome="pr_opened", pr_url="https://github.com/o/r/pull/9", pr_number=9)
+
+        async def finished() -> bool:
+            d = (await web.get(f"/v1/work-items/{item}")).json()["dispatch"]
+            return bool(d and d["state"] == "pr_opened")
+
+        await until(finished)
+        d = (await web.get(f"/v1/sessions/{sid}/work-items")).json()["items"][0]["dispatch"]
+        assert d["pr_url"] == "https://github.com/o/r/pull/9" and d["attempt"] == 1
+
+
+async def test_cancel_a_run(dserver: ServerHandle, sm: SM, kube: FakeKube) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(dserver, sm, OWNER_USER_ID) as web:
+        await web.post(f"/v1/work-items/{item}/approve")
+        await web.post(f"/v1/work-items/{item}/dispatch")
+        r = await web.post(f"/v1/work-items/{item}/dispatch/cancel")
+        assert r.status_code == 200, r.text
+        assert r.json()["dispatch"]["state"] == "cancelled"
+        assert (await web.post(f"/v1/work-items/{item}/dispatch/cancel")).status_code == 409
+
+
+async def test_cancel_without_dispatch_is_503(
+    make_server: Callable[..., ServerHandle], sm: SM
+) -> None:
+    server = make_server(**SETTINGS)
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(server, sm, OWNER_USER_ID) as web:
+        assert (await web.post(f"/v1/work-items/{item}/dispatch/cancel")).status_code == 503
+
+
+def test_dispatch_needs_its_configuration(tmp_path: Path) -> None:
+    assert dispatch_config_problems(Settings(dispatch_enabled=True)) == [
+        "work items are off",
+        "no runner image (JARVIS_LIVE_DISPATCH_IMAGE or GIT_SHA)",
+        "no GitHub App (JARVIS_LIVE_GITHUB_APP_ID, _INSTALLATION_ID, _KEY_FILE)",
+    ]
+    key = tmp_path / "app.pem"
+    key.write_text("k")
+    ok = Settings(
+        dispatch_enabled=True,
+        work_items_enabled=True,
+        git_sha="abc",
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=key,
+    )
+    assert dispatch_config_problems(ok) == []
+
+
+async def test_misconfigured_dispatch_stays_off_and_the_server_still_starts(
+    make_server: Callable[..., ServerHandle], sm: SM, tmp_path: Path
+) -> None:
+    """Lab enables dispatch before its 1Password items exist: no crash loop, dispatch off."""
+    server = make_server(
+        **DISPATCH,
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=tmp_path / "not-mounted-yet.pem",
+    )
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    async with await web_client(server, sm, OWNER_USER_ID) as web:
+        page = (await web.get(f"/v1/sessions/{sid}/work-items")).json()
+        assert page["enabled"] is True and page["dispatch_enabled"] is False
+
+
+def test_a_missing_app_key_file_is_a_problem(tmp_path: Path) -> None:
+    cfg = Settings(
+        dispatch_enabled=True,
+        work_items_enabled=True,
+        git_sha="abc",
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=tmp_path / "absent.pem",
+    )
+    assert dispatch_config_problems(cfg) == [
+        f"the GitHub App key {tmp_path / 'absent.pem'} is missing"
+    ]
+
+
+def test_dispatch_repos_must_be_work_repos(tmp_path: Path) -> None:
+    """A run targets the item's repo, and items only target work repos: a dispatch repo
+    outside them could never run (lab's sandbox, before it was added to lab's work repos)."""
+    key = tmp_path / "app.pem"
+    key.write_text("k")
+    cfg = Settings(
+        dispatch_enabled=True,
+        work_items_enabled=True,
+        work_repos="o/real  the real repo\n",
+        dispatch_repos="o/sandbox  scratch\n",
+        git_sha="abc",
+        github_app_id="1",
+        github_app_installation_id="2",
+        github_app_key_file=key,
+    )
+    assert dispatch_config_problems(cfg) == [
+        "o/sandbox is not a work repo (JARVIS_LIVE_WORK_REPOS), so no item can target it"
+    ]
+    both = cfg.model_copy(update={"work_repos": "o/real  real\no/sandbox  scratch\n"})
+    assert dispatch_config_problems(both) == []
+
+
+async def test_reply_to_a_run_continues_it(dserver: ServerHandle, sm: SM, kube: FakeKube) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    item = await seed_item(sm, sid, OWNER_USER_ID)
+    async with await web_client(dserver, sm, OWNER_USER_ID) as web:
+        await web.post(f"/v1/work-items/{item}/approve")
+        r = await web.post(f"/v1/work-items/{item}/dispatch/continue", json={"guidance": "go"})
+        assert r.status_code == 409, r.text  # nothing ran yet
+        await web.post(f"/v1/work-items/{item}/dispatch")
+
+        async def started() -> bool:
+            return bool(kube.jobs)
+
+        await until(started)
+        (job,) = kube.jobs
+        kube.report(job, outcome="needs_input", summary="Half done.", questions="1. Which flag?")
+
+        async def asked() -> bool:
+            d = (await web.get(f"/v1/work-items/{item}")).json()["dispatch"]
+            return bool(d and d["state"] == "needs_input")
+
+        await until(asked)
+        d = (await web.get(f"/v1/work-items/{item}")).json()["dispatch"]
+        assert (d["questions"], d["guidance"]) == ("1. Which flag?", None)
+
+        r = await web.post(f"/v1/work-items/{item}/dispatch/continue", json={"guidance": ""})
+        assert r.status_code == 422
+        r = await web.post(
+            f"/v1/work-items/{item}/dispatch/continue", json={"guidance": "Use --retry."}
+        )
+        assert r.status_code == 202, r.text
+        d = r.json()["dispatch"]
+        assert (d["attempt"], d["guidance"]) == (2, "Use --retry.")
+        assert d["state"] in ("queued", "running")

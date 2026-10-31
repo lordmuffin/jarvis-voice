@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chat / agent / history / dictionary / debug-log geometry with no Instrument token. -->
+<resources>
+    <!-- Space the chat and agent-task lists leave for the control panel above the bottom nav. -->
+    <dimen name="app_chat_panel_reserve">192dp</dimen>
+    <dimen name="app_chat_task_panel_reserve">200dp</dimen>
+    <!-- Bottom nav (56dp) plus an 8dp gap: where the pinned control panels sit. -->
+    <dimen name="app_chat_nav_inset">64dp</dimen>
+    <dimen name="app_chat_bubble_max_width">290dp</dimen>
+    <dimen name="app_chat_context_bar">3dp</dimen>
+    <dimen name="app_chat_send_width">52dp</dimen>
+    <dimen name="app_chat_run_width">64dp</dimen>
+    <dimen name="app_chat_sheet_list_max">420dp</dimen>
+    <dimen name="app_chat_dialog_pad_h">24dp</dimen>
+    <dimen name="app_chat_dialog_pad_top">16dp</dimen>
+    <dimen name="app_chat_dialog_pad_bottom">4dp</dimen>
+</resources>

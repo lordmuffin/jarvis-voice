@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Android Dictation Pill</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#0D1117}
+.cr{position:relative;width:412px;height:290px;background:var(--inst-bg);border:1px solid var(--inst-line);overflow:hidden}
+.fld{position:absolute;top:8px;left:16px;right:16px;height:32px;border:1px solid var(--inst-accent);border-radius:var(--inst-radius-field);background:var(--inst-bg);padding:0 12px;display:flex;align-items:center;font-size:13px;color:var(--inst-text)}
+.fld .ph{color:var(--inst-text-2)}
+.fld .caret{width:1.5px;height:16px;background:var(--inst-accent);margin-left:1px}
+.tt{position:absolute;top:46px;left:0;right:0;display:flex;justify-content:center;padding:0 16px}
+.tt .i-toast{padding:8px 14px}
+.pp{position:absolute;top:88px;left:0;right:0;display:flex;justify-content:center}
+.pp .i-live{height:48px;box-shadow:var(--inst-shadow-2);cursor:pointer;font:inherit}
+.kb{position:absolute;left:0;right:0;bottom:0;height:146px;background:var(--inst-surface);border-top:1px solid var(--inst-line);padding:8px 6px;display:flex;flex-direction:column;gap:6px}
+.kr{display:flex;gap:6px;height:28px}
+.k{background:var(--inst-surface-2);border-radius:var(--inst-radius-tail)}
+.i-block.nt{display:flex;flex-direction:column;gap:4px;padding:10px 8px 4px 14px}
+.nt .hd{display:flex;align-items:center;gap:8px;padding-right:6px}
+</style>
+</helmet>
+<div class="inst" data-theme="dark" style="width: 1440px; height: 1000px; padding: 20px 78px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; align-content: start; background: var(--inst-bg);">
+
+  <!-- Idle -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Idle · tap starts · long-press holds to record · drag moves it</span>
+    <div class="cr" aria-label="Pill idle over the keyboard" role="group">
+      <div class="fld" aria-hidden="true"><span class="caret"></span><span class="ph">Message</span></div>
+      <div class="pp"><button type="button" class="i-live" aria-label="Start dictating" style="width: 72px; justify-content: center; border-color: var(--inst-control);"><span class="i-dot i-breathe"></span></button></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Listening -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Listening · widens · tap stops (or release, when held)</span>
+    <div class="cr" aria-label="Pill listening" role="group">
+      <div class="fld" aria-hidden="true"><span class="caret"></span><span class="ph">Message</span></div>
+      <div class="pp"><button type="button" class="i-live" aria-label="Stop dictating, 4 seconds"><span class="i-dot i-breathe"></span><span class="lbl">LISTENING</span><span class="i-meter"><span></span><span></span><span></span></span><span class="time">0:04</span></button></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Processing -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Processing · taps are ignored</span>
+    <div class="cr" aria-label="Pill processing" role="group">
+      <div class="fld" aria-hidden="true"><span class="caret"></span><span class="ph">Message</span></div>
+      <div class="pp"><span class="i-live" role="status" aria-label="Processing" style="height: 48px; box-shadow: var(--inst-shadow-2); border-color: var(--inst-control);"><span class="i-spin"></span><span class="lbl" style="color: var(--inst-text-2);">PROCESSING</span></span></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Done, inserted -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Done · inserted into the field · ✓ for 1.5 s, then idle</span>
+    <div class="cr" aria-label="Pill done, text inserted" role="group">
+      <div class="fld" aria-hidden="true"><span>Running ten minutes late, start without me.</span><span class="caret"></span></div>
+      <div class="tt"><div class="i-toast" role="status"><b>✓</b><span><span class="t-mono">8</span> words · <span class="t-mono">142</span> wpm · Enhanced</span></div></div>
+      <div class="pp"><span class="i-live" role="status" aria-label="Done" style="height: 48px; width: 72px; justify-content: center; box-shadow: var(--inst-shadow-2);"><span class="lbl" style="font-size: 16px;">✓</span></span></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Done, copied -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Done · no text field took it, so it was copied</span>
+    <div class="cr" aria-label="Pill done, text copied" role="group">
+      <div class="fld" aria-hidden="true" style="border-color: var(--inst-control);"><span class="ph">Search</span></div>
+      <div class="tt"><div class="i-toast" role="status"><b>⎘</b><span>Copied · <span class="t-mono">8</span> words · <span class="t-mono">142</span> wpm</span></div></div>
+      <div class="pp"><span class="i-live" role="status" aria-label="Done" style="height: 48px; width: 72px; justify-content: center; box-shadow: var(--inst-shadow-2);"><span class="lbl" style="font-size: 16px;">✓</span></span></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Error, nothing heard -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Error · nothing heard · tap tries again</span>
+    <div class="cr" aria-label="Pill error, nothing heard" role="group">
+      <div class="fld" aria-hidden="true"><span class="caret"></span><span class="ph">Message</span></div>
+      <div class="pp"><button type="button" class="i-live" aria-label="Didn't catch that. Tap to try again." style="border-color: var(--inst-error);"><span class="lbl" style="color: var(--inst-error);">✕ DIDN'T CATCH THAT</span></button></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Error, mic off -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Error · microphone off · the whole pill opens Settings</span>
+    <div class="cr" aria-label="Pill error, microphone off" role="group">
+      <div class="fld" aria-hidden="true"><span class="caret"></span><span class="ph">Message</span></div>
+      <div class="pp"><button type="button" class="i-live" aria-label="Microphone is off. Open Settings." style="border-color: var(--inst-error);"><span class="lbl" style="color: var(--inst-error);">✕ MICROPHONE IS OFF</span><span style="width: 1px; align-self: stretch; margin: 12px 0; background: var(--inst-control);"></span><span class="t-caption t-strong" style="color: var(--inst-accent);">Open Settings ▶</span></button></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Conflict -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Conflict · a live session has the microphone</span>
+    <div class="cr" aria-label="Pill blocked by a live session" role="group">
+      <div class="fld" aria-hidden="true"><span class="caret"></span><span class="ph">Message</span></div>
+      <div class="tt"><div class="i-toast" role="status"><b>⚑</b><span>A Jarvis Live session is using the microphone.</span></div></div>
+      <div class="pp"><button type="button" class="i-live" aria-label="Dictation unavailable. A Jarvis Live session is using the microphone." style="border-color: var(--inst-control); border-style: dashed;"><span class="lbl" style="color: var(--inst-text-2);">⚑ MIC IN USE</span><span class="time t-2">18:42</span></button></div>
+      <div class="kb" aria-hidden="true"><sc-for list="{{kb}}" as="row" hint-placeholder-count="4"><div class="kr" style="padding: {{row.pad}};"><sc-for list="{{row.keys}}" as="k" hint-placeholder-count="10"><span class="k" style="flex: {{k}} 1 0;"></span></sc-for></div></sc-for></div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="i-stack" style="gap: 6px;">
+    <span class="t-micro t-2">Notifications · overlay (persistent) and live session</span>
+    <div class="i-stack" role="list" aria-label="Notifications" style="width: 412px;">
+      <div class="i-block nt" role="listitem">
+        <div class="hd"><span class="i-dot" aria-hidden="true" style="color: var(--inst-accent);"></span><span class="t-meta t-2">Jarvis Voice · Dictation</span><span class="t-meta t-2" style="margin-left: auto;">Ongoing</span></div>
+        <span class="t-body t-strong">Dictation overlay is running</span>
+        <span class="t-caption t-2">The pill shows whenever a keyboard is open.</span>
+        <div style="display: flex; gap: 4px;"><button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Restart</button><button type="button" class="i-btn i-btn--quiet" style="height: 48px;">Settings</button></div>
+      </div>
+      <div class="i-block nt" role="listitem">
+        <div class="hd"><span class="i-dot i-breathe" aria-hidden="true" style="color: var(--inst-accent);"></span><span class="t-meta t-2">Jarvis Voice · Jarvis Live</span><span class="i-badge i-badge--live">Live</span><span class="t-mono t-body t-strong" style="margin-left: auto;" role="timer" aria-label="18 minutes 42 seconds">18:42</span></div>
+        <span class="t-body t-strong">Recording · ARC runner migration vendor call</span>
+        <span class="t-meta t-2">Meeting · <span style="color: var(--inst-accent);">●</span> Connected · 2 markers</span>
+        <div style="display: flex; gap: 4px;"><button type="button" class="i-btn i-btn--quiet" style="height: 48px;">⚑ Marker</button><button type="button" class="i-btn i-btn--quiet" style="height: 48px;">■ Stop</button></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const n = (c) => Array.from({ length: c }, () => 1);
+    return {
+      kb: [
+        { pad: '0', keys: n(10) },
+        { pad: '0 18px', keys: n(9) },
+        { pad: '0', keys: [1.5, ...n(7), 1.5] },
+        { pad: '0', keys: [1.5, 1, 5, 1, 1.5] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

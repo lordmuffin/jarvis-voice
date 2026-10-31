@@ -1,18 +1,37 @@
-name: Release Signed APK
+name: Release Signed APKs (phone and watch)
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'android-v*'
+  # Manual build for an existing tag. Tags created by release-please with the
+  # default GITHUB_TOKEN do not fire the push trigger above.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing android release tag to build (e.g. android-v1.6.0)'
+        required: true
+        type: string
 
 jobs:
   release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
     steps:
+      - name: Validate tag
+        run: |
+          case "$RELEASE_TAG" in
+            android-v*) ;;
+            *) echo "::error::Tag '$RELEASE_TAG' must match android-v*"; exit 1 ;;
+          esac
+
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ format('refs/tags/{0}', env.RELEASE_TAG) }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -22,6 +41,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: ''  # default 'tools' package no longer exists in sdkmanager
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -52,7 +73,7 @@ jobs:
       - name: Download sherpa-onnx bindings (no model)
         run: bash download-models.sh --no-model
 
-      - name: Build signed release APK
+      - name: Build signed release APKs (phone and watch)
         env:
           KEYSTORE_PATH: keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -62,13 +83,57 @@ jobs:
           ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK
+        id: apk
         run: |
+          version="${RELEASE_TAG#android-v}"
           mv android/app/build/outputs/apk/release/app-release.apk \
-             android/app/build/outputs/apk/release/jarvis-voice-${{ github.ref_name }}.apk
+             "android/app/build/outputs/apk/release/jarvis-voice-v${version}.apk"
+          mv android/wear/build/outputs/apk/release/wear-release.apk \
+             "android/wear/build/outputs/apk/release/jarvis-wear-v${version}.apk"
+          {
+            echo "path=android/app/build/outputs/apk/release/jarvis-voice-v${version}.apk"
+            echo "wear_path=android/wear/build/outputs/apk/release/jarvis-wear-v${version}.apk"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
+        if: github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: android/app/build/outputs/apk/release/jarvis-voice-${{ github.ref_name }}.apk
+          files: |
+            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.wear_path }}
+
+      # Manual run: the release already exists (made by release-please), so only
+      # attach the APK and leave its name and notes alone.
+      - name: Attach APK to existing release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          files: |
+            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.wear_path }}
+
+  notify:
+    needs: release
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-voice ${{ inputs.tag || github.ref_name }} released"
+      message: "Signed phone and watch APKs attached to the GitHub Release."
+      priority: 5
+      url: ${{ github.server_url }}/${{ github.repository }}/releases/tag/${{ inputs.tag || github.ref_name }}
+    secrets: inherit
+
+  # A failed release build is the one you most want to hear about.
+  notify-failure:
+    needs: release
+    if: failure()
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "jarvis-voice ${{ inputs.tag || github.ref_name }} release FAILED"
+      message: "The signed APK build failed. See the run for the log."
+      priority: 8
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

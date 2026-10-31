@@ -1,0 +1,103 @@
+# syntax=docker/dockerfile:1
+# linux/amd64 only.
+
+ARG PYTHON_IMAGE=python:3.12-slim
+ARG NODE_IMAGE=node:22-slim
+# Web dashboard (web/). The build context is server/, so the sources come in as a named
+# context and the web-build stage is selected explicitly:
+#   docker build -t jarvis-live:web \
+#     --build-context webctx=web --build-arg WEB_SRC=webctx \
+#     --build-arg WEB_DIST_SOURCE=web-build -f server/Dockerfile server
+# Without those args the image is built with no dashboard (and without pulling node).
+ARG WEB_SRC=web-src-empty
+# A stage/image that provides /dist. Default is an empty stage, so nothing is copied.
+ARG WEB_DIST_SOURCE=web-dist-empty
+# Prompt templates (prompts/ at the repo root, e.g. the work item template), the same way:
+#   --build-context promptsctx=prompts --build-arg PROMPTS_SRC=promptsctx \
+#   --build-arg PROMPTS_SOURCE=prompts-copy
+# Without them the image has no templates, and work items cannot be turned on.
+ARG PROMPTS_SRC=prompts-src-empty
+ARG PROMPTS_SOURCE=prompts-empty
+
+FROM ${PYTHON_IMAGE} AS builder
+RUN pip install --no-cache-dir "uv>=0.8,<0.9"
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy \
+    UV_PYTHON_DOWNLOADS=never \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
+WORKDIR /app
+# Dependencies first for layer caching, then the project itself.
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --extra server --no-install-project
+COPY src ./src
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --extra server --no-editable
+
+FROM scratch AS web-src-empty
+
+FROM ${WEB_SRC} AS web-src
+
+FROM ${NODE_IMAGE} AS web-build
+WORKDIR /web
+COPY --from=web-src . ./
+RUN npm ci && npm run build && mv dist /dist
+
+FROM ${PYTHON_IMAGE} AS web-dist-empty
+RUN mkdir /dist
+
+FROM ${WEB_DIST_SOURCE} AS web-dist
+
+FROM scratch AS prompts-src-empty
+
+FROM ${PROMPTS_SRC} AS prompts-src
+
+FROM ${PYTHON_IMAGE} AS prompts-copy
+COPY --from=prompts-src . /prompts
+
+FROM ${PYTHON_IMAGE} AS prompts-empty
+RUN mkdir /prompts
+
+FROM ${PROMPTS_SOURCE} AS prompts
+
+FROM ${PYTHON_IMAGE} AS runtime
+# The commit this image was built from: the server runs the dispatch runner of the same
+# commit (ghcr.io/lordmuffin/jarvis-dispatch-runner:sha-<7>).
+ARG GIT_SHA=""
+ENV JARVIS_LIVE_GIT_SHA=${GIT_SHA}
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    JARVIS_LIVE_DATA_DIR=/data \
+    JARVIS_LIVE_INDEX_DIR=/index
+# Only /data, /index and /tmp are writable; the rest of the root fs can be read-only.
+# ffmpeg decodes uploaded recordings (POST /v1/sessions/upload) to the stream codec.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+# pg_dump / pg_restore for `jarvis-live backup` and `restore-session`. They must be the server's
+# major version (the CNPG cluster runs 18): pg_dump refuses a newer server.
+ARG POSTGRES_CLIENT_MAJOR=18
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+        https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends "postgresql-client-${POSTGRES_CLIENT_MAJOR}" \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN groupadd --gid 10001 jarvis \
+    && useradd --uid 10001 --gid 10001 --no-create-home --shell /usr/sbin/nologin jarvis \
+    && mkdir -p /data /index \
+    && chown 10001:10001 /data /index \
+    && chmod 1777 /tmp
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=web-dist /dist /app/web/dist
+COPY --from=prompts /prompts /app/prompts
+WORKDIR /app
+USER 10001:10001
+EXPOSE 8080
+CMD ["uvicorn","jarvis_live.app:app","--host","0.0.0.0","--port","8080"]
