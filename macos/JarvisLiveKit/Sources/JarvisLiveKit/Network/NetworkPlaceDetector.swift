@@ -16,7 +16,8 @@ public enum NetworkPlaceDetector {
 
     /// `GET /healthz`: can this network reach the server at all? Any failure is false. Checks the
     /// body so a captive portal answering 200 doesn't count.
-    public static func isReachable(baseURL: URL, session: URLSession? = nil) async -> Bool {
+    public static func isReachable(baseURL: URL, session: URLSession? = nil, gate: EgressGate = .shared) async -> Bool {
+        guard !gate.isBlocking else { return false }
         let request = URLRequest(url: baseURL.appending(path: "healthz"), timeoutInterval: probeTimeout)
         let result = try? await (session ?? probeSession).data(for: request)
         guard let data = result?.0, let http = result?.1 as? HTTPURLResponse, (200..<300).contains(http.statusCode)

@@ -13,6 +13,7 @@ import websockets
 from jarvis_live.protocol import BYTES_PER_MS, MIN_PAYLOAD, encode_frame
 
 FRAME_MS = 100
+DRAFT_EVERY_FRAMES = 5
 CHANNEL_INDEX = {"mic": 0, "system": 1}
 
 
@@ -50,7 +51,9 @@ class ReplayProducer:
         channel: str = "mic",
         speed: float = 4.0,
         frame_ms: int = FRAME_MS,
+        drafts: bool = False,
     ) -> None:
+        self.drafts = drafts  # also send a partial draft every DRAFT_EVERY_FRAMES, like a client
         self.server = server.rstrip("/")
         self.token = token
         self.channel = channel
@@ -129,6 +132,19 @@ class ReplayProducer:
                 await ws.send(
                     encode_frame(CHANNEL_INDEX[self.channel], seq, seq * self.frame_ms, frames[seq])
                 )
+                if self.drafts and seq % DRAFT_EVERY_FRAMES == 0:
+                    await ws.send(
+                        json.dumps(
+                            {
+                                "type": "draft_segment",
+                                "channel": self.channel,
+                                "start_ms": 0,
+                                "end_ms": seq * self.frame_ms,
+                                "text": "draft",
+                                "final": False,
+                            }
+                        )
+                    )
                 sent += 1
                 res.sent_frames += 1
                 await asyncio.sleep(self.frame_ms / 1000 / self.speed)
@@ -161,7 +177,12 @@ def _first_seq(resume_from: int | None, server_acked: int | None) -> int:
 
 
 async def replay(
-    server: str, token: str, wav: Path, channel: str = "mic", speed: float = 4.0
+    server: str,
+    token: str,
+    wav: Path,
+    channel: str = "mic",
+    speed: float = 4.0,
+    drafts: bool = False,
 ) -> ReplayResult:
-    producer = ReplayProducer(server, token, channel=channel, speed=speed)
+    producer = ReplayProducer(server, token, channel=channel, speed=speed, drafts=drafts)
     return await producer.run(read_wav_pcm(wav))

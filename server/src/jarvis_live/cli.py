@@ -98,7 +98,9 @@ def _claim_owner(email: str) -> int:
 def _replay(args: argparse.Namespace) -> int:
     from jarvis_live.replay import replay
 
-    res = asyncio.run(replay(args.server, args.token, Path(args.wav), args.channel, args.speed))
+    res = asyncio.run(
+        replay(args.server, args.token, Path(args.wav), args.channel, args.speed, args.drafts)
+    )
     segments = [e for e in res.events if e.get("type") == "segment"]
     print(f"session {res.session_id}: sent {res.sent_frames} frames, acked {res.acked}")
     for s in segments:
@@ -138,6 +140,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--wav", required=True)
     p.add_argument("--channel", choices=["mic", "system"], default="mic")
     p.add_argument("--speed", type=float, default=4.0)
+    p.add_argument(
+        "--drafts", action="store_true", help="also send partial drafts, like a client does"
+    )
 
     args = parser.parse_args(argv)
     if args.cmd == "create-device":

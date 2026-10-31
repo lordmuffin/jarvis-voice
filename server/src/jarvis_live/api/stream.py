@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import time
 import uuid
 
 from fastapi import APIRouter, WebSocket
@@ -130,6 +131,7 @@ async def _producer(
         log.info("superseding previous producer connection")
         await close_producer(ing.producer, 4409)
     ing.producer = ws
+    ing.producer_gone_at = None
     cursor = ing.store.cursor()
     sub.put(HelloAck(session=str(row.id), acked={"mic": cursor["mic"], "system": cursor["system"]}))  # type: ignore[arg-type]
     log.info("producer connected", extra={"cursor": cursor, "resume": hello.resume.model_dump()})
@@ -143,6 +145,7 @@ async def _producer(
         await asyncio.gather(ack_task, return_exceptions=True)
         if ing.producer is ws:
             ing.producer = None
+            ing.producer_gone_at = time.monotonic()
         await ing.store.maybe_fsync(force=True)
     if ended:
         _flush_acks(sub, ing, dirty)
@@ -211,6 +214,7 @@ async def _producer_loop(
             await _reject(sub, ws, "bad_message", e.errors()[0]["msg"], log)
             return False
         if isinstance(parsed, DraftSegment):
+            ing.pipeline.on_draft(parsed)
             if parsed.final:  # partial drafts are only relayed, not stored
                 await save_draft(sm, ing.session_id, parsed)
             bus.publish(sid, parsed)
