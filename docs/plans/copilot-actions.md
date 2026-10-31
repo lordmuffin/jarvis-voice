@@ -59,7 +59,7 @@ auto-run path, for any kind.
 | D3 | May a **device token** (macOS) approve actions? Work items say no. | Yes for actions, but with safeguards: approval must carry the `payload_sha256` the client displayed (so it approves exactly what it saw), targets are allowlisted server-side, and every approval records `actor_kind=device`. Reason: vault append / reminder / PR comment are far lower-risk than dispatching code. If you'd rather keep the rule, macOS deep-links to the web review page and "one tap" becomes "tap, then tap". |
 | D4 | Where does a proposed task land in Work Tracker? | `## Needs Triage` (the board's rule for unreviewed captures). Format: `- [ ] <text> [[<session note>]] [session](<web url>) 📅 <due> ^jv-<id8>`. |
 | D5 | Where does the "Proposed actions" checklist go in the note? "Ends with" would mean after the transcript. | Immediately **before `## Transcript`**, so it stays visible. The checklist is a snapshot with a review link. Ticking boxes in Obsidian approves nothing. |
-| D6 | PR comments need a repo client that isn't the Notes repo. | Allowlist only (`work_repos` / `work_forgejo_repos`). I have **not** verified how the GitHub App token (`dispatch/githubapp.py`) or the Forgejo token could be reused for comments. First task in implementation is a spike to confirm. If it's not clean, `git.pr_comment` ships last or is cut from v1. |
+| D6 | PR comments need a repo client that isn't the Notes repo. | **Resolved (step 6):** the GitHub App (`dispatch/githubapp.py`) can comment: a per-comment token for one repo with only `pull_requests: write` + `metadata: read`. Only repos whose PRs live on GitHub qualify (dispatch allowlist minus `work_forgejo_repos`, whose token is read-only and whose GitHub copy is a mirror). Not yet exercised against real GitHub. Original question: I have **not** verified how the GitHub App token (`dispatch/githubapp.py`) or the Forgejo token could be reused for comments. First task in implementation is a spike to confirm. If it's not clean, `git.pr_comment` ships last or is cut from v1. |
 
 ## 3. Action schema
 
@@ -253,7 +253,7 @@ REST, owner-scoped (404 for anyone else), under `/v1`: `GET /sessions/{id}/actio
 4. **Done** (`actions/vault.py`). `feat(server)`: `task.create`/`vault.append` executor on `fake_github`: marker idempotency,
    crash-reconcile, conflict, merge-diff guard. **First time "done when" can be checked locally.**
 5. **Done** (`actions/reminders.py`). `feat(server)`: `Notifier.send()`, `scheduled_reminders`, `ReminderLoop`.
-6. D6 spike, then `git.pr_comment`.
+6. **Done** (`actions/comments.py`). D6 spike, then `git.pr_comment`.
 7. `feat(web)`: panel + review page (+ Playwright).
 8. `feat(protocol)` + `feat(macos)`: `proposals` in `copilot`, fixtures, Swift tests, panel UI.
 9. Eval harness + `actions-report`.

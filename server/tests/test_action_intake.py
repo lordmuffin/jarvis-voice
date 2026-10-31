@@ -69,7 +69,6 @@ def test_evidence_outside_the_transcript_drops_the_proposal() -> None:
 def test_prompts_ask_for_explicit_intent_only() -> None:
     for system in (COPILOT_SYSTEM, FINAL_SYSTEM):
         assert "proposals" in system and "explicitly" in system
-    assert "git.pr_comment" not in COPILOT_SYSTEM  # until the PR-comment executor ships
 
 
 # --- intake --------------------------------------------------------------------------------

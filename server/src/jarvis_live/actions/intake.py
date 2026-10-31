@@ -80,3 +80,7 @@ class SessionProposals:
     async def known(self) -> list[str]:
         """Everything proposed so far, open or closed: told to the model so it does not repeat."""
         return [_label(r.kind, r.payload) for r in await self.listing()]
+
+    def repos(self) -> list[str]:
+        """Repos the copilot may propose a PR comment on (those an executor can reach)."""
+        return sorted(self._intake._context().repos)

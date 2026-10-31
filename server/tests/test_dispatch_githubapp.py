@@ -74,3 +74,22 @@ async def test_a_refusal_is_an_error(tmp_path: Path) -> None:
     )
     with pytest.raises(TokenError, match="422.*not installed"):
         await tokens.mint("lordmuffin/other")
+
+
+async def test_a_comment_token_can_ask_for_fewer_permissions(tmp_path: Path) -> None:
+    path, _ = key(tmp_path)
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(201, json={"token": "ghs_c"})
+
+    tokens = AppTokens(
+        httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        api="https://api.github.test",
+        app_id="1",
+        installation_id="2",
+        key_file=path,
+    )
+    await tokens.mint("lordmuffin/jarvis-voice", permissions={"pull_requests": "write"})
+    assert json.loads(seen[0].content)["permissions"] == {"pull_requests": "write"}

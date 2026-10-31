@@ -128,6 +128,7 @@ class CopilotLoop:
             title=title,
             state_json=self.state.prompt_json(made),
             related="\n".join(f"- {r.title} [{r.path}]: {r.snippet}" for r in self.state.related),
+            repos=self._proposals.repos() if self._proposals else (),
             transcript=render_lines(lines),
         )
         try:

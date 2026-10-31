@@ -10,6 +10,7 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
+from jarvis_live.actions.comments import PrCommentExecutor, commentable_repos
 from jarvis_live.actions.intake import ActionIntake
 from jarvis_live.actions.reminders import ReminderExecutor, ReminderLoop
 from jarvis_live.actions.service import ActionService, Executor
@@ -98,7 +99,7 @@ def _mount_web(app: FastAPI, dist: Path) -> None:
         return FileResponse(index, headers=no_cache)  # SPA fallback
 
 
-def _action_context(cfg: Settings) -> Context:
+def _action_context(cfg: Settings, commentable: frozenset[str]) -> Context:
     """What validating a proposal needs from this deployment: the vault clone's notes and the
     repo allowlist."""
     clone = cfg.vault_clone_dir
@@ -110,7 +111,7 @@ def _action_context(cfg: Settings) -> Context:
         now=datetime.now(UTC),
         timezone=cfg.timezone,
         vault_has=vault_has,
-        repos=frozenset(cfg.work_repo_allowlist),
+        repos=commentable,
     )
 
 
@@ -219,11 +220,29 @@ def create_app(
             title_prefix=cfg.notify_title_prefix,
         )
         executors: dict[str, Executor] = {"reminder.schedule": ReminderExecutor(cfg, sm, push)}
+        # PR comments need the GitHub App, and only reach repos whose PRs live on GitHub.
+        comment_tokens = app_tokens
+        if comment_tokens is None and (
+            cfg.github_app_id and cfg.github_app_installation_id and cfg.github_app_key_file
+        ):
+            comment_tokens = AppTokens(
+                client,
+                api=cfg.github_api,
+                app_id=cfg.github_app_id,
+                installation_id=cfg.github_app_installation_id,
+                key_file=cfg.github_app_key_file,
+            )
+        commentable: frozenset[str] = frozenset()
+        if comment_tokens is not None:
+            executors["git.pr_comment"] = PrCommentExecutor(cfg, client, comment_tokens)  # type: ignore[arg-type]
+            commentable = commentable_repos(cfg)
         if gh is not None:
             vault_writer = VaultExecutor(cfg, sm, gh)
             executors = {"task.create": vault_writer, "vault.append": vault_writer}
-        action_service = ActionService(cfg, sm, executors, lambda: _action_context(cfg))
-        intake = ActionIntake(action_service, lambda: _action_context(cfg))
+        action_service = ActionService(
+            cfg, sm, executors, lambda: _action_context(cfg, commentable)
+        )
+        intake = ActionIntake(action_service, lambda: _action_context(cfg, commentable))
         if action_service.enabled:
             await action_service.recover()
             tasks.append(asyncio.create_task(ReminderLoop(cfg, sm, push).run()))

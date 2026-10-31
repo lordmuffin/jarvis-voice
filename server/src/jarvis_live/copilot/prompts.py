@@ -1,6 +1,8 @@
 """Prompt text. The copilot prompt starts with ``/no_think`` (Qwen3 latency convention); the
 finalizer's must not (whether it reasons is the ``final_thinking`` setting)."""
 
+from collections.abc import Sequence
+
 COPILOT_SYSTEM = """/no_think
 You are Jarvis, a live meeting copilot. You read a rolling transcript and keep a small, accurate \
 set of notes for the person labelled "me". "them" is everyone else on the call.
@@ -16,7 +18,9 @@ fact_check. ttl_s is how long it stays useful in seconds (default 120). Skip if 
 saying.
 - proposals: things "me" explicitly asked to have DONE, each for their approval. Kinds: \
 task.create {text, due}; reminder.schedule {title, body, at}, with at an ISO datetime resolved \
-from Today; vault.append {path, text}, only to a path shown under RELATED VAULT NOTES. Each needs \
+from Today; vault.append {path, text}, only to a path shown under RELATED VAULT NOTES; \
+git.pr_comment {repo, pr, body}, only for a repo under REPOSITORIES YOU MAY COMMENT ON and a PR \
+number "me" actually said. Each needs \
 evidence: [{"at": "mm:ss", "text": the line}]. Propose only when "me" explicitly asks ("remind \
 me...", "add a task...", "note that in..."), never because a subject was merely discussed. None is \
 the normal answer; at most two. Do not repeat anything in proposals_already_made.
@@ -78,13 +82,25 @@ UNTITLED = "(untitled: propose one)"
 
 
 def copilot_user(
-    *, today: str, title: str | None, state_json: str, related: str, transcript: str
+    *,
+    today: str,
+    title: str | None,
+    state_json: str,
+    related: str,
+    transcript: str,
+    repos: Sequence[str] = (),
 ) -> str:
+    commentable = (
+        "REPOSITORIES YOU MAY COMMENT ON\n" + "\n".join(f"- {r}" for r in repos) + "\n\n"
+        if repos
+        else ""
+    )
     return (
         f"Today: {today}\n\n"
         f"SESSION TITLE\n{title or UNTITLED}\n\n"
         f"CURRENT STATE\n{state_json}\n\n"
         f"RELATED VAULT NOTES\n{related or '(none)'}\n\n"
+        f"{commentable}"
         f"TRANSCRIPT\n{transcript}"
     )
 
