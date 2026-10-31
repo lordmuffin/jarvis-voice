@@ -29,10 +29,10 @@ WORKDIR /app
 # Dependencies first for layer caching, then the project itself.
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-install-project
+    uv sync --frozen --no-dev --extra server --no-install-project
 COPY src ./src
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable
+    uv sync --frozen --no-dev --extra server --no-editable
 
 FROM scratch AS web-src-empty
 

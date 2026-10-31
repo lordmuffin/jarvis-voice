@@ -156,8 +156,12 @@ async def test_replay_fills_the_metric_set_and_a_throttled_tier_alerts_once(
         whisper.delay_s = 0.6
         for n in range(2):  # 2 segments per replay: four slow requests meet slo_min_samples
             sid = await system.create_session(f"throttled {n}", mode="meeting")
-            await mic.run(TWO_UTTERANCES, session_id=sid)
+            # The SLO is only judged while a session is live: keep the last one open until the
+            # slow responses are in, or the watchdog may never see the window.
+            await mic.run(TWO_UTTERANCES, session_id=sid, end=n == 0)
         await eventually(lambda: len(slo_pushes(notifier)) >= 1, timeout=20)
+        async with httpx.AsyncClient(base_url=server.url, headers=mic._auth) as c:
+            (await c.post(f"/v1/sessions/{sid}/end")).raise_for_status()
         assert slo_pushes(notifier) == [f"Jarvis: STT tier {TIER} slow"]
         assert v("jarvis_live_slo_breach", slo="stt_tier", tier=TIER) == 1
 
