@@ -171,6 +171,7 @@ public actor LiveConnection {
     }
 
     private func runOnce() async throws {
+        try EgressGate.shared.check()
         let ticket = try await ticketProvider()
         let task = urlSession.webSocketTask(with: streamURL(ticket: ticket))
         task.resume()

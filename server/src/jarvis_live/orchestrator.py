@@ -165,8 +165,8 @@ class Orchestrator:
 
     async def _ideas_eligible(self, row: SessionRow) -> bool:
         """Work items target the owner's repositories: only the owner's and admins' sessions
-        are mined for them, and never a local-only one."""
-        if row.local_only:
+        are mined for them, and never a local-only or restricted one."""
+        if row.local_only or row.restricted:
             return False
         if row.user_id == OWNER_USER_ID:
             return True

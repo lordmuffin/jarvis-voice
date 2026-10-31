@@ -85,6 +85,15 @@ class ProtocolFixtureTest {
         )
     }
 
+    @Test fun restrictedSessionCreateMatchesFixture() {
+        assertSameJson(
+            fixture("valid", "session_create_request__restricted"),
+            RestBodies.sessionCreate(
+                SessionMode.MEETING, listOf(Channel.MIC, Channel.SYSTEM), "Vendor call", restricted = true,
+            ),
+        )
+    }
+
     @Test fun ticketRequestMatchesFixture() {
         assertSameJson(fixture("valid", "ticket_request"), RestBodies.ticket())
     }

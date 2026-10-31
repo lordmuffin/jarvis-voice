@@ -1,0 +1,9 @@
+{
+  "title": "Vendor call",
+  "mode": "meeting",
+  "channels": [
+    "mic",
+    "system"
+  ],
+  "restricted": true
+}

@@ -44,7 +44,9 @@ class LiveUploader(private val context: Context) {
 
         try {
             if (meta.serverId == null) {
-                val serverId = api.createSession(meta.mode, listOf(Channel.MIC), meta.title)
+                // A session kept local-only is a work call until you say otherwise: the server
+                // files its note apart and never publishes or pushes it.
+                val serverId = api.createSession(meta.mode, listOf(Channel.MIC), meta.title, restricted = true)
                 meta = repo.rename(meta, serverId).copy(serverId = serverId, state = SessionMeta.State.PENDING)
                 repo.write(meta)
             }
@@ -126,11 +128,11 @@ class LiveUploadWorker(context: Context, params: WorkerParameters) : CoroutineWo
                 .enqueueUniqueWork(workName(sessionId), ExistingWorkPolicy.KEEP, req)
         }
 
-        /** Resumes online sessions that never finished (local-only ones wait for the user). */
+        /** Resumes online sessions that never finished, and fallback recordings (sessions chosen local wait for the user). */
         fun enqueueInterrupted(context: Context, activeId: String?) {
             val repo = SessionRepository(LiveSettings(context).sessionsRoot)
             for (meta in repo.pending(activeId)) {
-                if (meta.serverId != null && meta.state != SessionMeta.State.FAILED) enqueue(context, meta.id)
+                if (meta.autoUploads) enqueue(context, meta.id)
             }
         }
     }

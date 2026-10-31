@@ -5,7 +5,7 @@
     <string name="live_mode_solo">Solo</string>
     <string name="live_mode_meeting">Meeting</string>
     <string name="live_title_hint">Title (optional)</string>
-    <string name="live_local_only">Local-only (no network)</string>
+    <string name="live_local_only">Local-only (record here, upload later)</string>
     <string name="live_away_checking">Checking whether Jarvis Live is reachable…</string>
     <string name="live_away_home">Home network</string>
     <string name="live_away_netbird">On NetBird</string>
@@ -32,7 +32,8 @@
 
     <string name="live_notif_title">Jarvis Live session</string>
     <string name="live_notif_streaming">Recording and streaming</string>
-    <string name="live_notif_local">Recording locally</string>
+    <string name="live_notif_local">Recording locally (not streaming)</string>
+    <string name="live_notif_buffering">Recording, server offline: buffering</string>
     <string name="live_notif_finishing">Finishing upload…</string>
     <string name="live_channel_name">Jarvis Live session</string>
 

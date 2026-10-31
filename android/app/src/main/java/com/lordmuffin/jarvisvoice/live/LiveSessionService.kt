@@ -87,6 +87,9 @@ class LiveSessionService : Service() {
     private lateinit var repo: SessionRepository
 
     private var run: Run? = null
+
+    /** This service holds [EgressGate] closed while a local-only session is under way. */
+    private val gateHeld = java.util.concurrent.atomic.AtomicBoolean(false)
     /** Stop tapped while the session was still being created. */
     @Volatile private var stopRequested = false
 
@@ -153,10 +156,11 @@ class LiveSessionService : Service() {
             // Off the main thread: freeing the model waits for a transcription still inside it.
             r.whisper?.let { w -> Thread({ w.release() }, "jarvis-live-release").start() }
             repo.update(r.meta.id) { it.copy(state = SessionMeta.State.PENDING) }
-            if (r.meta.serverId != null) LiveUploadWorker.enqueue(this, r.meta.id)
+            if (r.meta.autoUploads) LiveUploadWorker.enqueue(this, r.meta.id)
         }
         run = null
         releaseWakeLock()
+        releaseGate()
         if (_ui.value.isActive) _ui.update { it.copy(phase = LiveUiState.Phase.IDLE) }
         // Bring back the enhancement LLM that startSession unloaded.
         VoiceOverlayService.instance?.loadLlmIfConfigured()
@@ -183,7 +187,10 @@ class LiveSessionService : Service() {
         LlmEnhancer.destroy()
 
         var localOnly = requestedLocalOnly
+        // Shut the network before anything else happens, so not even a failed start leaks.
+        if (localOnly) holdGate()
         var notice: String? = null
+        var fellBack = false
         val api = if (settings.isConfigured) settings.apiClient() else null
         var serverId: String? = null
         if (!localOnly && api != null) {
@@ -195,7 +202,8 @@ class LiveSessionService : Service() {
                 // No connectivity: record anyway and upload later, rather than losing the moment.
                 DebugLog.w(TAG, "createSession failed, recording locally: ${e.message}")
                 localOnly = true
-                notice = "Server unreachable — recording locally. Upload it when you're back online."
+                fellBack = true
+                notice = "Server unreachable — recording locally. It will upload when the server is back."
             }
         }
 
@@ -203,6 +211,7 @@ class LiveSessionService : Service() {
         val meta = SessionMeta(
             id = id, mode = mode, title = title, startedAt = System.currentTimeMillis(),
             localOnly = localOnly, serverId = serverId, state = SessionMeta.State.RECORDING,
+            fellBack = fellBack,
         )
         val outbox = try {
             repo.write(meta)
@@ -227,7 +236,7 @@ class LiveSessionService : Service() {
                     _ui.update { it.copy(session = r.store.snapshot) }
                 }
             }
-            r.jobs += scope.launch { conn.state.collect { s -> _ui.update { it.copy(connection = s) } } }
+            r.jobs += scope.launch { conn.state.collect { s -> _ui.update { it.copy(connection = s) }; updateNotification() } }
         }
 
         try {
@@ -387,12 +396,13 @@ class LiveSessionService : Service() {
         }
         val meta = r.meta.copy(state = state, error = failure, notePath = notePath)
         repo.write(meta)
-        if (state == SessionMeta.State.PENDING && meta.serverId != null) LiveUploadWorker.enqueue(this, meta.id)
+        if (state == SessionMeta.State.PENDING && meta.autoUploads) LiveUploadWorker.enqueue(this, meta.id)
 
         val message = when {
             failure != null -> "Server ended the session. $failure"
             state == SessionMeta.State.PENDING && meta.serverId != null ->
                 "Still uploading. It will finish in the background."
+            meta.fellBack -> "Saved locally. It will upload when the server is back."
             meta.localOnly -> "Saved locally. Upload it from Pending sessions."
             else -> error
         }
@@ -404,6 +414,7 @@ class LiveSessionService : Service() {
         }
         DebugLog.i(TAG, "session ${meta.id} stopped state=$state")
         releaseWakeLock()
+        releaseGate()
         main.post {
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -433,6 +444,7 @@ class LiveSessionService : Service() {
         // Failed while stopping (or with nothing running): skip the rest of the stop.
         run = null
         releaseWakeLock()
+        releaseGate()
         _ui.update { it.copy(phase = LiveUiState.Phase.IDLE, message = message) }
         main.post {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -442,6 +454,7 @@ class LiveSessionService : Service() {
 
     private fun abortStart(message: String) {
         DebugLog.w(TAG, "start aborted: $message")
+        releaseGate()
         _ui.value = LiveUiState(message = message)
         main.post {
             stopForeground(STOP_FOREGROUND_REMOVE)
@@ -488,9 +501,12 @@ class LiveSessionService : Service() {
         val state = _ui.value
         val text = when (state.phase) {
             LiveUiState.Phase.STOPPING -> getString(R.string.live_notif_finishing)
-            else -> if (state.muted) getString(R.string.live_notif_muted)
-                else if (state.interrupted) getString(R.string.live_notif_interrupted)
-                else if (state.localOnly) getString(R.string.live_notif_local) else getString(R.string.live_notif_streaming)
+            else -> when {
+                state.localOnly -> getString(R.string.live_notif_local)
+                state.connection is ConnState.Reconnecting || state.connection is ConnState.Failed ->
+                    getString(R.string.live_notif_buffering)
+                else -> getString(R.string.live_notif_streaming)
+            }
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.live_notif_title))
@@ -525,6 +541,15 @@ class LiveSessionService : Service() {
         wakeLock = (getSystemService(POWER_SERVICE) as PowerManager)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "JarvisVoice::LiveSession")
             .also { it.acquire(MAX_SESSION_MS) }
+    }
+
+    /** Closes the network for a local-only session; [releaseGate] opens it again. Idempotent. */
+    private fun holdGate() {
+        if (gateHeld.compareAndSet(false, true)) EgressGate.shared.beginLocalSession()
+    }
+
+    private fun releaseGate() {
+        if (gateHeld.compareAndSet(true, false)) EgressGate.shared.endLocalSession()
     }
 
     private fun releaseWakeLock() {
