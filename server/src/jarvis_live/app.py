@@ -9,7 +9,16 @@ import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from jarvis_live.api import account, auth, homelab, publishing, sessions, stream, work_items
+from jarvis_live.api import (
+    account,
+    auth,
+    homelab,
+    publishing,
+    sessions,
+    speakers,
+    stream,
+    work_items,
+)
 from jarvis_live.apps import load_family_apps
 from jarvis_live.auth import TicketStore
 from jarvis_live.bus import Bus
@@ -290,6 +299,7 @@ def create_app(
     app.include_router(auth.router)
     app.include_router(account.router)
     app.include_router(sessions.router)
+    app.include_router(speakers.router)
     app.include_router(publishing.router)
     app.include_router(work_items.router)
     app.include_router(stream.router)

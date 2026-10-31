@@ -8,6 +8,7 @@ import httpx
 
 from jarvis_live.copilot.schema import FinalNote
 from jarvis_live.diarize.align import Turn
+from jarvis_live.diarize.client import Diarization
 from tests.audio import TWO_UTTERANCES
 from tests.conftest import ServerHandle
 from tests.fakes import FakeLLM
@@ -22,10 +23,10 @@ class ScriptedDiarizer:
     def __init__(self, fail: bool = False) -> None:
         self.fail = fail
 
-    async def diarize(self, pcm: Path) -> list[Turn]:
+    async def diarize(self, pcm: Path) -> Diarization:
         if self.fail:
             raise RuntimeError("sidecar exploded")
-        return [Turn(0, 3000, "SPEAKER_00"), Turn(3000, 7000, "SPEAKER_01")]
+        return Diarization([Turn(0, 3000, "SPEAKER_00"), Turn(3000, 7000, "SPEAKER_01")])
 
 
 def _llm() -> FakeLLM:

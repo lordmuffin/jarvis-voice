@@ -481,7 +481,7 @@ async def get_session(
                 id=sp.speaker_id,
                 label=sp.label,
                 ordinal=sp.ordinal,
-                enrolled=False,
+                enrolled=sp.profile_id is not None,
                 is_owner=sp.is_owner,
             )
             for sp in speakers

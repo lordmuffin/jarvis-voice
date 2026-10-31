@@ -13,9 +13,16 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from jarvis_live.api.audio import audio_available, pcm_path
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
-from jarvis_live.db.models import SegmentRow, SessionSpeaker, SpeakerTurn
+from jarvis_live.db.models import (
+    SegmentRow,
+    Session,
+    SessionSpeaker,
+    SpeakerProfile,
+    SpeakerTurn,
+)
 from jarvis_live.diarize.align import Turn, assign
-from jarvis_live.diarize.client import Diarizer, DiarizeUnavailable
+from jarvis_live.diarize.client import Diarization, Diarizer, DiarizeUnavailable
+from jarvis_live.diarize.identify import Profile, match
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import BYTES_PER_MS, SpeakerAssignment, SpeakerInfo, SpeakerUpdate
 
@@ -69,7 +76,7 @@ class DiarizeService:
 
     async def _run(self, session_id: uuid.UUID, channels: list[str], diarizer: Diarizer) -> bool:
         log = session_logger(__name__, session_id)
-        found: dict[str, list[Turn]] = {}
+        found: dict[str, Diarization] = {}
         for channel in channels:
             if not audio_available(self._cfg.data_dir, session_id, channel):
                 continue
@@ -85,6 +92,7 @@ class DiarizeService:
             return False
         try:
             await self._store(session_id, found)
+            await self._recognise(session_id, list(found))
             return await self.realign(session_id)
         except Exception:
             log.exception("storing speakers failed")
@@ -99,7 +107,7 @@ class DiarizeService:
             session_logger(__name__, session_id).exception("aligning speakers failed")
             return False
 
-    async def _store(self, session_id: uuid.UUID, found: dict[str, list[Turn]]) -> None:
+    async def _store(self, session_id: uuid.UUID, found: dict[str, Diarization]) -> None:
         async with self._sm() as db:
             channels = list(found)
             await db.execute(
@@ -112,8 +120,9 @@ class DiarizeService:
                     SessionSpeaker.session_id == session_id, SessionSpeaker.channel.in_(channels)
                 )
             )
-            rows: list[tuple[int, str, str]] = []  # (first heard, channel, speaker id)
-            for channel, turns in found.items():
+            rows: list[tuple[int, str, str, list[float] | None, str | None]] = []
+            for channel, result in found.items():
+                turns = result.turns
                 ids = _ids(channel, turns)
                 first: dict[str, int] = {}
                 for t in turns:
@@ -127,7 +136,11 @@ class DiarizeService:
                             speaker_id=ids[t.speaker],
                         )
                     )
-                rows += [(ms, channel, sid) for sid, ms in first.items()]
+                names = {sid: name for name, sid in ids.items()}
+                rows += [
+                    (ms, channel, sid, result.embeddings.get(names[sid]), result.model_id)
+                    for sid, ms in first.items()
+                ]
             await db.flush()
             # Numbered across the whole session by first appearance, for "Speaker N".
             others = (
@@ -136,7 +149,7 @@ class DiarizeService:
                 )
             ).scalars()
             ordinal = max(others, default=0)
-            for _, channel, sid in sorted(rows):
+            for _, channel, sid, vector, model_id in sorted(rows, key=lambda r: r[:3]):
                 ordinal += 1
                 db.add(
                     SessionSpeaker(
@@ -144,8 +157,64 @@ class DiarizeService:
                         speaker_id=sid,
                         channel=channel,
                         ordinal=ordinal,
+                        embedding=vector,
+                        model_id=model_id,
                     )
                 )
+            await db.commit()
+
+    async def _recognise(self, session_id: uuid.UUID, channels: list[str]) -> None:
+        """Name the session's voices that are an enrolled voice of the session's user."""
+        async with self._sm() as db:
+            row = await db.get(Session, session_id)
+            if row is None:
+                return
+            profiles = (
+                (
+                    await db.execute(
+                        select(SpeakerProfile).where(SpeakerProfile.user_id == row.user_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            if not profiles:
+                return
+            speakers = (
+                (
+                    await db.execute(
+                        select(SessionSpeaker).where(
+                            SessionSpeaker.session_id == session_id,
+                            SessionSpeaker.channel.in_(channels),
+                            SessionSpeaker.embedding.is_not(None),
+                        )
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            by_id = {str(p.id): p for p in profiles}
+            for channel in channels:
+                for model_id in {s.model_id for s in speakers if s.channel == channel}:
+                    voices = {
+                        s.speaker_id: s.embedding
+                        for s in speakers
+                        if s.channel == channel and s.model_id == model_id and s.embedding
+                    }
+                    known = [
+                        Profile(str(p.id), p.embedding) for p in profiles if p.model_id == model_id
+                    ]
+                    found = match(
+                        voices,
+                        known,
+                        threshold=self._cfg.speaker_match_threshold,
+                        margin=self._cfg.speaker_match_margin,
+                    )
+                    for sp in speakers:
+                        if sp.channel == channel and (pid := found.get(sp.speaker_id)):
+                            sp.profile_id = by_id[pid].id
+                            sp.label = by_id[pid].label
+                            sp.is_owner = by_id[pid].is_owner
             await db.commit()
 
     async def _align(self, session_id: uuid.UUID) -> bool:
@@ -205,7 +274,12 @@ class DiarizeService:
                 .all()
             )
             infos = [
-                SpeakerInfo(id=s.speaker_id, label=s.label, enrolled=False, is_owner=s.is_owner)
+                SpeakerInfo(
+                    id=s.speaker_id,
+                    label=s.label,
+                    enrolled=s.profile_id is not None,
+                    is_owner=s.is_owner,
+                )
                 for s in speakers
             ]
             await db.commit()

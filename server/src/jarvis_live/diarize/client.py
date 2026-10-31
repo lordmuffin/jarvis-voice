@@ -1,6 +1,7 @@
 """Client for the diarizer sidecar (pyannote on the Spark): a recording in, speaker turns out."""
 
 from collections.abc import AsyncIterator, Iterator
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
@@ -17,9 +18,18 @@ class DiarizeUnavailable(Exception):
     """The diarizer could not produce turns for a recording."""
 
 
+@dataclass(frozen=True)
+class Diarization:
+    turns: list[Turn]
+    # One voiceprint per speaker, keyed like the turns' speaker names; all from ``model_id``.
+    embeddings: dict[str, list[float]] = field(default_factory=dict)
+    model_id: str | None = None
+
+
 class Diarizer(Protocol):
-    async def diarize(self, pcm: Path) -> list[Turn]:
-        """Turns for a raw 16 kHz mono PCM16LE file. Raises ``DiarizeUnavailable``."""
+    async def diarize(self, pcm: Path) -> Diarization:
+        """Turns (and voiceprints) for a raw 16 kHz mono PCM16LE file. Raises
+        ``DiarizeUnavailable``."""
         ...
 
 
@@ -36,15 +46,16 @@ async def _stream(pcm: Path) -> AsyncIterator[bytes]:
 
 
 class HttpDiarizer:
-    """``POST <url>/diarize`` with a WAV body; answers ``{"turns": [{start_ms, end_ms, speaker}]}``
-    (speaker: any string, stable within the recording)."""
+    """``POST <url>/diarize`` with a WAV body; answers
+    ``{"turns": [{start_ms, end_ms, speaker}], "embeddings"?: {speaker: [float]},
+    "model_id"?: str}`` (speaker: any string, stable within the recording)."""
 
     def __init__(self, url: str, client: httpx.AsyncClient, *, timeout_s: float | None) -> None:
         self._url = url.rstrip("/")
         self._client = client
         self._timeout_s = timeout_s
 
-    async def diarize(self, pcm: Path) -> list[Turn]:
+    async def diarize(self, pcm: Path) -> Diarization:
         try:
             r = await self._client.post(
                 self._url + "/diarize",
@@ -58,11 +69,17 @@ class HttpDiarizer:
             r.raise_for_status()
             raw = r.json()["turns"]
             turns = [Turn(int(t["start_ms"]), int(t["end_ms"]), str(t["speaker"])) for t in raw]
-        except (httpx.HTTPError, ValueError, KeyError, TypeError, OSError) as e:
+            body = r.json()
+            vectors = body.get("embeddings") or {}
+            embeddings = {str(name): [float(x) for x in vector] for name, vector in vectors.items()}
+            model_id = body.get("model_id")
+            if model_id is not None:
+                model_id = str(model_id)
+        except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError, OSError) as e:
             raise DiarizeUnavailable(repr(e)) from e
         if any(t.end_ms < t.start_ms for t in turns):
             raise DiarizeUnavailable("turn ends before it starts")
-        return turns
+        return Diarization(turns, embeddings, model_id)
 
 
 def audio_ms(pcm: Path) -> int:

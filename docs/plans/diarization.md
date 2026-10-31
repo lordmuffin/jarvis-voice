@@ -212,6 +212,22 @@ Each PR follows `TDD.md`, uses Conventional Commits, runs `make test` first.
 - `JARVIS_LIVE_DIARIZE_URL` is shipped commented-out in `base/configmap.yaml`: on only when the
   sidecar exists.
 
+### Decisions made in PR 3
+
+- **A voiceprint is the diarizer's per-speaker embedding** (the sidecar returns `embeddings` and a
+  `model_id` with the turns), not a centroid of hand-picked clean segments as first sketched.
+  Simpler, and the sidecar already averages over the whole speaker. Revisit if Phase 0 shows
+  contaminated clusters.
+- Naming a speaker (`PUT /v1/sessions/{id}/speakers/{speaker_id}`) enrols it. The same label again
+  refines the profile (weighted mean). `is_owner` marks "me" and never un-marks; one owner per user.
+  A profile is only compared with prints from the same `model_id`.
+- Recognition: cosine >= `speaker_match_threshold` (0.6, a placeholder to tune in Phase 0) and
+  ahead of the runner-up by `speaker_match_margin`; one cluster per profile per channel.
+- Profiles are never returned with their print; `DELETE /v1/speaker-profiles/{id}` forgets a voice.
+  Past sessions keep the name they were given and just stop being linked.
+- The DONE-WHEN "my enrolled voice is attributed correctly in a fresh session" is tested here with
+  scripted embeddings; with the real model it is still the Phase 0 check on the Spark.
+
 ## 9. Failure behaviour (hard requirement: never a failed session)
 
 | Failure | Result |

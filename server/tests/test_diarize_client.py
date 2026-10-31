@@ -38,9 +38,10 @@ async def test_posts_the_recording_as_wav_and_parses_turns(pcm: Path) -> None:
             },
         )
 
-    turns = await _diarizer(httpx.MockTransport(handler)).diarize(pcm)
+    result = await _diarizer(httpx.MockTransport(handler)).diarize(pcm)
 
-    assert turns == [Turn(0, 900, "SPEAKER_00"), Turn(900, 2000, "SPEAKER_01")]
+    assert result.turns == [Turn(0, 900, "SPEAKER_00"), Turn(900, 2000, "SPEAKER_01")]
+    assert result.embeddings == {} and result.model_id is None  # a sidecar may omit them
     assert seen["url"] == "http://diarize:8000/diarize"
     with wave.open(BytesIO(seen["body"]), "rb") as w:  # type: ignore[arg-type]
         assert (w.getnchannels(), w.getsampwidth(), w.getframerate()) == (1, 2, 16_000)
@@ -69,3 +70,29 @@ async def test_connection_error_is_diarize_unavailable(pcm: Path) -> None:
 
     with pytest.raises(DiarizeUnavailable):
         await _diarizer(httpx.MockTransport(boom)).diarize(pcm)
+
+
+async def test_voice_embeddings_come_back_per_speaker(pcm: Path) -> None:
+    body = {
+        "turns": [{"start_ms": 0, "end_ms": 900, "speaker": "SPEAKER_00"}],
+        "embeddings": {"SPEAKER_00": [0.5, -0.5, 1]},
+        "model_id": "wespeaker-resnet34",
+    }
+    d = _diarizer(httpx.MockTransport(lambda req: httpx.Response(200, json=body)))
+    result = await d.diarize(pcm)
+    assert result.embeddings == {"SPEAKER_00": [0.5, -0.5, 1.0]}
+    assert result.model_id == "wespeaker-resnet34"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{"embeddings": [1, 2]}, {"embeddings": {"A": "x"}}, {"embeddings": {"A": [1, "x"]}}],
+    ids=["not_a_map", "not_a_vector", "not_numbers"],
+)
+async def test_malformed_embeddings_are_diarize_unavailable(
+    pcm: Path, extra: dict[str, object]
+) -> None:
+    body = {"turns": [], **extra}
+    d = _diarizer(httpx.MockTransport(lambda req: httpx.Response(200, json=body)))
+    with pytest.raises(DiarizeUnavailable):
+        await d.diarize(pcm)

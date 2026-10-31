@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     # that the session goes on with the undiarized transcript.
     diarize_timeout_min_s: float = 60.0
     diarize_timeout_ratio: float = 0.3
+    # An enrolled voice is recognised at this cosine similarity, and only if it beats the next
+    # best enrolled voice by the margin. Depends on the embedding model: tune in Phase 0.
+    speaker_match_threshold: float = 0.6
+    speaker_match_margin: float = 0.05
 
     # LLM (LiteLLM's OpenAI-compatible API). Empty base URL disables the copilot and finalizer.
     litellm_base_url: str = ""
