@@ -28,3 +28,6 @@ coverage.json
 .coverage
 web/coverage/
 server/coverage.json
+
+# macOS
+.DS_Store
