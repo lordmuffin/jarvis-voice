@@ -138,9 +138,7 @@ class Outbox:
 
     def append(self, channel: str, pcm: bytes, t_ms: int) -> StoredFrame:
         """Assign the next seq and store the frame."""
-        return self.append_frame(
-            channel, self.next_seq(channel) if channel in CHANNELS else 0, t_ms, pcm
-        )
+        return self.append_frame(channel, self.next_seq(channel), t_ms, pcm)
 
     def append_frame(self, channel: str, seq: int, t_ms: int, pcm: bytes) -> StoredFrame:
         state = self._state(channel)
