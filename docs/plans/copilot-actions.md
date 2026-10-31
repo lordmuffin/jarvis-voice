@@ -254,7 +254,7 @@ REST, owner-scoped (404 for anyone else), under `/v1`: `GET /sessions/{id}/actio
    crash-reconcile, conflict, merge-diff guard. **First time "done when" can be checked locally.**
 5. **Done** (`actions/reminders.py`). `feat(server)`: `Notifier.send()`, `scheduled_reminders`, `ReminderLoop`.
 6. **Done** (`actions/comments.py`). D6 spike, then `git.pr_comment`.
-7. `feat(web)`: panel + review page (+ Playwright).
+7. **Done** (`web/src/views/SessionActions.tsx`, `jarvis/ActionCard.tsx`, `e2e/actions.spec.ts`). `feat(web)`: a Proposed actions section on the live and past session pages (one-tap Approve, Edit, Reject, Approve all, Retry, History). The cross-session "waiting on you" list is not built.
 8. `feat(protocol)` + `feat(macos)`: `proposals` in `copilot`, fixtures, Swift tests, panel UI.
 9. Eval harness + `actions-report`.
 

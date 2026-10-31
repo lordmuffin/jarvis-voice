@@ -176,3 +176,28 @@ def test_the_copilot_is_offered_pr_comments_only_with_repos_to_name() -> None:
     }
     assert "REPOSITORIES" not in copilot_user(**base)
     assert f"REPOSITORIES YOU MAY COMMENT ON\n- {REPO}" in copilot_user(**base, repos=[REPO])
+
+
+# --- wiring: every executor the deployment can support is registered together -------------
+
+
+def test_the_app_registers_every_executor_its_credentials_allow(tmp_path: Any) -> None:
+    from jarvis_live.actions.wiring import build_executors
+    from jarvis_live.notify.gotify import NullNotifier
+
+    client = httpx.AsyncClient()
+    cfg = Settings(work_repos=f"{REPO}  Jarvis")
+    notifier = NullNotifier()
+    sm: Any = None  # the executors only keep it
+
+    kinds, commentable = build_executors(cfg, sm, client, None, notifier, None)
+    assert sorted(kinds) == ["reminder.schedule"]  # no vault credential, no GitHub App (lab)
+    assert commentable == frozenset()
+
+    gh: Any = object()
+    kinds, _ = build_executors(cfg, sm, client, gh, notifier, None)
+    assert sorted(kinds) == ["reminder.schedule", "task.create", "vault.append"]
+
+    kinds, commentable = build_executors(cfg, sm, client, gh, notifier, Tokens())
+    assert sorted(kinds) == ["git.pr_comment", "reminder.schedule", "task.create", "vault.append"]
+    assert commentable == frozenset({REPO})

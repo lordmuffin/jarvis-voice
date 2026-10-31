@@ -136,3 +136,15 @@ async def test_mutations_need_the_feature_on(
         assert page == {"enabled": False, "items": []}
         r = await web.post(f"/v1/sessions/{sid}/actions/approve", json={"items": []})
         assert r.status_code == 503
+
+
+async def test_me_says_whether_the_user_can_review_actions(
+    aserver: ServerHandle, make_server: Callable[..., ServerHandle], sm: SM
+) -> None:
+    other = await create_user(sm, f"other {uuid.uuid4().hex[:6]}")
+    async with await web_client(aserver, sm, OWNER_USER_ID) as web:
+        assert (await web.get("/v1/me")).json()["actions"] is True
+    async with await web_client(aserver, sm, other.id) as web:
+        assert (await web.get("/v1/me")).json()["actions"] is False  # not owner or admin
+    async with await web_client(make_server(), sm, OWNER_USER_ID) as web:
+        assert (await web.get("/v1/me")).json()["actions"] is False  # feature off

@@ -10,6 +10,7 @@ import type { Channel, SessionDetail, SessionSummary } from "../types";
 import { NotePane } from "./NotePane";
 import { Panes } from "./Panes";
 import { SessionTitle } from "./SessionTitle";
+import { SessionActions } from "./SessionActions";
 import { SessionWorkItems } from "./WorkItems";
 
 // Same names as the transcript: the mic is the local speaker, system audio everyone else.
@@ -59,6 +60,7 @@ export function PastSession({
         actions={<ProcessControl detail={detail} onChanged={onChanged} />}
       />
       <Recordings detail={detail} />
+      <SessionActions sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <SessionWorkItems sessionId={detail.id} ownerId={detail.owner.id} live={false} />
       <Panes
         panes={[
