@@ -530,3 +530,8 @@ body {
     max-width: none;
   }
 }
+
+/* A speaker tag that can be clicked to name the voice. */
+.d-spk-edit {
+  cursor: pointer;
+}

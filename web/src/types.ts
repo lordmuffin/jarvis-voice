@@ -13,6 +13,11 @@ export interface Segment {
   end_ms: number;
   text: string;
   stt_tier: string | null;
+  /** Who spoke it (an id into the session's speakers), once voices were told apart (REST). */
+  speaker_id?: string | null;
+  speaker_rev?: number;
+  /** The segment spans a change of speaker; `speaker_id` spoke most of it. */
+  mixed?: boolean;
 }
 
 /** A voice in the session. `label: null` = not named yet: shown as "Speaker N". */
@@ -21,6 +26,8 @@ export interface SpeakerInfo {
   label: string | null;
   enrolled: boolean;
   is_owner: boolean;
+  /** "Speaker <ordinal>" while unnamed: the server's numbering, the one its notes use. */
+  ordinal?: number;
 }
 /** Who spoke one segment. Kept only if `rev` is higher than the one already held. */
 export interface SpeakerAssignment {
@@ -174,6 +181,8 @@ export interface FinalNoteDoc extends FinalNoteRef {
 
 export interface SessionDetail extends SessionSummary {
   segments: Segment[];
+  /** The voices heard; absent from servers before speakers existed. */
+  speakers?: SpeakerInfo[];
   copilot: Copilot;
   markers: Marker[];
   final_note: FinalNoteDoc | null;

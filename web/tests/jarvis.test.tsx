@@ -51,6 +51,54 @@ describe("TranscriptLine", () => {
     expect(q(".i-utt--them")).not.toBeNull();
   });
 
+  describe("who spoke", () => {
+    const named = line({ speaker: "them", speaker_id: "s0", who: { text: "Dana", kind: "named" } });
+    const unknown = line({ speaker: "them", speaker_id: "s1", who: { text: "Speaker 2", kind: "unknown" } });
+
+    it("tells an unnamed voice from a named one by more than its words", () => {
+      render(<TranscriptLine line={named} />, document.body);
+      const tag = q(".i-spk")!;
+      expect(tag.textContent).toBe("Dana");
+      expect(tag.classList.contains("i-spk--them")).toBe(true);
+      expect(tag.classList.contains("i-spk--draft")).toBe(false); // filled: a name was given
+      expect(tag.getAttribute("data-who")).toBe("named");
+
+      render(<TranscriptLine line={unknown} />, document.body);
+      const open = q(".i-spk")!;
+      expect(open.textContent).toBe("Speaker 2");
+      expect(open.classList.contains("i-spk--draft")).toBe(true); // outlined: not named yet
+      expect(open.getAttribute("data-who")).toBe("unknown");
+      expect(q(".i-utt--them")).not.toBeNull();
+    });
+
+    it("keeps Me for the owner", () => {
+      render(<TranscriptLine line={line({ speaker_id: "m0", who: { text: "Me", kind: "me" } })} />, document.body);
+      expect(q(".i-spk")!.textContent).toBe("Me");
+      expect(q(".i-spk--me")).not.toBeNull();
+    });
+
+    it("says, in words, that a line spans a change of speaker", () => {
+      render(<TranscriptLine line={{ ...named, mixed: true }} />, document.body);
+      expect(q(".i-spk")!.getAttribute("title")).toMatch(/change of speaker/i);
+      expect(q("[data-testid=segment] .i-sr")!.textContent).toMatch(/change of speaker/i);
+    });
+
+    it("offers to name a voice that is identified, and only then", () => {
+      const onName = vi.fn();
+      render(<TranscriptLine line={unknown} onName={onName} />, document.body);
+      const tag = q(".i-spk")! as HTMLElement;
+      expect(tag.getAttribute("role")).toBe("button");
+      expect(tag.tabIndex).toBe(0);
+      tag.click();
+      expect(onName).toHaveBeenCalledWith("s1");
+      tag.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      expect(onName).toHaveBeenCalledTimes(2);
+
+      render(<TranscriptLine line={line()} onName={onName} />, document.body); // not identified
+      expect(q(".i-spk")!.getAttribute("role")).toBeNull();
+    });
+  });
+
   it("marks a draft as one, to screen readers too, without colour", () => {
     render(<TranscriptLine line={line({ kind: "draft", text: "Metrics are fine, but" })} />, document.body);
     const row = q("[data-testid=draft]")!;
