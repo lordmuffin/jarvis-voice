@@ -1,7 +1,7 @@
 """The eval harness itself, against canned LLM output (no --live needed)."""
 
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta
-from tests.evals.harness import Outcome, Report, check, run_case
+from tests.evals.harness import Outcome, Report, check, due_matches, run_case
 from tests.evals.transcripts import (
     CASES,
     MOVED_DEADLINE,
@@ -75,6 +75,15 @@ async def test_flags_a_restated_action_as_a_duplicate() -> None:
     delta = CopilotDelta(actions_upsert=[restated, ActionUpsert(text="x"), ActionUpsert(text="y")])
     delta, state, secs = await run_case(FakeLLM().queue("CopilotDelta", delta), ROLLING_STATE)
     assert any("actions (>" in f for f in check(ROLLING_STATE, delta, state, secs))
+
+
+def test_a_resolved_date_on_the_right_weekday_is_the_right_due_date() -> None:
+    # The prompt asks for an ISO date where one can be resolved. 2026-11-04 is a Wednesday.
+    assert due_matches("2026-11-04", "wednesday")
+    assert due_matches("by Wednesday", "wednesday")
+    assert not due_matches("2026-11-05", "wednesday")
+    assert not due_matches("Thursday", "wednesday")
+    assert not due_matches(None, "wednesday")
 
 
 async def test_flags_a_wrong_due_date() -> None:

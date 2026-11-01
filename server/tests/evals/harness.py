@@ -80,6 +80,16 @@ def find_action(actions: list[Action], exp: Expected) -> Action | None:
     return None
 
 
+def due_matches(due: str | None, expected: str) -> bool:
+    """Spoken words, or the ISO date the prompt asks for, on the weekday the case expects."""
+    if due is None:
+        return False
+    try:
+        return datetime.fromisoformat(due.strip()).strftime("%A").lower() == expected
+    except ValueError:
+        return expected in due.lower()
+
+
 def check(case: Case, delta: CopilotDelta, state: CopilotState, seconds: float) -> list[str]:
     failures: list[str] = []
     snap = state.snapshot()
@@ -95,7 +105,7 @@ def check(case: Case, delta: CopilotDelta, state: CopilotState, seconds: float) 
             failures.append(f"invented owner {a.owner!r} on [{label}]")
         elif exp.owner is not None and (a.owner is None or exp.owner not in a.owner.lower()):
             failures.append(f"owner {a.owner!r} on [{label}], expected ~{exp.owner!r}")
-        elif exp.due is not None and (a.due is None or exp.due not in a.due.lower()):
+        elif exp.due is not None and not due_matches(a.due, exp.due):
             failures.append(f"due {a.due!r} on [{label}], expected ~{exp.due!r}")
     if case.expect_no_owner_anywhere:
         for a in snap.actions:
