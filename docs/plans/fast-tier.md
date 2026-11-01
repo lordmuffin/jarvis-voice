@@ -1,6 +1,6 @@
 # Fast tier: findings and proposed changes
 
-Status: **cause found. Stopped for approval. Nothing has been changed.**
+Status: **cause found. Recommendations accepted 2026-11-01, steps below approved. Step 1 is done (#247). The pve question is answered, see Decisions.**
 Task 12 in `Tasks.herd`. Read on 2026-11-01 from `main` of both repos and the cluster.
 
 **The comparison is not done.** `feat/probe-voice-arm` is still running and has not reported, so
@@ -24,7 +24,9 @@ reserved path recommendation is firm, as asked.
   the pve RTX 2070. It is the only option that can reach 2.5 s under load without a Flash restart.
   A place on the engine is not enough. See [Reserved path](#reserved-path).
 
-## Decisions for you
+## Decisions
+
+All four recommendations below were accepted on 2026-11-01. Steps 4 and 5 still depend on step 3's comparison, as [the steps](#proposed-steps-for-approval) say.
 
 | # | Decision | My recommendation |
 |---|---|---|
@@ -33,9 +35,11 @@ reserved path recommendation is firm, as asked.
 | 3 | What "first text" means for the copilot | **Total p95 under 2.5 s.** The copilot does not stream, so 0.8 s cannot apply. See [the done test](#the-done-test) |
 | 4 | Alert window | **12 hours**, relying on Task 21's decision 3 (Prometheus off the gaming PC) |
 
-**One thing only you can answer:** was the pve GPU moved to the `jev` profile on 2026-10-22 on
-purpose, and was speech meant to live on the gaming PC after that? If speech could go back to pve,
-the options change. See [The comparison](#the-comparison-provisional).
+**Answered 2026-11-01: the move to `jev` was not deliberate.** The gaming PC runs Kubernetes workloads
+unless Andrew is gaming, so it stays best-effort. Speech goes back to pve, and `ollama` to the gaming
+PC, after step 2. pve then runs Whisper plus `interactive`, 4 + 3 of 7 GiB, in a new profile, and Jev
+stays on `jev-cpu`. This replaces the `jev` beside `interactive` layout in
+[The comparison](#the-comparison-provisional). The interim is `speech-jev`, which exists today.
 
 ## Why ollama is at 0
 
