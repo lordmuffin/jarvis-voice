@@ -88,6 +88,9 @@ def _vault_path_or_400(rel: str) -> pathlib.Path:
     except ValueError:
         raise HTTPException(status_code=400, detail="Path traversal rejected") from None
 
+from jarvis_voice.call_api import router as _call_router  # noqa: E402
+app.include_router(_call_router)
+
 
 def _transcode_to_mp3(src_path: str, dst_path: str) -> bool:
     """Transcode *src_path* to MP3 at *dst_path*. Returns True on success."""
