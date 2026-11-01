@@ -86,6 +86,9 @@ class Orchestrator:
     # --- lifecycle hooks (called by the hub; must not block) ---------------------------------
 
     def on_start(self, state: SessionIngest) -> None:
+        # Here, not in _run_copilot: that reads the session first, and a status frame sent
+        # meanwhile would tell the clients the copilot is offline.
+        state.pipeline.llm_ok = True  # healthy until a cycle fails
         self._copilots[state.session_id] = asyncio.create_task(self._run_copilot(state))
 
     def on_end(self, session_id: uuid.UUID) -> None:
@@ -150,6 +153,7 @@ class Orchestrator:
         async with self._sm() as db:
             row = await db.get(SessionRow, state.session_id)
         if row is None or row.local_only:
+            state.pipeline.llm_ok = False
             return  # local-only sessions are never sent to an LLM
         if self._ideas_pass is not None and await self._ideas_eligible(row):
             ideas = IdeasLoop(
@@ -166,7 +170,6 @@ class Orchestrator:
             pipeline.llm_ok = ok
             pipeline.publish_status()
 
-        pipeline.llm_ok = True  # healthy until a cycle fails
         proposals = await self._proposals_for(row)
         loop = CopilotLoop(
             state.session_id,

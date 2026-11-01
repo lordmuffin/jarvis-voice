@@ -1,18 +1,21 @@
 """Copilot + finalizer wired into the real app: replay audio, end, get a note."""
 
 import asyncio
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 
 import httpx
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from jarvis_live.copilot.schema import CopilotDelta, FinalNote, NoteUpsert
+from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.replay import ReplayProducer
 from tests.audio import TWO_UTTERANCES
 from tests.conftest import ServerHandle
 from tests.fakes import FakeLLM, FakeNotifier
-from tests.helpers import eventually, open_viewer
+from tests.helpers import RawProducer, eventually, open_viewer
 
 SM = async_sessionmaker  # type: ignore[type-arg]
 
@@ -62,6 +65,44 @@ async def test_session_end_produces_note_and_final_note_event(
                 break
             await asyncio.sleep(0.05)
     assert body["status"] == "done"
+
+
+async def test_status_never_reports_the_llm_down_while_the_session_starts(
+    make_server: Callable[..., ServerHandle], token: str
+) -> None:
+    """The copilot's session lookup must not leave a window where the first status frames say
+    the LLM is down: the dashboard shows that as "copilot offline"."""
+    llm = FakeLLM().queue("CopilotDelta", CopilotDelta())
+    server = make_server(llm=llm, status_interval_s=0.001)
+    rp = ReplayProducer(server.url, token, speed=50.0)
+    sid = await rp.create_session("standup")
+    async with await open_viewer(rp, sid) as viewer:
+        p, _ = await RawProducer.connect(rp, sid)
+        await eventually(lambda: len(viewer.of_type("status")) >= 3)
+        await p.close()
+    assert all(s["llm_ok"] for s in viewer.of_type("status"))
+
+
+async def test_status_reports_no_llm_for_a_local_only_session(
+    make_server: Callable[..., ServerHandle], token: str, sm: SM
+) -> None:
+    llm = FakeLLM().queue("CopilotDelta", CopilotDelta())
+    server = make_server(llm=llm, status_interval_s=0.01)
+    rp = ReplayProducer(server.url, token, speed=50.0)
+    sid = await rp.create_session("work call")
+    async with sm() as db:
+        await db.execute(
+            update(SessionRow).where(SessionRow.id == uuid.UUID(sid)).values(local_only=True)
+        )
+        await db.commit()
+    async with await open_viewer(rp, sid) as viewer:
+        p, _ = await RawProducer.connect(rp, sid)
+        await eventually(lambda: any(not s["llm_ok"] for s in viewer.of_type("status")))
+        settled = len(viewer.of_type("status"))
+        await eventually(lambda: len(viewer.of_type("status")) >= settled + 3)
+        await p.close()
+    assert not any(s["llm_ok"] for s in viewer.of_type("status")[settled:])
+    assert llm.calls == []
 
 
 async def test_copilot_snapshot_streams_to_viewer_mid_session(
