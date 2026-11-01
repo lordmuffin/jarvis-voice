@@ -865,3 +865,336 @@ def test_a_direct_reply_has_no_fallback_count(chat: str) -> None:
 def test_no_reply_text_is_kept(chat: str) -> None:
     ChatStub.replies = [reply('{"task": "SECRET-WORDS"}', reasoning_content="SECRET-THOUGHT")]
     assert "SECRET" not in json.dumps(probe.voice_call(chat, BODY, timeout_s=2))
+
+
+def voice_options(chat: str, tmp_path: Path, **overrides: Any) -> Any:
+    settings: dict[str, Any] = {
+        "direct_url": chat,
+        "gateway_url": chat,
+        "metrics_url": None,
+        "direct_model": "flash",
+        "pairs": 2,
+        "pause_s": 0,
+        "out": tmp_path / "voice.jsonl",
+        "label": "normal",
+        "client_node": "node-a",
+        "proxy_node": "node-b",
+    }
+    return probe.VoiceOptions(**{**settings, **overrides})
+
+
+def rows_from(path: Path) -> list[dict[str, Any]]:
+    return [json.loads(line) for line in path.read_text().splitlines()]
+
+
+def test_run_voice_writes_a_row_per_path_and_records_both_nodes(chat: str, tmp_path: Path) -> None:
+    options = voice_options(chat, tmp_path)
+    probe.run_voice(options)
+    rows = rows_from(options.out)
+    assert [r["path"] for r in rows] == ["direct", "gateway", "gateway", "direct"]
+    assert {r["client_node"] for r in rows} == {"node-a"}
+    assert {r["proxy_node"] for r in rows} == {"node-b"}
+    assert {r["prompt"] for r in rows} == {"voice"}
+    assert rows[0]["model"] == "flash" and rows[1]["model"] == "fast-chat"
+
+
+def test_run_voice_sends_the_same_body_down_both_paths(
+    chat: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[dict[str, Any]] = []
+    real = probe.voice_call
+
+    def spy(url: str, body: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        seen.append(body)
+        return real(url, body, **kwargs)
+
+    monkeypatch.setattr(probe, "voice_call", spy)
+    probe.run_voice(voice_options(chat, tmp_path, pairs=1))
+    direct, gateway = seen
+    assert direct["model"] == "flash" and gateway["model"] == "fast-chat"
+    assert {**direct, "model": ""} == {**gateway, "model": ""}
+
+
+def test_run_voice_uses_the_voice_timeout(
+    chat: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    timeouts: list[float] = []
+    real = probe.voice_call
+
+    def spy(url: str, body: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        timeouts.append(kwargs["timeout_s"])
+        return real(url, body, **kwargs)
+
+    monkeypatch.setattr(probe, "voice_call", spy)
+    probe.run_voice(voice_options(chat, tmp_path, pairs=1))
+    assert timeouts == [30.0, 30.0]
+
+
+def test_run_voice_stops_at_the_time_cap_with_whole_pairs(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(delay=0.06)]
+    options = voice_options(chat, tmp_path, pairs=50, max_s=0.05)
+    probe.run_voice(options)
+    assert len(rows_from(options.out)) == 2
+
+
+def test_run_voice_keeps_going_after_a_failure(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [SERVER_ERROR]
+    options = voice_options(chat, tmp_path)
+    probe.run_voice(options)
+    rows = rows_from(options.out)
+    assert len(rows) == 4
+    assert all(r["outcome"] == "http" and r["stalls"] == ["error"] for r in rows)
+
+
+def test_voice_cli_takes_the_nodes_and_the_cap(chat: str, tmp_path: Path) -> None:
+    out = tmp_path / "cli.jsonl"
+    probe.main(
+        [
+            "voice",
+            "--direct-url",
+            chat,
+            "--gateway-url",
+            chat,
+            "--direct-model",
+            "flash",
+            "--client-node",
+            "node-a",
+            "--proxy-node",
+            "node-b",
+            "--pairs",
+            "1",
+            "--max-hours",
+            "1",
+            "--out",
+            str(out),
+        ]
+    )
+    assert rows_from(out)[0]["client_node"] == "node-a"
+
+
+@pytest.mark.parametrize(
+    ("hits", "n", "low", "high"),
+    [(0, 200, 0.0, 1.9), (4, 97, 1.6, 10.1), (1, 96, 0.2, 5.7), (84, 97, 78.4, 92.0)],
+)
+def test_wilson_matches_the_plans_worked_figures(
+    hits: int, n: int, low: float, high: float
+) -> None:
+    got = probe.wilson(hits, n)
+    assert (round(got[0] * 100, 1), round(got[1] * 100, 1)) == (low, high)
+
+
+def test_wilson_of_nothing_says_nothing() -> None:
+    assert probe.wilson(0, 0) == (0.0, 1.0)
+
+
+def vrow(
+    path: str,
+    total: float,
+    *,
+    outcome: str = "ok",
+    pair: int = 0,
+    waiting: float = 0,
+    running: float = 3,
+    wall: float = 1_000_000.0,
+    reasoning: bool = False,
+    chars: int = 0,
+    attempts: int = 1,
+) -> dict[str, Any]:
+    return {
+        "pair": pair,
+        "path": path,
+        "label": "normal",
+        "prompt": "voice",
+        "max_tokens": None,
+        "wall_ts": wall,
+        "first_text_s": None,
+        "total_s": total,
+        "chunks": [],
+        "max_gap_s": 0.0,
+        "stalls": [] if outcome == "ok" else ["error"],
+        "error": None if outcome == "ok" else outcome,
+        "outcome": outcome,
+        "attempts": attempts,
+        "prompt_tokens": 600,
+        "completion_tokens": 200 if outcome == "ok" else None,
+        "reasoning": reasoning,
+        "reasoning_chars": chars,
+        "answered_by": "flash" if outcome == "ok" else None,
+        "fallbacks": 1 if path == "gateway" else None,
+        "load": {"waiting_max": waiting, "running_max": running},
+    }
+
+
+def test_voice_summary_counts_a_failure_at_the_time_it_cost() -> None:
+    rows = [vrow("gateway", 1.0, pair=i) for i in range(19)]
+    rows.append(vrow("gateway", 30.0, outcome="timeout", pair=19))
+    summary = probe.voice_summary(rows)[0]
+    assert summary["caller_p95"] == 1.0 and summary["caller_max"] == 30.0
+    assert summary["ok_max"] == 1.0
+    assert summary["timeouts"] == 1 and summary["failed"] == 1
+
+
+def test_voice_summary_splits_failures_by_kind_with_an_interval() -> None:
+    rows = [
+        vrow("direct", 1.0),
+        vrow("direct", 30.0, outcome="timeout"),
+        vrow("direct", 2.0, outcome="invalid_json", attempts=2),
+        vrow("direct", 0.1, outcome="http"),
+    ]
+    summary = probe.voice_summary(rows)[0]
+    assert (summary["timeouts"], summary["invalid_json"], summary["other_failures"]) == (1, 1, 1)
+    assert summary["failed"] == 3
+    assert summary["failure_rate"] == 0.75
+    assert summary["failure_ci"] == list(probe.wilson(3, 4))
+    assert summary["retried"] == 1
+
+
+def test_voice_summary_judges_the_target_on_every_request() -> None:
+    rows = [vrow("gateway", 1.0, pair=i) for i in range(18)]
+    rows += [vrow("gateway", 30.0, outcome="timeout", pair=18 + i) for i in range(2)]
+    summary = probe.voice_summary(rows)[0]
+    assert summary["caller_p95"] == 30.0 and summary["target_met"] is False
+    assert summary["over_target"] == 2
+
+
+def test_voice_summary_meets_the_target_when_p95_is_under_it() -> None:
+    summary = probe.voice_summary([vrow("gateway", 1.0, pair=i) for i in range(20)])[0]
+    assert summary["target_met"] is True and summary["over_target"] == 0
+
+
+def test_voice_summary_reports_reasoning_over_replies_that_came_back() -> None:
+    rows = [
+        vrow("gateway", 1.0, reasoning=True, chars=800),
+        vrow("gateway", 1.0),
+        vrow("gateway", 30.0, outcome="timeout"),
+    ]
+    summary = probe.voice_summary(rows)[0]
+    assert (summary["replies"], summary["with_reasoning"]) == (2, 1)
+    assert summary["reasoning_ci"] == list(probe.wilson(1, 2))
+    assert summary["reasoning_chars_p50"] == 800
+
+
+def test_voice_summary_records_tokens_and_who_answered() -> None:
+    summary = probe.voice_summary([vrow("gateway", 1.0)])[0]
+    assert summary["prompt_tokens_p50"] == 600 and summary["completion_tokens_p95"] == 200
+    assert summary["answered_by"] == {"flash": 1}
+    assert summary["fell_back"] == 1
+
+
+def test_voice_summary_by_load_splits_each_path() -> None:
+    rows = [vrow("gateway", 1.0, waiting=2), vrow("gateway", 1.0, running=1)]
+    loads = {s["load"] for s in probe.voice_summary(rows, by_load=True)}
+    assert loads == {"queued", "alone"}
+
+
+def gated(queued: int, alone: int, busy: int) -> list[dict[str, Any]]:
+    rows = [vrow("gateway", 1.0, waiting=3) for _ in range(queued)]
+    rows += [vrow("direct", 1.0, running=1) for _ in range(alone)]
+    return rows + [vrow("direct", 1.0, running=3) for _ in range(busy)]
+
+
+def test_gate_passes_at_the_plans_thresholds() -> None:
+    result = probe.gate(gated(40, 40, 20))
+    assert result["passed"] is True
+    assert (result["all"]["queued"], result["all"]["alone"]) == (0.4, 0.4)
+
+
+def test_gate_fails_on_too_few_queued() -> None:
+    assert probe.gate(gated(39, 20, 41))["passed"] is False
+
+
+def test_gate_fails_on_too_many_alone() -> None:
+    assert probe.gate(gated(45, 41, 14))["passed"] is False
+
+
+def test_gate_shows_each_path_on_its_own() -> None:
+    result = probe.gate(gated(10, 10, 0))
+    assert result["gateway"]["queued"] == 1.0 and result["direct"]["alone"] == 1.0
+
+
+def test_gate_with_no_metrics_fails() -> None:
+    rows = [{**vrow("gateway", 1.0), "load": {}} for _ in range(5)]
+    assert probe.gate(rows)["passed"] is False
+
+
+def test_reopen_fires_only_when_the_wilson_intervals_do_not_overlap() -> None:
+    fine = [vrow("direct", 1.0, pair=i) for i in range(200)]
+    bad = [vrow("gateway", 30.0, outcome="timeout", pair=i) for i in range(8)]
+    good = [vrow("gateway", 1.0, pair=i) for i in range(192)]
+    result = probe.reopen(fine + bad + good)
+    assert result["failures"]["exceeds"] is True
+    assert result["failures"]["gateway"] == [8, 200]
+
+    few = bad[:2] + [vrow("gateway", 1.0, pair=i) for i in range(198)]
+    assert probe.reopen(fine + few)["failures"]["exceeds"] is False
+
+
+def test_reopen_compares_requests_over_target_too() -> None:
+    slow = [vrow("gateway", 9.0, pair=i) for i in range(50)]
+    fast = [vrow("direct", 1.0, pair=i) for i in range(50)]
+    result = probe.reopen(slow + fast)
+    assert result["over_target"]["exceeds"] is True
+    assert result["failures"]["exceeds"] is False
+
+
+def test_voice_paired_separates_failures_on_one_path_from_both() -> None:
+    rows = [
+        vrow("direct", 1.0, pair=0),
+        vrow("gateway", 1.5, pair=0),
+        vrow("direct", 1.0, pair=1),
+        vrow("gateway", 30.0, outcome="timeout", pair=1),
+        vrow("direct", 30.0, outcome="timeout", pair=2),
+        vrow("gateway", 30.0, outcome="timeout", pair=2),
+        vrow("direct", 30.0, outcome="timeout", pair=3),
+    ]
+    assert probe.voice_paired(rows) == {
+        "pairs": 3,
+        "neither": 1,
+        "direct_only": 0,
+        "gateway_only": 1,
+        "both": 1,
+        "gateway_minus_direct_p50": 0.5,
+    }
+
+
+def test_voice_periods_put_each_request_in_its_load_period() -> None:
+    start = 1_000_000.0
+    rows = [
+        vrow("gateway", 20.0, wall=start, waiting=4),
+        vrow("direct", 18.0, wall=start + 60, waiting=4),
+        vrow("gateway", 1.0, wall=start + 16 * 60),
+        vrow("direct", 30.0, outcome="timeout", wall=start + 17 * 60),
+    ]
+    first, second = probe.voice_periods(rows, minutes=15)
+    assert (first["n"], first["queued"]) == (2, 1.0)
+    assert (first["gateway_p50"], first["direct_p50"]) == (20.0, 18.0)
+    assert (second["n"], second["queued"], second["failed"]) == (2, 0.0, 1)
+
+
+def test_report_adds_the_voice_section_and_gate(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    file = tmp_path / "v.jsonl"
+    file.write_text("\n".join(json.dumps(vrow(p, 1.0)) for p in ("direct", "gateway")) + "\n")
+    assert probe.main(["report", str(file), "--by-load"]) == 0
+    out = capsys.readouterr().out
+    assert "voice\tgateway" in out
+    assert "gate:" in out and "reopen:" in out and "periods:" in out
+
+
+def test_report_json_carries_the_voice_section(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    file = tmp_path / "v.jsonl"
+    file.write_text(json.dumps(vrow("gateway", 1.0)) + "\n")
+    assert probe.main(["report", str(file), "--json"]) == 0
+    assert "gate" in json.loads(capsys.readouterr().out)["voice"]
+
+
+def test_report_of_streaming_rows_has_no_voice_section(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    file = tmp_path / "s.jsonl"
+    file.write_text(json.dumps({**row("direct", 0.1, 1.0, []), "pair": 0}) + "\n")
+    assert probe.main(["report", str(file), "--json"]) == 0
+    assert "voice" not in json.loads(capsys.readouterr().out)
