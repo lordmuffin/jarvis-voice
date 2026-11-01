@@ -21,6 +21,9 @@ import pytest
 from pydantic import ValidationError
 
 from jarvis_live.config import Settings
+from jarvis_live.copilot.prompts import COPILOT_SYSTEM, copilot_user
+from jarvis_live.copilot.schema import CopilotDelta
+from jarvis_live.copilot.state import CopilotState
 from jarvis_live.llm.client import LiteLLMClient, LLMError, _extract_json
 from jarvis_live.voice.schema import VoiceRequest
 from jarvis_live.voice.service import VOICE_SYSTEM, voice_user
@@ -634,6 +637,14 @@ class ChatStub(BaseHTTPRequestHandler):
     replies: ClassVar[list[dict[str, Any]]] = []
     posts: ClassVar[int] = 0
     headers_out: ClassVar[dict[str, str]] = {}
+    slots: ClassVar[list[dict[str, Any]]] = []
+
+    def do_GET(self) -> None:
+        data = json.dumps(ChatStub.slots).encode()
+        self.send_response(200)
+        self.send_header("content-length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_POST(self) -> None:
         self.rfile.read(int(self.headers["content-length"]))
@@ -661,6 +672,7 @@ def chat() -> Iterator[str]:
     ChatStub.replies = [GOOD]
     ChatStub.posts = 0
     ChatStub.headers_out = {}
+    ChatStub.slots = []
     server = ThreadingHTTPServer(("127.0.0.1", 0), ChatStub)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -1198,3 +1210,322 @@ def test_report_of_streaming_rows_has_no_voice_section(
     file.write_text(json.dumps({**row("direct", 0.1, 1.0, []), "pair": 0}) + "\n")
     assert probe.main(["report", str(file), "--json"]) == 0
     assert "voice" not in json.loads(capsys.readouterr().out)
+
+
+# --- the copilot arm ------------------------------------------------------------------------
+
+MEETING_FILE = Path(__file__).parent / "evals" / "fixtures" / "planning_meeting.json"
+MEETING = probe.load_meeting(MEETING_FILE)
+COPILOT_REPLY = '{"notes_upsert": [{"text": "A note"}], "topics": ["scanners"]}'
+IDLE = [{"id": 0, "is_processing": False}, {"id": 1, "is_processing": False}]
+FULL = [{"id": 0, "is_processing": True}, {"id": 1, "is_processing": True}]
+
+
+def test_copilot_prompt_and_schema_are_the_servers_own() -> None:
+    assert probe.COPILOT_SYSTEM == COPILOT_SYSTEM
+    assert probe.COPILOT_SCHEMA == CopilotDelta.model_json_schema()
+
+
+def test_copilot_user_renders_as_the_server_does() -> None:
+    args: dict[str, Any] = {
+        "today": "2026-11-01",
+        "title": "Planning",
+        "state_json": "{}",
+        "transcript": "[00:01] me: hello",
+    }
+    assert probe.copilot_user(**args) == copilot_user(related="", **args)
+
+
+def test_copilot_body_is_what_the_real_client_sends_with_thinking_off() -> None:
+    sent: list[dict[str, Any]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        content = {"choices": [{"message": {"content": "{}"}}]}
+        return httpx.Response(200, json=content)
+
+    body = probe.build_copilot_body(
+        "flash", MEETING, end_s=480, window_s=480, cycle=0, today="2026-11-01"
+    )
+
+    async def call() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as client:
+            await LiteLLMClient("http://gateway/v1", client).complete_json(
+                model="flash",
+                system=COPILOT_SYSTEM,
+                user=body["messages"][1]["content"],
+                schema=CopilotDelta,
+                think=False,
+            )
+
+    asyncio.run(call())
+    assert body == sent[0]
+
+
+def test_copilot_body_can_leave_thinking_as_it_was_before_the_fix() -> None:
+    body = probe.build_copilot_body(
+        "flash", MEETING, end_s=480, window_s=480, cycle=0, today="2026-11-01", think=True
+    )
+    assert "chat_template_kwargs" not in body
+
+
+def test_copilot_window_keeps_the_last_minutes_only() -> None:
+    user = probe.build_copilot_body(
+        "m", MEETING, end_s=300, window_s=120, cycle=0, today="2026-11-01"
+    )["messages"][1]["content"]
+    transcript = user.split("TRANSCRIPT\n")[1].splitlines()
+    assert transcript[0].startswith("[03:03]") and transcript[-1].startswith("[04:55]")
+
+
+def test_copilot_state_holds_only_what_an_earlier_cycle_could_have_seen() -> None:
+    state = json.loads(probe.copilot_state_json(MEETING["items"], upto_s=125))
+    assert state["actions"] == []  # 01:58 is under 30 s old at 02:05
+    state = json.loads(probe.copilot_state_json(MEETING["items"], upto_s=150))
+    assert [a["id"] for a in state["actions"]] == ["a1"]
+    assert state["actions"][0]["owner"] == "Tomas"
+    assert state["decisions"][0]["id"] == "d1"
+    assert [n["id"] for n in state["notes"]] == ["n1", "n2"]
+    assert state["active_suggestions"] == []
+
+
+def test_copilot_state_is_shaped_as_the_servers_prompt_json() -> None:
+    state = json.loads(probe.copilot_state_json(MEETING["items"], upto_s=800))
+    assert list(state) == list(json.loads(CopilotState().prompt_json()))
+    assert "owner" not in state["actions"][2]  # exclude_none, as the server does
+
+
+def test_each_cycle_breaks_the_prefix_cache_after_the_system_prompt() -> None:
+    a, b = (
+        probe.build_copilot_body("m", MEETING, end_s=480, window_s=480, cycle=c, today="2026-11-01")
+        for c in (0, 1)
+    )
+    assert a["messages"][0] == b["messages"][0]
+    assert a["messages"][1] != b["messages"][1]
+
+
+def test_copilot_ends_walk_the_meeting_and_repeat() -> None:
+    ends = [probe.copilot_end(MEETING, start_s=300, cycle=c) for c in range(40)]
+    assert ends[0] == 300 and max(ends) <= MEETING["end_s"]
+    assert len(set(ends)) >= 10
+    assert ends[0] in ends[1:]
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "{}",
+        COPILOT_REPLY,
+        "<think>x</think>" + COPILOT_REPLY,
+        "```json\n" + COPILOT_REPLY + "\n```",
+        '{"actions_upsert": [{"text": "x", "owner": null, "due": "Friday"}]}',
+        '{"actions_upsert": [{"text": ""}]}',
+        '{"notes_upsert": [{"id": "n1"}]}',
+        '{"notes_upsert": "none"}',
+        '{"suggestions": [{"kind": "idea", "text": "x"}]}',
+        '{"suggestions": [{"kind": "gap", "text": "x", "ttl_s": 0}]}',
+        '{"suggestions": [{"kind": "gap", "text": "x", "ttl_s": 4000}]}',
+        '{"remove_ids": [1]}',
+        '{"topics": "scanners"}',
+        '{"title": 3}',
+        '{"proposals": "nonsense"}',
+        '{"proposals": [{"kind": "no.such"}]}',
+        "not json",
+        "[1]",
+    ],
+)
+def test_copilot_reply_check_agrees_with_the_real_schema(content: str) -> None:
+    try:
+        CopilotDelta.model_validate_json(_extract_json(content))
+        real = True
+    except ValidationError:
+        real = False
+    assert probe.copilot_reply_valid(content) is real
+
+
+def test_the_servers_timings_are_kept_for_the_prefill_split(chat: str) -> None:
+    timed = reply(COPILOT_REPLY)
+    timed["body"]["timings"] = {"prompt_n": 900, "prompt_ms": 300.0, "predicted_n": 70}
+    timed["body"]["choices"][0]["finish_reason"] = "stop"
+    ChatStub.replies = [timed]
+    row = probe.voice_call(chat, BODY, timeout_s=2, valid=probe.copilot_reply_valid)
+    assert row["timings"]["prompt_n"] == 900
+    assert row["finish_reason"] == "stop"
+    assert row["outcome"] == "ok"
+
+
+def test_a_reply_cut_off_by_the_context_says_so(chat: str) -> None:
+    cut = reply('{"notes_upsert": [{"te')
+    cut["body"]["choices"][0]["finish_reason"] = "length"
+    ChatStub.replies = [cut]
+    row = probe.voice_call(chat, BODY, timeout_s=2, valid=probe.copilot_reply_valid)
+    assert row["outcome"] == "invalid_json"
+    assert row["finish_reason"] == "length"
+
+
+def test_a_prompt_over_the_slot_is_a_failure_with_its_reason(chat: str) -> None:
+    ChatStub.replies = [reply(status=400)]
+    ChatStub.replies[0]["body"] = {"error": {"type": "exceed_context_size_error"}}
+    row = probe.voice_call(chat, BODY, timeout_s=2, valid=probe.copilot_reply_valid)
+    assert row["outcome"] == "http"
+    assert "exceed_context_size_error" in row["error"]
+
+
+def copilot_options(chat: str, tmp_path: Path, **overrides: Any) -> Any:
+    settings: dict[str, Any] = {
+        "gateway_url": chat,
+        "small_url": chat,
+        "gateway_model": "qwen3.8-flash-next",
+        "small_model": "jev",
+        "meeting": MEETING,
+        "gateway_window_s": 480,
+        "small_window_s": 300,
+        "metrics_url": None,
+        "pairs": 2,
+        "pause_s": 0,
+        "out": tmp_path / "copilot.jsonl",
+        "label": "normal",
+        "client_node": "node-a",
+        "proxy_node": "node-b",
+        "slot_interval_s": 0.01,
+    }
+    return probe.CopilotOptions(**{**settings, **overrides})
+
+
+def test_run_copilot_alternates_flash_and_the_small_model(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY)]
+    ChatStub.slots = IDLE
+    options = copilot_options(chat, tmp_path)
+    assert probe.run_copilot(options) is None
+    rows = rows_from(options.out)
+    assert [r["path"] for r in rows] == ["direct", "gateway", "gateway", "direct"]
+    assert {r["prompt"] for r in rows} == {"copilot"}
+    assert rows[0]["model"] == "jev" and rows[1]["model"] == "qwen3.8-flash-next"
+    assert rows[0]["slots_full_max"] == 0
+
+
+def test_run_copilot_sends_each_path_its_own_window(
+    chat: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: list[tuple[str, int, float]] = []
+    real = probe.voice_call
+
+    def spy(url: str, body: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
+        seen.append((body["model"], len(body["messages"][1]["content"]), kwargs["timeout_s"]))
+        return real(url, body, **kwargs)
+
+    monkeypatch.setattr(probe, "voice_call", spy)
+    ChatStub.replies = [reply(COPILOT_REPLY)]
+    ChatStub.slots = IDLE
+    probe.run_copilot(copilot_options(chat, tmp_path, pairs=1))
+    small, flash = seen
+    assert small[0] == "jev" and flash[0] == "qwen3.8-flash-next"
+    assert small[1] < flash[1]
+    assert small[2] == flash[2] == 60.0
+
+
+def test_the_guard_stops_the_run_when_both_slots_stay_busy(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.05)]
+    ChatStub.slots = FULL
+    options = copilot_options(chat, tmp_path, pairs=50)
+    reason = probe.run_copilot(options)
+    assert reason is not None and "slots" in reason
+    assert len(rows_from(options.out)) < 4
+
+
+def test_the_guard_forgives_a_moment_with_both_slots_busy(chat: str, tmp_path: Path) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not guard.note(2, 2) and not guard.note(2, 2)
+    assert not guard.note(1, 2)
+    assert not guard.note(2, 2) and not guard.note(2, 2)
+    assert guard.note(2, 2)
+
+
+def test_the_guard_stops_a_small_model_it_cannot_see(tmp_path: Path) -> None:
+    guard = probe.SlotGuard("http://127.0.0.1:9/v1", interval_s=0.01, limit=3)
+    with guard:
+        assert guard.tripped.wait(5)
+    assert "slots" in guard.reason
+
+
+def test_small_rates_and_the_projection_to_a_bigger_prompt() -> None:
+    def timed(total: float, prompt: int) -> dict[str, Any]:
+        timings = {
+            "prompt_n": 1000,
+            "prompt_ms": 400.0,
+            "predicted_n": 130,
+            "predicted_ms": 1000.0,
+        }
+        row = vrow("direct", total)
+        return {**row, "prompt": "copilot", "prompt_tokens": prompt, "timings": timings}
+
+    rows = [timed(2.0, 1700), timed(3.0, 1700), vrow("gateway", 9.0)]
+    rates = probe.small_rates(rows, project_to=2500)
+    assert rates["prefill_tok_s_p50"] == 2500.0
+    assert rates["decode_tok_s_p50"] == 130.0
+    assert rates["projected_p95"] == pytest.approx(3.0 + 800 / 2500)
+
+
+def test_report_adds_the_copilot_section(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    rows = [{**vrow(p, 1.0), "prompt": "copilot"} for p in ("direct", "gateway")]
+    file = tmp_path / "c.jsonl"
+    file.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    assert probe.main(["report", str(file)]) == 0
+    out = capsys.readouterr().out
+    assert "copilot\tgateway" in out and "gate:" in out and "voice\t" not in out
+
+
+def test_copilot_cli_reads_the_meeting_from_a_file(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY)]
+    ChatStub.slots = IDLE
+    out = tmp_path / "cli.jsonl"
+    code = probe.main(
+        [
+            "copilot",
+            "--meeting",
+            str(MEETING_FILE),
+            "--gateway-url",
+            chat,
+            "--gateway-model",
+            "flash",
+            "--small-url",
+            chat,
+            "--small-model",
+            "jev",
+            "--pairs",
+            "1",
+            "--pause",
+            "0",
+            "--out",
+            str(out),
+        ]
+    )
+    assert code == 0 and len(rows_from(out)) == 2
+
+
+def test_copilot_cli_exits_non_zero_when_the_guard_stops_it(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.2)]
+    ChatStub.slots = FULL
+    code = probe.main(
+        [
+            "copilot",
+            "--meeting",
+            str(MEETING_FILE),
+            "--gateway-url",
+            chat,
+            "--gateway-model",
+            "flash",
+            "--small-url",
+            chat,
+            "--small-model",
+            "jev",
+            "--pairs",
+            "20",
+            "--pause",
+            "0",
+            "--slot-interval",
+            "0.01",
+            "--out",
+            str(tmp_path / "x.jsonl"),
+        ]
+    )
+    assert code == 3
