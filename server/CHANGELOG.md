@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.31.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.31.0...server-v0.31.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **server:** turn reasoning off for the live LLM callers ([6d10600](https://github.com/lordmuffin/jarvis-voice/commit/6d10600d58407a4db8bb9ed1a7774848822ee0dc))
+* **server:** turn reasoning off for the live LLM callers ([c96584c](https://github.com/lordmuffin/jarvis-voice/commit/c96584cabec9a01e05a9ed5b81bfa23e87b4c460))
+
 ## [0.31.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.30.0...server-v0.31.0) (2026-11-01)
 
 
