@@ -18,9 +18,10 @@ from typing import Any, ClassVar
 
 import httpx
 import pytest
+from pydantic import ValidationError
 
 from jarvis_live.config import Settings
-from jarvis_live.llm.client import LiteLLMClient
+from jarvis_live.llm.client import LiteLLMClient, LLMError, _extract_json
 from jarvis_live.voice.schema import VoiceRequest
 from jarvis_live.voice.service import VOICE_SYSTEM, voice_user
 
@@ -598,3 +599,269 @@ def test_voice_requests_vary_by_pair_and_stay_invented() -> None:
     }
     assert len(said) >= 12
     assert not any("192.168." in s or ".lab." in s for s in said)
+
+
+def reply(
+    content: Any = '{"target": "none"}',
+    *,
+    status: int = 200,
+    delay: float = 0.0,
+    usage: dict[str, int] | None = None,
+    **message: Any,
+) -> dict[str, Any]:
+    return {
+        "delay": delay,
+        "status": status,
+        "body": {
+            "model": "qwen3-heavy",
+            "choices": [{"message": {"role": "assistant", "content": content, **message}}],
+            "usage": usage or {"prompt_tokens": 700, "completion_tokens": 20},
+        },
+    }
+
+
+GARBLED: dict[str, Any] = {"delay": 0.0, "status": 200, "body": "<html>not json</html>"}
+GOOD = reply()
+BAD = reply("not json at all")
+SERVER_ERROR = reply(status=500)
+NO_CONTENT = reply(None, reasoning_content="long thought")
+SLOW = reply(delay=5.0)
+
+
+class ChatStub(BaseHTTPRequestHandler):
+    """Answers each POST with the next scripted reply, whole, as a non-streaming endpoint does."""
+
+    replies: ClassVar[list[dict[str, Any]]] = []
+    posts: ClassVar[int] = 0
+    headers_out: ClassVar[dict[str, str]] = {}
+
+    def do_POST(self) -> None:
+        self.rfile.read(int(self.headers["content-length"]))
+        step = ChatStub.replies[min(ChatStub.posts, len(ChatStub.replies) - 1)]
+        ChatStub.posts += 1
+        time.sleep(step["delay"])
+        body = step["body"]
+        data = body.encode() if isinstance(body, str) else json.dumps(body).encode()
+        try:
+            self.send_response(step["status"])
+            for name, value in ChatStub.headers_out.items():
+                self.send_header(name, value)
+            self.send_header("content-length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except OSError:
+            pass  # the caller gave up, which is the point of a slow reply
+
+    def log_message(self, *args: object) -> None:
+        pass
+
+
+@pytest.fixture
+def chat() -> Iterator[str]:
+    ChatStub.replies = [GOOD]
+    ChatStub.posts = 0
+    ChatStub.headers_out = {}
+    server = ThreadingHTTPServer(("127.0.0.1", 0), ChatStub)
+    server.daemon_threads = True
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{server.server_port}/v1"
+    server.shutdown()
+    server.server_close()
+
+
+BODY = probe.build_voice_body("fast-chat", pair=0, today="2026-11-01")
+
+
+def test_a_good_reply_records_time_tokens_and_who_answered(chat: str) -> None:
+    ChatStub.replies = [reply(delay=0.05)]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["outcome"] == "ok" and result["error"] is None
+    assert result["attempts"] == 1
+    assert result["total_s"] >= 0.05
+    assert (result["prompt_tokens"], result["completion_tokens"]) == (700, 20)
+    assert result["answered_by"] == "qwen3-heavy"
+
+
+def test_the_caller_waits_for_both_attempts_after_invalid_json(chat: str) -> None:
+    ChatStub.replies = [reply("nope", delay=0.1), reply(delay=0.1)]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["outcome"] == "ok" and result["attempts"] == 2
+    assert result["total_s"] >= 0.2
+    assert len(result["attempt_s"]) == 2
+    assert result["completion_tokens"] == 40
+
+
+def test_invalid_json_twice_is_a_failure(chat: str) -> None:
+    ChatStub.replies = [BAD]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["outcome"] == "invalid_json" and result["error"]
+    assert result["attempts"] == 2
+
+
+def test_a_timeout_is_a_failure_and_is_not_retried(chat: str) -> None:
+    ChatStub.replies = [SLOW]
+    result = probe.voice_call(chat, BODY, timeout_s=0.2)
+    assert result["outcome"] == "timeout" and result["error"]
+    assert result["attempts"] == 1 and ChatStub.posts == 1
+    assert 0.2 <= result["total_s"] < 1
+
+
+def test_a_timeout_on_the_retry_costs_both_attempts(chat: str) -> None:
+    ChatStub.replies = [reply("nope", delay=0.1), SLOW]
+    result = probe.voice_call(chat, BODY, timeout_s=0.3)
+    assert result["outcome"] == "timeout" and result["attempts"] == 2
+    assert result["total_s"] >= 0.4
+
+
+def test_an_http_error_is_a_failure_and_is_not_retried(chat: str) -> None:
+    ChatStub.replies = [SERVER_ERROR]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["outcome"] == "http" and "500" in result["error"]
+    assert ChatStub.posts == 1
+
+
+def test_no_text_content_is_a_failure_and_is_not_retried(chat: str) -> None:
+    ChatStub.replies = [NO_CONTENT]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["outcome"] == "no_content" and result["error"]
+    assert ChatStub.posts == 1
+    assert result["reasoning"] is True
+
+
+def test_an_unreadable_body_is_a_failure_and_is_not_retried(chat: str) -> None:
+    ChatStub.replies = [GARBLED]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["outcome"] == "bad_response" and ChatStub.posts == 1
+
+
+def test_unreachable_is_recorded_not_raised_for_voice() -> None:
+    result = probe.voice_call("http://127.0.0.1:1/v1", BODY, timeout_s=1)
+    assert result["outcome"] == "transport" and result["attempts"] == 1
+
+
+@pytest.mark.parametrize(
+    "script",
+    [[GOOD], [BAD, GOOD], [BAD, BAD], [SERVER_ERROR], [NO_CONTENT], [GARBLED], [BAD, SERVER_ERROR]],
+    ids=["good", "retry-good", "retry-bad", "http", "no-content", "garbled", "retry-http"],
+)
+def test_attempts_match_the_real_client(chat: str, script: list[dict[str, Any]]) -> None:
+    ChatStub.replies = script
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert ChatStub.posts == result["attempts"]
+
+    ChatStub.posts = 0
+
+    async def call() -> bool:
+        async with httpx.AsyncClient() as client:
+            llm = LiteLLMClient(chat, client)
+            try:
+                await llm.complete_json(
+                    model="fast-chat", system="s", user="u", schema=VoiceRequest, timeout_s=2
+                )
+            except LLMError:
+                return False
+            return True
+
+    answered = asyncio.run(call())
+    assert ChatStub.posts == result["attempts"]
+    assert answered == (result["outcome"] == "ok")
+
+
+def test_a_read_timeout_ends_the_real_client_without_a_retry(chat: str) -> None:
+    ChatStub.replies = [SLOW]
+
+    async def call() -> None:
+        async with httpx.AsyncClient() as client:
+            await LiteLLMClient(chat, client).complete_json(
+                model="m", system="s", user="u", schema=VoiceRequest, timeout_s=0.2
+            )
+
+    with pytest.raises(LLMError):
+        asyncio.run(call())
+    assert ChatStub.posts == 1
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        '{"target": "cloud", "title": "x", "task": "y"}',
+        "{}",
+        '```json\n{"target": "pi"}\n```',
+        '<think>\n\n</think>\n{"target": "none"}',
+        '<think>a thought</think>{"target": "none"}',
+        '{"target": "made up"}',
+        '{"target": ["list"]}',
+        '{"repo": null, "done_when": null}',
+        '{"repo": 3}',
+        '{"done_when": 3}',
+        '{"title": 3}',
+        '{"title": null}',
+        '{"task": true}',
+        '{"acceptance_criteria": ["a", "b"]}',
+        '{"acceptance_criteria": "a"}',
+        '{"acceptance_criteria": [1]}',
+        '{"acceptance_criteria": null}',
+        '{"proposals": "chatty"}',
+        '{"proposals": [{"kind": "nonsense"}]}',
+        '{"extra": 1}',
+        "[]",
+        "3",
+        "null",
+        '"text"',
+        "",
+        "not json",
+        "<think>never closed",
+        '{"target": "none"',
+    ],
+)
+def test_reply_check_agrees_with_the_real_schema(content: str) -> None:
+    try:
+        VoiceRequest.model_validate_json(_extract_json(content))
+        valid = True
+    except ValidationError:
+        valid = False
+    assert probe.voice_reply_valid(content) == valid
+
+
+@pytest.mark.parametrize(
+    ("message", "chars"),
+    [
+        ({"content": "{}"}, 0),
+        ({"content": "{}", "reasoning_content": "thinking"}, 8),
+        ({"content": "{}", "reasoning": "thinking"}, 8),
+        ({"content": "<think>abc</think>{}"}, 3),
+        ({"content": "<think>\n\n</think>\n{}"}, 0),
+        ({"content": "<think>abc"}, 3),
+        ({"content": None, "reasoning_content": "ab"}, 2),
+        ({"content": "{}", "reasoning_content": "  \n"}, 0),
+    ],
+)
+def test_reasoning_is_counted_wherever_the_reply_puts_it(
+    message: dict[str, Any], chars: int
+) -> None:
+    assert probe.reasoning_chars(message) == chars
+
+
+def test_reasoning_across_attempts_is_recorded(chat: str) -> None:
+    ChatStub.replies = [reply('{"target": "none"}', reasoning_content="abcd")]
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["reasoning"] is True and result["reasoning_chars"] == 4
+
+
+def test_a_reply_with_no_reasoning_says_so(chat: str) -> None:
+    result = probe.voice_call(chat, BODY, timeout_s=2)
+    assert result["reasoning"] is False and result["reasoning_chars"] == 0
+
+
+def test_the_gateways_fallback_count_is_recorded(chat: str) -> None:
+    ChatStub.headers_out = {"x-litellm-attempted-fallbacks": "1"}
+    assert probe.voice_call(chat, BODY, timeout_s=2)["fallbacks"] == 1
+
+
+def test_a_direct_reply_has_no_fallback_count(chat: str) -> None:
+    assert probe.voice_call(chat, BODY, timeout_s=2)["fallbacks"] is None
+
+
+def test_no_reply_text_is_kept(chat: str) -> None:
+    ChatStub.replies = [reply('{"task": "SECRET-WORDS"}', reasoning_content="SECRET-THOUGHT")]
+    assert "SECRET" not in json.dumps(probe.voice_call(chat, BODY, timeout_s=2))

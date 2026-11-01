@@ -726,6 +726,132 @@ def build_voice_body(model: str, *, pair: int, today: str) -> dict[str, Any]:
     }
 
 
+_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+_THINK_TEXT = re.compile(r"<think>(.*?)(?:</think>|$)", re.DOTALL)
+_FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
+
+
+def voice_reply_valid(content: str) -> bool:
+    """Would ``VoiceRequest.model_validate_json(_extract_json(content))`` accept this? Only pydantic
+    errors count: that schema forgives an unknown target and any shape of proposals."""
+    text = _THINK.sub("", content).strip()
+    if m := _FENCE.match(text):
+        text = m.group(1)
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return False
+    if not isinstance(data, dict):
+        return False
+    criteria = data.get("acceptance_criteria", [])
+    return (
+        isinstance(data.get("title", ""), str)
+        and isinstance(data.get("task", ""), str)
+        and isinstance(data.get("repo"), str | None)
+        and isinstance(data.get("done_when"), str | None)
+        and isinstance(criteria, list)
+        and all(isinstance(c, str) for c in criteria)
+    )
+
+
+def reasoning_chars(message: dict[str, Any]) -> int:
+    """Reasoning in this reply, wherever it landed: the engine's parser moves it to a field of its
+    own, and an empty think block is what a reply with no reasoning looks like."""
+    field = message.get("reasoning_content") or message.get("reasoning") or ""
+    content = message.get("content")
+    inline = _THINK_TEXT.findall(content) if isinstance(content, str) else []
+    return sum(len(t.strip()) for t in (field, *inline))
+
+
+def post_once(
+    base_url: str,
+    body: dict[str, Any],
+    *,
+    timeout_s: float,
+    api_key: str | None = None,
+    host: str | None = None,
+) -> dict[str, Any]:
+    """One non-streaming POST. ``timeout_s`` bounds the connect and each read, like the timeout the
+    client hands httpx. ``failure`` is what ``LiteLLMClient._chat`` would raise on."""
+    url = urllib.parse.urlsplit(base_url)
+    factory = http.client.HTTPSConnection if url.scheme == "https" else http.client.HTTPConnection
+    headers = {"content-type": "application/json"}
+    if host:
+        headers["host"] = host
+    if api_key:
+        headers["authorization"] = f"Bearer {api_key}"
+    out: dict[str, Any] = {"failure": None, "detail": None, "message": {}}
+    out |= {"usage": {}, "model": None, "fallbacks": None}
+    started = time.perf_counter()
+    conn = factory(url.hostname or "", url.port, timeout=timeout_s)
+    try:
+        conn.request("POST", f"{url.path}/chat/completions", json.dumps(body), headers)
+        response = conn.getresponse()
+        raw = response.read()
+        fallbacks = response.getheader("x-litellm-attempted-fallbacks")
+        out["fallbacks"] = int(fallbacks) if fallbacks and fallbacks.isdigit() else None
+        if not 200 <= response.status < 300:
+            out |= {"failure": "http", "detail": f"HTTP {response.status}: {raw[:200]!r}"}
+        else:
+            reply = json.loads(raw)
+            out["message"] = reply["choices"][0]["message"]
+            out |= {"usage": reply.get("usage") or {}, "model": reply.get("model")}
+            if not isinstance(out["message"]["content"], str):
+                out |= {"failure": "no_content", "detail": "reply has no text content"}
+    except TimeoutError as e:
+        out |= {"failure": "timeout", "detail": f"no answer in {timeout_s:g} s: {e}"}
+    except (OSError, http.client.HTTPException) as e:
+        out |= {"failure": "transport", "detail": f"{type(e).__name__}: {e}"}
+    except (ValueError, KeyError, IndexError, TypeError) as e:
+        out |= {"failure": "bad_response", "detail": f"{type(e).__name__}: {e}"}
+    finally:
+        conn.close()
+    out["s"] = time.perf_counter() - started
+    return out
+
+
+def voice_call(
+    base_url: str,
+    body: dict[str, Any],
+    *,
+    timeout_s: float,
+    api_key: str | None = None,
+    host: str | None = None,
+) -> dict[str, Any]:
+    """What the caller of ``complete_json`` lives through. Invalid JSON gets the one retry and the
+    caller waits for both attempts. Anything else ends the call at once: a timeout or a 500 is not
+    retried by the client. Keeps the shape of a ``stream_once`` row, with no reply text in it."""
+    attempts: list[dict[str, Any]] = []
+    outcome, error = "invalid_json", "invalid VoiceRequest JSON after retry"
+    for _ in (1, 2):
+        attempt = post_once(base_url, body, timeout_s=timeout_s, api_key=api_key, host=host)
+        attempts.append(attempt)
+        if attempt["failure"]:
+            outcome, error = attempt["failure"], attempt["detail"]
+            break
+        if voice_reply_valid(attempt["message"]["content"]):
+            outcome, error = "ok", None
+            break
+    chars = sum(reasoning_chars(a["message"]) for a in attempts)
+    usages = [a["usage"] for a in attempts if a["usage"]]
+    return {
+        "chunks": [],
+        "first_text_s": None,
+        "total_s": round(sum(a["s"] for a in attempts), 4),
+        "usage": usages[-1] if usages else None,
+        "error": error,
+        "outcome": outcome,
+        "attempts": len(attempts),
+        "attempt_s": [round(a["s"], 4) for a in attempts],
+        "prompt_tokens": usages[-1].get("prompt_tokens") if usages else None,
+        "completion_tokens": sum(u.get("completion_tokens", 0) for u in usages) if usages else None,
+        "reasoning": chars > 0,
+        "reasoning_chars": chars,
+        "answered_by": next((a["model"] for a in reversed(attempts) if a["model"]), None),
+        "fallbacks": attempts[-1]["fallbacks"],
+    }
+
+
 def percentile(ordered: list[float], q: float) -> float:
     """Nearest rank: always a value that was measured, never an interpolation."""
     return ordered[max(0, math.ceil(q * len(ordered)) - 1)]
