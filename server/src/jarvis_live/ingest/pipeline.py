@@ -80,7 +80,7 @@ class SessionPipeline:
         self._wake = asyncio.Event()
         self._finishing = False
         self._last_final_end_ms = 0
-        self.llm_ok = False  # set by the copilot loop; False until an LLM cycle has succeeded
+        self.llm_ok = False  # True from the orchestrator's on_start, then set by the copilot loop
         self.last_audio_at = time.monotonic()
         self.first_audio_at: float | None = None
         self._cut_at: dict[tuple[str, int], float] = {}  # (channel, start_ms) -> monotonic
