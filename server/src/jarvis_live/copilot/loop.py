@@ -147,6 +147,7 @@ class CopilotLoop:
                 user=user,
                 schema=CopilotDelta,
                 timeout_s=self._cfg.copilot_timeout_s,
+                think=False,
             )
         except LLMError as e:
             self._log.warning("copilot cycle skipped: %s", e)

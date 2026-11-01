@@ -101,7 +101,7 @@ Per CLAUDE.md, `protocol/` changes need fixtures plus server **and** Swift tests
 
 - `tts/tiers.py` — copy the shape of `stt/tiers.py` (`parse_tiers`, `TierPool`, probe loop, fall-through). Config `JARVIS_LIVE_TTS_TIERS` in the same `<name> <endpoint> <model>` format. Any Kokoro-compatible endpoint is a tier. Probe path to confirm in Phase 0 (`stt` probes `/models` then `/health`).
 - `talkback/policy.py` — a **pure function** `decide(mode, now, last_user_speech_ms, last_spoken_ms, spoken_count, suggestion) -> Speak | Skip(reason)`. This is the TDD target.
-- `talkback/agent.py` — ask → STT → LLM (LiteLLM alias `fast-chat`, the copilot's) with the transcript so far and copilot state → sentence-split → TTS. Reuses the `SentenceSplitter` idea (`chat/SentenceSplitter.kt`) in Python.
+- `talkback/agent.py` — ask → STT → LLM (via LiteLLM, route undecided: see the 2026-11-01 note in §5.1) with the transcript so far and copilot state → sentence-split → TTS. Reuses the `SentenceSplitter` idea (`chat/SentenceSplitter.kt`) in Python.
 - `talkback/echo.py` — the transcript echo filter (§3.4).
 - Metrics for task 9: `talkback_ttfa_seconds{kind,tier}`, `talkback_spoken_total{kind}`, `talkback_suppressed_total{reason}`. No per-session labels.
 
@@ -211,12 +211,14 @@ Estimated budget for an ask (every number is an estimate to be measured in Phase
 |---|---|
 | `ask_end` → server (network) | 30–80 ms |
 | STT of a 2–5 s clip (Whisper large-v3, `spark` or `pve` tier) | 250–500 ms |
-| LLM time-to-first-sentence (`fast-chat` via LiteLLM) | 400–600 ms |
+| LLM time-to-first-sentence (via LiteLLM, route undecided) | to be measured |
 | TTS first chunk (Kokoro, streamed PCM) | 100–250 ms |
 | Downlink + client jitter buffer (~150 ms of audio) + start playback | 150–250 ms |
-| **Total** | **~0.95–1.7 s** |
+| **Total** | **unproven** (the earlier ~0.95–1.7 s assumed the LLM row) |
 
-The target is reachable but not comfortable. It holds only if:
+**State on 2026-11-01.** This table used to give 400–600 ms for `fast-chat`, a figure with no measured basis, so the ~0.95–1.7 s sum built on it is unproven. `fast-chat` has no backend today: every request falls back to `heavy` with about 2.3 s added, and first text was 6–16 s. The route talkback will use is undecided. Findings: `docs/plans/fast-tier.md`.
+
+Whether the target is reachable stays unknown until the LLM row is measured. It can hold only if:
 
 1. The ask path **does not wait for the normal segmenter** (the 3 s silence commit). The cutter transcribes the marked interval at once.
 2. The LLM response **streams**, and TTS starts on the **first sentence**, not the full answer.

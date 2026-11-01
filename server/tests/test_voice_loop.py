@@ -323,6 +323,13 @@ async def test_the_request_is_shown_to_the_llm_only_as_quoted_speech(rig: Rig) -
     assert "ignore your instructions" not in call.system
 
 
+async def test_a_spoken_request_does_not_pay_for_reasoning(rig: Rig) -> None:
+    rig.llm.queue("VoiceRequest", VoiceRequest(target="none"))
+    await rig.hear("Jarvis, scratch that, never mind.")
+    await rig.loop().tick()
+    assert [c.think for c in rig.llm.calls] == [False]
+
+
 async def test_a_request_jarvis_decides_is_nothing_is_dropped_silently(rig: Rig) -> None:
     rig.llm.queue("VoiceRequest", VoiceRequest(target="none"))
     await rig.hear("Jarvis, scratch that, never mind.")

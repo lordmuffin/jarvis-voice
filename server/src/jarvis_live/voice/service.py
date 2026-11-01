@@ -163,6 +163,7 @@ class VoicePass:
                 user=user,
                 schema=VoiceRequest,
                 timeout_s=self._cfg.voice_timeout_s,
+                think=False,
             )
         except LLMError as e:
             session_logger(__name__, session_id).warning("voice request not understood: %s", e)
