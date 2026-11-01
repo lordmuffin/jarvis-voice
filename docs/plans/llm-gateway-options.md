@@ -6,13 +6,14 @@ Task 13 in `Tasks.herd`. Evidence gathered 2026-10-31, reworked the same day aft
 |---|---|
 | **Status** | Research and inventory complete. **The gateway decision is made: keep LiteLLM.** No candidate comparison was run, and none is planned. This rework ran nothing: no inference, no cluster access. |
 | **Grayfield review** | Done (#235, `REVIEW.md`, against `8fd0b3e`). Verdict: keep LiteLLM upheld, reasoning rejected. This version addresses its four blockers. It has not been re-reviewed. |
-| **Task 11** | Probe and findings merged (#236), normal-load run merged (#239). Cause named and reproduced. **The SLO is missed on every measure under normal load, on direct and gateway alike** `[T11]`. The voice-shaped arm has not run, and that is the next measurement. |
+| **Task 11** | Probe and findings merged (#236), normal-load run merged (#239). Cause named and reproduced. **The SLO is missed on every measure under normal load, on direct and gateway alike** `[T11]`. The voice-shaped arm ran 2026-11-01: **its gate failed, so no decision row fires, and it missed its target anyway** `[V]`. |
 | **Your decisions** | Listed in [What you still have to decide](#what-you-still-have-to-decide). |
 
 Citation keys:
 
 - `[T11]` is `docs/plans/llm-path-latency.md` on `main` (`c71e543`). **Every `[T11]` figure is taken from that document and was not re-run for this rework.** Its clock times read 5 hours behind this doc's UTC: its 13:05 pod move is this doc's 18:05, and its 14:15 to 16:15 normal-load run is 19:15 to 21:15 UTC.
 - `[Rev]` is `REVIEW.md`, including its own read-only checks of about 19:20 to 19:30 UTC. Those figures were not re-run either.
+- `[V]` is the [Voice arm](llm-path-latency.md#voice-arm) section of that document, run 2026-11-01, whose clock times are UTC.
 - `[TH]` is `Tasks.herd` at `6af3191`.
 - `[H]` is `homelab-gitops` (private repo, paths given), read at `0f1906f5`. The proxy manifest facts in this rework were re-read at `2f524a0f`.
 - `[J]` is this repo at `6af3191`.
@@ -27,7 +28,7 @@ Citation keys:
 4. **The network fault is a separate fault, and it is unexplained.** Task 11 did not reproduce it and calls its evidence before-and-after, with the mechanism unknown `[T11]`. Retransmits also fell on nodes the pod was not running on `[Rev]`. See [The network fault](#the-network-fault-separate-and-unexplained).
 5. **A replacement cannot recover the freeze or the queue.** LiteLLM adds about 6.5 ms `[T11]`, and any gateway sits in front of the same engine `[Rev]`. That figure covers `qwen3.8-flash-next` streaming, not the `fast-chat` route `[Rev]`. Under normal load the reopen condition was not met, though the sample is wide. See [Reopen condition](#reopen-condition).
 6. **The gateway's traffic is small. The engine's is not.** The proxy saw 0.016 POSTs per second `[M]`, but the engine had requests waiting in 55% of 10 s samples over 14 hours of logs, and in 90% during the normal-load run `[T11]`. Saturation is real, one hop past the gateway `[Rev]`.
-7. **No number yet describes the request voice makes.** Everything above is streaming, thinking off, on Flash. Voice sends `fast-chat`, non-streaming, JSON schema, with no `think` argument `[J: server/src/jarvis_live/voice/service.py:160, llm/client.py:80]`.
+7. **The request voice makes takes about 17 s at the median against a 2.5 s target, and that is not the gateway.** Arm V ran 182 pairs before the proxy config changed. Gateway total p50 was 17.21 s and answered p95 28.38 s, with 0 of 182 under 2.5 s and 26 failed (14.3%), all at the 30 s timeout. Direct failed 28 of 182, with p50 14.68 s. **The normal-load gate failed, with 1.1% `queued` against the 40% floor, so no decision row fires.** `/no_think` does not stop reasoning: every reply reasoned, and about 80% of its tokens were reasoning. That body is the one from before #247 `[V]`.
 
 ### Decisions already made
 
@@ -46,10 +47,10 @@ None of these reopens the gateway choice. Each owner is the task in `Tasks.herd`
 
 | # | Decision | Recommendation | Owner |
 |---|---|---|---|
-| 1 | Approve the voice-shaped arm | Yes. The streaming arm has run. This is what remains of step 1 `[T11]`, and it restarts nothing. | Task 11 step 1 |
-| 2 | Accept the [normal-load gate](#normal-load-gate) thresholds | Accept them, or set your own before the voice run, not after. | You |
-| 3 | Accept "beyond the confidence interval" as non-overlapping Wilson 95% intervals | Accept. Task 11 used intervals on the difference. Both tests give the same answer on its run. See [Reopen condition](#reopen-condition). | You |
-| 4 | Set a total-time target for the voice arm | Decide before the run. The SLO was written for a 1-2 sentence reply `[T11]`, and voice returns structured JSON `[J: server/src/jarvis_live/voice/service.py]`. Until you set one, the arm uses total p95 under 2.5 s. | You |
+| 1 | Approve the voice-shaped arm | **Approved and run** 2026-11-01. Its gate failed `[V]`, so a rerun is owed. Send `think=False` on today's route, not the old body. | Task 11 step 1 |
+| 2 | Accept the [normal-load gate](#normal-load-gate) thresholds | **Accepted** 2026-11-01. | You |
+| 3 | Accept "beyond the confidence interval" as non-overlapping Wilson 95% intervals | **Accepted** 2026-11-01. Task 11 used intervals on the difference. Both tests give the same answer on its run. See [Reopen condition](#reopen-condition). | You |
+| 4 | Set a total-time target for the voice arm | **Set** 2026-11-01: total p95 under 2.5 s, for arm V and the direct floor. The SLO was written for a 1-2 sentence reply `[T11]`, and voice returns structured JSON `[J: server/src/jarvis_live/voice/service.py]`. | You |
 | 5 | Approve the two paging alerts and the vLLM scrape | Yes. See [The 3 AM answer](#the-3-am-answer-today). | Task 21 |
 | 6 | Set `voice_timeout_s` against `fast-chat`'s 40 s path, **before Ollama returns** | Required ordering `[TH]`. Today it is 30 s `[J: server/src/jarvis_live/config.py:212]`. | Task 12 |
 | 7 | Approve the CoreDNS rule and the proxy change window | Yes, with Task 11's runs either side `[Rev]`. | Task 22 |
@@ -260,6 +261,15 @@ Proposed test, for your approval: the Wilson 95% intervals for gateway and direc
 
 All four difference intervals include zero, and all four pairs of Wilson intervals overlap. This sample cannot rule out a gateway error rate several points worse than direct `[T11]`, so the question stays closed on this evidence, not proven closed. It also clears nothing about the `fast-chat` route, which this run did not use `[T11]`.
 
+**Arm V: not met, on a run that failed the gate** `[V]`. The 182 main pairs, before the proxy config changed:
+
+| Measure | Gateway | Direct | Wilson 95%, gateway | Wilson 95%, direct |
+|---|---|---|---|---|
+| Failed | 26 of 182 | 28 of 182 | 9.9 to 20.1% | 10.9 to 21.3% |
+| Over 2.5 s, standing in for stalls | 182 of 182 | 177 of 182 | 97.9 to 100% | 93.7 to 98.8% |
+
+Both pairs of intervals overlap. Non-streaming has no gaps to count, so over-target replaces the stall rate. These are lighter load than the condition asks for, so they do not close the question for `fast-chat`, but nothing in them points at the gateway.
+
 ## LiteLLM: what keeping it costs
 
 | | |
@@ -325,7 +335,7 @@ A reachability alert would stay green through the actual fault, so the first ver
 
 ## Measurement plan
 
-**Task 11 step 1 owns this plan. Its streaming run has happened, so arms A and B have a result, though a partial one. Arm V has not run, and this rework sent no inference.** This is not a bake-off. The probe only sends streaming requests with thinking off `[J: scripts/llm_probe.py:88-90]`, so arm V needs adding first.
+**Task 11 step 1 owns this plan. Arms A, B and V have all run, A and B in part. V's gate failed, so it is owed a rerun** `[V]`. This is not a bake-off.
 
 | Arm | Path | Body |
 |---|---|---|
@@ -334,7 +344,7 @@ A reachability alert would stay green through the actual fault, so the first ver
 | C | LiteLLM after the Task 22 window | Same as B |
 | V | **Voice-shaped**, through the gateway | `fast-chat`, non-streaming, JSON schema, thinking as sent today, under normal load |
 
-Status: A and B ran on the probe's body, 96 and 97 requests `[T11]`. A's voice body, C and V have not run.
+Status: A and B ran on the probe's body, 96 and 97 requests `[T11]`. A's voice body and V ran 2026-11-01, 200 pairs: 182 on the original config, 2 across the proxy rollout and left out, and 16 on the new one, reported apart `[V]`. C has not run.
 
 The target is Task 11's SLO, through the gateway, per 200 pairs under normal load: first text p95 under 0.8 s, total p95 under 2.5 s, worst gap p99 under 1 s, errors under 0.5% `[T11]`. Arm V can only be judged on total time and errors, against the target from [decision 4](#what-you-still-have-to-decide).
 
@@ -363,11 +373,13 @@ The baselines are 10 s log samples and the buckets are per request, so they comp
 
 **The streaming run clears the load conditions on its gateway requests.** Agents were running. 75 of 97 gateway requests saw a request waiting, which is the `queued` bucket `[J: scripts/llm_probe.py:539-548]`, so 77% against the 40% floor, and at most 22 of 97 (23%) can be `alone` `[T11]`. Task 11's document gives neither figure for direct requests and does not attach the `--by-load` report, so the gate is not fully evidenced.
 
+**The voice run failed the gate** `[V]`. On the 364 main requests, the `--by-load` report attached to `[V]` gives 1.1% `queued` against the 40% floor, and 30.2% `alone` against the 40% ceiling. Agents were not paused, and `pi-durable` ran throughout. The engine log agrees: requests waiting in 0.3% of 10 s samples, against 55% at baseline. It was a Sunday. Report every result with this failure attached.
+
 ## Decision rule
 
 Check the gate first. An idle run at 4 AM fails it, and no row fires. Row 1 can fire with any other row. Rows 2 to 5 are first match wins. All rows are on a run that passed the gate.
 
-**Where this stands:** the streaming run fires row 2, because A misses the SLO `[T11]`. Row 1 did not fire. The run is short of 200 pairs, but direct's first text p95 of 71.78 s against 0.8 s is too far off for more samples to change the row. Arm V can still change what happens for voice.
+**Where this stands:** the streaming run fires row 2, because A misses the SLO `[T11]`. Row 1 did not fire. The run is short of 200 pairs, but direct's first text p95 of 71.78 s against 0.8 s is too far off for more samples to change the row. Arm V ran on 2026-11-01 and failed the gate, so **it fires no row** `[V]`. Had it passed, the match would be row 2 again, and the non-overlap test for row 1 is not met. The run's other findings still stand as evidence: no reply reached the target, and `/no_think` does not stop reasoning. The rerun the table asks for should send `think=False` on today's route, because the old body is no longer what voice sends.
 
 | # | Result | Decision |
 |---|---|---|
@@ -386,7 +398,7 @@ Step 3's gains are arithmetic from a measured rate, not measurements: about 5 s 
 
 In order, from the review `[Rev]`:
 
-1. Finish Task 11 step 1. The streaming arm has run, and the voice-shaped arm has not `[T11]`.
+1. Finish Task 11 step 1. Both arms have run, and the voice-shaped arm's gate failed `[V]`, so its rerun is what remains.
 2. The vLLM scrape and the two page-level alerts. See [What to add](#what-to-add).
 3. Decide `voice_timeout_s` against `fast-chat`'s 40 s path before Task 12 restores Ollama. With Ollama back and the gaming PC asleep, `fast-chat` costs about 40 s across two 20 s attempts `[H: apps/ai/litellm-proxy.yaml]`, and `voice_timeout_s` is 30 `[J]`, so voice can give up before the fallback fires `[Rev]`.
 4. Keep CoreDNS off `andrew-gamingpc`. One of three replicas runs there, and PR #832 banned the proxy from that node because it sleeps `[Rev]` `[H]`. The proxy still resolves through it, with a 5 s client timeout `[Rev]`.
@@ -404,17 +416,17 @@ Also found during the inventory. None depends on this decision:
 
 These are not findings. From the review's "Not verified here" `[Rev]`:
 
-- **Normal load on the voice route.** The streaming run answered this for Flash `[T11]`. Nobody has the number for `fast-chat`.
+- **Normal load on the voice route.** The streaming run answered this for Flash `[T11]`. `fast-chat` has a number now, on load lighter than normal, because the run failed the gate `[V]`.
 - **Whether the gateway's error rate is worse than direct.** 4 of 97 against 1 of 96 is not a significant difference, and the sample cannot rule one out `[T11]`.
 - **The cause of the 12 HTTP 500s,** and whether direct would have survived the same requests. One 75-minute window, overlapping Task 11's work.
-- **Whether `fast-chat`'s fallback adds measurable time with zero endpoints.** Task 12's 6 to 16 s may be mostly thinking or engine wait.
-- **Whether voice with no `chat_template_kwargs` actually reasons on Flash.** The code path is confirmed. Runtime behaviour was not tested.
+- **Answered: `fast-chat`'s fallback added about 2.5 s with zero endpoints,** paired against direct, and about 0.6 s after homelab #838, on 13 pairs. Most of the 6 to 16 s was thinking and engine time `[V]`.
+- **Answered: voice with no `chat_template_kwargs` reasons on Flash,** on all 310 answered replies in the main result, about 285 tokens at p50 `[V]`. Whether `think=False` stops it on this body is not tested: arm V does not send it.
 - **Why retransmits fell across nodes,** and why `server-c` did not. The node-eviction figure is the Kubernetes default, not observed.
 - **All `[T11]` figures** come from that document and were not re-run.
 
 Added in this rework:
 
-- **`/no_think`.** `VOICE_SYSTEM` and `COPILOT_SYSTEM` both open with `/no_think`, a prompt convention separate from `chat_template_kwargs` `[J: server/src/jarvis_live/voice/service.py:37, copilot/prompts.py:1,6]`. Neither the review nor Task 11 addresses it. No source here shows whether it suppresses reasoning on Flash. Arm V sends it, so the run measures it as sent. Task 12 reports reasoning of 380 to 490 characters per reply with thinking on `[TH]`.
+- **Answered: `/no_think` does not suppress reasoning on Flash.** `VOICE_SYSTEM` and `COPILOT_SYSTEM` both open with it, a prompt convention separate from `chat_template_kwargs` `[J: server/src/jarvis_live/voice/service.py:37, copilot/prompts.py:1,6]`. Arm V sends it, and every reply reasoned, on both paths `[V]`.
 - **R9.** Whether a `priority` field survives LiteLLM. The docs do not settle it `[S31]`.
 - **Whether `chat_template_kwargs` survives `drop_params`.** Task 12 owns this `[TH]`.
 

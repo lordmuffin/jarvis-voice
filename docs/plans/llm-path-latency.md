@@ -1,8 +1,10 @@
 # LLM path stalls: findings and proposed changes
 
-Status: **cause named and reproduced. Normal load measured: the SLO is missed by a wide margin.
-Stopped for approval before any Flash change.**
-Task 11 in `Tasks.herd`. Measured 2026-10-31 on `qwen3.8-flash-next`, from inside the cluster.
+Status: **cause named and reproduced. Normal load measured: the SLO is missed by a wide margin. The
+voice arm has run: its normal-load gate failed, so no decision row fires, and it missed its target
+anyway. Stopped for approval before any Flash change.**
+Task 11 in `Tasks.herd`. Measured 2026-10-31 on `qwen3.8-flash-next`, from inside the cluster. The
+[voice arm](#voice-arm) ran 2026-11-01.
 
 The task is not done: the SLO is met on an idle engine only.
 
@@ -140,9 +142,243 @@ Gateway against direct, the condition for reopening a LiteLLM replacement:
 All four intervals include zero, so the condition is not met. They are wide: this sample cannot rule
 out a gateway error rate several points worse than direct.
 
-**Not covered: the voice-shaped arm.** This run was streaming, thinking off, on Flash. Voice sends
-`fast-chat`, non-streaming, with a JSON schema and thinking as sent today. That arm was not run, so
-step 1 is only part done, and this clears nothing about the `fast-chat` route.
+**Not covered here: the voice-shaped arm.** This run was streaming, thinking off, on Flash, so it
+clears nothing about the `fast-chat` route. See [Voice arm](#voice-arm).
+
+## Voice arm
+
+Run 2026-11-01, 16:55:07 to 18:55:40 UTC, a Sunday. This section's times are UTC, unlike the rest of
+this document. It stopped at the 200-pair cap, 2 hours in, well inside the 4-hour cap. V is `fast-chat`
+through the gateway and A is the same body direct to Flash, interleaved, with the real `VOICE_SYSTEM`,
+the `VoiceRequest` schema, invented request text, no `think` argument, and the 30 s `voice_timeout_s`.
+The probe and the proxy were both on `lxc-k3s2-agent-d`. `pi-durable` was Running with 0 restarts at
+every check from before the start to after the end. The other agents were not paused, and were not
+checked one by one.
+
+- **The normal-load gate failed, so no row of the decision table fires.** 1.1% of requests were
+  `queued` against the 40% floor. `alone` passed, at 30.2% against the 40% ceiling.
+- **The 2.5 s target was missed anyway.** None of 182 gateway requests finished under 2.5 s, and
+  total p95 sits at the 30 s timeout. The gate exists to stop an idle run passing. This run was lighter
+  than normal load and still missed: gateway requests that ran alone took 13.11 s at the median.
+- **1 in 7 requests failed, all by timeout.** A failed request falls back to `from_words`, which can
+  only file a request that named its target out loud. No reply was invalid JSON.
+- **This is not the gateway.** Direct failed as often.
+- **`/no_think` does not stop reasoning on this route.** Every reply reasoned.
+
+### Main result
+
+The 182 pairs that finished before the #838 rollout began. Seconds:
+
+| Path | n | Failed, Wilson 95% | Timeouts | Invalid JSON | Total p50 / p95 / p99, every request | Total p50 / p95 / p99, answered only | Under 2.5 s |
+|---|---|---|---|---|---|---|---|
+| Gateway, arm V | 182 | 26 (14.3%), 9.9 to 20.1% | 26 | 0 | 17.21 / 30.03 / 30.03 | 15.61 / 28.38 / 29.09 | 0 |
+| Direct, arm A | 182 | 28 (15.4%), 10.9 to 21.3% | 28 | 0 | 14.68 / 30.03 / 30.03 | 12.71 / 24.74 / 27.54 | 5 |
+
+"Every request" counts a timeout at the 30 s it cost the caller, so those figures are lower bounds, and
+their p95 and p99 are the timeout, not a measured time. The client's one retry never fired, because
+only invalid JSON triggers it. Prompts were 581 tokens at p50. Completions were 393 (gateway) and 372
+(direct) tokens at p50, and 687 and 647 at p95.
+
+Gateway against direct, on the approved test of non-overlapping Wilson 95% intervals:
+
+| Measure | Gateway | Direct | Overlap? |
+|---|---|---|---|
+| Failed | 26 of 182, 9.9 to 20.1% | 28 of 182, 10.9 to 21.3% | Yes |
+| Over target, standing in for stalls | 182 of 182, 97.9 to 100% | 177 of 182, 93.7 to 98.8% | Yes |
+
+Non-streaming has no gaps to count, so over-target replaces the stall rate. Per pair: 140 neither
+failed, 14 gateway only, 16 direct only, 12 both. The gateway added time, not failures: see
+[the changes during the run](#changes-during-the-run).
+
+**Decision table: no row fires, because the gate failed.** Had it passed, the row would be row 2, A
+misses the SLO, which the streaming run already fired. The non-overlap test for row 1 is not met. V
+changes no decision taken so far, and the rerun the table asks for is still owed.
+
+### Load
+
+Requests by the load they saw, both paths, main result:
+
+| Load | n | Failed |
+|---|---|---|
+| Alone | 110 | 1 |
+| 1-3 others | 222 | 34 |
+| 4+ others | 28 | 16 |
+| Queued | 4 | 3 |
+
+Which period each result landed in. p50 is every request, in seconds:
+
+| Start | Rows | Queued | Alone | Failed | Gateway p50 | Direct p50 | Noted |
+|---|---|---:|---:|---:|---:|---:|---|
+| 16:55 | 50 | 0.04 | 0.00 | 5 | 18.41 | 16.73 | |
+| 17:10 | 48 | 0.00 | 0.00 | 5 | 16.95 | 15.96 | |
+| 17:25 | 53 | 0.00 | 0.19 | 4 | 17.87 | 13.68 | |
+| 17:40 | 71 | 0.00 | 0.99 | 1 | 12.81 | 10.96 | The quiet period. #247 reaches lab |
+| 17:55 | 59 | 0.00 | 0.51 | 2 | 15.23 | 12.22 | #247 reaches live at 18:06 |
+| 18:10 | 36 | 0.00 | 0.00 | 18 | 28.13 | 27.54 | The surge below |
+| 18:25 | 37 | 0.05 | 0.00 | 16 | 26.84 | 28.63 | The surge below |
+| 18:40 | 10 | 0.00 | 0.00 | 3 | 20.63 | 18.89 | Stops at the rollout |
+| 18:45 | 32 | 0.00 | 0.00 | 4 | 15.83 | 17.70 | **After #838, reported separately** |
+
+- **The engine was far from full.** Over the run, from the vLLM log: requests waiting in 0.3% of 10 s
+  samples against 55% over the 14-hour baseline and 90% in the streaming run, 2.3 of 8 places in use on
+  average against 7.4, and KV cache never above 70%.
+- **Nearly half the requests failed from 18:10 to 18:40, with almost nothing queued.** 34 of 73 failed there,
+  against 20 of 291 in the rest of the main result. The engine had 4.7 requests running on average in
+  the worst slice, and whole-request speed fell to about 15 tokens/s. At that speed a reply over 450
+  tokens cannot finish inside 30 s, and p50 is nearly 400. That is arithmetic, but it means **voice
+  times out on a share of the engine alone, with no queue at all.**
+- **The surge came through the proxy, and I cannot name the caller.** Every POST in the vLLM log came
+  from the probe or the proxy, so no second client reached the engine directly. The surge shows from
+  about 18:02. The proxy's logs for that period went with its pod in the rollout. `copilot_probe.py`
+  arrived in the probe's pod at 18:59, after the last row, so it did not overlap.
+
+### Reasoning
+
+| Path | Replies that reasoned | Reasoning tokens p50 | Share of completion p50 | Answer tokens p50 / p95 | Tokens/s p50 |
+|---|---|---|---|---|---|
+| Gateway | 156 of 156 | 286 | 80% | 67 / 155 | 23.4 |
+| Direct | 154 of 154 | 284 | 79% | 77 / 152 | 27.7 |
+
+**`/no_think` in the system prompt did not stop reasoning here,** on either path, on a request that
+also carries a JSON schema. About four fifths of the tokens are reasoning nobody reads.
+
+This run cannot say what `think=False` does. Arm V sends no `chat_template_kwargs`, as voice did when
+the arm was specified, so whether vLLM honours `enable_thinking: false` on this body still needs a
+measurement. `docs/plans/fast-tier.md` expected to read that from this arm.
+
+Thinking off should help a lot, but this run does not show it reaches the target. Requests that ran with
+at most one on the engine managed 34 tokens/s over the whole request, so a 155-token answer is about
+4.5 s and a 77-token one about 2.2 s. That is arithmetic from this run, not a measurement. It is also
+far below the 75 tokens/s `fast-tier.md` assumes, and this run does not separate why: the JSON schema,
+the engine's share, or the time before the first token.
+
+### Changes during the run
+
+**#247, thinking off for the copilot, voice and ideas callers.** Merged 17:42:18. It reached lab at about
+17:45 and, in `server-v0.31.1`, live at 18:06, so it was not lab only. **Arm V kept the old body
+throughout, so every figure here is the before number for that fix.** It may have changed the engine's
+load in the last hour of the main result. This run cannot separate that from the surge.
+
+**Homelab #838, `fast-chat` and `fast-coder` get timeout 5 and no retries.** It restarted the proxy:
+
+| Time | Event |
+|---|---|
+| 18:44:10 | Config reloaded, new pod created |
+| 18:44:32 | New pod Ready, old pod told to stop, with a 30 s grace period |
+| 18:44:36 to 18:44:56 | Old pod refuses its readiness checks |
+| After 18:45:01, by 18:45:14 | Old pod gone. It was seen draining at 18:45:01 and absent from the pod list at 18:45:14 |
+
+Pairs are kept whole. A pair counts as main if it finished before 18:44:10, and as new config if it
+started after 18:45:14. **Pairs 182 and 183 overlap the rollout and are left out of both:** three
+answers and one direct timeout, so **no gateway failure came from the restart,** and leaving them out
+flatters neither path. Gateway timeouts in pair 181, which ended at 18:43:36, and pair 184, which
+started after the old pod had gone, stay in their groups.
+
+New config, 16 pairs, 18:45:35 to 18:55:40. **This is a different config and too few pairs to judge.**
+Do not pool it with the main result:
+
+| Path | n | Failed, Wilson 95% | Timeouts | Invalid JSON | Total p50 / p95 / p99, every request | Total p50 / p95 / p99, answered only | Under 2.5 s |
+|---|---|---|---|---|---|---|---|
+| Gateway | 16 | 3 (18.8%), 6.6 to 43.0% | 3 | 0 | 15.83 / 30.03 / 30.03 | 15.46 / 28.25 / 28.25 | 0 |
+| Direct | 16 | 1 (6.3%), 1.1 to 28.3% | 1 | 0 | 17.70 / 30.03 / 30.03 | 17.70 / 28.71 / 28.71 | 0 |
+
+**#838 appears to remove most of what the gateway added.** All answers still came through the fallback
+to Flash, 13 of 13. The time the gateway adds to one request, as a median over pairs where both answered,
+after scaling the direct time to the gateway reply's token count:
+
+| | Pairs | Median | Bootstrap 95% |
+|---|---|---:|---|
+| Main result | 140 | 2.52 s | 2.33 to 2.67 s |
+| New config | 13 | 0.62 s | -0.03 to 1.09 s |
+
+That fits the 2.3 s retry the homelab change names. The unscaled gaps are 2.83 s (1.43 to 3.73) and
+2.15 s (-0.88 to 8.20), too noisy to show it. I chose the scaling after seeing the data, so treat it
+as a good lead, not a result. Against a 17 s median it is a small part of the miss.
+
+### Limits
+
+- **Load was light, so these are favourable numbers.** The same prompt repeated all run, so it stayed
+  warm in the prefix cache, which a rare voice call will not. Real voice would do worse on both counts.
+- **The gateway injects `max_completion_tokens: 8192`, and direct has no cap.** No reply came near it.
+- **A timed-out request reports no tokens,** so the completion and reasoning figures describe answered
+  requests only, and lean short.
+- The probe was `scripts/llm_probe.py` at #242 (sha256 `4598653d`). The 400 rows have sha256 `1440e1f2`.
+
+### What this leaves
+
+- **A run that passes the gate is still owed, and repeating this body would be wasted.** It no longer
+  matches what voice sends. The rerun should send `think=False` on today's route, on a weekday with the
+  agents busy, after `docs/plans/fast-tier.md` step 3, which `Tasks.herd` makes the only probe allowed
+  next.
+- **The recommendation to decide the reserved path stands, with a condition.** Voice misses with no
+  queue, so holding a place is not enough on its own. The reply has to get shorter as well.
+
+### Report
+
+`llm_probe.py report --by-load`, main result:
+
+```
+label	prompt	max	path	load	n	err	stalled	first_text_p50	first_text_p95	first_text_p99	total_p50	total_p95	total_p99	total_max	stalls
+normal	voice	None	direct	1-3 others	111	17	0	-	-	-	14.78	25.59	27.54	27.54	
+normal	voice	None	direct	4+ others	13	8	0	-	-	-	24.03	28.63	28.63	28.63	
+normal	voice	None	direct	alone	56	1	0	-	-	-	10.50	17.99	21.13	21.13	
+normal	voice	None	direct	queued	2	2	0	-	-	-	-	-	-	-	
+normal	voice	None	gateway	1-3 others	111	17	0	-	-	-	17.21	28.38	29.09	29.09	
+normal	voice	None	gateway	4+ others	15	8	0	-	-	-	23.26	28.87	28.87	28.87	
+normal	voice	None	gateway	alone	54	0	0	-	-	-	13.11	21.43	28.79	28.79	
+normal	voice	None	gateway	queued	2	1	0	-	-	-	29.14	29.14	29.14	29.14	
+
+pairs: {'pairs': 182, 'neither': 182, 'direct_only': 0, 'gateway_only': 0, 'both': 0}
+
+prompt	path	load	n	failed	failed_95	timeouts	invalid_json	other	retried	caller_p50	caller_p95	caller_p99	ok_p50	ok_p95	ok_p99	over_target	prompt_p50	completion_p50	completion_p95	reasoned	fell_back	answered_by
+voice	direct	all	182	28	10.9-21.3%	28	0	0	0	14.68	30.03	30.03	12.71	24.74	27.54	177	581	372	647	154/154	0	{'qwen3.8-flash-next': 154}
+voice	gateway	all	182	26	9.9-20.1%	26	0	0	0	17.21	30.03	30.03	15.61	28.38	29.09	182	581	393	687	156/156	156	{'qwen3.8-flash-next': 156}
+voice	direct	1-3 others	111	17	9.8-23.2%	17	0	0	0	16.73	30.03	30.03	14.78	25.59	27.54	108	581	372	641	94/94	0	{'qwen3.8-flash-next': 94}
+voice	direct	4+ others	13	8	35.5-82.3%	8	0	0	0	30.03	30.03	30.03	24.03	28.63	28.63	13	580	342	491	5/5	0	{'qwen3.8-flash-next': 5}
+voice	direct	alone	56	1	0.3-9.4%	1	0	0	0	10.50	18.33	30.03	10.50	17.99	21.13	54	581	385	734	55/55	0	{'qwen3.8-flash-next': 55}
+voice	direct	queued	2	2	34.2-100.0%	2	0	0	0	30.03	30.03	30.03	-	-	-	2	None	None	None	0/0	0	{}
+voice	gateway	1-3 others	111	17	9.8-23.2%	17	0	0	0	19.00	30.03	30.03	17.21	28.38	29.09	111	581	376	687	94/94	94	{'qwen3.8-flash-next': 94}
+voice	gateway	4+ others	15	8	30.1-75.2%	8	0	0	0	30.02	30.03	30.03	23.26	28.87	28.87	15	581	312	483	7/7	7	{'qwen3.8-flash-next': 7}
+voice	gateway	alone	54	0	0.0-6.6%	0	0	0	0	13.11	21.43	28.79	13.11	21.43	28.79	54	581	403	751	54/54	54	{'qwen3.8-flash-next': 54}
+voice	gateway	queued	2	1	9.5-90.5%	1	0	0	0	29.14	30.03	30.03	29.14	29.14	29.14	2	582	321	321	1/1	1	{'qwen3.8-flash-next': 1}
+
+gate: {"passed": false, "all": {"n": 364, "queued": 0.01098901098901099, "alone": 0.3021978021978022, "buckets": {"1-3 others": 222, "4+ others": 28, "queued": 4, "alone": 110}}, "direct": {"n": 182, "queued": 0.01098901098901099, "alone": 0.3076923076923077, "buckets": {"1-3 others": 111, "queued": 2, "alone": 56, "4+ others": 13}}, "gateway": {"n": 182, "queued": 0.01098901098901099, "alone": 0.2967032967032967, "buckets": {"1-3 others": 111, "4+ others": 15, "queued": 2, "alone": 54}}}
+reopen: {"failures": {"gateway": [26, 182], "direct": [28, 182], "gateway_ci": [0.09939008289660273, 0.20108946527775654], "direct_ci": [0.10863610380083977, 0.21336715058353922], "exceeds": false}, "over_target": {"gateway": [182, 182], "direct": [177, 182], "gateway_ci": [0.9793286325558971, 1.0], "direct_ci": [0.9373096754768265, 0.9882096915540213], "exceeds": false}}
+pairs: {"pairs": 182, "neither": 140, "direct_only": 16, "gateway_only": 14, "both": 12, "gateway_minus_direct_p50": 2.8157}
+periods:
+start_utc	n	queued	alone	failed	gateway_p50	direct_p50
+16:55	50	0.04	0.00	5	18.41	16.73
+17:10	48	0.00	0.00	5	16.95	15.96
+17:25	53	0.00	0.19	4	17.87	13.68
+17:40	71	0.00	0.99	1	12.81	10.96
+17:55	59	0.00	0.51	2	15.23	12.22
+18:10	36	0.00	0.00	18	28.13	27.54
+18:25	37	0.05	0.00	16	26.84	28.63
+18:40	10	0.00	0.00	3	20.63	18.89
+```
+
+New config:
+
+```
+label	prompt	max	path	load	n	err	stalled	first_text_p50	first_text_p95	first_text_p99	total_p50	total_p95	total_p99	total_max	stalls
+normal	voice	None	direct	1-3 others	16	1	0	-	-	-	17.70	28.71	28.71	28.71	
+normal	voice	None	gateway	1-3 others	16	3	0	-	-	-	15.46	28.25	28.25	28.25	
+
+pairs: {'pairs': 16, 'neither': 16, 'direct_only': 0, 'gateway_only': 0, 'both': 0}
+
+prompt	path	load	n	failed	failed_95	timeouts	invalid_json	other	retried	caller_p50	caller_p95	caller_p99	ok_p50	ok_p95	ok_p99	over_target	prompt_p50	completion_p50	completion_p95	reasoned	fell_back	answered_by
+voice	direct	all	16	1	1.1-28.3%	1	0	0	0	17.70	30.03	30.03	17.70	28.71	28.71	16	581	363	663	15/15	0	{'qwen3.8-flash-next': 15}
+voice	gateway	all	16	3	6.6-43.0%	3	0	0	0	15.83	30.03	30.03	15.46	28.25	28.25	16	580	305	798	13/13	13	{'qwen3.8-flash-next': 13}
+voice	direct	1-3 others	16	1	1.1-28.3%	1	0	0	0	17.70	30.03	30.03	17.70	28.71	28.71	16	581	363	663	15/15	0	{'qwen3.8-flash-next': 15}
+voice	gateway	1-3 others	16	3	6.6-43.0%	3	0	0	0	15.83	30.03	30.03	15.46	28.25	28.25	16	580	305	798	13/13	13	{'qwen3.8-flash-next': 13}
+
+gate: {"passed": false, "all": {"n": 32, "queued": 0.0, "alone": 0.0, "buckets": {"1-3 others": 32}}, "direct": {"n": 16, "queued": 0.0, "alone": 0.0, "buckets": {"1-3 others": 16}}, "gateway": {"n": 16, "queued": 0.0, "alone": 0.0, "buckets": {"1-3 others": 16}}}
+reopen: {"failures": {"gateway": [3, 16], "direct": [1, 16], "gateway_ci": [0.06591478773586763, 0.4300935986845823], "direct_ci": [0.011119057308331216, 0.2832926836802987], "exceeds": false}, "over_target": {"gateway": [16, 16], "direct": [16, 16], "gateway_ci": [0.8063865817272801, 1.0], "direct_ci": [0.8063865817272801, 1.0], "exceeds": false}}
+pairs: {"pairs": 16, "neither": 13, "direct_only": 0, "gateway_only": 2, "both": 1, "gateway_minus_direct_p50": 2.1532}
+periods:
+start_utc	n	queued	alone	failed	gateway_p50	direct_p50
+18:45	32	0.00	0.00	4	15.83	17.70
+```
 
 ## Hypotheses
 
@@ -201,7 +437,7 @@ match `Tasks.herd`.
 
 | # | Change | Restarts Flash? | Rollback |
 |---|---|---|---|
-| 1 | Normal load. **Part done:** the streaming arm ran, 97 of 200 gateway requests. The voice-shaped arm did not | No | None needed |
+| 1 | Normal load. **Both arms have run.** Streaming: 97 of 200 gateway requests. Voice: 182 main pairs, gate failed, so a rerun is owed. See [Voice arm](#voice-arm) | No | None needed |
 | 2 | Scrape vLLM into Prometheus and feed Task 9 (no `vllm:*` series exist) | No | Revert the scrape config |
 | 3 | Lower `--max-num-batched-tokens` to 1024, then measure agents and voice | **Yes, 8-13 min** | Restore 8192, with a second cold load |
 | 4 | `--scheduling-policy priority`, for the capacity queue | **Yes, 8-13 min** | Remove the flag, with a second cold load |
