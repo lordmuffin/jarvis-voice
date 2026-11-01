@@ -1,6 +1,9 @@
 """Live copilot evals. Run with ``uv run pytest -q tests/evals --live`` against a real LiteLLM
 (JARVIS_LIVE_LITELLM_BASE_URL, optionally JARVIS_LIVE_LITELLM_API_KEY_FILE and
-JARVIS_LIVE_COPILOT_MODEL). Prompts are not tuned to pass: failures are reported as they are."""
+JARVIS_LIVE_COPILOT_MODEL). Prompts are not tuned to pass: failures are reported as they are.
+
+To compare a small model with Flash, point the URL and the model at it and pace the run if it has
+another caller to protect: JARVIS_LIVE_EVAL_PAUSE_S waits that long after each case."""
 
 import httpx
 import pytest
@@ -8,12 +11,12 @@ import pytest
 from jarvis_live.config import Settings
 from jarvis_live.llm.client import LiteLLMClient
 from tests.evals.harness import REPORT, Outcome, check, run_case
-from tests.evals.transcripts import CASES, Case
+from tests.evals.transcripts import CASES, SMALL_MODEL_CASES, Case
 
 pytestmark = pytest.mark.live
 
 
-@pytest.mark.parametrize("case", CASES, ids=lambda c: c.name)
+@pytest.mark.parametrize("case", [*CASES, *SMALL_MODEL_CASES], ids=lambda c: c.name)
 async def test_copilot_case(case: Case) -> None:
     cfg = Settings()
     assert cfg.litellm_base_url, "set JARVIS_LIVE_LITELLM_BASE_URL"

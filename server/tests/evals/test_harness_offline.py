@@ -2,7 +2,18 @@
 
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta
 from tests.evals.harness import Outcome, Report, check, run_case
-from tests.evals.transcripts import CASES, SOLO_BRAIN_DUMP, VENDOR_CALL
+from tests.evals.transcripts import (
+    CASES,
+    MOVED_DEADLINE,
+    NO_ACTIONS,
+    PLANNING_FIRST,
+    PLANNING_LONG,
+    ROLLING_STATE,
+    SMALL_MODEL_CASES,
+    SOLO_BRAIN_DUMP,
+    VENDOR_CALL,
+    line_at,
+)
 from tests.fakes import FakeLLM
 
 GOOD_VENDOR = CopilotDelta(
@@ -37,6 +48,50 @@ async def test_flags_invented_owner() -> None:
     delta, state, secs = await run_case(FakeLLM().queue("CopilotDelta", bad), SOLO_BRAIN_DUMP)
     failures = check(SOLO_BRAIN_DUMP, delta, state, secs)
     assert any("invented owner 'me'" in f for f in failures)
+
+
+async def test_asks_the_way_the_copilot_loop_asks() -> None:
+    llm = FakeLLM().queue("CopilotDelta", GOOD_VENDOR)
+    await run_case(llm, VENDOR_CALL)
+    assert llm.calls[0].think is False
+
+
+async def test_a_seeded_case_starts_from_that_state() -> None:
+    llm = FakeLLM().queue("CopilotDelta", CopilotDelta())
+    _, state, _ = await run_case(llm, ROLLING_STATE)
+    assert [a.text for a in state.actions] == [a.text for a in ROLLING_STATE.seed.actions_upsert]
+    assert ROLLING_STATE.seed.actions_upsert[0].text in llm.calls[0].user
+
+
+async def test_flags_a_restated_action_as_a_duplicate() -> None:
+    restated = ActionUpsert(text="Fix the staging image pull timeout", owner="Priya")
+    delta = CopilotDelta(actions_upsert=[restated, ActionUpsert(text="x"), ActionUpsert(text="y")])
+    delta, state, secs = await run_case(FakeLLM().queue("CopilotDelta", delta), ROLLING_STATE)
+    assert any("actions (>" in f for f in check(ROLLING_STATE, delta, state, secs))
+
+
+async def test_flags_a_wrong_due_date() -> None:
+    wrong = CopilotDelta(actions_upsert=[ActionUpsert(id="a1", text="Send the deck", due="Monday")])
+    delta, state, secs = await run_case(FakeLLM().queue("CopilotDelta", wrong), MOVED_DEADLINE)
+    assert any("due 'Monday'" in f for f in check(MOVED_DEADLINE, delta, state, secs))
+
+
+async def test_flags_an_action_where_nothing_was_committed() -> None:
+    invented = CopilotDelta(actions_upsert=[ActionUpsert(text="Plan the team lunch")])
+    delta, state, secs = await run_case(FakeLLM().queue("CopilotDelta", invented), NO_ACTIONS)
+    assert any("actions (>0)" in f for f in check(NO_ACTIONS, delta, state, secs))
+
+
+def test_small_model_cases_are_invented_and_wellformed() -> None:
+    assert len(SMALL_MODEL_CASES) == 6
+    for c in SMALL_MODEL_CASES:
+        assert c.transcript.startswith("[0")
+        assert "192.168." not in c.transcript and ".apj." not in c.transcript
+
+
+def test_the_planning_windows_cover_the_copilot_window() -> None:
+    assert line_at(PLANNING_LONG.transcript.splitlines()[-1]) <= 480
+    assert line_at(PLANNING_FIRST.transcript.splitlines()[-1]) <= 300
 
 
 def test_cases_are_wellformed_and_report_renders() -> None:
