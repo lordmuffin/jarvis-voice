@@ -98,6 +98,16 @@ async def test_a_pass_creates_items_with_audit_events_and_a_cursor(sm: SM) -> No
     assert cursor == {"until_ms": DIARY[8][1]}
 
 
+async def test_a_pass_does_not_pay_for_reasoning(sm: SM) -> None:
+    sid = await owner_session(sm)
+    await add_segments(sm, sid, DIARY[:9])
+    llm = FakeLLM().queue("IdeasDelta", IdeasDelta())
+
+    await IdeasPass(CFG, sm, llm).run(sid)
+
+    assert [c.think for c in llm.calls] == [False]
+
+
 async def test_the_next_pass_reads_only_new_lines_plus_overlap_and_clusters(sm: SM) -> None:
     sid = await owner_session(sm)
     await add_segments(sm, sid, DIARY[:9])

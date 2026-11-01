@@ -133,6 +133,7 @@ class IdeasPass:
                 user=user,
                 schema=IdeasDelta,
                 timeout_s=cfg.ideas_timeout_s,
+                think=False,
             )
         except LLMError as e:
             log.warning("ideas pass skipped: %s", e)

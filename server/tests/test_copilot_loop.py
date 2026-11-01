@@ -98,6 +98,12 @@ async def test_runs_after_three_new_segments(rig: Rig) -> None:
     assert len(rig.llm.calls) == 1
 
 
+async def test_a_cycle_does_not_pay_for_reasoning(rig: Rig) -> None:
+    await rig.segs(3)
+    await rig.loop.tick()
+    assert [c.think for c in rig.llm.calls] == [False]
+
+
 async def test_runs_after_25s_with_one_new_segment(rig: Rig) -> None:
     await rig.segs(1)
     await rig.loop.tick()  # first sight of the new segment starts the timer
