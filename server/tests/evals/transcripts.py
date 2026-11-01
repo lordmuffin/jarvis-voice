@@ -3,6 +3,7 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta
 
@@ -200,3 +201,37 @@ SMALL_MODEL_CASES = [
     ROLLING_STATE,
     MOVED_DEADLINE,
 ]
+
+ROLLING_WINDOW_S = 200  # what fits a 2,048-token slot with room left to answer
+ROLLING_LAG_S = 25  # a commitment is at most one cycle old when the copilot first sees it
+
+
+def _rolling(item: dict[str, Any]) -> Case:
+    """One cycle of a running meeting: a full state, and a commitment nothing has recorded yet at
+    the end of the window. An empty reply is valid and fast, and it fails here."""
+    end = line_at(f"[{item['at']}]") + ROLLING_LAG_S
+    earlier = [
+        x for x in _MEETING["items"] if line_at(f"[{x['at']}]") < line_at(f"[{item['at']}]") - 5
+    ]
+    fields = ("text", "owner", "due")
+    return Case(
+        name=f"rolling: {item['text']}",
+        transcript="\n".join(
+            x for x in _MEETING["lines"] if end - ROLLING_WINDOW_S < line_at(x) <= end
+        ),
+        seed=CopilotDelta(
+            notes_upsert=[{"text": x["text"]} for x in earlier if x["kind"] == "notes"],
+            decisions_upsert=[{"text": x["text"]} for x in earlier if x["kind"] == "decisions"],
+            actions_upsert=[
+                {k: x[k] for k in fields if k in x} for x in earlier if x["kind"] == "actions"
+            ],
+        ),
+        actions=(
+            Expected(
+                keywords=(tuple(item["key"]),), owner=(item.get("owner") or "").lower() or None
+            ),
+        ),
+    )
+
+
+ROLLING_REPLAY = [_rolling(x) for x in _MEETING["items"] if "key" in x]

@@ -11,12 +11,14 @@ import pytest
 from jarvis_live.config import Settings
 from jarvis_live.llm.client import LiteLLMClient
 from tests.evals.harness import REPORT, Outcome, check, run_case
-from tests.evals.transcripts import CASES, SMALL_MODEL_CASES, Case
+from tests.evals.transcripts import CASES, ROLLING_REPLAY, SMALL_MODEL_CASES, Case
 
 pytestmark = pytest.mark.live
 
 
-@pytest.mark.parametrize("case", [*CASES, *SMALL_MODEL_CASES], ids=lambda c: c.name)
+@pytest.mark.parametrize(
+    "case", [*CASES, *SMALL_MODEL_CASES, *ROLLING_REPLAY], ids=lambda c: c.name
+)
 async def test_copilot_case(case: Case) -> None:
     cfg = Settings()
     assert cfg.litellm_base_url, "set JARVIS_LIVE_LITELLM_BASE_URL"
