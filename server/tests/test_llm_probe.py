@@ -4,6 +4,7 @@ What matters is telling stalls apart: a slow first text, a freeze mid-stream and
 chunk have different causes, so a probe that reports only first-text and total time cannot
 localise anything."""
 
+import asyncio
 import importlib.util
 import json
 import random
@@ -15,7 +16,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, ClassVar
 
+import httpx
 import pytest
+
+from jarvis_live.config import Settings
+from jarvis_live.llm.client import LiteLLMClient
+from jarvis_live.voice.schema import VoiceRequest
+from jarvis_live.voice.service import VOICE_SYSTEM, voice_user
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "llm_probe.py"
 spec = importlib.util.spec_from_file_location("llm_probe", SCRIPT)
@@ -518,3 +525,76 @@ def test_a_request_past_its_deadline_is_recorded_not_waited_for(stub: str) -> No
     r = probe.stream_once(stub + "/v1", BODY, timeout_s=5, deadline_s=0.1)
     assert "deadline" in r["error"]
     assert r["total_s"] < 0.5
+
+
+# --- Arm V: the request voice actually makes. ---------------------------------------------------
+
+
+REPOS = {
+    "lordmuffin/jarvis-voice": "Jarvis Live: transcription server, copilot, web dashboard, "
+    "Android and macOS apps, CI",
+}
+
+
+def sent_by_the_real_client(model: str, user: str) -> dict[str, Any]:
+    """What ``LiteLLMClient`` puts on the wire for voice, read off a fake transport."""
+    sent: list[dict[str, Any]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        reply = {"role": "assistant", "content": '{"target": "none"}'}
+        return httpx.Response(200, json={"choices": [{"message": reply}]})
+
+    async def call() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as client:
+            await LiteLLMClient("http://gateway/v1", client).complete_json(
+                model=model, system=VOICE_SYSTEM, user=user, schema=VoiceRequest, timeout_s=30.0
+            )
+
+    asyncio.run(call())
+    return sent[0]
+
+
+def test_voice_prompt_and_schema_are_the_servers_own() -> None:
+    assert probe.VOICE_SYSTEM == VOICE_SYSTEM
+    assert probe.VOICE_SCHEMA == VoiceRequest.model_json_schema()
+
+
+def test_voice_user_renders_as_the_server_does() -> None:
+    args: dict[str, Any] = {
+        "today": "2026-11-01",
+        "repos": REPOS,
+        "commentable": [],
+        "known": [],
+        "said": "open a pie session on the backup job",
+    }
+    assert probe.voice_user(**args) == voice_user(**args)
+
+
+def test_voice_timeout_is_the_servers_default() -> None:
+    assert probe.VOICE_TIMEOUT_S == Settings.model_fields["voice_timeout_s"].default
+
+
+def test_voice_body_is_exactly_what_the_client_sends() -> None:
+    body = probe.build_voice_body("fast-chat", pair=3, today="2026-11-01")
+    assert body == sent_by_the_real_client("fast-chat", body["messages"][1]["content"])
+
+
+def test_voice_body_has_no_streaming_thinking_or_token_arguments() -> None:
+    body = probe.build_voice_body("fast-chat", pair=0, today="2026-11-01")
+    assert not {"stream", "stream_options", "chat_template_kwargs", "max_tokens"} & set(body)
+
+
+def test_voice_body_differs_only_in_the_model_between_paths() -> None:
+    gateway = probe.build_voice_body("fast-chat", pair=5, today="2026-11-01")
+    direct = probe.build_voice_body("flash", pair=5, today="2026-11-01")
+    assert {**gateway, "model": "flash"} == direct
+
+
+def test_voice_requests_vary_by_pair_and_stay_invented() -> None:
+    said = {
+        probe.build_voice_body("m", pair=p, today="2026-11-01")["messages"][1]["content"]
+        for p in range(200)
+    }
+    assert len(said) >= 12
+    assert not any("192.168." in s or ".lab." in s for s in said)
