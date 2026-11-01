@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.31.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.30.0...server-v0.31.0) (2026-11-01)
+
+
+### Features
+
+* **probe:** add the voice request body ([b840eac](https://github.com/lordmuffin/jarvis-voice/commit/b840eace630e8aff0bba25da2992377b76908511))
+* **probe:** call the voice route as the client does ([16eb6db](https://github.com/lordmuffin/jarvis-voice/commit/16eb6db0eecf60ebf51f06ddbc2e2ace28b53b3a))
+* **probe:** run arm V in pairs and report it against the gate ([13a8fbc](https://github.com/lordmuffin/jarvis-voice/commit/13a8fbc39b9da3bad5611f5f3a96be7df195a8c0))
+* **scripts:** add the voice-shaped arm to the LLM probe ([6b0dfcf](https://github.com/lordmuffin/jarvis-voice/commit/6b0dfcf134d5b51ab465f707d53c59be8f1db055))
+
+
+### Bug Fixes
+
+* **server:** don't report the LLM down while a session starts ([5fe5b2e](https://github.com/lordmuffin/jarvis-voice/commit/5fe5b2e8015669cd44f9db52726f569c03661417))
+* **server:** don't report the LLM down while a session starts ([2274d99](https://github.com/lordmuffin/jarvis-voice/commit/2274d99357657664b3e3b907ff285c64509f4182))
+
 ## [0.30.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.29.0...server-v0.30.0) (2026-10-31)
 
 
