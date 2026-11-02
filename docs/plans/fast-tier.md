@@ -1,6 +1,6 @@
 # Fast tier: findings and proposed changes
 
-Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, and step 3a fixed it: on live in `server-v0.32.2`, with no lab soak. The REPLAN in `Tasks.herd` overrides this plan where they differ: the copilot names Flash, and [its done test](#the-done-test) is p95 under 15 s with 0 cycles lost. Its replay has not run yet.**
+Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, and step 3a fixed it: on live in `server-v0.32.2`, with no lab soak. The REPLAN in `Tasks.herd` overrides this plan where they differ: the copilot names Flash, and [its done test](#the-done-test) is p95 under 15 s with 0 cycles lost. **Not yet shown:** the first replay met both figures, p95 14.75 s and 0 lost, on an idle engine, so it failed the load gate. See [The replay](#the-replay).**
 Task 12 in `Tasks.herd`. Read on 2026-11-01 from `main` of both repos and the cluster.
 
 **Step 3's result is in [The comparison](#the-comparison).** Most other sections were written before
@@ -341,8 +341,8 @@ took 3a to live unsoaked. The first real session on live, a54a7906, gave 11 of 1
 none over 15 s, 0 skipped and 0 invalid JSON. That is one quiet session, and actions and the title were
 not checked.
 
-R1's replay covers these rows under load, and no release PR merges until Andrew has read it. Its
-results go in [The copilot on Flash](#the-copilot-on-flash). The first check is the one most likely to fail.
+R1's replay checked these rows on an idle engine: results in [The replay](#the-replay). They still need a
+run under load. The first check is the one most likely to fail.
 
 | Watch | Where | Pass |
 |---|---|---|
@@ -611,7 +611,73 @@ dashboard. Its `docs/jarvis-live.md` still names `fast-chat`.
 
 ### The replay
 
-**Not run yet.** It needs this PR on lab. Results go here.
+**Is p95 under 15 s with 0 cycles lost? On this run, yes: p95 14.75 s, 0 of 24 lost. The done test is
+still open,** because the engine was idle. This run failed the load gate, so it says nothing about
+agents being busy, and it only just cleared on an empty engine.
+
+`jarvis_live/replay.py` against lab on 0.33.0 (`329478f`), session `45a6f296`, at real-time speed. The
+invented planning meeting from `planning_meeting.json`, 13 minutes, synthesised to speech and sent
+through real Whisper (`gamingpc`, all 71 segments) as one mic channel, untitled.
+
+**Load period: Monday 2026-11-02, 23:24:42 to 23:37:53 UTC, 17:24 local, after the working day.**
+
+| Gate, from Flash's metrics | Result | Limit | |
+|---|---:|---:|---|
+| Cycles that saw a queue | **0 of 24, 0%** | At least 40% | **Fails** |
+| Cycles alone on the engine | **22 of 24, 92%** | At most 40% | **Fails** |
+
+The engine averaged 0.4 running, peaked at 2, never had a request waiting, and KV averaged 1.6%, peak 8%.
+These are 57 samples, 15 s apart, from Prometheus, not the probe's per-request sampler. A cycle was bucketed
+with the probe's rule, on the samples from 15 s before it started to 15 s after it ended.
+
+| Copilot cycles | Result |
+|---|---:|
+| Cycles, ok | 24, 24 |
+| **Lost, to `copilot_timeout_s` or anything else** | **0** |
+| Retries, `invalid CopilotDelta JSON` | 0 |
+| JSON failures | 0 |
+| p50 | 10.23 s |
+| **p95, nearest rank** | **14.75 s** |
+| Max | 16.75 s |
+| Over 15 s | 1 of 24 |
+| Notes refreshed, p50, p95, max | 31.2, 36.8, 38.1 s |
+
+**The margin is thin.** p95 is the second slowest of 24, 0.25 s under the bar with nothing else on the
+engine, so one more slow cycle fails it. Under load, Task 11 measured a median 18 s queue for a place, and
+step 3 saw 19 of 51 replies pass 60 s. I expect this to fail under load, and only a busy run can show that.
+
+**What to watch on lab, row by row:**
+
+| Watch | Result | |
+|---|---|---|
+| Cycles lost to the 60 s timeout | 0 of 24 in `timing` rows, the log and the metric | Passes, idle only |
+| Actions arrive | 16 in the last snapshot, the first by the 4th. All 8 distinct actions in the key arrived | Passes, with noise below |
+| Retries | 0 | Passes, idle only |
+| Round trip | p95 14.75 s | Passes, idle only |
+| Titles | The untitled session named itself "Scanner Rollout & Returns Backlog". A session opened as "R1 titled check" kept that, over 2 cycles | Passes |
+| The model in use | Confirmed on real requests [above](#the-copilot-on-flash), and the pod sends the alias. The replay's own replies were not inspected for it | Passes |
+
+**The actions are complete but noisy.** Twice as many arrived as the key has. The agency booking appears
+three times, once due the wrong day, and the pick screen question twice with different owners. "Team" and
+"me" stand in as owners on some. One session, not an eval.
+
+**Two things the replay found:**
+
+- **The copilot's SLO is not being judged, at 8 s or 15 s.** R3's probe bug has all three tiers reading
+  unhealthy, so `stt_up` is false and `slo.py` skips every live check. During 24 cycles the only breach gauge
+  was `finalize`. So raising the limit has changed no alert yet, and the timing summary is the only
+  check that applies it. Live runs the same code and tiers, though I did not read live. R3 fixes the probe.
+- **Staleness will start alerting when it does.** Its p95 here was 36.8 s against a 35 s limit, on an idle
+  engine. It only defers to the round trip when that is breached, which it was not. Either the limit moves
+  or expect a push from ordinary sessions. Nothing was changed here.
+
+**Release.** #268 merged 75 s after #267, before this replay, so `server-v0.33.0` went to live first. Asked
+during promotion, Andrew let it continue. The hold on release no longer applies to this change, and
+rollback to `server-v0.32.2` is the *Server Image* workflow.
+
+**Still owed:** the same replay on a weekday with agents busy. If it passes the gate and misses the bar,
+the next lever is pve's model, from R2. `fast-chat`-era numbers for comparison were not taken, so this
+run does not show what naming Flash changed. Andrew's own recording did not reach lab, so it is not here.
 
 ## The done test
 
