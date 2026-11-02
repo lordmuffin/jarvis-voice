@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.33.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.32.2...server-v0.33.0) (2026-11-02)
+
+
+### Features
+
+* **server:** name Flash as the copilot's model ([e42e011](https://github.com/lordmuffin/jarvis-voice/commit/e42e01176682918a1bc5b8fb17f351d36e5abadc))
+* **server:** name Flash as the copilot's model and set its SLO to 15 s ([1a9718e](https://github.com/lordmuffin/jarvis-voice/commit/1a9718e40bd4b6755f3c2d62828e2c75811aa3ac))
+* **server:** raise the copilot round-trip SLO from 8 s to 15 s ([85f33d8](https://github.com/lordmuffin/jarvis-voice/commit/85f33d8bfca08e8dbed355d2260629091c30743a))
+
 ## [0.32.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.32.1...server-v0.32.2) (2026-11-02)
 
 
