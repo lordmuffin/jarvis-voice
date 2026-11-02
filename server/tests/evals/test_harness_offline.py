@@ -2,6 +2,7 @@
 
 import pytest
 
+from jarvis_live.config import Settings
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta
 from jarvis_live.copilot.state import CopilotState
 from tests.evals.harness import Outcome, Report, check, due_matches, run_case
@@ -79,10 +80,17 @@ async def test_passes_on_correct_output() -> None:
 async def test_flags_missing_action_wrong_owner_and_slowness() -> None:
     bad = CopilotDelta(actions_upsert=[ActionUpsert(text="Send revised quote", owner="Bob")])
     delta, state, _ = await run_case(FakeLLM().queue("CopilotDelta", bad), VENDOR_CALL)
-    failures = check(VENDOR_CALL, delta, state, seconds=9.0)
+    failures = check(VENDOR_CALL, delta, state, seconds=16.0)
     assert any("missing action [questionnaire]" in f for f in failures)
     assert any("'Bob'" in f for f in failures)
     assert any("round-trip" in f for f in failures)
+
+
+async def test_round_trip_check_follows_the_copilot_slo() -> None:
+    delta, state, _ = await run_case(FakeLLM().queue("CopilotDelta", GOOD_VENDOR), VENDOR_CALL)
+    limit = Settings().slo_copilot_roundtrip_p95_s
+    assert check(VENDOR_CALL, delta, state, seconds=limit - 0.1) == []
+    assert any("round-trip" in f for f in check(VENDOR_CALL, delta, state, seconds=limit))
 
 
 async def test_flags_invented_owner() -> None:

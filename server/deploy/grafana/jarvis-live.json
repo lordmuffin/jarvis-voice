@@ -543,7 +543,7 @@
     {
       "id": 14,
       "type": "row",
-      "title": "Copilot (budget: notes refresh in ~25-35 s, LLM round trip <= 8 s)",
+      "title": "Copilot (budget: notes refresh in ~25-35 s, LLM round trip <= 15 s)",
       "collapsed": false,
       "gridPos": {
         "x": 0,

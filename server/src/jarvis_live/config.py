@@ -142,7 +142,9 @@ class Settings(BaseSettings):
     slo_clear_s: float = 600.0
     slo_authoritative_p95_s: float = 5.0  # segment cut -> published (dup-guard hold excluded)
     slo_stt_p95_s: float = 4.0  # one Whisper request, per tier
-    slo_copilot_roundtrip_p95_s: float = 8.0
+    # Not the handoff's: the replan of 2026-11-02. The copilot does not stream and cycles at most
+    # every 25 s, so a note 15 s late is still a useful note (docs/plans/fast-tier.md).
+    slo_copilot_roundtrip_p95_s: float = 15.0
     slo_copilot_staleness_p95_s: float = 35.0  # handoff: notes refresh in 25-35 s
     slo_finalize_s: float = 120.0  # handoff: final note within 2 min of stop
 

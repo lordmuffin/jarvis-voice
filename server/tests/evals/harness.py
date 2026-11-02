@@ -12,7 +12,7 @@ from jarvis_live.llm.client import LLM
 from jarvis_live.protocol import Action, Copilot
 from tests.evals.transcripts import Case, Expected
 
-MAX_ROUNDTRIP_S = 8.0
+MAX_ROUNDTRIP_S = Settings().slo_copilot_roundtrip_p95_s
 
 
 @dataclass
