@@ -1,6 +1,6 @@
 # Fast tier: findings and proposed changes
 
-Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, and step 3a fixes it: on lab on merge, on live after the soak.**
+Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, and step 3a fixed it: on live in `server-v0.32.2`, with no lab soak. The REPLAN in `Tasks.herd` overrides this plan where they differ: the copilot names Flash, and [its done test](#the-done-test) is p95 under 15 s with 0 cycles lost. Its replay has not run yet.**
 Task 12 in `Tasks.herd`. Read on 2026-11-01 from `main` of both repos and the cluster.
 
 **Step 3's result is in [The comparison](#the-comparison).** Most other sections were written before
@@ -19,8 +19,8 @@ to name yet.
 - **The copilot on Flash is no answer either.** Thinking off, it took p95 29.52 s on a quiet engine.
 - **Live bug, separate from all of this: the copilot's request got no actions back from Flash.**
   0 of 22 replies carried `actions_upsert`, with thinking on or off. Step 3a marks the top-level schema
-  keys required: 51 of 51 in the test, then 17 of 17 from the real request. It needs a lab soak before
-  it reaches live. See [the schema bug](#the-schema-bug).
+  keys required: 51 of 51 in the test, then 17 of 17 from the real request. It reached live in
+  `server-v0.32.2` with no lab soak. See [the schema bug](#the-schema-bug).
 - **I caused one outage.** The probe ran `jev-llm` out of memory and it restarted once. See
   [the incident](#incident-jev-llm-out-of-memory).
 
@@ -49,7 +49,7 @@ All four recommendations below were accepted on 2026-11-01. Step 3 has reported,
 |---|---|---|
 | 1 | `voice_timeout_s` against the 40 s path (decision 6 in the gateway plan) | **Keep 30 s, and shorten the route instead.** `fast-chat` gets `timeout: 5` and `num_retries: 0`. `ollama` must not return before that lands |
 | 2 | Reserved path (decision 10) | **A separate small model**, alias `interactive`, falling back to `heavy` |
-| 3 | What "first text" means for the copilot | **Total p95 under 2.5 s.** The copilot does not stream, so 0.8 s cannot apply. See [the done test](#the-done-test) |
+| 3 | What "first text" means for the copilot | **Total p95 under 2.5 s.** The copilot does not stream, so 0.8 s cannot apply. **Replaced by the REPLAN:** see [the done test](#the-done-test) |
 | 4 | Alert window | **12 hours**, relying on Task 21's decision 3 (Prometheus off the gaming PC) |
 
 **Answered 2026-11-01: the move to `jev` was not deliberate.** The gaming PC runs Kubernetes workloads
@@ -285,7 +285,7 @@ By run, the 3B passed 5, 6 and 7 of 17, and Flash 12, 12 and 13.
 
 ### The schema bug
 
-**Fixed in step 3a, and not on live until the soak passes.** The copilot's request got no actions back
+**Fixed in step 3a, and on live in `server-v0.32.2`, with no lab soak.** The copilot's request got no actions back
 from Flash. Every top-level key in `CopilotDelta` was optional, and the structured output grammar lets a
 model skip them. Flash skipped `actions_upsert`:
 
@@ -297,7 +297,7 @@ model skip them. Flash skipped `actions_upsert`:
 | **Step 3a, the real client, one run** | 17 | **17** | **13 of 17** |
 
 - **#247 did not cause it.** Thinking on shows the same gap, though from only 7 replies.
-- **It reaches live.** `server-v0.32.1` and everything before it send this request. I have not looked
+- **It reached live.** `server-v0.32.1` and everything before it send this request. I have not looked
   at live sessions, so what users saw, and since when, is not established. The copilot's fall to Flash on 10-24 would be a natural
   start, since `ollama` has a different model and takes the schema as `format`, but that is a guess.
 - **The evals missed it** because the live ones need `--live`, and only ran with no `think` argument
@@ -336,18 +336,22 @@ over 60 s, which is `copilot_timeout_s`.** Those cycles would have been skipped 
 
 #### What to watch on lab
 
-The soak needs copilot cycles, so it needs real sessions or `jarvis-live replay` against lab. Lab runs
-3a from the merge. Do not merge the next release PR until this passes. The first check is the one most
-likely to fail.
+**No soak ran.** Lab's logs held health checks only from #260's merge to the release, so `server-v0.32.2`
+took 3a to live unsoaked. The first real session on live, a54a7906, gave 11 of 11 cycles ok, mean 8.2 s,
+none over 15 s, 0 skipped and 0 invalid JSON. That is one quiet session, and actions and the title were
+not checked.
+
+R1's replay covers these rows under load, and no release PR merges until Andrew has read it. Its
+results go in [The copilot on Flash](#the-copilot-on-flash). The first check is the one most likely to fail.
 
 | Watch | Where | Pass |
 |---|---|---|
-| Cycles lost to the 60 s timeout | Log `copilot cycle skipped`, `timing` rows in `copilot_items` with `ok` false, `jarvis_live_copilot_roundtrip_seconds` with outcome `error` | No worse than before 3a. If it is, a longer timeout or step 3b comes before release |
+| Cycles lost to the 60 s timeout | Log `copilot cycle skipped`, `timing` rows in `copilot_items` with `ok` false, `jarvis_live_copilot_roundtrip_seconds` with outcome `error` | **0 lost.** This is half of [the done test](#the-done-test) |
 | Actions arrive | `snapshot` rows in `copilot_items`, for a session where work was promised | Actions appear. This is the fix |
 | Retries | Log `invalid CopilotDelta JSON` | None or nearly none. Each one doubles the wait |
-| Round trip | `rt_s` in the `timing` rows, or the session's timing summary | No more than the longer reply explains, about 28% |
+| Round trip | `rt_s` in the `timing` rows, or the session's timing summary | **p95 under 15 s,** the other half |
 | Titles | Session titles | An untitled session still gets one, and a titled one keeps its own. The reply now always carries `title` |
-| The tier in use | Whether `ollama` is up | If it returns during the soak, `fast-chat` leaves Flash, and these results stop applying |
+| The model in use | `x-litellm-model-group` on a real request, and the Spark's active profile | Every reply from `qwen3.8-flash-next`. `ollama` no longer matters to the copilot. If the profile stops serving the alias, cycles fail: it [has no fallback](#the-copilot-on-flash) |
 
 To roll back, redeploy lab's previous image with the *Server Image* workflow, or revert the PR.
 
@@ -356,13 +360,14 @@ To roll back, redeploy lab's previous image with the *Server Image* workflow, or
 **Do not build `interactive` on the 3B. Fix the schema first, whatever the tier.**
 
 - **The decided path stands, and the model does not.** The reserved path is still a separate small
-  model, and the done test is still 2.5 s. I am not reopening either. The 3B simply is not that model.
+  model, now for voice first. The 2.5 s test stays with voice: the copilot's moved in the REPLAN. The 3B
+  simply is not that model.
 - **Restore the tier is not the answer.** `qwen2.5:7b` has no backend to measure, and the gaming PC
   stays best-effort. The other two options are measured above.
-- **Flash stays the copilot's model for now, on the fallback,** with thinking off. It is slow, and it
-  answers well with 3a.
-- **GPU move 2 changes that without saying so.** With `ollama` back, `fast-chat` answers from
-  `qwen2.5:7b` while the PC is awake, a model these evals have not seen. Run them on it when it returns.
+- **Flash is the copilot's model, by name,** with thinking off. It is slow, and it answers well with
+  3a. See [The copilot on Flash](#the-copilot-on-flash).
+- **GPU move 2 is cancelled.** `ollama` stays at 0, so the worry that `fast-chat` would change model
+  without saying so has gone, and the copilot no longer goes through `fast-chat` at all.
 
 ### What happens next
 
@@ -563,23 +568,75 @@ with longer queues in `pi-durable`. If you want a cap anyway, say for fairness o
 **Effect on step 3:** with this path, step 3 is no longer needed for interactive callers. Weigh it for
 agents alone.
 
+## The copilot on Flash
+
+R1 of the REPLAN. Set `JARVIS_LIVE_COPILOT_MODEL` to `qwen3.8-flash-next` in `base/`, so lab and live both
+get it. Thinking stays off, and no serving argument changes.
+
+**What it changes.** The copilot already reached Flash, through `fast-chat`'s fallback. It now skips the
+failed attempt, which looks to cost about 0.6 s since homelab #838. It is the same engine and the same queue, so **this does not
+make the copilot faster under load.** It makes the choice visible, and `ollama` can no longer change the model.
+
+**Other callers follow it, because their settings are empty:**
+
+| Caller | Channel | Effect |
+|---|---|---|
+| Voice, `VOICE_MODEL` empty | **Lab only:** `VOICE_ENABLED` is false in base | Same model and queue, minus the failed attempt. It still has 30 s, and the voice arm's p95 sat at that limit, so spoken requests can still give up and fall to `from_words`. New actions read `voice:qwen3.8-flash-next` |
+| The ideas pass, `IDEAS_MODEL` empty | **Lab and live** | The same, with 120 s. R1's brief did not name this one |
+| Copilot action proposals | Where actions are on | `proposed_by` reads `copilot:qwen3.8-flash-next` |
+
+**`scripts/llm_probe.py` still defaults to `fast-chat` as "the alias voice sends".** That is now wrong for
+the voice arm's rerun, so pass `--model`.
+
+**The gateway keeps both settings.** From lab's pod on `server-v0.32.2`, 2026-11-02, the real client and the
+real `CopilotDelta`, on a 736-token prompt. This confirms the route, and is not a load figure:
+
+| Request | n | Group and model answering | Retries, fallbacks | Reasoning tokens | Completion | Time |
+|---|---:|---|---:|---:|---:|---:|
+| As the copilot sends it | 2 | `qwen3.8-flash-next` | 0, 0 | **0** | 167, 164 | 7.5, 6.6 s |
+| Control, `chat_template_kwargs` removed | 1 | `qwen3.8-flash-next` | 0, 0 | **1,495** | 1,734 | 85.5 s |
+
+The control shows the setting is what turns reasoning off, and that a silent drop would have been seen.
+All eight keys were sent as required.
+
+**What this gives up: the alias has no fallback.** `fast-chat` falls to `heavy`, and `heavy` to
+`qwen-coder-32b`. `qwen3.8-flash-next` is in neither `fallbacks` list, and takes the global `num_retries: 1`.
+`flash-embed`, active today, and `flash-solo` serve it. On any other Spark profile `heavy` would keep
+answering and this alias would not, so every copilot cycle would be skipped until the profile comes back.
+While Flash is simply down, little is lost, since `heavy` is the same engine. Adding a fallback is a
+proxy change that reaches every client of this alias, including `pi-durable`, so R1 does not make it.
+
+**Also behind `main`:** the Grafana title moves to 15 s here, and the homelab keeps a copy of that
+dashboard. Its `docs/jarvis-live.md` still names `fast-chat`.
+
+### The replay
+
+**Not run yet.** It needs this PR on lab. Results go here.
+
 ## The done test
 
-Task 12 is done when "copilot p95 first text is within 11's SLO on a replayed session". That cannot
-pass as written, for two reasons:
+**Replaced by the REPLAN, 2026-11-02. The copilot is done when p95 is under 15 s with 0 cycles lost, on
+a replayed session under normal load.** Task 12's DONE WHEN is this test.
 
-- **The copilot does not stream.** `complete_json` returns the whole reply, so its first text is its
-  total.
-- **0.8 s misses even on an idle Flash.** Task 11 found a 1,800-token prompt idles at first text p95
-  0.86 s. The copilot's prompt is about 2,500 tokens or more: a 2,552-character system prompt, up to
-  8 minutes of transcript, and state.
+- **p95** is `rt_s` in the session's `timing` rows, nearest rank, as `slo.py` and the session's timing
+  summary compute it. The client's retry is inside it, as the caller waits for both attempts.
+- **A lost cycle** is one with `ok` false: `copilot_timeout_s` passed, the gateway failed, or the JSON was
+  invalid after the retry. It logs `copilot cycle skipped`.
+- **How:** `jarvis_live/replay.py` against lab at real-time speed, so cycles arrive as they would live, on
+  a weekday with agents busy.
+- **Normal load:** note the period, as Task 11 requires, and apply its gate. At least 40% of requests see a
+  queue and at most 40% run alone. A run that fails the gate is not a normal-load figure, whatever it shows.
 
-Also, `slo_copilot_roundtrip_p95_s` in `config.py` is 8 s, so the repo has a different target.
+**Why the bar moved.** 2.5 s came from a spoken reply. The copilot does not stream and cycles at most
+every 25 s, so what matters is that a note arrives before the next cycle is due and that no cycle is lost.
+The 15 s leaves that margin. The earlier reasoning stands for what it covered: 0.8 s to first text
+cannot apply, since the first text is the whole reply.
 
-**Proposed: total p95 under 2.5 s on the replay, the total target from Task 11.** Then set the 8 s
-figure to match, once it has been met. Use `jarvis_live/replay.py` against lab, under normal load,
-noting the load period as Task 11 requires. A copilot that streams is a larger change, and nothing
-reads the partial JSON.
+`slo_copilot_roundtrip_p95_s` is 15, tested, and the eval harness reads it rather than keeping its own 8 s.
+**Voice keeps a fast target on its own path:** 2.5 s total for the LLM part.
+
+**If it fails on Flash,** the next lever is the copilot on pve's model, if that model passes the 11 bar
+cases. That is R2's result to give.
 
 ## Alert
 
@@ -634,18 +691,18 @@ For `docs/designs/voice-talkback.md` §5.1 and §2.2, in step 1 below:
 
 ## Proposed steps, for approval
 
-One PR per step. Steps 1, 2, 3 and 3a are done. 3a still needs its lab soak before release.
+One PR per step. Steps 1, 2, 3 and 3a are done. The REPLAN changes the rest: rows 4 to 6 below say how.
 
 | # | Change | Repo | Restarts | Rollback | When |
 |---|---|---|---|---|---|
 | 1 | `think=False` for copilot, voice and ideas, with tests. Talkback correction | `jarvis-voice` | `jarvis-live`, lab first | Revert | Now. The probe sends its own body, so this does not disturb it |
 | 2 | `fast-chat`, `fast-coder`: `timeout: 5`, `num_retries: 0`. Correct the cooldown comment. Pin it in `test_router_config.py` | `homelab-gitops` | **The proxy, so every LLM client** | Revert | After the voice arm. **Before `ollama` returns.** Could share Task 22's window |
 | 3 | Run the comparison on 11's probe, and read arm V for the thinking question | `jarvis-voice` | None | None needed | **Done. Result: 4 and 5 stop** |
-| 3a | Make the top-level `CopilotDelta` keys required, so actions come back. Set the live evals to the same request | `jarvis-voice` | `jarvis-live`, lab first | Revert | **Done: 13 of 17, 17 of 17 replies with actions.** Lab on merge. [Soak](#what-to-watch-on-lab) before the next release PR |
+| 3a | Make the top-level `CopilotDelta` keys required, so actions come back. Set the live evals to the same request | `jarvis-voice` | `jarvis-live`, lab first | Revert | **Done: 13 of 17, 17 of 17 replies with actions.** On live in `server-v0.32.2`, with no soak. [R1's replay](#what-to-watch-on-lab) checks it under load |
 | 3b | **New.** Find a model and a reply size that pass [the bar](#what-happens-next), on the evals, before any pod exists | `jarvis-voice` | None | None needed | After 3a |
-| 4 | New pve workload and profile, `interactive` alias, copilot evals on it | `homelab-gitops` | Proxy, new pod. No Flash | Remove the alias and the workload | **Blocked on 3b.** The 3B does not go ahead |
-| 5 | Set `JARVIS_LIVE_COPILOT_MODEL` to `interactive` on lab, replay, then live. Voice follows, since `VOICE_MODEL` is empty | `jarvis-voice` | `jarvis-live` | Restore `fast-chat` | **Blocked on 4** |
-| 6 | `BestEffortTierDown` and its route, with `promtool` tests | `homelab-gitops` | None | Revert | After Task 21 step 1 |
+| 4 | New pve workload and profile, `interactive` alias, copilot evals on it | `homelab-gitops` | Proxy, new pod. No Flash | Remove the alias and the workload | **Blocked on 3b.** The 3B does not go ahead. R5 replaces this for voice |
+| 5 | Set `JARVIS_LIVE_COPILOT_MODEL` to `interactive` on lab, replay, then live. Voice follows, since `VOICE_MODEL` is empty | `jarvis-voice` | `jarvis-live` | Restore `fast-chat` | **No longer applies to the copilot,** which names Flash in R1. `VOICE_MODEL` moves alone, in R5 |
+| 6 | `BestEffortTierDown` and its route, with `promtool` tests | `homelab-gitops` | None | Revert | **Cancelled by the REPLAN:** `ollama` is not coming back |
 
 Step 3 changed the recommendation, so steps 4 and 5 stop. Steps 1, 2 and 6 hold, as does GPU moves 1
 and 2 in `Tasks.herd`. Move 3 is step 4 and stops with it.
