@@ -45,3 +45,12 @@ test_dispatch_on_without_the_app_denied if {
 test_dispatch_off_needs_no_app if {
 	count(deny) == 0 with input as array.concat(all, [cm({"JARVIS_LIVE_DISPATCH_ENABLED": "false"}), deploy([])])
 }
+
+test_copilot_on_flash_passes if {
+	count(deny) == 0 with input as array.concat(all, [cm({"JARVIS_LIVE_COPILOT_MODEL": "qwen3.8-flash-next"})])
+}
+
+test_copilot_on_a_best_effort_alias_denied if {
+	some msg in deny with input as array.concat(all, [cm({"JARVIS_LIVE_COPILOT_MODEL": "fast-chat"})])
+	contains(msg, "JARVIS_LIVE_COPILOT_MODEL")
+}
