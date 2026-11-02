@@ -1798,10 +1798,12 @@ def _rss_track(rows: list[dict[str, Any]]) -> dict[str, float] | None:
 
 
 def copilot_report(rows: list[dict[str, Any]], *, project_to: int) -> dict[str, Any]:
+    """The gate is on gateway rows only. Load is sampled on Flash, and direct rows go to another
+    engine, so they would dilute ``queued`` and count as ``alone`` for nothing they did."""
     return {
         "summary": voice_summary(rows),
         "by_load": [],
-        "gate": gate(rows),
+        "gate": gate([r for r in rows if r["path"] == "gateway"]),
         "periods": voice_periods(rows),
         "small": small_rates(rows, project_to=project_to),
         "finish_reasons": dict(Counter(f"{r['path']}:{r.get('finish_reason')}" for r in rows)),

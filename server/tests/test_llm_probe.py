@@ -1147,6 +1147,32 @@ def test_gate_shows_each_path_on_its_own() -> None:
     assert result["gateway"]["queued"] == 1.0 and result["direct"]["alone"] == 1.0
 
 
+def test_copilot_gate_counts_gateway_rows_only() -> None:
+    """Direct rows go to another engine, so Flash's sampled load says nothing about them."""
+    gateway = [vrow("gateway", 1.0, waiting=3) for _ in range(4)]
+    gateway += [vrow("gateway", 1.0, running=1) for _ in range(6)]
+    direct = [vrow("direct", 1.0, running=1) for _ in range(10)]
+    rows = [{**r, "prompt": "copilot"} for r in gateway + direct]
+    result = probe.copilot_report(rows, project_to=2500)["gate"]
+    assert result["all"]["n"] == 10
+    assert (result["all"]["queued"], result["all"]["alone"]) == (0.4, 0.6)
+    assert result["passed"] is False
+
+
+def test_copilot_gate_is_not_diluted_by_direct_rows() -> None:
+    gateway = [vrow("gateway", 1.0, waiting=3) for _ in range(5)]
+    gateway += [vrow("gateway", 1.0, running=3) for _ in range(5)]
+    direct = [vrow("direct", 1.0, running=1) for _ in range(10)]
+    rows = [{**r, "prompt": "copilot"} for r in gateway + direct]
+    report = probe.copilot_report(rows, project_to=2500)
+    assert report["gate"]["passed"] is True  # 50% queued: all rows would have made it 25%
+
+
+def test_voice_gate_still_counts_every_row() -> None:
+    rows = gated(40, 40, 20)
+    assert probe.voice_report(rows)["gate"]["all"]["n"] == 100
+
+
 def test_gate_with_no_metrics_fails() -> None:
     rows = [{**vrow("gateway", 1.0), "load": {}} for _ in range(5)]
     assert probe.gate(rows)["passed"] is False
