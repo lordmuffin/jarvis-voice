@@ -639,6 +639,7 @@ class ChatStub(BaseHTTPRequestHandler):
     headers_out: ClassVar[dict[str, str]] = {}
     slots: ClassVar[Any] = []
     slots_cut_short: ClassVar[bool] = False
+    slot_held_by: ClassVar[str | None] = None  # the one slot is busy while this model answers
 
     def do_GET(self) -> None:
         data = json.dumps(ChatStub.slots).encode()
@@ -648,10 +649,15 @@ class ChatStub(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self) -> None:
-        self.rfile.read(int(self.headers["content-length"]))
+        sent = json.loads(self.rfile.read(int(self.headers["content-length"])))
         step = ChatStub.replies[min(ChatStub.posts, len(ChatStub.replies) - 1)]
         ChatStub.posts += 1
+        holds_the_slot = sent.get("model") == ChatStub.slot_held_by
+        if holds_the_slot:
+            ChatStub.slots = [{"id": 0, "is_processing": True}]
         time.sleep(step["delay"])
+        if holds_the_slot:
+            ChatStub.slots = [{"id": 0, "is_processing": False}]
         body = step["body"]
         data = body.encode() if isinstance(body, str) else json.dumps(body).encode()
         try:
@@ -675,6 +681,7 @@ def chat() -> Iterator[str]:
     ChatStub.headers_out = {}
     ChatStub.slots = []
     ChatStub.slots_cut_short = False
+    ChatStub.slot_held_by = None
     server = ThreadingHTTPServer(("127.0.0.1", 0), ChatStub)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -1440,6 +1447,43 @@ def test_the_guard_forgives_a_moment_with_both_slots_busy(chat: str, tmp_path: P
     assert not guard.note(1, 2)
     assert not guard.note(2, 2) and not guard.note(2, 2)
     assert guard.note(2, 2)
+
+
+def test_the_guard_allows_for_the_probes_own_request_on_one_slot(chat: str) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not any([guard.note(1, 1), guard.note(1, 1), guard.note(1, 1), guard.note(1, 1)])
+
+
+def test_a_single_slot_busy_with_nothing_of_ours_in_it_trips(chat: str) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not guard.note(1, 1, own=0) and not guard.note(1, 1, own=0)
+    assert guard.note(1, 1, own=0)
+
+
+def test_our_own_request_does_not_excuse_another_in_the_second_slot(chat: str) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not guard.note(2, 2, own=1) and not guard.note(2, 2, own=1)
+    assert guard.note(2, 2, own=1)
+
+
+def test_a_run_on_one_slot_is_not_stopped_by_its_own_requests(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.1)]
+    ChatStub.slots = [{"id": 0, "is_processing": False}]
+    ChatStub.slot_held_by = "jev"
+    options = copilot_options(chat, tmp_path, pairs=2, slot_interval_s=0.01)
+    assert probe.run_copilot(options) is None
+    rows = rows_from(options.out)
+    assert len(rows) == 4
+    assert all(r["slots_full_max"] == 0 for r in rows)
+
+
+def test_a_run_on_one_slot_stops_on_a_real_queue(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.1)]
+    ChatStub.slots = [{"id": 0, "is_processing": True}]
+    options = copilot_options(chat, tmp_path, pairs=50, slot_interval_s=0.01)
+    reason = probe.run_copilot(options)
+    assert reason is not None and "slots" in reason
+    assert len(rows_from(options.out)) < 4
 
 
 def test_the_guard_stops_a_small_model_it_cannot_see(tmp_path: Path) -> None:

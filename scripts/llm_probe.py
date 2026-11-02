@@ -62,7 +62,8 @@ import time
 import urllib.parse
 import urllib.request
 from collections import Counter
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -1136,10 +1137,18 @@ def copilot_reply_valid(content: str) -> bool:
     )
 
 
+def _slots_full(busy: int, total: int, own: int) -> bool:
+    return busy >= total > 0 and busy > own
+
+
 class SlotGuard:
     """Stops a run that could be queueing someone else's requests. llama.cpp's ``/metrics`` is off,
-    so its queue cannot be read, but a request can only wait if every slot is busy: ``limit`` polls
-    in a row like that, or ``limit`` polls with no answer, trips it."""
+    so its queue cannot be read, but a request can only wait if every slot is busy, and at least
+    one of them with something other than this probe: ``limit`` polls in a row like that, or
+    ``limit`` polls with no answer, trips it. The probe says when its own request is out
+    (``own_request``), because ``/slots`` cannot tell whose request a slot holds. While ours is in
+    the only slot a queue behind it cannot be seen, which is why the pause between requests matters:
+    a slot still busy then is someone else's."""
 
     def __init__(self, url: str, interval_s: float = 2.0, limit: int = SLOT_FULL_LIMIT) -> None:
         self._url = f"{url.removesuffix('/').removesuffix('/v1')}/slots"
@@ -1147,6 +1156,7 @@ class SlotGuard:
         self._limit = limit
         self._full = 0
         self._misses = 0
+        self._own = 0
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self.tripped = threading.Event()
@@ -1161,8 +1171,18 @@ class SlotGuard:
         self._stop.set()
         self._thread.join(timeout=10)
 
-    def note(self, busy: int, total: int) -> bool:
-        self._full = self._full + 1 if busy >= total > 0 else 0
+    @contextmanager
+    def own_request(self) -> Iterator[None]:
+        self._own += 1
+        try:
+            yield
+        finally:
+            self._own -= 1
+
+    def note(self, busy: int, total: int, own: int = 1) -> bool:
+        """``own`` is how many of the busy slots are this probe's. As in ``load_bucket``, the
+        probe's own request is assumed to be one of them unless the caller knows better."""
+        self._full = self._full + 1 if _slots_full(busy, total, own) else 0
         return self._full >= self._limit
 
     def _loop(self) -> None:
@@ -1179,13 +1199,16 @@ class SlotGuard:
 
     def _poll(self) -> None:
         started = time.perf_counter()
+        own = self._own
         with urllib.request.urlopen(self._url, timeout=5) as response:
             slots = json.load(response)
+        own = max(own, self._own)  # a request that began during the poll may be in what came back
         if not isinstance(slots, list) or not slots:
             raise ValueError(f"expected a list of slots, got {slots!r:.80}")
         busy = sum(1 for slot in slots if self._is_busy(slot))
-        self.samples.append((started, busy >= len(slots), time.perf_counter() - started))
-        if self.note(busy, len(slots)):
+        full = _slots_full(busy, len(slots), own)
+        self.samples.append((started, full, time.perf_counter() - started))
+        if self.note(busy, len(slots), own):
             self.reason = f"all {len(slots)} slots busy for {self._limit} polls in a row"
             self.tripped.set()
 
@@ -1265,14 +1288,15 @@ def run_copilot(o: CopilotOptions) -> str | None:
                 url, host = urls[path]
                 wall = time.time()
                 start = time.perf_counter()
-                result = voice_call(
-                    url,
-                    body,
-                    timeout_s=o.timeout_s,
-                    api_key=key,
-                    host=host,
-                    valid=copilot_reply_valid,
-                )
+                with guard.own_request() if path == "direct" else nullcontext():
+                    result = voice_call(
+                        url,
+                        body,
+                        timeout_s=o.timeout_s,
+                        api_key=key,
+                        host=host,
+                        valid=copilot_reply_valid,
+                    )
                 end = start + float(result["total_s"])
                 time.sleep(min(o.sample_s, 0.25) if o.metrics_url else 0)
                 row = {
