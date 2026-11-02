@@ -1,6 +1,6 @@
 # Fast tier: findings and proposed changes
 
-Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, see below.**
+Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, and step 3a fixes it: on lab on merge, on live after the soak.**
 Task 12 in `Tasks.herd`. Read on 2026-11-01 from `main` of both repos and the cluster.
 
 **Step 3's result is in [The comparison](#the-comparison).** Most other sections were written before
@@ -17,9 +17,10 @@ to name yet.
 - **The 3B fails on time.** p95 was 4.35 s to the caller on a request that carries no actions. A
   complete reply is about 400 tokens, and the 2.5 s target leaves room for about 225.
 - **The copilot on Flash is no answer either.** Thinking off, it took p95 29.52 s on a quiet engine.
-- **Live bug, separate from all of this: the copilot's request gets no actions back from Flash.**
-  0 of 22 replies carried `actions_upsert`, with thinking on or off. Marking the top-level schema
-  keys required fixes it: 51 of 51. See [the schema bug](#the-schema-bug).
+- **Live bug, separate from all of this: the copilot's request got no actions back from Flash.**
+  0 of 22 replies carried `actions_upsert`, with thinking on or off. Step 3a marks the top-level schema
+  keys required: 51 of 51 in the test, then 17 of 17 from the real request. It needs a lab soak before
+  it reaches live. See [the schema bug](#the-schema-bug).
 - **I caused one outage.** The probe ran `jev-llm` out of memory and it restarted once. See
   [the incident](#incident-jev-llm-out-of-memory).
 
@@ -284,26 +285,71 @@ By run, the 3B passed 5, 6 and 7 of 17, and Flash 12, 12 and 13.
 
 ### The schema bug
 
-**The copilot's request does not get actions back from Flash today.** Every top-level key in
-`CopilotDelta` is optional, and the structured output grammar lets a model skip them. Flash skips
-`actions_upsert`:
+**Fixed in step 3a, and not on live until the soak passes.** The copilot's request got no actions back
+from Flash. Every top-level key in `CopilotDelta` was optional, and the structured output grammar lets a
+model skip them. Flash skipped `actions_upsert`:
 
 | Request, Flash | Replies | With `actions_upsert` | Evals passed |
 |---|---:|---:|---:|
-| As sent today | 15 | **0** | 1 of 17 |
+| As sent before 3a | 15 | **0** | 1 of 17 |
 | Thinking on, as before #247 | 7 | **0** | 1 of 17, 10 timed out at 240 s |
-| Top-level keys required | 51 | **51** | 37 of 51 |
+| Top-level keys required, by a wrapper | 51 | **51** | 37 of 51 |
+| **Step 3a, the real client, one run** | 17 | **17** | **13 of 17** |
 
 - **#247 did not cause it.** Thinking on shows the same gap, though from only 7 replies.
-- **It reaches live.** `server-v0.31.1` sends this request. I have not looked at live sessions, so what
-  users saw, and since when, is not established. The copilot's fall to Flash on 10-24 would be a natural
+- **It reaches live.** `server-v0.32.1` and everything before it send this request. I have not looked
+  at live sessions, so what users saw, and since when, is not established. The copilot's fall to Flash on 10-24 would be a natural
   start, since `ollama` has a different model and takes the schema as `format`, but that is a guess.
 - **The evals missed it** because the live ones need `--live`, and only ran with no `think` argument
-  until this PR. As of this PR they show it, and they fail against Flash until step 3a lands.
+  until the step 3 PR. The action eval still ran with thinking on until 3a. Both now send what a copilot
+  cycle sends, and a test holds them to it.
 - **The 3B has it too.** As sent, it gave no new actions in any eval that expected them, and often
   only topics and a title.
-- **I did not fix it here.** It changes what live sends, so it gets its own PR and a lab soak. The
-  required-keys request above is `schema["required"] = list(schema["properties"])`.
+- **The fix changes only what is sent.** All eight keys are required in the JSON schema, `title`
+  included, which stays nullable. Validation is as tolerant as it was, so a route that does not enforce
+  the schema can leave a key out and get its default. `FinalNote`, `VoiceRequest`, `IdeasDelta` and the
+  nested models send what they sent. It is LLM output, so `protocol/` does not change.
+
+**The live run, 2026-11-02, 17:04 to 17:08 UTC.** Once through the 17 cases, through the gateway to Flash,
+thinking off, one request at a time, a 3 s pause between cases. The queue stayed at 0 throughout, so this
+is an idle engine. Grading ignores the 8 s round-trip check, as 37 of 51 did. With that check, 7 of 17 pass.
+
+- **13 of 17 sits at the top of the earlier runs,** which gave 12, 12 and 13, and every reply held all
+  eight keys. 16 of 17 held actions, and the one empty list is the small talk case, which is correct.
+  No retries, and none cut off.
+- **Two cases moved.** Rolling cycle 5 passed, after 0 of 3. Solo brain dump failed, after 3 of 3: it filed
+  the passport as a note, not an action, which is a real miss. It is one run, so neither is a trend.
+- **The other three failures are the known ones:** 8 minutes, and rolling cycles 6 and 8.
+- **Replies are longer, and that is step 3b's problem.** On the 15 cases that replied in both, tokens
+  rose 28%, and 14 of the 15 got longer.
+
+| Tokens per reply, Flash | n | p50 | p95 | Max | Within 225 |
+|---|---:|---:|---:|---:|---:|
+| As sent before 3a | 15 | 287 | 653 | 653 | 6 |
+| Keys required, by a wrapper | 51 | 359 | 780 | 931 | 9 |
+| Step 3a, the real client | 17 | 353 | 864 | 864 | 3 |
+
+**Time.** p50 9.4 s, p95 22.0 s and max 22.0 s, at 39 tok/s. That is the idle engine's speed, not a new
+result. It is no comparison with the 29.52 s above, which had longer prompts, and it still misses 2.5 s on
+17 of 17. In the 51 required runs the engine gave about 8 tok/s, p95 was 127.7 s, and **19 of 51 took
+over 60 s, which is `copilot_timeout_s`.** Those cycles would have been skipped on live.
+
+#### What to watch on lab
+
+The soak needs copilot cycles, so it needs real sessions or `jarvis-live replay` against lab. Lab runs
+3a from the merge. Do not merge the next release PR until this passes. The first check is the one most
+likely to fail.
+
+| Watch | Where | Pass |
+|---|---|---|
+| Cycles lost to the 60 s timeout | Log `copilot cycle skipped`, `timing` rows in `copilot_items` with `ok` false, `jarvis_live_copilot_roundtrip_seconds` with outcome `error` | No worse than before 3a. If it is, a longer timeout or step 3b comes before release |
+| Actions arrive | `snapshot` rows in `copilot_items`, for a session where work was promised | Actions appear. This is the fix |
+| Retries | Log `invalid CopilotDelta JSON` | None or nearly none. Each one doubles the wait |
+| Round trip | `rt_s` in the `timing` rows, or the session's timing summary | No more than the longer reply explains, about 28% |
+| Titles | Session titles | An untitled session still gets one, and a titled one keeps its own. The reply now always carries `title` |
+| The tier in use | Whether `ollama` is up | If it returns during the soak, `fast-chat` leaves Flash, and these results stop applying |
+
+To roll back, redeploy lab's previous image with the *Server Image* workflow, or revert the PR.
 
 ### Recommendation
 
@@ -314,7 +360,7 @@ By run, the 3B passed 5, 6 and 7 of 17, and Flash 12, 12 and 13.
 - **Restore the tier is not the answer.** `qwen2.5:7b` has no backend to measure, and the gaming PC
   stays best-effort. The other two options are measured above.
 - **Flash stays the copilot's model for now, on the fallback,** with thinking off. It is slow, and it
-  answers well once 3a lands.
+  answers well with 3a.
 - **GPU move 2 changes that without saying so.** With `ollama` back, `fast-chat` answers from
   `qwen2.5:7b` while the PC is awake, a model these evals have not seen. Run them on it when it returns.
 
@@ -461,7 +507,8 @@ pod. If it fails, the probe refuses to start.
 - The soak in [what step 4 must measure](#what-step-4-must-measure). The growth is still unexplained,
   so the ceiling only stops a run in time. It does not make one safe.
 - A copilot run that clears the gate. No copilot figure here is a normal-load number.
-- The live evals with the tightened keys. These scores are stored replies, regraded.
+- The live evals with the tightened keys, three runs each. These scores are stored replies, regraded.
+  Step 3a ran them once on Flash, see [the schema bug](#the-schema-bug). The 3B has not run them.
 - The 3B's fixed-schema latency, which is still projected.
 
 `run`, `voice` and `load` have none of these stops. The script's header says so, and they must stay off
@@ -587,14 +634,14 @@ For `docs/designs/voice-talkback.md` §5.1 and §2.2, in step 1 below:
 
 ## Proposed steps, for approval
 
-One PR per step. Steps 1, 2 and 3 are done.
+One PR per step. Steps 1, 2, 3 and 3a are done. 3a still needs its lab soak before release.
 
 | # | Change | Repo | Restarts | Rollback | When |
 |---|---|---|---|---|---|
 | 1 | `think=False` for copilot, voice and ideas, with tests. Talkback correction | `jarvis-voice` | `jarvis-live`, lab first | Revert | Now. The probe sends its own body, so this does not disturb it |
 | 2 | `fast-chat`, `fast-coder`: `timeout: 5`, `num_retries: 0`. Correct the cooldown comment. Pin it in `test_router_config.py` | `homelab-gitops` | **The proxy, so every LLM client** | Revert | After the voice arm. **Before `ollama` returns.** Could share Task 22's window |
 | 3 | Run the comparison on 11's probe, and read arm V for the thinking question | `jarvis-voice` | None | None needed | **Done. Result: 4 and 5 stop** |
-| 3a | **New.** Make the top-level `CopilotDelta` keys required, so actions come back. Set the live evals to the same request | `jarvis-voice` | `jarvis-live`, lab first | Revert | Now. It does not depend on the tier |
+| 3a | Make the top-level `CopilotDelta` keys required, so actions come back. Set the live evals to the same request | `jarvis-voice` | `jarvis-live`, lab first | Revert | **Done: 13 of 17, 17 of 17 replies with actions.** Lab on merge. [Soak](#what-to-watch-on-lab) before the next release PR |
 | 3b | **New.** Find a model and a reply size that pass [the bar](#what-happens-next), on the evals, before any pod exists | `jarvis-voice` | None | None needed | After 3a |
 | 4 | New pve workload and profile, `interactive` alias, copilot evals on it | `homelab-gitops` | Proxy, new pod. No Flash | Remove the alias and the workload | **Blocked on 3b.** The 3B does not go ahead |
 | 5 | Set `JARVIS_LIVE_COPILOT_MODEL` to `interactive` on lab, replay, then live. Voice follows, since `VOICE_MODEL` is empty | `jarvis-voice` | `jarvis-live` | Restore `fast-chat` | **Blocked on 4** |
