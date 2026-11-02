@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.31.1...server-v0.32.0) (2026-11-02)
+
+
+### Features
+
+* **probe:** replay the copilot's request on Flash and on a small model ([376eea3](https://github.com/lordmuffin/jarvis-voice/commit/376eea3229aa67ad9d402e3b0f2454fa5281afc1))
+
 ## [0.31.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.31.0...server-v0.31.1) (2026-11-01)
 
 
