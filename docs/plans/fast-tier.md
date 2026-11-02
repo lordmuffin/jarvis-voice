@@ -1,17 +1,18 @@
 # Fast tier: findings and proposed changes
 
-Status: **step 3 measured 2026-11-01. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, see below.**
+Status: **step 3 measured 2026-11-01, rechecked from its stored rows 2026-11-02. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, see below.**
 Task 12 in `Tasks.herd`. Read on 2026-11-01 from `main` of both repos and the cluster.
 
 **Step 3's result is in [The comparison](#the-comparison).** Most other sections were written before
-it. Where step 3 contradicts them, step 3 wins.
+it. Where step 3 contradicts them, step 3 wins. [The recheck](#recheck-2026-11-02) corrects two of its
+figures, and the verdict stands.
 
 ## Answer
 
 **Step 4 does not go ahead, on the 3B or any other model. Step 5 waits for it.** There is no model
 to name yet.
 
-- **The 3B fails on quality.** It passed 18 of 51 eval runs against Flash's 35 of 51, on the same
+- **The 3B fails on quality.** It passed 18 of 51 eval runs against Flash's 37 of 51, on the same
   fixed request. It missed owners and whole actions.
 - **The 3B fails on time.** p95 was 4.35 s to the caller on a request that carries no actions. A
   complete reply is about 400 tokens, and the 2.5 s target leaves room for about 225.
@@ -194,8 +195,9 @@ the same card by calling `jev-llm` directly, one request at a time. Nothing rout
 is a floor only.
 
 **The normal-load gate failed, so this is a light Sunday engine, not normal load.** Run period 19:02:40
-to 19:28:20, labelled `normal`. 1.2% of requests saw a queue against the 40% floor. `alone` passed, at
-14.8% against the 40% ceiling. Engine p50 was 3 running and KV 26%. Failing here on a quiet engine means
+to 19:28:20, labelled `normal`. On gateway rows, the only ones that reach the sampled engine, 2.5% of
+requests saw a queue against the 40% floor. `alone` passed, at 0.0% against the 40% ceiling. Engine p50
+was 3 running and KV 26%. Failing here on a quiet engine means
 Flash would do worse under load. For the 3B on its own card, the load on Flash does not apply.
 
 **The run stopped at 81 of 200 rows,** at the [incident](#incident-jev-llm-out-of-memory). Prompts on
@@ -215,7 +217,7 @@ Flash would do worse under load. For the 3B on its own card, the load on Flash d
 | At a 2,500-token prompt, projected p50 / p95, s | | Measured at 2,769 | 2.42 / 3.93 |
 | Requests over 2.5 s | | 40 of 40 | 19 of 41 |
 | Rate | | 24 tok/s, whole request | 3,005 tok/s prefill, 132 tok/s decode, grammar on |
-| Evals, schema fixed | | **35 of 51** | **18 of 51** |
+| Evals, schema fixed | | **37 of 51** | **18 of 51** |
 | Reaches 2.5 s | No | **No** | **No** |
 
 "Failed" is what the caller saw. The client retries invalid JSON once, 13 of 41 retried, and the caller
@@ -253,7 +255,7 @@ GGUF, because of the incident. The 4,096 slot helped the 3B: the pod's would hav
 | 1:1 status meeting | 3 of 3 | 3 of 3 |
 | Vendor call, two owned actions | 0 | 3 |
 | Solo brain dump | 3 | 3 |
-| Long meeting, first 5 minutes | 0 | 0 |
+| Long meeting, first 5 minutes | 0 | 2 |
 | Long meeting, 8 minutes | 0 | 0 |
 | Named speakers | 0 | 3 |
 | Small talk, nothing committed | 0 | 3 |
@@ -267,18 +269,18 @@ GGUF, because of the incident. The 4,096 slot helped the 3B: the pod's would hav
 | Rolling cycle 6, feedback for Helen | 0 | 0 |
 | Rolling cycle 7, Rosa's manager | 2 | 3 |
 | Rolling cycle 8, vendor support | 3 | 0 |
-| **Total of 51** | **18** | **35** |
+| **Total of 51** | **18** | **37** |
 
-By run, the 3B passed 5, 6 and 7 of 17, and Flash 11, 12 and 12.
+By run, the 3B passed 5, 6 and 7 of 17, and Flash 12, 12 and 13.
 
-- **The 3B loses owners and actions.** Of its failures, 26 were a wrong or missing owner, 24 a missing
-  action, 5 too many actions and 3 an invented owner. Flash had 9, 11, 0 and 3.
+- **The 3B loses owners and actions.** Of its failures, 25 were a wrong or missing owner, 25 a missing
+  action, 5 too many actions and 3 an invented owner. Flash had 3, 11, 0 and 3.
 - **It finds work in small talk,** in 3 of 3 runs. A copilot that files actions nobody took is worse
   than one that misses some.
 - **It ran away once:** 2,442 tokens on a single reply.
-- **The evals are not perfect.** Three cases fail on both models, and Flash fails two more that the 3B
-  sometimes passes, so some of that is the cases. I left them as they are. Flash is the reference, and
-  its 69% says the cases are hard.
+- **The evals are not perfect.** Two cases fail on both models in every run, and Flash fails two more
+  that the 3B sometimes passes, so some of that is the cases. Flash is the reference, and its 73% says
+  the cases are hard. One case's key was wrong, and is fixed: see [the recheck](#recheck-2026-11-02).
 
 ### The schema bug
 
@@ -290,7 +292,7 @@ By run, the 3B passed 5, 6 and 7 of 17, and Flash 11, 12 and 12.
 |---|---:|---:|---:|
 | As sent today | 15 | **0** | 1 of 17 |
 | Thinking on, as before #247 | 7 | **0** | 1 of 17, 10 timed out at 240 s |
-| Top-level keys required | 51 | **51** | 35 of 51 |
+| Top-level keys required | 51 | **51** | 37 of 51 |
 
 - **#247 did not cause it.** Thinking on shows the same gap, though from only 7 replies.
 - **It reaches live.** `server-v0.31.1` sends this request. I have not looked at live sessions, so what
@@ -346,7 +348,7 @@ owes:
 |---|---|---|
 | JSON schema cost on a dedicated pod | `jev-llm` showed 132 tok/s, but with the 2,048 slot, and on Jev's pod | `llm_probe.py copilot` against the new pod, comparing `timings` with and without `response_format`, at a 2,500-token prompt |
 | Contention from Whisper on the shared card | Whisper is not on pve yet, and the plan puts both on one 2070 | The same probe during a `jarvis_live/replay.py` session, which streams a WAV through the server to Whisper, then with Whisper idle. Report decode rate and total p95 for each |
-| Memory under long prompts | [The incident](#incident-jev-llm-out-of-memory) | A soak of at least an hour at one prompt per 25 s, with RSS tracked and `--cache-ram` bounded |
+| Memory under long prompts | [The incident](#incident-jev-llm-out-of-memory) | A soak of at least an hour at one prompt per 25 s, with `--cache-ram` bounded. The probe now records RSS in its rows and stops at `--memory-stop-mib`: see [the recheck](#recheck-2026-11-02) for what is unproven |
 | Slot size | 2,048 refused the prompt | At least 4,096 per slot. Set `--parallel 1` |
 
 The build itself stays as planned, for whichever model clears the bar:
@@ -375,7 +377,7 @@ The build itself stays as planned, for whichever model clears the bar:
   cache is my suspect, but its log shows no cache lines. It started and stopped with my run, and I stopped
   all traffic to `jev-llm` afterwards. All later 3B work ran locally.
 - **Why the guard missed it:** it watched the queue, as the task asked. Memory was a different failure,
-  and I was not watching it.
+  and I was not watching it. The probe now stops on RSS: see [the recheck](#recheck-2026-11-02).
 - **State now:** healthy at 22:35. RSS was 982 MiB. `kubectl top` shows 2,623 MiB, mostly the mapped
   model file: anon is 606 MiB. There were no restarts after that one.
 - **For step 4:** at one prompt per 25 s a pod would grow about 108 MiB/min, which reaches a 4 GiB
@@ -392,8 +394,78 @@ The build itself stays as planned, for whichever model clears the bar:
   `jev-llm`. The projection leaves out grammar start-up and retries, so it leans low.
 - **Each case is a single invented meeting.** They are written to be hard, and not drawn from real
   sessions. They compare models. They do not predict a real user's hit rate.
-- **Cases were seen before the arms ran,** and the checker changed once, to accept a resolved ISO date
-  on the right weekday. All arms were rescored with it.
+- **Cases were seen before the arms ran,** and the checker changed twice: to accept a resolved ISO date
+  on the right weekday, and to [tighten two keys](#recheck-2026-11-02). All arms were rescored both
+  times, from stored replies.
+
+### Recheck, 2026-11-02
+
+After the review of #254. No inference and no probe runs. Every figure here comes from the rows stored
+on 2026-11-01.
+
+**The 3B verdict stands, and step 4 stays stopped.** Both gate conditions come out as before, and the
+3B's eval score does not move. Flash's rises by 2, which widens the gap. The time failure comes from
+timings and token counts, and nothing here touches those.
+
+**The gate.** The reported figures counted all 81 rows, but load is sampled on Flash and direct rows go
+to `jev-llm`, so they diluted `queued` and counted as `alone` for nothing they did. All 12 `alone` rows
+were direct. The copilot report now gates on gateway rows. `voice_report` is unchanged, since both its
+paths reach the sampled engine.
+
+| Condition | All 81 rows | Gateway rows, 40 | Limit | Result |
+|---|---:|---:|---:|---|
+| Queued | 1.2% | **2.5%** (1 of 40) | At least 40% | Fails, as before |
+| Alone | 14.8% | **0.0%** (0 of 40) | At most 40% | Passes, as before |
+
+**The evals.** The Priya action matched on the bare word `lakeside`, so `find_action` could return
+another owner's action and fail a correct reply. It now needs `count`, and the rolling key lost `unit`.
+The rows hold all 102 replies, 51 per model, so I regraded them. As a control, the unchanged checker
+gave 18 and 35 again, matching every case and every run.
+
+| Case | 3B | Flash |
+|---|---:|---:|
+| Long meeting, first 5 minutes | 0 to 0 | **0 to 2** |
+| Long meeting, 8 minutes | 0 to 0 | 0 to 0 |
+| Rolling cycle 2, unit count | 3 to 3 | 3 to 3 |
+| **Total of 51** | **18 to 18** | **35 to 37** |
+
+- **Flash's 0 of 3 on the first 5 minutes was mostly the key.** In all three runs Priya's action was
+  there with the right owner, behind a Tomas action that mentions Lakeside. One of the three still
+  fails, on the survey, which it really missed.
+- **Flash's 0 of 3 on 8 minutes is real.** All three runs miss both the survey and the module price.
+- **The 3B's 0 of 3 on both is real.** It leaves Priya's owner out or drops the action. In one run it
+  wrote Tomas and Priya into one action with no owner.
+- **The bar is unchanged.** The same 11 cases are 3 of 3 for Flash, and the 3B reaches 5 of them.
+
+**The probe.** All this is tested on a local stub only. The copilot arm now:
+
+- Fails closed on a guard read that goes wrong in any way, where `http.client.IncompleteRead` or a bad
+  slot used to end the guard's thread and leave the run going.
+- Allows for its own request, so `--parallel 1` no longer trips it. On one slot it can only see a queue
+  between its requests. While its own request holds the slot, it cannot.
+- Stops on a restart, seen in `/slots` as task ids going backwards. That comes after the damage.
+- Stops at an RSS ceiling, and refuses a small model off loopback without one. Rows and the report
+  carry RSS.
+
+**How RSS is read.** It needs no new access and no new dependency, with one thing unproven. llama.cpp
+does not report it, and the probe's service account cannot read pods or their metrics. The Prometheus
+Service refused the probe's pod at 22:35 on 11-01, and its NetworkPolicy does not admit that namespace.
+The same pod had read it at 19:29, four minutes before the Prometheus pod was replaced, and I cannot
+explain that. The existing Ingress answered the query from this machine on 11-02, with samples 13-19 s apart,
+so `--memory-url` points there. **A read from inside a pod is untested,** because testing it creates a
+pod. If it fails, the probe refuses to start.
+
+**Still needs a live run, and not done:**
+
+- The memory guard from inside a pod, and against a pod growing for real.
+- The soak in [what step 4 must measure](#what-step-4-must-measure). The growth is still unexplained,
+  so the ceiling only stops a run in time. It does not make one safe.
+- A copilot run that clears the gate. No copilot figure here is a normal-load number.
+- The live evals with the tightened keys. These scores are stored replies, regraded.
+- The 3B's fixed-schema latency, which is still projected.
+
+`run`, `voice` and `load` have none of these stops. The script's header says so, and they must stay off
+a model that guards anything.
 
 ## Reserved path
 
