@@ -31,6 +31,18 @@ a pod that is not on the node the plan excludes:
         --metrics-url http://MODEL:8000/metrics --client-node NODE --proxy-node NODE \\
         --pairs 200 --max-hours 4 --label normal --out voice.jsonl
 
+The copilot arm replays an invented meeting through the copilot's real prompt and schema, thinking
+off, a sliding window at a time, and alternates two paths: Flash through the gateway (``gateway`` in
+the rows) and a small model called directly (``direct``). The small model's path is a measurement
+floor, not a route, and it may have another caller to protect, so this is one request at a time, a
+pause between them, and a guard that stops the run if both of its slots stay busy:
+
+    python3 llm_probe.py copilot --meeting planning_meeting.json \\
+        --gateway-url http://GATEWAY:4000/v1 --gateway-model MODEL_NAME \\
+        --small-url http://SMALL:8080/v1 --small-model MODEL_NAME --small-window-s 300 \\
+        --metrics-url http://MODEL:8000/metrics --client-node NODE --proxy-node NODE \\
+        --pairs 100 --max-hours 1.5 --pause 8 --label normal --out copilot.jsonl
+
 Addresses are arguments because this repo is public. The prompts are invented text; nothing from a
 real session goes through this. Output rows hold timings and token counts, never reply text.
 """
@@ -538,6 +550,7 @@ VOICE_TEMPERATURE = 0.2
 VOICE_TARGET_S = 2.5
 GATE_QUEUED_MIN = 0.4
 GATE_ALONE_MAX = 0.4
+SMALL_RATE_MIN_TOKENS = 200  # shorter prefills are mostly overhead, and say little about the rate
 
 VOICE_SYSTEM = """/no_think
 You read one request that "me" spoke to their assistant Jarvis during a recording, and work out \
@@ -743,17 +756,22 @@ _THINK_TEXT = re.compile(r"<think>(.*?)(?:</think>|$)", re.DOTALL)
 _FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
 
 
-def voice_reply_valid(content: str) -> bool:
-    """Would ``VoiceRequest.model_validate_json(_extract_json(content))`` accept this? Only pydantic
-    errors count: that schema forgives an unknown target and any shape of proposals."""
+def _reply_object(content: str) -> dict[str, Any] | None:
     text = _THINK.sub("", content).strip()
     if m := _FENCE.match(text):
         text = m.group(1)
     try:
         data = json.loads(text)
     except ValueError:
-        return False
-    if not isinstance(data, dict):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def voice_reply_valid(content: str) -> bool:
+    """Would ``VoiceRequest.model_validate_json(_extract_json(content))`` accept this? Only pydantic
+    errors count: that schema forgives an unknown target and any shape of proposals."""
+    data = _reply_object(content)
+    if data is None:
         return False
     criteria = data.get("acceptance_criteria", [])
     return (
@@ -793,7 +811,7 @@ def post_once(
     if api_key:
         headers["authorization"] = f"Bearer {api_key}"
     out: dict[str, Any] = {"failure": None, "detail": None, "message": {}}
-    out |= {"usage": {}, "model": None, "fallbacks": None}
+    out |= {"usage": {}, "model": None, "fallbacks": None, "timings": None, "finish_reason": None}
     started = time.perf_counter()
     conn = factory(url.hostname or "", url.port, timeout=timeout_s)
     try:
@@ -808,6 +826,10 @@ def post_once(
             reply = json.loads(raw)
             out["message"] = reply["choices"][0]["message"]
             out |= {"usage": reply.get("usage") or {}, "model": reply.get("model")}
+            out |= {
+                "timings": reply.get("timings"),
+                "finish_reason": reply["choices"][0].get("finish_reason"),
+            }
             if not isinstance(out["message"]["content"], str):
                 out |= {"failure": "no_content", "detail": "reply has no text content"}
     except TimeoutError as e:
@@ -829,19 +851,21 @@ def voice_call(
     timeout_s: float,
     api_key: str | None = None,
     host: str | None = None,
+    valid: Callable[[str], bool] | None = None,
 ) -> dict[str, Any]:
     """What the caller of ``complete_json`` lives through. Invalid JSON gets the one retry and the
     caller waits for both attempts. Anything else ends the call at once: a timeout or a 500 is not
     retried by the client. Keeps the shape of a ``stream_once`` row, with no reply text in it."""
+    check = valid or voice_reply_valid
     attempts: list[dict[str, Any]] = []
-    outcome, error = "invalid_json", "invalid VoiceRequest JSON after retry"
+    outcome, error = "invalid_json", "invalid JSON after retry"
     for _ in (1, 2):
         attempt = post_once(base_url, body, timeout_s=timeout_s, api_key=api_key, host=host)
         attempts.append(attempt)
         if attempt["failure"]:
             outcome, error = attempt["failure"], attempt["detail"]
             break
-        if voice_reply_valid(attempt["message"]["content"]):
+        if check(attempt["message"]["content"]):
             outcome, error = "ok", None
             break
     chars = sum(reasoning_chars(a["message"]) for a in attempts)
@@ -861,7 +885,405 @@ def voice_call(
         "reasoning_chars": chars,
         "answered_by": next((a["model"] for a in reversed(attempts) if a["model"]), None),
         "fallbacks": attempts[-1]["fallbacks"],
+        "timings": attempts[-1]["timings"],
+        "finish_reason": attempts[-1]["finish_reason"],
     }
+
+
+COPILOT_TIMEOUT_S = 60.0
+COPILOT_STEP_S = 25  # copilot_max_wait_s: a quiet stretch still cycles this often
+STATE_LAG_S = 30  # how old a line is before the replay treats it as already in the state
+SLOT_FULL_LIMIT = 3
+
+COPILOT_SYSTEM = """/no_think
+You are Jarvis, a live meeting copilot. You read a rolling transcript and keep a small, accurate \
+set of notes for the person labelled "me". "them" is everyone else on the call; where voices \
+are told apart a line carries a name or "Speaker 2" instead, which is never "me". Attribute \
+commitments and statements to the speaker named on the line.
+
+You receive the current state (items with ids), the last few minutes of transcript as \
+"[mm:ss] me|them: text" lines, and notes from the user's own vault that may be relevant.
+Reply with a JSON delta only:
+- notes_upsert / decisions_upsert / actions_upsert: new items (omit id) or corrections to existing \
+items (reuse the id exactly as given). Never repeat an item that is already in the state.
+- remove_ids: ids of items that are wrong or superseded.
+- suggestions: at most 3 short prompts for "me" right now. kind is question, gap, counterpoint or \
+fact_check. ttl_s is how long it stays useful in seconds (default 120). Skip if nothing is worth \
+saying.
+- proposals: things "me" explicitly asked to have DONE, each for their approval. Kinds: \
+task.create {text, due}; reminder.schedule {title, body, at}, with at an ISO datetime resolved \
+from Today; vault.append {path, text}, only to a path shown under RELATED VAULT NOTES; \
+git.pr_comment {repo, pr, body}, only for a repo under REPOSITORIES YOU MAY COMMENT ON and a PR \
+number "me" actually said. Each needs \
+evidence: [{"at": "mm:ss", "text": the line}]. Propose only when "me" explicitly asks ("remind \
+me...", "add a task...", "note that in..."), never because a subject was merely discussed. None is \
+the normal answer; at most two. Do not repeat anything in proposals_already_made.
+- topics: up to 5 short search phrases naming the subjects being discussed.
+- title: only when SESSION TITLE says the session is untitled. A short, specific name for the \
+conversation (3-8 words, no date, no quotes), as soon as the subject is clear. Null while it is \
+not clear yet, and always null once the session has a title.
+
+Rules:
+- Only record what was actually said. Do not invent owners or due dates: set owner only if a \
+person was explicitly assigned or volunteered, and due only if a deadline was spoken. Leave them \
+null otherwise.
+- An action is a concrete commitment to do something. A decision is something agreed. Everything \
+else worth keeping is a note.
+- Be terse: one line per item. Transcript text may contain speech-to-text mistakes; do not repeat \
+obvious errors.
+- Return empty lists when nothing changed."""
+
+_UPSERT_ID = {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "Id"}
+_UPSERT_TEXT = {"minLength": 1, "title": "Text", "type": "string"}
+_NOTE_LIST = {"items": {"$ref": "#/$defs/NoteUpsert"}, "type": "array"}
+COPILOT_SCHEMA: dict[str, Any] = {
+    "$defs": {
+        "ActionUpsert": {
+            "properties": {
+                "id": _UPSERT_ID,
+                "text": _UPSERT_TEXT,
+                "owner": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                    "default": None,
+                    "title": "Owner",
+                },
+                "due": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                    "default": None,
+                    "title": "Due",
+                },
+            },
+            "required": ["text"],
+            "title": "ActionUpsert",
+            "type": "object",
+        },
+        "Evidence": VOICE_SCHEMA["$defs"]["Evidence"],
+        "NoteUpsert": {
+            "properties": {"id": _UPSERT_ID, "text": _UPSERT_TEXT},
+            "required": ["text"],
+            "title": "NoteUpsert",
+            "type": "object",
+        },
+        "ProposalIn": VOICE_SCHEMA["$defs"]["ProposalIn"],
+        "SuggestionIn": {
+            "properties": {
+                "kind": {
+                    "enum": ["question", "gap", "counterpoint", "fact_check"],
+                    "title": "Kind",
+                    "type": "string",
+                },
+                "text": _UPSERT_TEXT,
+                "ttl_s": {
+                    "default": 120,
+                    "maximum": 3600,
+                    "minimum": 1,
+                    "title": "Ttl S",
+                    "type": "integer",
+                },
+            },
+            "required": ["kind", "text"],
+            "title": "SuggestionIn",
+            "type": "object",
+        },
+    },
+    "properties": {
+        "notes_upsert": {**_NOTE_LIST, "title": "Notes Upsert"},
+        "actions_upsert": {
+            "items": {"$ref": "#/$defs/ActionUpsert"},
+            "title": "Actions Upsert",
+            "type": "array",
+        },
+        "decisions_upsert": {**_NOTE_LIST, "title": "Decisions Upsert"},
+        "remove_ids": {"items": {"type": "string"}, "title": "Remove Ids", "type": "array"},
+        "suggestions": {
+            "items": {"$ref": "#/$defs/SuggestionIn"},
+            "title": "Suggestions",
+            "type": "array",
+        },
+        "proposals": {
+            "items": {"$ref": "#/$defs/ProposalIn"},
+            "title": "Proposals",
+            "type": "array",
+        },
+        "topics": {"items": {"type": "string"}, "title": "Topics", "type": "array"},
+        "title": {
+            "anyOf": [{"type": "string"}, {"type": "null"}],
+            "default": None,
+            "title": "Title",
+        },
+    },
+    "title": "CopilotDelta",
+    "type": "object",
+}
+
+
+def clock_s(clock: str) -> int:
+    minutes, seconds = clock.split(":")
+    return int(minutes) * 60 + int(seconds)
+
+
+def load_meeting(path: Path) -> dict[str, Any]:
+    """The replay's script: ``lines`` as (seconds, rendered line), the answer key in ``items``."""
+    raw = json.loads(path.read_text())
+    lines = [(clock_s(line[1:6]), line) for line in raw["lines"]]
+    return {"lines": lines, "items": raw["items"], "end_s": lines[-1][0]}
+
+
+def copilot_user(*, today: str, title: str | None, state_json: str, transcript: str) -> str:
+    return (
+        f"Today: {today}\n\n"
+        f"SESSION TITLE\n{title or '(untitled: propose one)'}\n\n"
+        f"CURRENT STATE\n{state_json}\n\n"
+        "RELATED VAULT NOTES\n(none)\n\n"
+        f"TRANSCRIPT\n{transcript}"
+    )
+
+
+def copilot_state_json(items: list[dict[str, Any]], upto_s: int) -> str:
+    """The state an earlier cycle would have left, in the server's ``prompt_json`` shape. It holds
+    an item once its line is ``STATE_LAG_S`` old, so the reply to a cycle is a real small delta."""
+    view: dict[str, list[Any]] = {"notes": [], "decisions": [], "actions": []}
+    for item in items:
+        if clock_s(item["at"]) > upto_s - STATE_LAG_S:
+            continue
+        found = view[item["kind"]]
+        entry = {"id": f"{item['kind'][0]}{len(found) + 1}", "text": item["text"]}
+        found.append({**entry, **{k: item[k] for k in ("owner", "due") if k in item}})
+    return json.dumps({**view, "active_suggestions": []}, ensure_ascii=False)
+
+
+def build_copilot_body(
+    model: str,
+    meeting: dict[str, Any],
+    *,
+    end_s: int,
+    window_s: int,
+    cycle: int,
+    today: str,
+    think: bool = False,
+) -> dict[str, Any]:
+    """What ``LiteLLMClient.complete_json`` sends for one copilot cycle. The title changes with the
+    cycle, so a prefix cache keeps the system prompt, as it would live, and nothing after it: the
+    state and the rolling window, which is where a real cycle differs from the last one."""
+    lines = [text for at, text in meeting["lines"] if end_s - window_s < at <= end_s]
+    user = copilot_user(
+        today=today,
+        title=f"Planning sync {cycle}",
+        state_json=copilot_state_json(meeting["items"], end_s),
+        transcript="\n".join(lines),
+    )
+    body: dict[str, Any] = {
+        "model": model,
+        "temperature": VOICE_TEMPERATURE,
+        "messages": [
+            {"role": "system", "content": COPILOT_SYSTEM},
+            {"role": "user", "content": user},
+        ],
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {"name": "CopilotDelta", "schema": COPILOT_SCHEMA},
+        },
+    }
+    if not think:
+        body["chat_template_kwargs"] = {"enable_thinking": False}
+    return body
+
+
+def copilot_end(meeting: dict[str, Any], *, start_s: int, cycle: int) -> int:
+    """Where a cycle ends: walks the meeting a cycle's step at a time, then goes round again."""
+    steps = (meeting["end_s"] - start_s) // COPILOT_STEP_S + 1
+    return start_s + cycle % steps * COPILOT_STEP_S
+
+
+def copilot_reply_valid(content: str) -> bool:
+    """Would ``CopilotDelta.model_validate_json(_extract_json(content))`` accept this? That schema
+    drops proposals it cannot read and forgives unknown keys, so neither fails a reply."""
+
+    def strings(value: Any) -> bool:
+        return isinstance(value, list) and all(isinstance(v, str) for v in value)
+
+    def optional(entry: dict[str, Any], key: str) -> bool:
+        return isinstance(entry.get(key), str | None)
+
+    def upsert(entry: Any) -> bool:
+        text = entry.get("text") if isinstance(entry, dict) else None
+        return isinstance(text, str) and bool(text) and optional(entry, "id")
+
+    def action(entry: Any) -> bool:
+        return upsert(entry) and optional(entry, "owner") and optional(entry, "due")
+
+    def suggestion(entry: Any) -> bool:
+        if not upsert({**entry, "id": None} if isinstance(entry, dict) else entry):
+            return False
+        ttl = entry.get("ttl_s", 120)
+        return entry.get("kind") in ("question", "gap", "counterpoint", "fact_check") and (
+            isinstance(ttl, int) and 1 <= ttl <= 3600
+        )
+
+    def each(value: Any, check: Callable[[Any], bool]) -> bool:
+        return isinstance(value, list) and all(check(v) for v in value)
+
+    data = _reply_object(content)
+    return (
+        data is not None
+        and each(data.get("notes_upsert", []), upsert)
+        and each(data.get("decisions_upsert", []), upsert)
+        and each(data.get("actions_upsert", []), action)
+        and each(data.get("suggestions", []), suggestion)
+        and strings(data.get("remove_ids", []))
+        and strings(data.get("topics", []))
+        and optional(data, "title")
+    )
+
+
+class SlotGuard:
+    """Stops a run that could be queueing someone else's requests. llama.cpp's ``/metrics`` is off,
+    so its queue cannot be read, but a request can only wait if every slot is busy: ``limit`` polls
+    in a row like that, or ``limit`` polls with no answer, trips it."""
+
+    def __init__(self, url: str, interval_s: float = 2.0, limit: int = SLOT_FULL_LIMIT) -> None:
+        self._url = f"{url.removesuffix('/').removesuffix('/v1')}/slots"
+        self._interval = interval_s
+        self._limit = limit
+        self._full = 0
+        self._misses = 0
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self.tripped = threading.Event()
+        self.reason = ""
+        self.samples: list[tuple[float, bool, float]] = []
+
+    def __enter__(self) -> SlotGuard:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        self._thread.join(timeout=10)
+
+    def note(self, busy: int, total: int) -> bool:
+        self._full = self._full + 1 if busy >= total > 0 else 0
+        return self._full >= self._limit
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._interval):
+            started = time.perf_counter()
+            try:
+                with urllib.request.urlopen(self._url, timeout=5) as response:
+                    slots = json.load(response)
+            except (OSError, ValueError) as e:
+                self._misses += 1
+                if self._misses >= self._limit:
+                    self.reason = f"cannot read the small model's slots: {e}"
+                    self.tripped.set()
+                continue
+            self._misses = 0
+            busy = sum(1 for slot in slots if slot.get("is_processing"))
+            self.samples.append((started, busy >= len(slots) > 0, time.perf_counter() - started))
+            if self.note(busy, len(slots)):
+                self.reason = f"all {len(slots)} slots busy for {self._limit} polls in a row"
+                self.tripped.set()
+
+    def window(self, start: float, end: float) -> dict[str, float]:
+        inside = [s for s in self.samples if start <= s[0] <= end]
+        return {
+            "slots_full_max": int(any(full for _, full, _ in inside)),
+            "slots_poll_s_max": round(max((s[2] for s in inside), default=0.0), 4),
+        }
+
+
+@dataclass(frozen=True)
+class CopilotOptions:
+    gateway_url: str
+    small_url: str
+    gateway_model: str
+    small_model: str
+    meeting: dict[str, Any]
+    gateway_window_s: int
+    small_window_s: int
+    metrics_url: str | None
+    pairs: int
+    pause_s: float
+    out: Path
+    label: str
+    client_node: str | None
+    proxy_node: str | None
+    start_s: int | None = None
+    max_s: float = 1.5 * 3600.0
+    think: bool = False
+    api_key_file: Path | None = None
+    timeout_s: float = COPILOT_TIMEOUT_S
+    sample_s: float = 0.25
+    slot_interval_s: float = 2.0
+
+
+def run_copilot(o: CopilotOptions) -> str | None:
+    """Pairs of the same cycle on both paths, each with the window that path can take. ``None`` when
+    it ran to its end, or the reason the guard stopped it."""
+    key = o.api_key_file.read_text().strip() if o.api_key_file else None
+    urls = {"direct": pin(o.small_url), "gateway": pin(o.gateway_url)}
+    models = {"direct": o.small_model, "gateway": o.gateway_model}
+    windows = {"direct": o.small_window_s, "gateway": o.gateway_window_s}
+    metrics_url = pin(o.metrics_url)[0] if o.metrics_url else None
+    start_s = o.start_s if o.start_s is not None else max(windows.values())
+    began = time.monotonic()
+    with (
+        Sampler(metrics_url, o.sample_s) as sampler,
+        SlotGuard(urls["direct"][0], o.slot_interval_s) as guard,
+        o.out.open("a") as out,
+    ):
+        for pair in range(o.pairs):
+            if time.monotonic() - began >= o.max_s:
+                break
+            end_s = copilot_end(o.meeting, start_s=start_s, cycle=pair)
+            today = time.strftime("%Y-%m-%d", time.gmtime())
+            for path in pair_order(pair):
+                if guard.tripped.is_set():
+                    return guard.reason
+                body = build_copilot_body(
+                    models[path],
+                    o.meeting,
+                    end_s=end_s,
+                    window_s=windows[path],
+                    cycle=pair,
+                    today=today,
+                    think=o.think,
+                )
+                url, host = urls[path]
+                wall = time.time()
+                start = time.perf_counter()
+                result = voice_call(
+                    url,
+                    body,
+                    timeout_s=o.timeout_s,
+                    api_key=key,
+                    host=host,
+                    valid=copilot_reply_valid,
+                )
+                end = start + float(result["total_s"])
+                time.sleep(min(o.sample_s, 0.25) if o.metrics_url else 0)
+                row = {
+                    "pair": pair,
+                    "path": path,
+                    "label": o.label,
+                    "prompt": "copilot",
+                    "max_tokens": None,
+                    "model": models[path],
+                    "end_s": end_s,
+                    "think": o.think,
+                    "client_node": o.client_node,
+                    "proxy_node": o.proxy_node,
+                    "wall_ts": wall,
+                    **result,
+                    "stalls": ["error"] if result["error"] else [],
+                    "max_gap_s": 0.0,
+                    **guard.window(start, end),
+                    "load": load_window(list(sampler.samples), start, end),
+                }
+                out.write(json.dumps(row) + "\n")
+                out.flush()
+                time.sleep(o.pause_s)
+    return guard.reason or None
 
 
 @dataclass(frozen=True)
@@ -1191,7 +1613,48 @@ def voice_report(rows: list[dict[str, Any]], *, by_load: bool = False) -> dict[s
     }
 
 
-def _voice_table(report: dict[str, Any]) -> str:
+def small_rates(rows: list[dict[str, Any]], *, project_to: int) -> dict[str, float | None]:
+    """The small model's own timings, and what its answered requests would have taken with the
+    prompt at ``project_to`` tokens: the extra tokens at the measured prefill rate, decode as it
+    was. A floor to read as one: that prompt was not sent, because it does not fit this slot."""
+    timed = [
+        r
+        for r in rows
+        if r["path"] == "direct" and not r["error"] and (r.get("timings") or {}).get("prompt_ms")
+    ]
+    prefill = sorted(
+        r["timings"]["prompt_n"] / r["timings"]["prompt_ms"] * 1000
+        for r in timed
+        if r["timings"]["prompt_n"] >= SMALL_RATE_MIN_TOKENS
+    )
+    decode = sorted(
+        r["timings"]["predicted_n"] / r["timings"]["predicted_ms"] * 1000
+        for r in timed
+        if r["timings"].get("predicted_ms")
+    )
+    rate = percentile(prefill, 0.5) if prefill else None
+    grown = [r["total_s"] + (project_to - r["prompt_tokens"]) / rate for r in timed] if rate else []
+    return {
+        "prefill_tok_s_p50": rate,
+        "decode_tok_s_p50": percentile(decode, 0.5) if decode else None,
+        "projected_prompt": project_to,
+        **_spread(grown, "projected"),
+    }
+
+
+def copilot_report(rows: list[dict[str, Any]], *, project_to: int) -> dict[str, Any]:
+    return {
+        "summary": voice_summary(rows),
+        "by_load": [],
+        "gate": gate(rows),
+        "periods": voice_periods(rows),
+        "small": small_rates(rows, project_to=project_to),
+        "finish_reasons": dict(Counter(f"{r['path']}:{r.get('finish_reason')}" for r in rows)),
+        "slots_full": sum(r.get("slots_full_max", 0) for r in rows),
+    }
+
+
+def _voice_table(report: dict[str, Any], name: str = "voice") -> str:
     def pct(pair: list[float]) -> str:
         return f"{pair[0] * 100:.1f}-{pair[1] * 100:.1f}%"
 
@@ -1203,7 +1666,7 @@ def _voice_table(report: dict[str, Any]) -> str:
     heads += "\tprompt_p50\tcompletion_p50\tcompletion_p95\treasoned\tfell_back\tanswered_by"
     lines = [heads]
     for s in report["summary"] + report["by_load"]:
-        cells = ["voice", s["path"], s["load"], s["n"], s["failed"], pct(s["failure_ci"])]
+        cells = [name, s["path"], s["load"], s["n"], s["failed"], pct(s["failure_ci"])]
         cells += [s["timeouts"], s["invalid_json"], s["other_failures"], s["retried"]]
         cells += [cell(s[f"caller_{q}"]) for q in ("p50", "p95", "p99")]
         cells += [cell(s[f"ok_{q}"]) for q in ("p50", "p95", "p99")]
@@ -1212,8 +1675,12 @@ def _voice_table(report: dict[str, Any]) -> str:
         cells += [s["fell_back"], s["answered_by"]]
         lines.append("\t".join(str(c) for c in cells))
     lines.append(f"\ngate: {json.dumps(report['gate'])}")
-    lines.append(f"reopen: {json.dumps(report['reopen'])}")
-    lines.append(f"pairs: {json.dumps(report['paired'])}")
+    for key, title in (("reopen", "reopen"), ("paired", "pairs"), ("small", "small")):
+        if key in report:
+            lines.append(f"{title}: {json.dumps(report[key])}")
+    for key in ("finish_reasons", "slots_full"):
+        if key in report:
+            lines.append(f"{key}: {json.dumps(report[key])}")
     lines.append("periods:\nstart_utc\tn\tqueued\talone\tfailed\tgateway_p50\tdirect_p50")
     for p in report["periods"]:
         cells = [p["start_utc"], p["n"], f"{p['queued']:.2f}", f"{p['alone']:.2f}", p["failed"]]
@@ -1282,6 +1749,27 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("--out", type=Path, required=True)
     v.add_argument("--api-key-file", type=Path)
 
+    c = sub.add_parser("copilot", help="the copilot's request on Flash and on a small model")
+    c.add_argument("--meeting", type=Path, required=True, help="the invented replay script")
+    c.add_argument("--gateway-url", required=True)
+    c.add_argument("--gateway-model", required=True)
+    c.add_argument("--gateway-window-s", type=int, default=480)
+    c.add_argument("--small-url", required=True, help="the small model itself, not the gateway")
+    c.add_argument("--small-model", required=True)
+    c.add_argument("--small-window-s", type=int, default=480)
+    c.add_argument("--metrics-url")
+    c.add_argument("--client-node", help="the node this runs on")
+    c.add_argument("--proxy-node", help="the node the gateway runs on")
+    c.add_argument("--start-s", type=int, help="end of the first window; default the longest")
+    c.add_argument("--think", action="store_true", help="as before #247: no chat_template_kwargs")
+    c.add_argument("--pairs", type=int, default=100)
+    c.add_argument("--max-hours", type=float, default=1.5)
+    c.add_argument("--pause", type=float, default=8.0, dest="pause_s")
+    c.add_argument("--slot-interval", type=float, default=2.0, dest="slot_interval_s")
+    c.add_argument("--label", default="copilot")
+    c.add_argument("--out", type=Path, required=True)
+    c.add_argument("--api-key-file", type=Path)
+
     d = sub.add_parser("load", help="long fresh prompts, to reproduce a stall on a quiet engine")
     d.add_argument("--url", required=True, help="send to the model directly, not the gateway")
     d.add_argument("--model", required=True)
@@ -1294,6 +1782,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("files", nargs="+", type=Path)
     p.add_argument("--by-load", action="store_true", help="split by what the engine was doing")
     p.add_argument("--json", action="store_true")
+    p.add_argument("--project-prompt", type=int, default=2500, help="tokens, for the small model")
 
     args = parser.parse_args(argv)
     if args.command == "run":
@@ -1337,6 +1826,34 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         return 0
+    if args.command == "copilot":
+        stopped = run_copilot(
+            CopilotOptions(
+                gateway_url=args.gateway_url,
+                small_url=args.small_url,
+                gateway_model=args.gateway_model,
+                small_model=args.small_model,
+                meeting=load_meeting(args.meeting),
+                gateway_window_s=args.gateway_window_s,
+                small_window_s=args.small_window_s,
+                metrics_url=args.metrics_url,
+                pairs=args.pairs,
+                pause_s=args.pause_s,
+                out=args.out,
+                label=args.label,
+                client_node=args.client_node,
+                proxy_node=args.proxy_node,
+                start_s=args.start_s,
+                max_s=args.max_hours * 3600,
+                think=args.think,
+                api_key_file=args.api_key_file,
+                slot_interval_s=args.slot_interval_s,
+            )
+        )
+        if stopped:
+            print(f"stopped by the guard: {stopped}", file=sys.stderr)
+            return 3
+        return 0
     if args.command == "load":
         for row in load(
             args.url,
@@ -1352,14 +1869,20 @@ def main(argv: list[str] | None = None) -> int:
     summary = summarise(rows, by_load=args.by_load)
     voice_rows = [r for r in rows if r["prompt"] == "voice"]
     voice = voice_report(voice_rows, by_load=args.by_load) if voice_rows else None
+    copilot_rows = [r for r in rows if r["prompt"] == "copilot"]
+    project = args.project_prompt
+    copilot = copilot_report(copilot_rows, project_to=project) if copilot_rows else None
     if args.json:
         extra = {"voice": voice} if voice else {}
+        extra |= {"copilot": copilot} if copilot else {}
         print(json.dumps({"summary": summary, "paired": paired(rows), **extra}, indent=2))
     else:
         print(_table(summary))
         print("\npairs:", paired(rows))
         if voice:
             print("\n" + _voice_table(voice))
+        if copilot:
+            print("\n" + _voice_table(copilot, "copilot"))
     return 0
 
 

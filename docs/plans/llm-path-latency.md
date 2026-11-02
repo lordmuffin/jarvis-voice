@@ -244,7 +244,8 @@ also carries a JSON schema. About four fifths of the tokens are reasoning nobody
 
 This run cannot say what `think=False` does. Arm V sends no `chat_template_kwargs`, as voice did when
 the arm was specified, so whether vLLM honours `enable_thinking: false` on this body still needs a
-measurement. `docs/plans/fast-tier.md` expected to read that from this arm.
+measurement. `docs/plans/fast-tier.md` expected to read that from this arm. **Since measured, on the
+copilot's body: it does.** See [Thinking](fast-tier.md#thinking) in that plan.
 
 Thinking off should help a lot, but this run does not show it reaches the target. Requests that ran with
 at most one on the engine managed 34 tokens/s over the whole request, so a 155-token answer is about

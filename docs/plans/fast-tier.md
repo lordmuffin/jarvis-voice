@@ -1,13 +1,28 @@
 # Fast tier: findings and proposed changes
 
-Status: **cause found. Recommendations accepted 2026-11-01, steps below approved. Step 1 is done (#247). The pve question is answered, see Decisions.**
+Status: **step 3 measured 2026-11-01. The 3B fails, so steps 4 and 5 do not go ahead, on any model yet. Steps 1 and 2 are done (#247, homelab #838). One live bug found, see below.**
 Task 12 in `Tasks.herd`. Read on 2026-11-01 from `main` of both repos and the cluster.
 
-**The comparison is not done.** `feat/probe-voice-arm` is still running and has not reported, so
-this task sent no inference to the engine. Its recommendation for the tier is provisional. The
-reserved path recommendation is firm, as asked.
+**Step 3's result is in [The comparison](#the-comparison).** Most other sections were written before
+it. Where step 3 contradicts them, step 3 wins.
 
 ## Answer
+
+**Step 4 does not go ahead, on the 3B or any other model. Step 5 waits for it.** There is no model
+to name yet.
+
+- **The 3B fails on quality.** It passed 18 of 51 eval runs against Flash's 35 of 51, on the same
+  fixed request. It missed owners and whole actions.
+- **The 3B fails on time.** p95 was 4.35 s to the caller on a request that carries no actions. A
+  complete reply is about 400 tokens, and the 2.5 s target leaves room for about 225.
+- **The copilot on Flash is no answer either.** Thinking off, it took p95 29.52 s on a quiet engine.
+- **Live bug, separate from all of this: the copilot's request gets no actions back from Flash.**
+  0 of 22 replies carried `actions_upsert`, with thinking on or off. Marking the top-level schema
+  keys required fixes it: 51 of 51. See [the schema bug](#the-schema-bug).
+- **I caused one outage.** The probe ran `jev-llm` out of memory and it restarted once. See
+  [the incident](#incident-jev-llm-out-of-memory).
+
+The findings from before step 3 follow.
 
 - **`ollama` is at 0 by choice, not by accident.** On 2026-10-24 at 21:10 UTC the GPU dashboard
   switched the gaming PC to the `whisper` profile. It has stayed there for 8 days. Gaming mode is not
@@ -20,13 +35,13 @@ reserved path recommendation is firm, as asked.
   measured. The rest is thinking and the queue, and the probe is needed to split them.
 - **The 60 s cooldown the config describes never happens.** LiteLLM skips it for a model with one
   deployment. On a hung backend, every request costs about 42 s, not just the first two attempts.
-- **My recommendation is a small model of our own for interactive callers,** behind the gateway on
-  the pve RTX 2070. It is the only option that can reach 2.5 s under load without a Flash restart.
-  A place on the engine is not enough. See [Reserved path](#reserved-path).
+- **A small model of our own remains the only route to 2.5 s under load without a Flash restart,**
+  and a place on the engine is not enough. See [Reserved path](#reserved-path). Step 3 rules out the
+  3B on the pve RTX 2070 as that model.
 
 ## Decisions
 
-All four recommendations below were accepted on 2026-11-01. Steps 4 and 5 still depend on step 3's comparison, as [the steps](#proposed-steps-for-approval) say.
+All four recommendations below were accepted on 2026-11-01. Step 3 has reported, and steps 4 and 5 do not go ahead: see [the steps](#proposed-steps-for-approval).
 
 | # | Decision | My recommendation |
 |---|---|---|
@@ -38,8 +53,9 @@ All four recommendations below were accepted on 2026-11-01. Steps 4 and 5 still 
 **Answered 2026-11-01: the move to `jev` was not deliberate.** The gaming PC runs Kubernetes workloads
 unless Andrew is gaming, so it stays best-effort. Speech goes back to pve, and `ollama` to the gaming
 PC, after step 2. pve then runs Whisper plus `interactive`, 4 + 3 of 7 GiB, in a new profile, and Jev
-stays on `jev-cpu`. This replaces the `jev` beside `interactive` layout in
-[The comparison](#the-comparison-provisional). The interim is `speech-jev`, which exists today.
+stays on `jev-cpu`. The Whisper half stands. The `interactive` half now waits on a model, so the
+interim runs longer. This replaces the `jev` beside `interactive` layout in
+[the comparison](#the-comparison). The interim is `speech-jev`, which exists today.
 
 ## Why ollama is at 0
 
@@ -84,12 +100,12 @@ apart. Task 21 reached the same limit. This machine's journal only goes back to 
 
 ## What the copilot's wait is made of
 
-Fallback is now measured. Thinking and engine wait are not, and need the probe.
+Fallback is now measured. Step 3 replaces the thinking estimate below: Flash wrote 423 tokens at p50 with reasoning off and still took 17.78 s, so the time is the engine's, not reasoning.
 
 | Part | Size | Status |
 |---|---|---|
 | Fallback, `ollama` at 0 | **About 2.3 s, every request** | Measured on the production image, on a stub |
-| Thinking, if Flash reasons | About 1.6 s (490 characters, about 120 tokens, at 75 tok/s) | Estimate. Whether it reasons at all is the voice arm's question |
+| Thinking | **Unbounded in practice.** With it on, 12 of 12 copilot requests hit a 60 s timeout | Measured in step 3. The 1.6 s estimate that stood here was wrong |
 | Queue for a place | Median 18 s under normal load | Measured in Task 11, on Flash |
 | Prefill freezes | Up to 3.4 s per step | Measured in Task 11 |
 
@@ -157,46 +173,227 @@ the model and already open with `/no_think`. `complete_json` keeps its default.
 
 The drop on the Ollama route is harmless as far as I know, since `qwen2.5` is not a reasoning model.
 
-**Not tested: whether voice with no `chat_template_kwargs` reasons on Flash.** That needs a model
-call, which would be a second probe on the engine. Arm V records it, so I will read it from there.
-A stub also cannot show that vLLM honours the setting, so that part rests on the voice arm too.
+**Tested in step 3, and #247 was worth it.**
 
-## The comparison (provisional)
+- **With no `chat_template_kwargs`, Flash reasons, and `/no_think` does not stop it.** Every voice
+  reply in arm V reasoned, 310 of 310 in its main result, spending about 79% of completion tokens.
+  See `llm-path-latency.md`, [Reasoning](llm-path-latency.md#reasoning).
+- **`enable_thinking: false` is honoured through the gateway.** The copilot's body, alternating
+  requests on Flash, 19:32 to 19:51 UTC, n=12 each. On: 12 of 12 timed out at 60 s. Off: 12 of 12
+  answered, none reasoned, p50 27.4 s, max 45.5 s, 479 tokens at p50.
+- **That is why #247 earned its place,** and it is not enough. It took the copilot from timing out
+  to answering in about 27 s. It did not cause the [schema bug](#the-schema-bug), which is there
+  with thinking on as well.
 
-To run after `feat/probe-voice-arm` reports, using the same probe. Nothing below is a measurement of
-that option.
+## The comparison
 
-| | Restore the tier | Copilot on Flash, thinking off | **Small model on pve** |
+Run 2026-11-01, a Sunday, with `scripts/llm_probe.py copilot`. Times are UTC. The real `COPILOT_SYSTEM`
+prompt and `CopilotDelta` schema, thinking off, a replayed invented meeting
+(`server/tests/evals/fixtures/planning_meeting.json`). Flash through the gateway, and the same 3B on
+the same card by calling `jev-llm` directly, one request at a time. Nothing routes that way, and it
+is a floor only.
+
+**The normal-load gate failed, so this is a light Sunday engine, not normal load.** Run period 19:02:40
+to 19:28:20, labelled `normal`. 1.2% of requests saw a queue against the 40% floor. `alone` passed, at
+14.8% against the 40% ceiling. Engine p50 was 3 running and KV 26%. Failing here on a quiet engine means
+Flash would do worse under load. For the 3B on its own card, the load on Flash does not apply.
+
+**The run stopped at 81 of 200 rows,** at the [incident](#incident-jev-llm-out-of-memory). Prompts on
+`jev-llm` were cut to a 200 s window, about 1,700 tokens, because its 2,048-token slot refuses a
+2,500-token prompt: `request (2596 tokens) exceeds the available context size`. Flash took the full
+2,769 at p50.
+
+| | Restore the tier | Copilot on Flash, thinking off | Small model, 3B |
 |---|---|---|---|
 | Change | pve to `speech-jev`, PC to `ollama` | One config value | New `interactive` alias, new workload on the 2070 |
 | Avoids the agents' queue | Yes | **No** | Yes |
-| Depends on the gaming PC | **Yes, and the copilot's speed with it** | No | No |
-| Speech | Moves back to pve, if that works | Unchanged | Unchanged |
-| Reply quality | `qwen2.5:7b`, known | Best | 3B, **unknown, needs evals** |
-| Reaches 2.5 s under load | When the PC is awake | No, not without a reserved path and step 3 | Probably, near the edge |
-| Restarts | Profile flips, then a proxy restart for the timeouts | Copilot config | Proxy, and pve's new pod. No Flash |
+| Depends on the gaming PC | **Yes** | No | No |
+| n | Not measured, it has no backend | 40 | 41 |
+| Failed | | 0 | **11:** 10 cut off at the slot's limit on both attempts, 1 the out-of-memory restart |
+| Caller total p50 / p95 / p99, s | | 17.78 / **29.52** / 37.41 | 2.36 / **4.35** / 5.19 |
+| First attempt p50 / p95, s | | Same as above | 2.10 / 2.64 |
+| At a 2,500-token prompt, projected p50 / p95, s | | Measured at 2,769 | 2.42 / 3.93 |
+| Requests over 2.5 s | | 40 of 40 | 19 of 41 |
+| Rate | | 24 tok/s, whole request | 3,005 tok/s prefill, 132 tok/s decode, grammar on |
+| Evals, schema fixed | | **35 of 51** | **18 of 51** |
+| Reaches 2.5 s | No | **No** | **No** |
 
-**Provisional recommendation: the small model, using the `interactive` alias.**
+"Failed" is what the caller saw. The client retries invalid JSON once, 13 of 41 retried, and the caller
+waits for both attempts, which is why p95 is 4.35 s and the first attempt's is 2.64 s. Schema enforcement
+cost little: 132 tok/s decode against the 138 in `jev`'s logs.
 
-- **It is the "deliberately uses something else" branch of the goal.** The copilot stops relying on a
-  machine that may not be there, which the constraint rules out anyway.
-- **There is room for one model.** pve's budget is 7 of 8 GiB and `jev` uses 3. A second 3B at 3 GiB
-  makes 6. A 7B does not fit beside `jev`, and neither does `speaches`, so this choice does keep
-  speech on the gaming PC.
-- **The rate looks workable.** The same 3B on that card, from `jev`'s logs: 2,961 tok/s prefill (n=95,
-  prompts under 310 tokens) and 138 tok/s decode (n=5,504). A 2,500-token prompt and a 150-token reply
-  would be about 0.8 + 1.1 = 1.9 s. Those are estimates: prompts here are short, the reply size is
-  unknown, and JSON schema enforcement may slow it.
+**The rate estimate held. The reply size did not.** The earlier 1.9 s assumed a 150-token reply. Prefill
+at 2,500 tokens takes about 0.8 s, which leaves 1.7 s, or **225 tokens**. Replies are bigger than that,
+on both models:
+
+| Reply, fixed schema, 51 replies each | p50 | p95 | Max | Within 225 tokens |
+|---|---|---:|---:|---:|
+| 3B | 408 | 679 | 2,442 | **1** |
+| Flash | 359 | 780 | 931 | 9 |
+
+So the 3B's 4.35 s flatters it. That run sent [the broken schema](#the-schema-bug). Its reply text was
+not kept, but the same request in the evals got no new actions from the 3B. At the measured rates, the 3B's last 36 replies with the schema fixed would take p50 3.64 s, and 3 of 36
+beat 2.5 s. That is arithmetic from token counts, not a timed run on the card.
+
+A longer run would not rescue this. Without a cut-off, on a 4,096 slot on CPU, full-length prompts gave
+replies of 53-57 or 560-667 tokens, nothing between. The short ones were a topics-only reply. 560-667
+tokens is 4.2-5 s of decode on the 2070.
+
+### Quality
+
+Reply quality was the known unknown. **The 3B fails.**
+
+The evals: the 3 original copilot cases, 6 new ones and 8 rolling cycles over one meeting, 17 cases,
+with an answer key for action, owner and due date. All invented text. Each was run three times per
+model with the fixed schema, and these ran on a local CPU, on the same llama.cpp build and the same
+GGUF, because of the incident. The 4,096 slot helped the 3B: the pod's would have cut it off.
+
+| Case | 3B | Flash |
+|---|---:|---:|
+| 1:1 status meeting | 3 of 3 | 3 of 3 |
+| Vendor call, two owned actions | 0 | 3 |
+| Solo brain dump | 3 | 3 |
+| Long meeting, first 5 minutes | 0 | 0 |
+| Long meeting, 8 minutes | 0 | 0 |
+| Named speakers | 0 | 3 |
+| Small talk, nothing committed | 0 | 3 |
+| State carried, one new action | 0 | 3 |
+| Correction updates the item in place | 2 | 3 |
+| Rolling cycle 1, spare batteries | 0 | 3 |
+| Rolling cycle 2, unit count | 3 | 3 |
+| Rolling cycle 3, floor walk | 0 | 2 |
+| Rolling cycle 4, agency temps | 1 | 3 |
+| Rolling cycle 5, stock update module | 1 | 0 |
+| Rolling cycle 6, feedback for Helen | 0 | 0 |
+| Rolling cycle 7, Rosa's manager | 2 | 3 |
+| Rolling cycle 8, vendor support | 3 | 0 |
+| **Total of 51** | **18** | **35** |
+
+By run, the 3B passed 5, 6 and 7 of 17, and Flash 11, 12 and 12.
+
+- **The 3B loses owners and actions.** Of its failures, 26 were a wrong or missing owner, 24 a missing
+  action, 5 too many actions and 3 an invented owner. Flash had 9, 11, 0 and 3.
+- **It finds work in small talk,** in 3 of 3 runs. A copilot that files actions nobody took is worse
+  than one that misses some.
+- **It ran away once:** 2,442 tokens on a single reply.
+- **The evals are not perfect.** Three cases fail on both models, and Flash fails two more that the 3B
+  sometimes passes, so some of that is the cases. I left them as they are. Flash is the reference, and
+  its 69% says the cases are hard.
+
+### The schema bug
+
+**The copilot's request does not get actions back from Flash today.** Every top-level key in
+`CopilotDelta` is optional, and the structured output grammar lets a model skip them. Flash skips
+`actions_upsert`:
+
+| Request, Flash | Replies | With `actions_upsert` | Evals passed |
+|---|---:|---:|---:|
+| As sent today | 15 | **0** | 1 of 17 |
+| Thinking on, as before #247 | 7 | **0** | 1 of 17, 10 timed out at 240 s |
+| Top-level keys required | 51 | **51** | 35 of 51 |
+
+- **#247 did not cause it.** Thinking on shows the same gap, though from only 7 replies.
+- **It reaches live.** `server-v0.31.1` sends this request. I have not looked at live sessions, so what
+  users saw, and since when, is not established. The copilot's fall to Flash on 10-24 would be a natural
+  start, since `ollama` has a different model and takes the schema as `format`, but that is a guess.
+- **The evals missed it** because the live ones need `--live`, and only ran with no `think` argument
+  until this PR. As of this PR they show it, and they fail against Flash until step 3a lands.
+- **The 3B has it too.** As sent, it gave no new actions in any eval that expected them, and often
+  only topics and a title.
+- **I did not fix it here.** It changes what live sends, so it gets its own PR and a lab soak. The
+  required-keys request above is `schema["required"] = list(schema["properties"])`.
+
+### Recommendation
+
+**Do not build `interactive` on the 3B. Fix the schema first, whatever the tier.**
+
+- **The decided path stands, and the model does not.** The reserved path is still a separate small
+  model, and the done test is still 2.5 s. I am not reopening either. The 3B simply is not that model.
+- **Restore the tier is not the answer.** `qwen2.5:7b` has no backend to measure, and the gaming PC
+  stays best-effort. The other two options are measured above.
+- **Flash stays the copilot's model for now, on the fallback,** with thinking off. It is slow, and it
+  answers well once 3a lands.
+- **GPU move 2 changes that without saying so.** With `ollama` back, `fast-chat` answers from
+  `qwen2.5:7b` while the PC is awake, a model these evals have not seen. Run them on it when it returns.
+
+### What happens next
+
+**The bar for step 4.** One model, on the 17 cases, three runs each:
+
+1. **Quality:** at least 2 of 3 on each of the 11 cases Flash passes 3 of 3. The 3B reached 5 of 11.
+2. **Size:** replies at p95 within what 2.5 s allows on that model's card. On the 2070, that is 225
+   tokens at 132 tok/s.
+
+The evals run locally on CPU, so this costs no cluster change, and it stops a bad candidate before a
+pod exists.
+
+Two levers, in this order:
+
+1. **A smaller reply.** Both models write about 400 tokens, so this is the reply, not the model. The
+   voice arm reached the same place: the reply has to get shorter. Candidates are a cap on items per
+   cycle and leaving `suggestions` and `proposals` to a slower cycle. A shorter reply must still pass the
+   evals.
+2. **A better small model.** The next option remains a small model on the Spark, as this plan said
+   before step 3: 0.06 to 0.10 of its memory budget is free. Its speed under Flash, and whether it needs a
+   Flash restart, are unknown.
+
+### What step 4 must measure
+
+Step 3 cannot measure these, because the workload does not exist. If a model clears the bar, step 4
+owes:
+
+| Unknown | Why not now | How step 4 measures it |
+|---|---|---|
+| JSON schema cost on a dedicated pod | `jev-llm` showed 132 tok/s, but with the 2,048 slot, and on Jev's pod | `llm_probe.py copilot` against the new pod, comparing `timings` with and without `response_format`, at a 2,500-token prompt |
+| Contention from Whisper on the shared card | Whisper is not on pve yet, and the plan puts both on one 2070 | The same probe during a `jarvis_live/replay.py` session, which streams a WAV through the server to Whisper, then with Whisper idle. Report decode rate and total p95 for each |
+| Memory under long prompts | [The incident](#incident-jev-llm-out-of-memory) | A soak of at least an hour at one prompt per 25 s, with RSS tracked and `--cache-ram` bounded |
+| Slot size | 2,048 refused the prompt | At least 4,096 per slot. Set `--parallel 1` |
+
+The build itself stays as planned, for whichever model clears the bar:
+
 - **Keep it apart from `jev`.** Jev's own pod guards `pi-durable`'s bash, so it must not share with a
-  chat caller. Use a separate pod, on the free slice, with `fallbacks: {"interactive": ["heavy"]}`.
-  That obeys the rule: fast to heavy only, never the reverse.
+  chat caller. Use a separate pod, with `fallbacks: {"interactive": ["heavy"]}`. That obeys the rule:
+  fast to heavy only, never the reverse.
 - **A new alias, not a re-pointed `fast-chat`.** Otherwise `auto` would send Open WebUI's simple chats
   down the reserved path. `fast-chat` stays as the best-effort tier it was.
 
-If the 3B fails the copilot evals, the next option is a small model on the Spark, which has 0.06 to
-0.10 of its memory budget free. It would have its own queue and KV cache, but shares GPU time with
-Flash, and how that behaves is unknown. It should not need a Flash restart, as the 10-30 profile
-change did not cause one, but verify that first.
+### Incident: jev-llm out of memory
+
+**My probe caused this.** `jev-llm` guards `pi-durable`'s bash, and I took it down once.
+
+| Time | Event |
+|---|---|
+| 19:02 | Run starts. RSS, flat at 1,500 MiB for 8 days, starts climbing at about 90 MiB/min, about 45 MiB per long request |
+| 19:28:20 | Reaches the 4 GiB limit. OOMKilled, exit 137. The probe stops itself on connection refused |
+| 19:28:44 | Listening again, after about 24 s. Restart count 1 |
+| 19:28:54 | One Jev triage logged `LiteLLM unreachable: timed out`. Retried at 19:30:14 and passed |
+
+- **Impact:** one failed triage, which its retry recovered. I found no denied bash in the `pi-durable`
+  logs I searched, and `pi-durable-0` did not restart. Jev-sized calls during the run were p50 343, p95
+  387 and max 718 ms, against a baseline of 346, 384 and 389 ms.
+- **The cause of the growth is not proven.** It lines up with long prompts, and llama.cpp's host prompt
+  cache is my suspect, but its log shows no cache lines. It started and stopped with my run, and I stopped
+  all traffic to `jev-llm` afterwards. All later 3B work ran locally.
+- **Why the guard missed it:** it watched the queue, as the task asked. Memory was a different failure,
+  and I was not watching it.
+- **State now:** healthy at 22:35. RSS was 982 MiB. `kubectl top` shows 2,623 MiB, mostly the mapped
+  model file: anon is 606 MiB. There were no restarts after that one.
+- **For step 4:** at one prompt per 25 s a pod would grow about 108 MiB/min, which reaches a 4 GiB
+  limit in about 25 minutes. Hence the soak above.
+
+### Limits of step 3
+
+- **The gate failed, so no result here is a normal-load number.** The 3B's failure does not rest on
+  load, and Flash's holds a fortiori.
+- **n is 81, not 200.** Enough for these gaps, and not for a tight p99.
+- **The 3B's quality ran on CPU.** Same build and model, a larger slot, and quality only: no latency in
+  this document comes from that run.
+- **The 3B's fixed-schema latency is projected,** not timed on the card, since I sent nothing more to
+  `jev-llm`. The projection leaves out grammar start-up and retries, so it leans low.
+- **Each case is a single invented meeting.** They are written to be hard, and not drawn from real
+  sessions. They compare models. They do not predict a real user's hit rate.
+- **Cases were seen before the arms ran,** and the checker changed once, to accept a resolved ISO date
+  on the right weekday. All arms were rescored with it.
 
 ## Reserved path
 
@@ -213,7 +410,7 @@ Today there is no limit to build on. `docs/pi-durable.md`, the StatefulSet's env
 | Flash restart | No | No | No |
 | Own KV cache | No | No | **Yes** |
 | Freed from 3.4 s steps | No | No | **Yes** |
-| Reaches 2.5 s alone | No | No | Probably |
+| Reaches 2.5 s alone | No | No | Not with the 3B, measured. Unproven for any other model |
 
 **LiteLLM can cap aliases that share a backend. It was tested, and it is not a queue.** With
 `max_parallel_requests: 2` on `qwen3.8-flash-next` and 6 streams at once, 2 ran and 4 received 429
@@ -318,19 +515,21 @@ For `docs/designs/voice-talkback.md` §5.1 and §2.2, in step 1 below:
 
 ## Proposed steps, for approval
 
-One PR per step. Nothing here has been done.
+One PR per step. Steps 1, 2 and 3 are done.
 
 | # | Change | Repo | Restarts | Rollback | When |
 |---|---|---|---|---|---|
 | 1 | `think=False` for copilot, voice and ideas, with tests. Talkback correction | `jarvis-voice` | `jarvis-live`, lab first | Revert | Now. The probe sends its own body, so this does not disturb it |
 | 2 | `fast-chat`, `fast-coder`: `timeout: 5`, `num_retries: 0`. Correct the cooldown comment. Pin it in `test_router_config.py` | `homelab-gitops` | **The proxy, so every LLM client** | Revert | After the voice arm. **Before `ollama` returns.** Could share Task 22's window |
-| 3 | Run the comparison on 11's probe, and read arm V for the thinking question | `jarvis-voice` | None | None needed | After the voice arm reports |
-| 4 | New pve workload and profile, `interactive` alias, copilot evals on it | `homelab-gitops` | Proxy, new pod. No Flash | Remove the alias and the workload | After 3, if it agrees |
-| 5 | Set `JARVIS_LIVE_COPILOT_MODEL` to `interactive` on lab, replay, then live. Voice follows, since `VOICE_MODEL` is empty | `jarvis-voice` | `jarvis-live` | Restore `fast-chat` | After 4 |
+| 3 | Run the comparison on 11's probe, and read arm V for the thinking question | `jarvis-voice` | None | None needed | **Done. Result: 4 and 5 stop** |
+| 3a | **New.** Make the top-level `CopilotDelta` keys required, so actions come back. Set the live evals to the same request | `jarvis-voice` | `jarvis-live`, lab first | Revert | Now. It does not depend on the tier |
+| 3b | **New.** Find a model and a reply size that pass [the bar](#what-happens-next), on the evals, before any pod exists | `jarvis-voice` | None | None needed | After 3a |
+| 4 | New pve workload and profile, `interactive` alias, copilot evals on it | `homelab-gitops` | Proxy, new pod. No Flash | Remove the alias and the workload | **Blocked on 3b.** The 3B does not go ahead |
+| 5 | Set `JARVIS_LIVE_COPILOT_MODEL` to `interactive` on lab, replay, then live. Voice follows, since `VOICE_MODEL` is empty | `jarvis-voice` | `jarvis-live` | Restore `fast-chat` | **Blocked on 4** |
 | 6 | `BestEffortTierDown` and its route, with `promtool` tests | `homelab-gitops` | None | Revert | After Task 21 step 1 |
 
-**If step 3 changes the recommendation,** steps 4 and 5 change with it. Steps 1, 2 and 6 hold whatever
-it shows.
+Step 3 changed the recommendation, so steps 4 and 5 stop. Steps 1, 2 and 6 hold, as does GPU moves 1
+and 2 in `Tasks.herd`. Move 3 is step 4 and stops with it.
 
 ## Other things found
 
@@ -346,7 +545,8 @@ it shows.
 
 ## Limits
 
-- No inference reached the engine, and no cluster object changed.
+- Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
+  its limits are [in that section](#limits-of-step-3). No cluster object changed.
 - The LiteLLM numbers come from a local stub. They measure the gateway, not the network or vLLM.
 - The history is at 10-minute resolution, with large gaps.
 - The KV reading is 30 quiet Sunday minutes, not normal load.

@@ -49,6 +49,8 @@ async def run_case(
 ) -> tuple[CopilotDelta, CopilotState, float]:
     cfg = settings or Settings()
     state = CopilotState()
+    if case.seed is not None:
+        state.apply(case.seed, now_ms=0, default_ttl_s=cfg.suggestion_default_ttl_s)
     user = copilot_user(
         today=datetime.now(UTC).date().isoformat(),
         title=None,
@@ -63,6 +65,7 @@ async def run_case(
         user=user,
         schema=CopilotDelta,
         timeout_s=cfg.copilot_timeout_s,
+        think=False,  # as copilot/loop.py asks, or this grades a request nobody sends
     )
     seconds = time.monotonic() - t0
     state.apply(delta, now_ms=0, default_ttl_s=cfg.suggestion_default_ttl_s)
@@ -75,6 +78,16 @@ def find_action(actions: list[Action], exp: Expected) -> Action | None:
         if all(any(k in text for k in group) for group in exp.keywords):
             return a
     return None
+
+
+def due_matches(due: str | None, expected: str) -> bool:
+    """Spoken words, or the ISO date the prompt asks for, on the weekday the case expects."""
+    if due is None:
+        return False
+    try:
+        return datetime.fromisoformat(due.strip()).strftime("%A").lower() == expected
+    except ValueError:
+        return expected in due.lower()
 
 
 def check(case: Case, delta: CopilotDelta, state: CopilotState, seconds: float) -> list[str]:
@@ -92,10 +105,14 @@ def check(case: Case, delta: CopilotDelta, state: CopilotState, seconds: float) 
             failures.append(f"invented owner {a.owner!r} on [{label}]")
         elif exp.owner is not None and (a.owner is None or exp.owner not in a.owner.lower()):
             failures.append(f"owner {a.owner!r} on [{label}], expected ~{exp.owner!r}")
+        elif exp.due is not None and not due_matches(a.due, exp.due):
+            failures.append(f"due {a.due!r} on [{label}], expected ~{exp.due!r}")
     if case.expect_no_owner_anywhere:
         for a in snap.actions:
             if a.owner is not None:
                 failures.append(f"invented owner {a.owner!r} on {a.text!r}")
+    if case.max_actions is not None and len(snap.actions) > case.max_actions:
+        failures.append(f"{len(snap.actions)} actions (>{case.max_actions})")
     if seconds >= MAX_ROUNDTRIP_S:
         failures.append(f"round-trip {seconds:.1f}s >= {MAX_ROUNDTRIP_S:.0f}s")
     return failures
