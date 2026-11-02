@@ -25,31 +25,28 @@
 # gateway rework (#240). Refreshed the same day, after Task 12's findings (#244) and #247, and
 # again once I took fast-tier.md's recommendations, and again after the voice arm reported (#252).
 # Refreshed 2026-11-02, after step 3 (#254), the probe fixes (#257), 3a (#260) and server-v0.32.2.
+# Replanned the same day: see REPLAN below. It overrides anything older it disagrees with.
 #
 # Sequence, top to bottom. Do not uncomment a step until the one above it is done. Items sharing
 # a step run together.
 #   Done: voice arm (#252), 12 steps 1, 2, 3 and 3a (#247, homelab #838, #254, #260), the probe
 #     fixes (#257), 21 steps 1a to 2 (homelab #839, #845).
-#   All decisions so far are under IN FLIGHT below. Open ones are the three NEXT items that need me.
+#   All decisions so far are under REPLAN and IN FLIGHT below.
 #   NEXT, me: watch 3a on live. No lab soak ran: lab's logs held health checks only from the merge
-#     to the release. The first real session on live is a54a7906, 2026-11-02, still open when read:
-#     8 cycles ok, mean 7.9 s, none over 15 s when last bucketed at 7, 0 skipped, 0 invalid JSON
-#     (port 9100, not /metrics on 8080). Promising, one session only. Still to check by eye in that
-#     session: actions arrive, and the title. The rest of the table is in fast-tier.md, What to watch
-#     on lab. To roll back, use the Server Image workflow.
-#   Small bug, no task yet: the gamingpc STT tier always probes unhealthy, though it serves every
-#     segment. So all three read unhealthy, and each segment tries spark and pve first, about 0.13 s
-#     and two log lines. whisper-cpp answers /health at its root, and the probe looks under the
-#     tier's endpoint. GPU move 1 brings pve up and hides this. It does not fix it.
+#     to the release. First real session on live, a54a7906: 11 of 11 cycles ok, mean 8.2 s, none over
+#     15 s, 0 skipped, 0 invalid JSON (port 9100, not /metrics on 8080). One quiet session only. Still
+#     to check by eye: actions arrive, and the title. The rest is in fast-tier.md, What to watch on
+#     lab, and R1 covers it under load. To roll back, use the Server Image workflow.
+#   NEXT, session: 21 step 2b's jarvis-voice half merged (#264). feat-llm-path-alerts-build opens the
+#     homelab copy.
 #   NEXT, me: merge #264, 21 step 2b. It rolls lab, not live. Then feat-llm-path-alerts-build opens
 #     the homelab copy.
-#   NEXT, me: when 12 step 3b reports, read fast-tier.md and decide. A small model on the Spark is
-#     my call. Nothing has passed the bar, one run is left, and no results are written up yet.
-#   IN FLIGHT: 12 step 3b, chore/copilot-reply-size.
-#   IN FLIGHT: 21. Steps 1a to 2 merged, 2b open as #264, step 3 onward not built.
-#   GPU moves 1 and 2, below, after the live watch. Neither waits on 3b.
-#   12 step 6 no longer waits: 21's step 1 is merged. It has no prompt here yet
-#   12 steps 4 and 5, with GPU move 3, blocked on 3b
+#   IN FLIGHT: 12 step 3b, chore/copilot-reply-size. It finishes as written, and now feeds the replan.
+#   IN FLIGHT: 21. Steps 1a to 2 and #264 merged, 2b's homelab copy and step 3 onward not built.
+#   R1 and R3 together, ready now. R2 once 3b's runs leave this machine
+#   R4, then R5, which needs R2's model
+#   R6
+#   R1's replay under normal load decides whether the copilot stays on Flash
 #   22, CoreDNS then the proxy change window, with 11's runs either side
 #   11 step 3, the Flash restart, if still worth it. Needs my approval. Must not overlap 22's window.
 #     Interactive callers no longer need it if the small model lands, so it is for agents alone
@@ -65,6 +62,25 @@
 # ---------------------------------------------------------------------------
 # IN FLIGHT - all started 2026-11-01, so all commented out. herd -f starts nothing. Do not restart.
 # ---------------------------------------------------------------------------
+
+# REPLAN 2026-11-02. Overrides the decisions below where they differ:
+#   - The goal: the copilot first, voice as a rapid follow on the hardware I have.
+#   - The copilot's done test: p95 under 15 s with 0 cycles lost, on a replay under normal load. It
+#     replaces 2.5 s, which came from a spoken reply. The copilot does not stream and cycles at most
+#     every 25 s. Evidence so far is one quiet session: 11 of 11 ok, mean 8.2 s, none over 15 s.
+#   - The copilot names Flash, thinking off. Steps 4 and 5 no longer apply to it. If the replay
+#     fails on Flash, the next lever is the copilot on pve's model, if that model passes the 11 bar cases.
+#   - Voice keeps a fast target on its own path: 2.5 s total for the LLM part. First slice:
+#     push-to-talk, spoken by Android and macOS on-device TTS. No Kokoro, no GPU for TTS.
+#   - pve's 2070 runs one larger model, alias interactive, up to the card's 7 GiB.
+#   - Whisper stays on the gaming PC. Rule change: Live MAY depend on it. Gaming means I don't need
+#     Live. When it is away, Live says so, keeps the audio, and transcribes later. No page.
+#   - So ollama stays at 0, GPU moves 1 to 3 are cancelled, and fast-chat keeps its heavy fallback.
+#   - Jev goes to the gaming PC's CPU. The card holds one pod and Whisper has it. Rule change for
+#     that pod only: it may run there because jev-cpu stays as its fallback off that node. pi-durable
+#     keeps running while I game, so the guard must not depend on the PC alone. It still fails closed.
+#   - 12 step 6 is cancelled: ollama is not coming back. Task 12's DONE WHEN is R1's test.
+#   - Task 15's premise changes: speech is the gaming PC, TTS is on-device for the first slice.
 
 # DECIDED 2026-11-01, starting from docs/plans/fast-tier.md's recommendations:
 #   - Reserved path (decision 10): a separate small model on pve, alias interactive, falling back to
@@ -85,18 +101,32 @@
 #     interactive callers use, not on Flash.
 #   - I own LiteLLM upgrades (decision 9). 22 proposes the trigger and cadence.
 
-# GPU moves, in this order, each through the dashboard or GitOps. Order keeps speech up throughout.
-# None done yet, checked 2026-11-02 21:35 UTC: pve runs jev-llm only (speaches and kokoro at 0), and
-# the gaming PC runs whisper-cpp (ollama at 0).
-#   1. pve to speech-jev, which exists today. Speech is back on a machine that does not game.
-#   2. The gaming PC goes from whisper to ollama. 12 step 2 has landed, so this waits on move 1, and
-#      on the live watch: once ollama is up, fast-chat leaves Flash and 3a's results stop applying.
-#   3. 12 step 4: pve to the new Whisper plus interactive profile, only if 3b finds what passes the bar.
-#   Whisper plus interactive uses both slices, so Kokoro has no GPU on pve. 15 must solve TTS.
+# GPU moves 1 to 3: CANCELLED by the replan. R4 and R5 replace them. Checked 2026-11-02 21:35 UTC: pve
+# runs jev-llm only (speaches and kokoro at 0), and the gaming PC runs whisper-cpp (ollama at 0).
+
+# REPLAN TASKS. All held. Delete the leading # to start one, in the sequence's order.
+
+# R1. Depends on: nothing. Ready.
+#feat/copilot-on-flash @forge: This is R1 of the REPLAN in Tasks.herd. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read the REPLAN, The done test and What to watch on lab in docs/plans/fast-tier.md, server/deploy/k8s/base/configmap.yaml, server/deploy/k8s/jarvis-live-lab/, server/src/jarvis_live/slo.py, config.py and replay.py. Goal: the copilot names Flash on purpose, and we learn whether it meets its new bar under real load. Scope: a) Set JARVIS_LIVE_COPILOT_MODEL to qwen3.8-flash-next in base, thinking off as today. Voice follows it because VOICE_MODEL is empty: say what that does on lab. Confirm the alias and thinking setting survive the gateway on the real request. b) Set slo_copilot_roundtrip_p95_s from 8 to 15, with a test. c) Update fast-tier.md's done test, and correct its statements that 3a waits for a soak: server-v0.32.2 reached live without one. Coordinate with chore/copilot-reply-size, which also edits that file. d) After it reaches lab, run jarvis_live/replay.py against lab on a weekday with agents busy, and record the load period as Task 11 requires. Report p50, p95, cycles lost to copilot_timeout_s, retries and JSON failures, and check every row of What to watch on lab, including that actions arrive and titles behave. Constraints: no Flash serving args, no cluster changes by hand, no release PR merged until I have read the replay. Title it feat(server), because it changes what live sends. DONE WHEN: the PR is open with tests passing, then fast-tier.md says from the replay whether p95 is under 15 s with 0 cycles lost.
+
+# R2. Depends on: 3b's runs leaving this machine. Local CPU only.
+#chore/interactive-model-eval @forge: This is R2 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read the REPLAN, docs/plans/fast-tier.md, server/src/jarvis_live/voice/service.py, voice/schema.py, server/tests/evals/ and chore/copilot-reply-size's reply_size.py and write-up. Goal: choose the model for pve's 2070 now it has the whole card: 7 GiB, Whisper elsewhere. Scope: a) No voice eval exists. Build one in eval-only code from invented transcripts, on the real VOICE_SYSTEM and VoiceRequest, thinking off, and state its pass bar before running anything. b) At most 3 candidates that fit 7 GiB with their context and slots, by the plan's evidence, not vendor benchmarks. Say what speed the 2070 should give each and how that is known, and name it unproven if it is an estimate. c) Run each on the voice eval, and on the 17 copilot cases at three runs each, because the copilot falls back to this model if Flash fails the replay. Report the 11 bar cases, tokens per reply and whether voice fits 2.5 s on that card. Stop a candidate once it cannot pass voice. d) If any template ignores enable_thinking, turn reasoning off at the server before judging it: lfm25-26b's first runs measured reasoning, not the reply. Constraints: all inference local on CPU, images by digest, models by SHA256, self-hosted weights only, no Flash, no gateway, no pods. Eval-only code, defaulting to today's requests. This repo is public. One PR, titled chore(plans), left for me to merge. DONE WHEN: the plan names the model and what I still have to decide, from measurements.
+
+# R3. Depends on: nothing. Ready. Much of this exists: stt_unavailable reaches clients, and ingest/retranscribe.py exists.
+#fix/stt-away @forge: This is R3 of the REPLAN in Tasks.herd. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/stt/tiers.py, ingest/pipeline.py, ingest/retranscribe.py, slo.py and how macOS, Android and web show the stt_unavailable error. Goal: when the gaming PC's Whisper is away, I can see it, the audio is kept, and the session is transcribed later. Scope: a) Fix the probe: whisper-cpp answers /health at its root, but _probe looks under the tier's /v1 endpoint, so gamingpc always reads unhealthy and every segment tries the dead tiers first. b) Test what happens to a session today with no tier: does audio persist, does the session finalize, does the copilot stop cleanly? Report it before changing it. c) Make any client that lacks it show transcription offline, Instrument components only. d) After Whisper returns, transcribe the kept audio using the existing retranscribe path, and say whether that is automatic or one action by me. e) Stop the all-tiers-down alert firing because the PC is away: this is expected now, no page. Keep it useful for a real fault, and if those can't be told apart, say so. Constraints: protocol changes need fixtures and server and Swift tests in the same PR. Local-only stays a hard gate: nothing queued may leave it. Title it fix(server). DONE WHEN: a test with no tier shows audio kept, the state shown, and a later transcript.
+
+# R4. Depends on: nothing, but R5 waits for it. Every homelab service's guard path: stop for approval first.
+#feat/jev-on-gamingpc @forge: This is R4 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read docs/jev.md, apps/ai/jev/llm-cpu/, the jev entries in apps/ai/litellm-proxy.yaml, tests/tdd/test_jev_wiring.py, docs/gpu-node-profiles.md and bare-metal/andrew-gamingpc/. Write a short plan and STOP for approval. Goal: Jev's primary runs on the gaming PC's CPU, so pve's card is free, and the guard survives the PC being away. Scope: a) Primary: same GGUF pin and llama.cpp build as today, pinned to andrew-gamingpc, CPU only, on a sensible number of threads for a 12-core 7900X. b) Fallback: jev-llm-cpu stays jev's only fallback, off that node and away from lxc-k3s2-agent-a. c) Decide what gaming-on does to this pod. gaming=true:NoSchedule does not evict it, so say whether it scales down, and check it can't hurt a game. d) Prove failover: sleep or stop the node's pod and show how long guard calls wait. timeout is 30 s, and a dead endpoint may hang rather than refuse. pi-durable fails closed, so measure what that costs it. e) Measure guard latency on primary and fallback against today's GPU, before pve changes. Constraints: JevBackends stays true: never a different model as jev's fallback. Every LiteLLM config change restarts the proxy and interrupts clients, so batch this with R5's alias if you can. DONE WHEN: both backends answer, failover is measured, JevUnavailable stays quiet through it, and pve is free to change.
+
+# R5. Depends on: R2's model and R4. This is step 4, rewritten.
+#feat/interactive-tier @forge: This is R5 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read R2's result and What step 4 must measure in lordmuffin/jarvis-voice's docs/plans/fast-tier.md, then bare-metal/lxc-k3s2-gpu-a/ and apps/ai/litellm-proxy.yaml. Write a short plan and STOP for approval. Goal: alias interactive on pve's 2070, falling back to heavy, for voice and if needed the copilot. Scope: a new GPU profile and workload, new alias, model by SHA256. Measure on the real card what CPU could not: tok/s with response_format, memory over an hour at one prompt per 25 s with --cache-ram bounded, and slots against both callers. Point VOICE_MODEL at it on lab only, in a separate jarvis-voice PR. Constraints: no Flash restart. Not Jev's pod. Stop at the probe's memory limit. DONE WHEN: the voice eval passes on the real card, with total p95 under 2.5 s for the LLM part.
+
+# R6. Depends on: R5, and R3 for the offline state. Replaces talkback's Kokoro-based first slice.
+#feat/voice-push-to-talk @forge: This is R6 of the REPLAN in Tasks.herd. Work in Build mode. You're working in lordmuffin/jarvis-voice. Read docs/designs/voice-talkback.md, server/src/jarvis_live/voice/, protocol/v1/, and Android's and macOS's audio paths. Write docs/plans/voice-push-to-talk.md and STOP for approval. Goal: mid-session, I hold to ask, and hear a short answer through headphones within budget. Scope: push-to-talk markers, the reply as text on the existing WebSocket, spoken by Android TextToSpeech and macOS's speech synthesizer. Headphones only, meeting-silent, hard off in local-only, as the design says. Jarvis's speech stays out of the transcript. Measure end of ask to first audio. Correct the talkback design's Spark and Kokoro assumptions. Constraints: protocol changes need fixtures and server and Swift tests in the same PR. Instrument components only. Lab first. DONE WHEN: I can ask and hear an answer on the Pixel Fold and the Mac, with the latency measured.
 
 # Task 21: ALERTS THAT FIRE WHEN THE ENGINE FREEZES (priority: high)
-# PLAN APPROVED 2026-11-01, STEPS 1a TO 2 MERGED (homelab #839, #845), 2b OPEN (#264), do not restart.
-# Session: feat-llm-path-alerts-build. Step 2 is live, the vllm-heavy PodMonitor. After #264, it opens
+# PLAN APPROVED 2026-11-01, STEPS 1a TO 2 MERGED (homelab #839, #845), #264 MERGED, do not restart.
+# Session: feat-llm-path-alerts-build. Step 2 is live, the vllm-heavy PodMonitor. Next it opens
 # the homelab copy of the dashboard, then step 3. Nothing in Grafana has been seen rendered yet.
 # Step 5 must not use le="1": Prometheus 3.14 stored le="1.0", so the plan's check reads empty, and
 # empty can look like a pass. Use le="1.0" or a regex for both. Step 5's hold on
@@ -117,13 +147,12 @@
 # Task 12 step 3b: A MODEL AND REPLY SIZE THAT PASS THE BAR (priority: high). 4 waits for this.
 # RUNNING, started 2026-11-02, do not restart.
 # Its constraint names a running soak. None ran, and 3a is on live, but the rule stands: eval-only code.
-# At 21:35 UTC nothing has passed the bar. The 3B matrix finished 21:22, 8 variants, three runs each:
-# control 5 of 11, best 6 of 11 (slim, caps, no-sugg-prop, no-sugg-prop-caps), best of those p95 306
-# against 225. Lowest p95 is slim-min at 283, at 2 of 11, so shorter replies cost quality. Some replies
-# run away to the token cap, which is why slim-owner's p95 is 1922.
-# ministral3-3b and qwen35-4b stopped early, each on a bar case that could not reach 2 of 3.
-# lfm25-26b writes about 2,000 tokens or more, and its last variant is still running. The session
-# then writes fast-tier.md and opens the PR. No results are committed yet.
+# At 22:44 UTC nothing has passed the bar. The 3B matrix, 8 variants, three runs each: control 5 of 11,
+# best 6 of 11, best of those no-sugg-prop-caps at p95 306 against 225. With a compact JSON grammar it
+# reaches p95 151 and all 51 fit, but falls to 1 of 11, with no notes at all. ministral3-3b and qwen35-4b
+# stopped early on every variant. lfm25-26b's first runs measured reasoning, so they don't count: it is
+# being rerun with reasoning off, and its first two replies were still 1,639 and 2,111 tokens.
+# The session then writes fast-tier.md and opens the PR. No results are committed yet.
 # fast-tier.md still says 3a waits for the soak. Its write-up must correct that.
 #chore/copilot-reply-size @forge: This is step 3b of the proposed steps in docs/plans/fast-tier.md (Task 12 in Tasks.herd). Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read docs/plans/fast-tier.md in full, especially What happens next, The schema bug, What to watch on lab and Recheck 2026-11-02, then server/src/jarvis_live/copilot/prompts.py, copilot/schema.py, server/tests/evals/ and scripts/llm_probe.py. Goal: find out, before any pod exists, whether a model and a reply size pass the bar for step 4. Decided, do not reopen: the reserved path is a separate small model, the done test is copilot total p95 under 2.5 s, and the bar stands as written: one model on the 17 cases, three runs each, at least 2 of 3 on each of the 11 cases Flash passes 3 of 3, and reply p95 within what 2.5 s allows on that model's card, which on the 2070 is 225 tokens at 132 tok/s. Do not lower either test. Context you can trust: after 3a Flash writes p50 353, p95 864 tokens per reply, and the 3B reached 5 of the 11 with far too many tokens. Scope, in this order: a) A smaller reply first. Try the candidates the plan names, a cap on items per cycle and leaving suggestions and proposals to a slower cycle, and any better one you find. Measure tokens per reply and the bar for each. Say what each costs the copilot: a shorter reply that drops actions or owners fails, however small it is. b) Then a better small model, at most 3 candidates that could fit the 2070 beside Whisper. Say why you chose them, and rank them by the plan's evidence, not by vendor benchmarks. Run each with the required-keys schema, at a slot of no more than the pod would have. Stop a candidate once it can't reach the bar. c) A small model on the Spark is the next option, and it is my decision: do not load one. From reading only, set out what would have to be true, including whether it needs a Flash restart, as an open question for me. d) Update fast-tier.md: the results, whether anything passes the bar, whether step 4 is unblocked and on which model and reply, and what I have to decide. Constraints: THE LAB SOAK OF #260 IS RUNNING OR ABOUT TO, so nothing in this task may change what lab or live sends. Do not change COPILOT_SYSTEM, CopilotDelta, copilot/loop.py, llm/client.py or any setting. Try variants in eval-only code, defaulting to today's request, so the test that compares a real cycle's body with the evals' bodies still passes. A real change to the reply is a later PR, after the soak, and you should name it, not build it. All inference runs locally on CPU on this machine: no Flash, no gateway, no pods, no cluster or homelab changes, and no ollama. Pin images by digest and models by SHA256, as step 3 did, stay on self-hosted weights, and keep the server at a size that leaves this machine usable. Judge CPU runs on quality and tokens only, not speed. Stored replies from step 3 may be reused read-only, and are never committed. Anything needing a real card or Flash is named as outstanding. This repo is public: nothing private in fixtures. One PR, titled chore(plans), left for me to merge. DONE WHEN: fast-tier.md says, from measurements, either which model and reply size pass the bar, or that none did and what I need to decide.
 
@@ -171,6 +200,7 @@
 #docs/phone-calls-design @hargrove: This is task 14 in Tasks.herd. You lead the threat model. Whether this is worth doing is a priority call for me and Kai, so set out the options and do not decide it. You're working in lordmuffin/jarvis-voice. Read PR #44 and its code, docs/designs/voice-talkback.md, the approved-action work from task 4 (docs/plans/copilot-actions.md) and server/deploy/README.md. Output docs/designs/phone-calls.md. No production code. END THE DOC with open questions for me. Goal: decide what Jarvis placing a real phone call is for, and what must be true before it may ring anyone. Context you can trust: PR #44 is 403+ commits stale, in legacy src/jarvis_voice/ (bugfix only), against a dead listener and a decommissioned proxy. It has no auth on any /calls route and no Twilio signature check. gTTS sends call text to Google. Worth keeping: the mu-law conversion, the Media Streams flow, the [CALL_COMPLETE] signal. Recommend closing it; closing is my call. Cover: - The real use cases, ranked, and the smallest one worth building. If there is no recurring use, say so; "don't build it" is a valid outcome. - Carrier: Twilio vs a SIP trunk into the existing Asterisk box. That box is an intercom today and no phone-network trunk is configured, so either way a carrier is needed and telephony cannot run on the Spark. - Threat model: who can place a call, toll fraud, webhook forgery, prompt injection by the person on the line, transcript exposure, and the single most damaging failure. Rate findings critical/high/medium/low, blockers separate. - Authorisation: every outbound call is a task 4 style PROPOSAL I approve, with number, purpose and limits. No autonomous dialling. - Legal: AI-voice call rules (FCC/TCPA), state call recording and transcription consent, disclosure that the caller is an AI. Cite sources. If it needs a real lawyer's view, say that and do not guess. - Local-only (task 6): how a work or ambiguous call is refused or kept off the homelab. Where third-party call audio is stored and for how long. - Which lab and live rules apply: credentials on each channel, and whether lab gets dialling at all. Constraints: Hargrove rates and names risks, the decisions stay mine. DONE WHEN: I approve the design, or we decide not to build and park tasks 15-20.
 
 # Task 15: SPEECH CAPACITY AND CALL LATENCY BUDGET (priority: medium)
+# REPLAN 2026-11-02: a phone call can't wait for the gaming PC, unlike Live. Reopen this before 15 starts.
 # Depends on: 14 approved, 11's SLO met. Runs in parallel with 16.
 # The prompt's facts have moved (fast-tier.md): whisper-cpp on the gaming PC is the only speech running,
 # until the GPU moves above. After them pve holds Whisper plus interactive, full, with no TTS on any
