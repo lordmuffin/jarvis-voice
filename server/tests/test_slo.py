@@ -137,6 +137,17 @@ async def test_copilot_staleness_defers_to_a_slow_round_trip() -> None:
     assert len(r.notifier.sent) == 1
 
 
+async def test_copilot_round_trip_limit_is_15_s() -> None:
+    r = Rig()
+    r.feed("copilot_roundtrip", "", 14.0, n=10)
+    await r.check()
+    assert not r.notifier.sent
+    r.feed("copilot_roundtrip", "", 16.0, n=10)
+    await r.check()
+    assert len(r.notifier.sent) == 1
+    assert "limit 15s" in r.notifier.sent[0].message
+
+
 async def test_finalize_alerts_when_two_runs_in_a_row_are_slow_but_not_one() -> None:
     r = Rig()
     r.feed("finalize", "", 400.0)

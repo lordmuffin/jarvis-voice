@@ -28,7 +28,9 @@ data:
   # LiteLLM fronts every chat model; aliases are defined in np-home-homelab apps/ai/litellm-proxy.yaml.
   # The app reads LITELLM_BASE_URL; unset, the copilot and the final note never run.
   JARVIS_LIVE_LITELLM_BASE_URL: "http://litellm-proxy-service.open-webui.svc.cluster.local:4000/v1"
-  JARVIS_LIVE_COPILOT_MODEL: "fast-chat"
+  # Flash by name, thinking off (the copilot sends that itself). Voice and the ideas pass follow it
+  # while their own settings are empty. This alias has no fallback: see docs/plans/fast-tier.md.
+  JARVIS_LIVE_COPILOT_MODEL: "qwen3.8-flash-next"
   JARVIS_LIVE_FINAL_MODEL: "heavy"
 
   JARVIS_LIVE_GOTIFY_URL: "http://gotify.gotify.svc.cluster.local"

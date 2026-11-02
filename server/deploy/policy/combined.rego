@@ -42,3 +42,16 @@ deny contains msg if {
 	not name in deployment_env
 	msg := sprintf("dispatch is on but Deployment/jarvis-live does not set %s", [name])
 }
+
+# The copilot names its model on purpose: fast-chat hid a fall to Flash for 8 days, and nobody was
+# told (docs/plans/fast-tier.md). Moving it means changing this with the ConfigMap, in one PR.
+copilot_model := "qwen3.8-flash-next"
+
+deny contains msg if {
+	some d in input
+	d.contents.kind == "ConfigMap"
+	d.contents.metadata.name == "jarvis-live-config"
+	model := object.get(d.contents.data, "JARVIS_LIVE_COPILOT_MODEL", copilot_model)
+	model != copilot_model
+	msg := sprintf("JARVIS_LIVE_COPILOT_MODEL is %q, expected %q", [model, copilot_model])
+}
