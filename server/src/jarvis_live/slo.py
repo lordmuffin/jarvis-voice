@@ -101,7 +101,7 @@ class SloMonitor:
             return
         for spec in self._specs:
             if spec.live_only and not (any_live and stt_up):
-                continue  # nothing to judge, or the outage alert owns it
+                continue  # nothing to judge: no session, or Whisper is away
             for (signal, key), window in list(self._windows.items()):
                 if signal == spec.signal:
                     await self._judge(spec, key, window, now)
