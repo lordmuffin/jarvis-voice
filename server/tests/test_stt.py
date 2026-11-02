@@ -58,6 +58,8 @@ class FakeWhisper:
         host = request.url.host.split(".")[0]
         behaviour = self.hosts[host]
         path = request.url.path
+        if path == "/health":
+            return httpx.Response(behaviour.get("root_health", 404))
         if path.endswith("/models"):
             return httpx.Response(behaviour.get("models", 200), json={"data": []})
         if path.endswith("/health"):
@@ -126,6 +128,43 @@ async def test_probe_recovers_tier() -> None:
     fake.hosts["gpu"] = {}
     await p.probe_all()
     assert p.current_tier() == "gpu"
+
+
+async def test_a_tier_that_only_answers_health_at_its_root_is_healthy() -> None:
+    # whisper-cpp: 404 on /v1/models and /v1/health, 200 on /health (seen on lab, 2026-11-02).
+    seen: list[str] = []
+
+    def whisper_cpp(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        return httpx.Response(200 if request.url.path == "/health" else 404)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(whisper_cpp))
+    p = TierPool(parse_tiers("gamingpc http://whisper.local:8080/v1 m"), client)
+    await p.probe_all()
+    assert p.current_tier() == "gamingpc"
+    assert seen[-1] == "/health"
+
+
+async def test_a_healthy_tier_is_tried_before_tiers_that_are_down() -> None:
+    down = {"models": 500, "transcribe": -1}
+    spec = "spark http://spark.local/v1 m\npve http://pve.local/v1 m\ngpc http://gpc.local/v1 m"
+    fake = FakeWhisper(spark=down, pve=down, gpc={"models": 404, "root_health": 200})
+    p = TierPool(parse_tiers(spec), httpx.AsyncClient(transport=httpx.MockTransport(fake)))
+    assert await p.transcribe(b"wav", "") == ("from gpc", "gpc")
+    assert [r.url.host for r in fake.posts()] == ["gpc.local"]
+
+
+async def test_all_tiers_down_tries_them_once_per_probe_not_once_per_segment() -> None:
+    fake = FakeWhisper(gpu={"models": 500, "transcribe": -1}, cpu={"models": 500, "transcribe": 500})
+    p = pool(fake)
+    for _ in range(3):
+        with pytest.raises(STTUnavailable):
+            await p.transcribe(b"wav", "")
+    assert len(fake.posts()) == 2  # a session's queue must not wait on dead tiers segment by segment
+    await p.probe_all()
+    with pytest.raises(STTUnavailable):
+        await p.transcribe(b"wav", "")
+    assert len(fake.posts()) == 4
 
 
 async def test_all_unhealthy_still_tries_every_tier() -> None:
