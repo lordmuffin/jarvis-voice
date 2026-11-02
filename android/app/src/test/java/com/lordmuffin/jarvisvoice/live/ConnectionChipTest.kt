@@ -16,8 +16,20 @@ import org.junit.Test
 /** The connection words shared with web and macOS: Connected, Reconnecting, Local only, Degraded, Offline. */
 class ConnectionChipTest {
 
-    private fun chip(conn: ConnState, localOnly: Boolean = false, lagMs: Long = 0, llmOk: Boolean = true) =
-        ConnectionChip.of(conn, localOnly, lagMs, llmOk)
+    private fun chip(
+        conn: ConnState,
+        localOnly: Boolean = false,
+        lagMs: Long = 0,
+        llmOk: Boolean = true,
+        sttOffline: Boolean = false,
+    ) = ConnectionChip.of(conn, localOnly, lagMs, llmOk, sttOffline)
+
+    @Test fun transcriptionOfflineShowsOnlyWhileConnected() {
+        assertTrue(chip(ConnState.Connected, sttOffline = true).transcriptionOffline)
+        assertFalse(chip(ConnState.Connected).transcriptionOffline)
+        assertFalse(chip(ConnState.Reconnecting(1), sttOffline = true).transcriptionOffline)
+        assertFalse(chip(ConnState.Connected, localOnly = true, sttOffline = true).transcriptionOffline)
+    }
 
     @Test fun socketStatesMapToTheSharedWords() {
         assertEquals(IDLE, chip(ConnState.Idle).kind)

@@ -147,6 +147,9 @@ struct CopilotPanelView: View {
             }
             HStack(spacing: 8) {
                 connectionChip
+                if showsTranscriptionOffline {
+                    InstChip(text: "\u{2691} Transcription offline", tone: .progress)
+                }
                 if let stt = sttLine {
                     Text(stt).instStyle(InstType.meta).foregroundStyle(Color.inst.text2).lineLimit(1)
                 }
@@ -194,7 +197,14 @@ struct CopilotPanelView: View {
         }
     }
 
+    private var showsTranscriptionOffline: Bool {
+        model.link == .connected && model.store.sttOffline
+    }
+
     private var connectionNote: String? {
+        if showsTranscriptionOffline {
+            return "The audio is kept and will be transcribed when Whisper is back."
+        }
         switch model.link {
         case .reconnecting: "Still recording. Nothing is lost."
         case .failed(let why): why

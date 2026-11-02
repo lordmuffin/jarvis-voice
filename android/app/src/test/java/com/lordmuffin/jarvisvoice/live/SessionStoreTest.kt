@@ -76,6 +76,15 @@ class SessionStoreTest {
         assertEquals(180L, store.snapshot.lagMs)
     }
 
+    @Test fun transcriptionIsOfflineOnlyOnceTheServerSaysSo() {
+        val store = SessionStore()
+        assertFalse(store.snapshot.sttOffline)  // no status yet: nothing is known
+        store.apply(ServerEvent.Status(null, llmOk = true, lagMs = 0))
+        assertTrue(store.snapshot.sttOffline)
+        store.apply(ServerEvent.Status("gamingpc", llmOk = true, lagMs = 0))
+        assertFalse(store.snapshot.sttOffline)
+    }
+
     @Test fun finalDraftsFeedTheLocalNote() {
         val store = SessionStore()
         store.applyDraft(draft(0, 2000, "partial"))

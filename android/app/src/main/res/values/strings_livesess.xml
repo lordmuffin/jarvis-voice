@@ -14,6 +14,7 @@
     <string name="livesess_markers">%1$d markers</string>
     <string name="livesess_rec_local">▫ Local-only</string>
     <string name="livesess_stt_tier">STT %1$s</string>
+    <string name="livesess_stt_offline">audio kept, transcribed later</string>
     <string name="livesess_lag">lag %1$d ms</string>
     <string name="livesess_queued">%1$.1f s queued</string>
     <string name="livesess_section_suggestions">Suggestions</string>

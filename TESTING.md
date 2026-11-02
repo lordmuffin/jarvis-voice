@@ -68,6 +68,7 @@ Playwright 7; policy tests 28; rendered resources 13 (live) and 12 (lab), all va
 - **Policy waivers (`server/deploy/policy/exceptions.yaml`):** none. Both overlays pass every baseline policy as shipped.
 - **Secrets:** the manifests contain no `Secret` objects, only `OnePasswordItem` references, so the "SOPS-encrypted" rule is
   satisfied by there being none to encrypt. Nothing was decrypted or read.
+- **Known flaky test (not waived, not changed):** `server/tests/test_voice_loop.py::test_a_recording_hears_a_request_and_answers_on_the_copilot_channel` failed 4 of 8 runs alone on the untouched base (220a263, 2026-11-02): it races `settle()`'s short sleeps.
 - **Known flaky test (not waived, not changed):** `server/tests/test_copilot_loop.py::test_never_concurrent_and_cancels_on_session_end`
   asserts `rig.llm.active == 1` after a 10 ms real sleep against a 50 ms fake LLM delay. It failed once in one full run under coverage
   load (passed in 5 isolated runs and 3 other full runs). Proposed fix, in its own RED step: drive it with the rig's fake clock instead

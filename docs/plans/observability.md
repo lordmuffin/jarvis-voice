@@ -17,7 +17,7 @@ Know Live is getting slow before it shows up mid-meeting, and have numbers for t
 | Final note ≤ 2 min after stop | `Orchestrator._end` → ideas flush → `Finalizer.run`; `Job.started` already exists (`_track`) | Time from session end to note written, by job source (`finalize`/`regenerate`/`reprocess`). |
 | STT tier | `TierPool.transcribe` returns `(text, tier)`; falls through on error and flips `_healthy` | Count by tier served, fall-throughs, per-tier request time, health gauge. |
 
-Existing alerts I will **not** touch or duplicate: STT-outage (`Orchestrator._check_stt_outage`, once per outage after `stt_outage_notify_s`=120 s) and finalizer-failed (`Finalizer.run` → `_notify_owner`, "Jarvis: note failed"). The new SLO monitor suppresses itself while `current_tier() is None` and only looks at *completed* finalizer runs.
+Existing alerts I will **not** touch or duplicate: STT-fault (`Orchestrator._check_stt_fault`, once per fault after `stt_outage_notify_s`=120 s; until 2026-11 this fired on all tiers down, see `server/deploy/README.md`) and finalizer-failed (`Finalizer.run` → `_notify_owner`, "Jarvis: note failed"). The new SLO monitor suppresses itself while `current_tier() is None` and only looks at *completed* finalizer runs.
 
 Nothing in the repo uses Prometheus today. `server/pyproject.toml` has no client lib. The Dockerfile runs a single uvicorn process and the handoff pins a single replica, so the default `prometheus_client` registry is correct (no multiprocess mode).
 

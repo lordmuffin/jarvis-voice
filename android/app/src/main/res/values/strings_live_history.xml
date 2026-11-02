@@ -52,6 +52,7 @@
     <string name="history_deleted_empty_title">Nothing deleted</string>
     <string name="history_deleted_empty_line">A deleted session stays here, with its recording, until it is removed for good.</string>
     <string name="detail_process">Transcribe &amp; summarize</string>
+    <string name="detail_processing_queued">Queued for transcription</string>
     <string name="detail_processing_transcribing">Transcribing…</string>
     <string name="detail_processing_summarizing">Summarizing…</string>
     <string name="detail_processing_transcription_failed">Transcription failed</string>

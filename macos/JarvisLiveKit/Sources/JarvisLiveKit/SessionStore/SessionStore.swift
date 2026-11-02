@@ -64,6 +64,8 @@ public final class SessionStore {
     public private(set) var connection: ConnectionState = .idle
     /// Active speech-to-text tier as last reported by `status`; `nil` when none.
     public private(set) var sttTier: String?
+    /// The last `status` named no tier. `false` until a `status` has arrived.
+    public private(set) var sttOffline: Bool = false
     public private(set) var lagMs: Int = 0
     public private(set) var llmOk: Bool = true
     public private(set) var finalNote: FinalNote?
@@ -92,6 +94,7 @@ public final class SessionStore {
             if copilot.map({ snapshot.version > $0.version }) ?? true { copilot = snapshot }
         case .status(let status):
             sttTier = status.sttTier
+            sttOffline = status.sttTier == nil
             lagMs = status.lagMs
             llmOk = status.llmOk
         case .finalNote(let note):
