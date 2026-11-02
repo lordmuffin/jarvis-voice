@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.32.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.32.0...server-v0.32.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **probe:** gate the copilot report on gateway rows only ([2377988](https://github.com/lordmuffin/jarvis-voice/commit/23779887dc69a67635000ab5eba8618ddb878b13))
+* **probe:** keep the slot guard alive and fail closed on any bad read ([b50fcf5](https://github.com/lordmuffin/jarvis-voice/commit/b50fcf569b3928f91980b84dc75012f558495702))
+* **probe:** stop counting the probe's own request as a busy slot ([ce30c0e](https://github.com/lordmuffin/jarvis-voice/commit/ce30c0efe05fa0549faaf71c962014689b9c03fd))
+* **probe:** stop on memory, restarts and bad reads, and recheck the 3B verdict ([eff6de5](https://github.com/lordmuffin/jarvis-voice/commit/eff6de5d066dad5d7ac15029d545af623ed5e458))
+* **probe:** stop on the small model's memory and on a restart ([8cb9003](https://github.com/lordmuffin/jarvis-voice/commit/8cb90032ffd1010a319c645c0ee2129319105bfd))
+
 ## [0.32.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.31.1...server-v0.32.0) (2026-11-02)
 
 
