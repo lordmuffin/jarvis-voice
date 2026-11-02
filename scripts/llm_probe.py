@@ -34,14 +34,28 @@ a pod that is not on the node the plan excludes:
 The copilot arm replays an invented meeting through the copilot's real prompt and schema, thinking
 off, a sliding window at a time, and alternates two paths: Flash through the gateway (``gateway`` in
 the rows) and a small model called directly (``direct``). The small model's path is a measurement
-floor, not a route, and it may have another caller to protect, so this is one request at a time, a
-pause between them, and a guard that stops the run if both of its slots stay busy:
+floor, not a route.
+
+One request at a time and a pause do not make that safe for a small model with another caller. On
+2026-11-01 this recipe ran jev-llm out of memory in 26 minutes, about 45 MiB of RSS per long
+request, while its slots stayed quiet (docs/plans/fast-tier.md, the incident). Do not aim it at a
+model something depends on: judge a candidate on a local llama.cpp instead. Where a pod must be
+probed, three things stop the run: all its slots staying busy with something not ours, its task
+ids going backwards (it restarted), and its RSS reaching --memory-stop-mib. Anything it cannot read
+stops the run too. The memory stop is required unless the small model is on loopback. It reads
+Prometheus, and a sample older than two minutes counts as none, so set the ceiling well below the
+pod's limit: a reading can lag three minutes, which was about 300 MiB of growth that day:
 
     python3 llm_probe.py copilot --meeting planning_meeting.json \\
         --gateway-url http://GATEWAY:4000/v1 --gateway-model MODEL_NAME \\
         --small-url http://SMALL:8080/v1 --small-model MODEL_NAME --small-window-s 300 \\
+        --memory-url http://PROMETHEUS --memory-stop-mib 3000 \\
+        --memory-selector 'namespace="NS",pod=~"POD-.*",container="CONTAINER"' \\
         --metrics-url http://MODEL:8000/metrics --client-node NODE --proxy-node NODE \\
         --pairs 100 --max-hours 1.5 --pause 8 --label normal --out copilot.jsonl
+
+Only ``copilot`` has these stops. ``run``, ``voice`` and ``load`` have none, so keep them off such a
+model altogether.
 
 Addresses are arguments because this repo is public. The prompts are invented text; nothing from a
 real session goes through this. Output rows hold timings and token counts, never reply text.
@@ -66,7 +80,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 STALL_KINDS = ("first_text", "mid_stream", "late_final")
 
@@ -895,6 +909,9 @@ COPILOT_TIMEOUT_S = 60.0
 COPILOT_STEP_S = 25  # copilot_max_wait_s: a quiet stretch still cycles this often
 STATE_LAG_S = 30  # how old a line is before the replay treats it as already in the state
 SLOT_FULL_LIMIT = 3
+MEMORY_FRESH_S = 120  # Prometheus keeps answering with an old value for 5 minutes: not a reading
+MEMORY_INTERVAL_S = 15.0
+_LOOPBACK = ("127.0.0.1", "::1", "localhost")
 
 COPILOT_SYSTEM = """/no_think
 You are Jarvis, a live meeting copilot. You read a rolling transcript and keep a small, accurate \
@@ -1141,35 +1158,78 @@ def _slots_full(busy: int, total: int, own: int) -> bool:
     return busy >= total > 0 and busy > own
 
 
-class SlotGuard:
+class _Guard:
+    """A read on a thread, which stops the run rather than let it go on unwatched. It fails closed:
+    the first read must work, and after that ``limit`` reads in a row that fail in any way trip it.
+    A guard that dies leaves a run going with nothing watching it, so nothing here may escape."""
+
+    what = "it"
+
+    def __init__(self, interval_s: float, limit: int, *, active: bool = True) -> None:
+        self._interval = interval_s
+        self._limit = limit
+        self._active = active
+        self._misses = 0
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self.tripped = threading.Event()
+        self.reason = ""
+
+    def __enter__(self) -> Self:
+        if self._active:
+            self._read(limit=1)
+            self._thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        if self._active:
+            self._stop.set()
+            self._thread.join(timeout=10)
+
+    def _trip(self, reason: str) -> None:
+        self.reason = self.reason or reason
+        self.tripped.set()
+
+    def _read(self, limit: int) -> None:
+        try:
+            self._poll()
+        except Exception as e:
+            self._misses += 1
+            if self._misses >= limit:
+                self._trip(f"cannot read {self.what}: {type(e).__name__}: {e}")
+        else:
+            self._misses = 0
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self._interval):
+            self._read(self._limit)
+
+    def _poll(self) -> None:
+        raise NotImplementedError
+
+
+class SlotGuard(_Guard):
     """Stops a run that could be queueing someone else's requests. llama.cpp's ``/metrics`` is off,
     so its queue cannot be read, but a request can only wait if every slot is busy, and at least
     one of them with something other than this probe: ``limit`` polls in a row like that, or
     ``limit`` polls with no answer, trips it. The probe says when its own request is out
     (``own_request``), because ``/slots`` cannot tell whose request a slot holds. While ours is in
     the only slot a queue behind it cannot be seen, which is why the pause between requests matters:
-    a slot still busy then is someone else's."""
+    a slot still busy then is someone else's.
+
+    It also stops a run when the model restarts. Task ids only rise, so a lower one than before
+    means a new process, however quickly it came back. By then the damage is done: the memory guard
+    is what comes first."""
+
+    what = "the small model's slots"
 
     def __init__(self, url: str, interval_s: float = 2.0, limit: int = SLOT_FULL_LIMIT) -> None:
+        super().__init__(interval_s, limit)
         self._url = f"{url.removesuffix('/').removesuffix('/v1')}/slots"
-        self._interval = interval_s
-        self._limit = limit
         self._full = 0
-        self._misses = 0
         self._own = 0
-        self._stop = threading.Event()
-        self._thread = threading.Thread(target=self._loop, daemon=True)
-        self.tripped = threading.Event()
-        self.reason = ""
+        self._task: int | None = None
         self.samples: list[tuple[float, bool, float]] = []
-
-    def __enter__(self) -> SlotGuard:
-        self._thread.start()
-        return self
-
-    def __exit__(self, *exc: object) -> None:
-        self._stop.set()
-        self._thread.join(timeout=10)
 
     @contextmanager
     def own_request(self) -> Iterator[None]:
@@ -1185,18 +1245,6 @@ class SlotGuard:
         self._full = self._full + 1 if _slots_full(busy, total, own) else 0
         return self._full >= self._limit
 
-    def _loop(self) -> None:
-        while not self._stop.wait(self._interval):
-            try:
-                self._poll()
-            except Exception as e:  # a guard that dies leaves the run going, unwatched
-                self._misses += 1
-                if self._misses >= self._limit:
-                    self.reason = f"cannot read the small model's slots: {type(e).__name__}: {e}"
-                    self.tripped.set()
-                continue
-            self._misses = 0
-
     def _poll(self) -> None:
         started = time.perf_counter()
         own = self._own
@@ -1205,20 +1253,25 @@ class SlotGuard:
         own = max(own, self._own)  # a request that began during the poll may be in what came back
         if not isinstance(slots, list) or not slots:
             raise ValueError(f"expected a list of slots, got {slots!r:.80}")
-        busy = sum(1 for slot in slots if self._is_busy(slot))
+        states = [self._slot_state(slot) for slot in slots]
+        busy = sum(1 for processing, _ in states if processing)
+        task = max(task for _, task in states)
+        if self._task is not None and task < self._task:
+            self._trip(f"the small model restarted: task ids fell from {self._task} to {task}")
+        self._task = task
         full = _slots_full(busy, len(slots), own)
         self.samples.append((started, full, time.perf_counter() - started))
         if self.note(busy, len(slots), own):
-            self.reason = f"all {len(slots)} slots busy for {self._limit} polls in a row"
-            self.tripped.set()
+            self._trip(f"all {len(slots)} slots busy for {self._limit} polls in a row")
 
     @staticmethod
-    def _is_busy(slot: Any) -> bool:
-        """Strict: reading a slot with no ``is_processing`` as idle would blind the guard."""
-        state = slot.get("is_processing") if isinstance(slot, dict) else None
-        if not isinstance(state, bool):
+    def _slot_state(slot: Any) -> tuple[bool, int]:
+        """Strict: a slot with no ``is_processing`` read as idle would blind the guard."""
+        fields = slot if isinstance(slot, dict) else {}
+        processing, task = fields.get("is_processing"), fields.get("id_task")
+        if not isinstance(processing, bool) or not isinstance(task, int):
             raise ValueError(f"not a slot: {slot!r:.80}")
-        return state
+        return processing, task
 
     def window(self, start: float, end: float) -> dict[str, float]:
         inside = [s for s in self.samples if start <= s[0] <= end]
@@ -1226,6 +1279,56 @@ class SlotGuard:
             "slots_full_max": int(any(full for _, full, _ in inside)),
             "slots_poll_s_max": round(max((s[2] for s in inside), default=0.0), 4),
         }
+
+
+class MemoryGuard(_Guard):
+    """Stops a run before it takes the small model out of memory, which the slots never show. Reads
+    the container's RSS from Prometheus: llama.cpp does not report it, and the probe's pod has no
+    Kubernetes access. Inert with no ``url``, for a model on loopback. The highest of the matching
+    series counts, so a selector that matches nothing is a failed read, not a low one."""
+
+    what = "the small model's memory"
+
+    def __init__(
+        self,
+        url: str | None,
+        selector: str | None,
+        stop_mib: float | None,
+        interval_s: float = MEMORY_INTERVAL_S,
+        limit: int = SLOT_FULL_LIMIT,
+    ) -> None:
+        super().__init__(interval_s, limit, active=url is not None)
+        query = f"container_memory_rss{{{selector}}}[{MEMORY_FRESH_S}s]"
+        base = (url or "").removesuffix("/")
+        self._url = f"{base}/api/v1/query?{urllib.parse.urlencode({'query': query})}"
+        self._stop_mib = stop_mib or math.inf
+        self.latest: float | None = None
+
+    def _poll(self) -> None:
+        with urllib.request.urlopen(self._url, timeout=10) as response:
+            reply = json.load(response)
+        if reply["status"] != "success":
+            raise ValueError(f"Prometheus said {reply!r:.80}")
+        series = reply["data"]["result"]
+        newest = [float(s["values"][-1][1]) / 2**20 for s in series]
+        if not newest or not all(math.isfinite(m) for m in newest):
+            raise ValueError(f"no fresh RSS sample in {MEMORY_FRESH_S} s: {newest!r:.80}")
+        self.latest = round(max(newest), 1)
+        if self.latest >= self._stop_mib:
+            self._trip(f"RSS {self.latest:g} MiB reached the {self._stop_mib:g} MiB ceiling")
+
+
+def memory_guard_missing(o: CopilotOptions) -> str | None:
+    """Why this run may not start, if so. A model off this machine may have someone depending on
+    it, and the memory stop cannot be left out by forgetting a flag."""
+    flags = (o.memory_url, o.memory_selector, o.memory_stop_mib)
+    if all(flags):
+        return None
+    if any(flags):
+        return "the memory guard needs --memory-url, --memory-selector and --memory-stop-mib"
+    if urllib.parse.urlsplit(o.small_url).hostname in _LOOPBACK:
+        return None
+    return "no memory guard for a small model on the network: see the header of this script"
 
 
 @dataclass(frozen=True)
@@ -1251,11 +1354,17 @@ class CopilotOptions:
     timeout_s: float = COPILOT_TIMEOUT_S
     sample_s: float = 0.25
     slot_interval_s: float = 2.0
+    memory_url: str | None = None
+    memory_selector: str | None = None
+    memory_stop_mib: float | None = None
+    memory_interval_s: float = MEMORY_INTERVAL_S
 
 
 def run_copilot(o: CopilotOptions) -> str | None:
     """Pairs of the same cycle on both paths, each with the window that path can take. ``None`` when
-    it ran to its end, or the reason the guard stopped it."""
+    it ran to its end, or the reason a guard stopped it."""
+    if refused := memory_guard_missing(o):
+        return refused
     key = o.api_key_file.read_text().strip() if o.api_key_file else None
     urls = {"direct": pin(o.small_url), "gateway": pin(o.gateway_url)}
     models = {"direct": o.small_model, "gateway": o.gateway_model}
@@ -1266,6 +1375,9 @@ def run_copilot(o: CopilotOptions) -> str | None:
     with (
         Sampler(metrics_url, o.sample_s) as sampler,
         SlotGuard(urls["direct"][0], o.slot_interval_s) as guard,
+        MemoryGuard(
+            o.memory_url, o.memory_selector, o.memory_stop_mib, o.memory_interval_s
+        ) as memory,
         o.out.open("a") as out,
     ):
         for pair in range(o.pairs):
@@ -1274,8 +1386,8 @@ def run_copilot(o: CopilotOptions) -> str | None:
             end_s = copilot_end(o.meeting, start_s=start_s, cycle=pair)
             today = time.strftime("%Y-%m-%d", time.gmtime())
             for path in pair_order(pair):
-                if guard.tripped.is_set():
-                    return guard.reason
+                if guard.tripped.is_set() or memory.tripped.is_set():
+                    return guard.reason or memory.reason
                 body = build_copilot_body(
                     models[path],
                     o.meeting,
@@ -1315,12 +1427,13 @@ def run_copilot(o: CopilotOptions) -> str | None:
                     "stalls": ["error"] if result["error"] else [],
                     "max_gap_s": 0.0,
                     **guard.window(start, end),
+                    "small_rss_mib": memory.latest,
                     "load": load_window(list(sampler.samples), start, end),
                 }
                 out.write(json.dumps(row) + "\n")
                 out.flush()
                 time.sleep(o.pause_s)
-    return guard.reason or None
+    return guard.reason or memory.reason or None
 
 
 @dataclass(frozen=True)
@@ -1679,6 +1792,11 @@ def small_rates(rows: list[dict[str, Any]], *, project_to: int) -> dict[str, flo
     }
 
 
+def _rss_track(rows: list[dict[str, Any]]) -> dict[str, float] | None:
+    track = [r["small_rss_mib"] for r in rows if r.get("small_rss_mib") is not None]
+    return {"first": track[0], "last": track[-1], "max": max(track)} if track else None
+
+
 def copilot_report(rows: list[dict[str, Any]], *, project_to: int) -> dict[str, Any]:
     return {
         "summary": voice_summary(rows),
@@ -1688,6 +1806,7 @@ def copilot_report(rows: list[dict[str, Any]], *, project_to: int) -> dict[str, 
         "small": small_rates(rows, project_to=project_to),
         "finish_reasons": dict(Counter(f"{r['path']}:{r.get('finish_reason')}" for r in rows)),
         "slots_full": sum(r.get("slots_full_max", 0) for r in rows),
+        "small_rss_mib": _rss_track(rows),
     }
 
 
@@ -1715,7 +1834,7 @@ def _voice_table(report: dict[str, Any], name: str = "voice") -> str:
     for key, title in (("reopen", "reopen"), ("paired", "pairs"), ("small", "small")):
         if key in report:
             lines.append(f"{title}: {json.dumps(report[key])}")
-    for key in ("finish_reasons", "slots_full"):
+    for key in ("finish_reasons", "slots_full", "small_rss_mib"):
         if key in report:
             lines.append(f"{key}: {json.dumps(report[key])}")
     lines.append("periods:\nstart_utc\tn\tqueued\talone\tfailed\tgateway_p50\tdirect_p50")
@@ -1803,6 +1922,10 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--max-hours", type=float, default=1.5)
     c.add_argument("--pause", type=float, default=8.0, dest="pause_s")
     c.add_argument("--slot-interval", type=float, default=2.0, dest="slot_interval_s")
+    c.add_argument("--memory-url", help="Prometheus, for the small model's RSS")
+    c.add_argument("--memory-selector", help="the labels of the small model's container")
+    c.add_argument("--memory-stop-mib", type=float, help="stop at this RSS, well below the limit")
+    c.add_argument("--memory-interval", type=float, default=MEMORY_INTERVAL_S)
     c.add_argument("--label", default="copilot")
     c.add_argument("--out", type=Path, required=True)
     c.add_argument("--api-key-file", type=Path)
@@ -1885,6 +2008,10 @@ def main(argv: list[str] | None = None) -> int:
                 think=args.think,
                 api_key_file=args.api_key_file,
                 slot_interval_s=args.slot_interval_s,
+                memory_url=args.memory_url,
+                memory_selector=args.memory_selector,
+                memory_stop_mib=args.memory_stop_mib,
+                memory_interval_s=args.memory_interval,
             )
         )
         if stopped:
