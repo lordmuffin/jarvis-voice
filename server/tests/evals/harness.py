@@ -5,12 +5,13 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
 from jarvis_live.config import Settings
-from jarvis_live.copilot.prompts import COPILOT_SYSTEM, copilot_user
+from jarvis_live.copilot.prompts import copilot_user
 from jarvis_live.copilot.schema import CopilotDelta
 from jarvis_live.copilot.state import CopilotState
 from jarvis_live.llm.client import LLM
 from jarvis_live.protocol import Action, Copilot
 from tests.evals.transcripts import Case, Expected
+from tests.evals.variants import TODAY, Variant
 
 MAX_ROUNDTRIP_S = Settings().slo_copilot_roundtrip_p95_s
 
@@ -45,7 +46,7 @@ REPORT = Report()
 
 
 async def run_case(
-    llm: LLM, case: Case, settings: Settings | None = None
+    llm: LLM, case: Case, settings: Settings | None = None, variant: Variant = TODAY
 ) -> tuple[CopilotDelta, CopilotState, float]:
     cfg = settings or Settings()
     state = CopilotState()
@@ -61,9 +62,9 @@ async def run_case(
     t0 = time.monotonic()
     delta = await llm.complete_json(
         model=cfg.copilot_model,
-        system=COPILOT_SYSTEM,
+        system=variant.system,
         user=user,
-        schema=CopilotDelta,
+        schema=variant.schema,
         timeout_s=cfg.copilot_timeout_s,
         think=False,  # as copilot/loop.py asks, or this grades a request nobody sends
     )
