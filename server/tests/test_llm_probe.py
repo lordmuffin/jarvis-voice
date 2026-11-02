@@ -11,6 +11,7 @@ import random
 import sys
 import threading
 import time
+import urllib.parse
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -631,26 +632,44 @@ NO_CONTENT = reply(None, reasoning_content="long thought")
 SLOW = reply(delay=5.0)
 
 
+def rss(*mib: float) -> dict[str, Any]:
+    """A Prometheus instant query over a range: one series per value, its newest sample last."""
+    series = [{"metric": {}, "values": [[1.0, "1"], [2.0, str(m * 2**20)]]} for m in mib]
+    return {"status": "success", "data": {"resultType": "matrix", "result": series}}
+
+
 class ChatStub(BaseHTTPRequestHandler):
     """Answers each POST with the next scripted reply, whole, as a non-streaming endpoint does."""
 
     replies: ClassVar[list[dict[str, Any]]] = []
     posts: ClassVar[int] = 0
     headers_out: ClassVar[dict[str, str]] = {}
-    slots: ClassVar[list[dict[str, Any]]] = []
+    slots: ClassVar[Any] = []
+    slots_cut_short: ClassVar[bool] = False
+    slot_held_by: ClassVar[str | None] = None  # the one slot is busy while this model answers
+    prometheus: ClassVar[Any] = {}
+    queries: ClassVar[list[str]] = []
 
     def do_GET(self) -> None:
-        data = json.dumps(ChatStub.slots).encode()
+        wants_memory = self.path.startswith("/api/v1/query")
+        if wants_memory:
+            ChatStub.queries.append(self.path)
+        data = json.dumps(ChatStub.prometheus if wants_memory else ChatStub.slots).encode()
         self.send_response(200)
-        self.send_header("content-length", str(len(data)))
+        self.send_header("content-length", str(len(data) + ChatStub.slots_cut_short))
         self.end_headers()
         self.wfile.write(data)
 
     def do_POST(self) -> None:
-        self.rfile.read(int(self.headers["content-length"]))
+        sent = json.loads(self.rfile.read(int(self.headers["content-length"])))
         step = ChatStub.replies[min(ChatStub.posts, len(ChatStub.replies) - 1)]
         ChatStub.posts += 1
+        holds_the_slot = sent.get("model") == ChatStub.slot_held_by
+        if holds_the_slot:
+            ChatStub.slots = [{"id": 0, "id_task": ChatStub.posts, "is_processing": True}]
         time.sleep(step["delay"])
+        if holds_the_slot:
+            ChatStub.slots = [{"id": 0, "id_task": ChatStub.posts, "is_processing": False}]
         body = step["body"]
         data = body.encode() if isinstance(body, str) else json.dumps(body).encode()
         try:
@@ -673,6 +692,10 @@ def chat() -> Iterator[str]:
     ChatStub.posts = 0
     ChatStub.headers_out = {}
     ChatStub.slots = []
+    ChatStub.slots_cut_short = False
+    ChatStub.slot_held_by = None
+    ChatStub.prometheus = rss(1500)
+    ChatStub.queries = []
     server = ThreadingHTTPServer(("127.0.0.1", 0), ChatStub)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -1124,6 +1147,32 @@ def test_gate_shows_each_path_on_its_own() -> None:
     assert result["gateway"]["queued"] == 1.0 and result["direct"]["alone"] == 1.0
 
 
+def test_copilot_gate_counts_gateway_rows_only() -> None:
+    """Direct rows go to another engine, so Flash's sampled load says nothing about them."""
+    gateway = [vrow("gateway", 1.0, waiting=3) for _ in range(4)]
+    gateway += [vrow("gateway", 1.0, running=1) for _ in range(6)]
+    direct = [vrow("direct", 1.0, running=1) for _ in range(10)]
+    rows = [{**r, "prompt": "copilot"} for r in gateway + direct]
+    result = probe.copilot_report(rows, project_to=2500)["gate"]
+    assert result["all"]["n"] == 10
+    assert (result["all"]["queued"], result["all"]["alone"]) == (0.4, 0.6)
+    assert result["passed"] is False
+
+
+def test_copilot_gate_is_not_diluted_by_direct_rows() -> None:
+    gateway = [vrow("gateway", 1.0, waiting=3) for _ in range(5)]
+    gateway += [vrow("gateway", 1.0, running=3) for _ in range(5)]
+    direct = [vrow("direct", 1.0, running=1) for _ in range(10)]
+    rows = [{**r, "prompt": "copilot"} for r in gateway + direct]
+    report = probe.copilot_report(rows, project_to=2500)
+    assert report["gate"]["passed"] is True  # 50% queued: all rows would have made it 25%
+
+
+def test_voice_gate_still_counts_every_row() -> None:
+    rows = gated(40, 40, 20)
+    assert probe.voice_report(rows)["gate"]["all"]["n"] == 100
+
+
 def test_gate_with_no_metrics_fails() -> None:
     rows = [{**vrow("gateway", 1.0), "load": {}} for _ in range(5)]
     assert probe.gate(rows)["passed"] is False
@@ -1217,8 +1266,14 @@ def test_report_of_streaming_rows_has_no_voice_section(
 MEETING_FILE = Path(__file__).parent / "evals" / "fixtures" / "planning_meeting.json"
 MEETING = probe.load_meeting(MEETING_FILE)
 COPILOT_REPLY = '{"notes_upsert": [{"text": "A note"}], "topics": ["scanners"]}'
-IDLE = [{"id": 0, "is_processing": False}, {"id": 1, "is_processing": False}]
-FULL = [{"id": 0, "is_processing": True}, {"id": 1, "is_processing": True}]
+IDLE = [
+    {"id": 0, "id_task": 7, "is_processing": False},
+    {"id": 1, "id_task": 9, "is_processing": False},
+]
+FULL = [
+    {"id": 0, "id_task": 10, "is_processing": True},
+    {"id": 1, "id_task": 11, "is_processing": True},
+]
 
 
 def test_copilot_prompt_and_schema_are_the_servers_own() -> None:
@@ -1440,8 +1495,256 @@ def test_the_guard_forgives_a_moment_with_both_slots_busy(chat: str, tmp_path: P
     assert guard.note(2, 2)
 
 
+def test_the_guard_allows_for_the_probes_own_request_on_one_slot(chat: str) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not any([guard.note(1, 1), guard.note(1, 1), guard.note(1, 1), guard.note(1, 1)])
+
+
+def test_a_single_slot_busy_with_nothing_of_ours_in_it_trips(chat: str) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not guard.note(1, 1, own=0) and not guard.note(1, 1, own=0)
+    assert guard.note(1, 1, own=0)
+
+
+def test_our_own_request_does_not_excuse_another_in_the_second_slot(chat: str) -> None:
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    assert not guard.note(2, 2, own=1) and not guard.note(2, 2, own=1)
+    assert guard.note(2, 2, own=1)
+
+
+def test_a_run_on_one_slot_is_not_stopped_by_its_own_requests(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.1)]
+    ChatStub.slots = [{"id": 0, "id_task": 0, "is_processing": False}]
+    ChatStub.slot_held_by = "jev"
+    options = copilot_options(chat, tmp_path, pairs=2, slot_interval_s=0.01)
+    assert probe.run_copilot(options) is None
+    rows = rows_from(options.out)
+    assert len(rows) == 4
+    assert all(r["slots_full_max"] == 0 for r in rows)
+
+
+def test_a_run_on_one_slot_stops_on_a_real_queue(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.1)]
+    ChatStub.slots = [{"id": 0, "id_task": 5, "is_processing": True}]
+    options = copilot_options(chat, tmp_path, pairs=50, slot_interval_s=0.01)
+    reason = probe.run_copilot(options)
+    assert reason is not None and "slots" in reason
+    assert len(rows_from(options.out)) < 4
+
+
+def test_the_guard_stops_when_the_model_restarts(chat: str) -> None:
+    ChatStub.slots = [{"id": 0, "id_task": 900, "is_processing": False}]
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    with guard:
+        time.sleep(0.05)
+        assert not guard.tripped.is_set()
+        ChatStub.slots = [{"id": 0, "id_task": -1, "is_processing": False}]
+        assert guard.tripped.wait(5)
+    assert "restarted" in guard.reason
+
+
+def test_task_ids_moving_on_is_not_a_restart(chat: str) -> None:
+    ChatStub.slots = [{"id": 0, "id_task": 900, "is_processing": False}]
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
+    with guard:
+        for task in (901, 902, 950):
+            ChatStub.slots = [{"id": 0, "id_task": task, "is_processing": False}]
+            time.sleep(0.03)
+        assert not guard.tripped.is_set()
+
+
+def prometheus_url(chat: str) -> str:
+    return chat.removesuffix("/v1")
+
+
+MEMORY = 'namespace="ns",pod=~"small-.*",container="llama-server"'
+
+
+def test_the_memory_guard_trips_at_its_rss_ceiling(chat: str) -> None:
+    guard = probe.MemoryGuard(prometheus_url(chat), MEMORY, 3000.0, interval_s=0.01)
+    with guard:
+        time.sleep(0.05)
+        assert not guard.tripped.is_set()
+        ChatStub.prometheus = rss(1500, 3000)
+        assert guard.tripped.wait(5)
+    assert "RSS" in guard.reason and "3000" in guard.reason
+    assert guard.latest == 3000.0
+
+
+def test_the_memory_guard_asks_for_rss_and_only_a_fresh_sample(chat: str) -> None:
+    with probe.MemoryGuard(prometheus_url(chat), MEMORY, 3000.0, interval_s=0.01):
+        pass
+    sent = urllib.parse.parse_qs(urllib.parse.urlsplit(ChatStub.queries[0]).query)["query"][0]
+    assert sent == f"container_memory_rss{{{MEMORY}}}[{probe.MEMORY_FRESH_S}s]"
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        rss(),  # no sample in the window: stale, or a selector that matches nothing
+        {"status": "error", "error": "bad_data"},
+        {"status": "success", "data": {"result": [{"values": []}]}},
+        {"status": "success", "data": {"result": [{"values": [[1.0, "NaN"]]}]}},
+        ["not prometheus"],
+    ],
+)
+def test_the_memory_guard_stops_on_what_it_cannot_read(chat: str, answer: Any) -> None:
+    ChatStub.prometheus = answer
+    guard = probe.MemoryGuard(prometheus_url(chat), MEMORY, 3000.0, interval_s=0.01)
+    with guard:
+        assert guard.tripped.wait(5)
+    assert "memory" in guard.reason
+
+
+def test_the_memory_guard_stops_when_prometheus_is_gone() -> None:
+    guard = probe.MemoryGuard("http://127.0.0.1:9", MEMORY, 3000.0, interval_s=0.01)
+    with guard:
+        assert guard.tripped.wait(5)
+    assert "memory" in guard.reason
+
+
+def guarded(chat: str, tmp_path: Path, **overrides: Any) -> Any:
+    return copilot_options(
+        chat,
+        tmp_path,
+        memory_url=prometheus_url(chat),
+        memory_selector=MEMORY,
+        memory_stop_mib=3000.0,
+        memory_interval_s=0.01,
+        **overrides,
+    )
+
+
+def test_a_small_model_on_the_network_is_refused_without_a_memory_guard(tmp_path: Path) -> None:
+    # Nothing answers at this name: a refusal must come before any request, or the lookup.
+    options = copilot_options("http://small.invalid:8080/v1", tmp_path)
+    reason = probe.run_copilot(options)
+    assert reason is not None and "memory" in reason
+    assert not options.out.exists()
+
+
+def test_a_half_set_memory_guard_is_refused(chat: str, tmp_path: Path) -> None:
+    options = copilot_options(chat, tmp_path, memory_url=prometheus_url(chat))
+    reason = probe.run_copilot(options)
+    assert reason is not None and "memory" in reason
+    assert ChatStub.posts == 0
+
+
+def test_nothing_is_sent_to_a_model_already_over_the_ceiling(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY)]
+    ChatStub.slots = IDLE
+    ChatStub.prometheus = rss(3100)
+    reason = probe.run_copilot(guarded(chat, tmp_path))
+    assert reason is not None and "RSS" in reason
+    assert ChatStub.posts == 0
+
+
+def test_nothing_is_sent_when_memory_cannot_be_read_at_the_start(chat: str, tmp_path: Path) -> None:
+    ChatStub.slots = IDLE
+    ChatStub.prometheus = rss()
+    reason = probe.run_copilot(guarded(chat, tmp_path))
+    assert reason is not None and "memory" in reason
+    assert ChatStub.posts == 0
+
+
+def test_a_run_stops_when_memory_crosses_the_ceiling(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.05)]
+    ChatStub.slots = IDLE
+    options = guarded(chat, tmp_path, pairs=50)
+
+    def grow() -> None:
+        while ChatStub.posts < 3:
+            time.sleep(0.005)
+        ChatStub.prometheus = rss(3200)
+
+    threading.Thread(target=grow, daemon=True).start()
+    reason = probe.run_copilot(options)
+    assert reason is not None and "RSS" in reason
+    assert len(rows_from(options.out)) < 20
+
+
+def test_rows_and_the_report_track_rss(
+    chat: str, tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY)]
+    ChatStub.slots = IDLE
+    options = guarded(chat, tmp_path, pairs=1)
+    assert probe.run_copilot(options) is None
+    assert {r["small_rss_mib"] for r in rows_from(options.out)} == {1500.0}
+    assert probe.main(["report", str(options.out), "--json"]) == 0
+    report = json.loads(capsys.readouterr().out)["copilot"]
+    assert report["small_rss_mib"] == {"first": 1500.0, "last": 1500.0, "max": 1500.0}
+
+
+def test_copilot_cli_passes_the_memory_guard(chat: str, tmp_path: Path) -> None:
+    ChatStub.slots = IDLE
+    ChatStub.prometheus = rss(3100)
+    code = probe.main(
+        [
+            "copilot",
+            "--meeting",
+            str(MEETING_FILE),
+            "--gateway-url",
+            chat,
+            "--gateway-model",
+            "flash",
+            "--small-url",
+            chat,
+            "--small-model",
+            "jev",
+            "--memory-url",
+            prometheus_url(chat),
+            "--memory-selector",
+            MEMORY,
+            "--memory-stop-mib",
+            "3000",
+            "--pairs",
+            "1",
+            "--out",
+            str(tmp_path / "x.jsonl"),
+        ]
+    )
+    assert code == 3 and ChatStub.posts == 0
+
+
+def test_the_header_no_longer_offers_the_recipe_as_the_safety_measure() -> None:
+    header = probe.__doc__
+    assert "--memory-stop-mib" in header and "2026-11-01" in header
+
+
 def test_the_guard_stops_a_small_model_it_cannot_see(tmp_path: Path) -> None:
     guard = probe.SlotGuard("http://127.0.0.1:9/v1", interval_s=0.01, limit=3)
+    with guard:
+        assert guard.tripped.wait(5)
+    assert "slots" in guard.reason
+
+
+def test_the_guard_stops_on_a_slots_reply_cut_short(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.05)]
+    ChatStub.slots = IDLE
+    ChatStub.slots_cut_short = True  # http.client.IncompleteRead, which is not an OSError
+    options = copilot_options(chat, tmp_path, pairs=50)
+    reason = probe.run_copilot(options)
+    assert reason is not None and "slots" in reason
+    assert len(rows_from(options.out)) < 100
+
+
+@pytest.mark.parametrize(
+    "slots",
+    [
+        ["not a slot"],
+        [{"id": 0}],
+        [{"id": 0, "is_processing": False}],
+        [{"id": 0, "id_task": "x", "is_processing": False}],
+        [{"id": 0, "id_task": 1, "is_processing": "yes"}],
+        [],
+        {"error": "slots endpoint is off"},
+        5,
+    ],
+)
+def test_the_guard_stops_on_slots_it_cannot_make_sense_of(chat: str, slots: Any) -> None:
+    ChatStub.slots = slots
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
     with guard:
         assert guard.tripped.wait(5)
     assert "slots" in guard.reason

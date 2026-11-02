@@ -1,6 +1,9 @@
 """The eval harness itself, against canned LLM output (no --live needed)."""
 
+import pytest
+
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta
+from jarvis_live.copilot.state import CopilotState
 from tests.evals.harness import Outcome, Report, check, due_matches, run_case
 from tests.evals.transcripts import (
     CASES,
@@ -21,6 +24,43 @@ from tests.fakes import FakeLLM
 
 def case_finds(case: Case, text: str) -> bool:
     return all(any(k in text.lower() for k in g) for g in case.actions[0].keywords)
+
+
+def snapshot_of(*actions: ActionUpsert) -> tuple[CopilotDelta, CopilotState]:
+    delta = CopilotDelta(actions_upsert=list(actions))
+    state = CopilotState()
+    state.apply(delta, now_ms=0, default_ttl_s=120)
+    return delta, state
+
+
+TOMAS = ActionUpsert(text="Order spare batteries for Lakeside rollout", owner="Tomas", due="Thu")
+PRIYA = ActionUpsert(text="Send Lakeside unit count to Tomas", owner="Priya")
+SURVEY = ActionUpsert(text="Walk Lakeside floor with signal meter")
+
+
+@pytest.mark.parametrize("case", [PLANNING_FIRST, PLANNING_LONG])
+def test_the_priya_action_is_not_taken_from_another_owners_lakeside_action(case: Case) -> None:
+    delta, state = snapshot_of(TOMAS, SURVEY, PRIYA)
+    assert not [f for f in check(case, delta, state, 0.0) if "priya" in f]
+
+
+@pytest.mark.parametrize("case", [PLANNING_FIRST, PLANNING_LONG])
+def test_the_priya_action_still_fails_when_it_is_really_missing(case: Case) -> None:
+    delta, state = snapshot_of(TOMAS, SURVEY)
+    assert any("missing action [count" in f for f in check(case, delta, state, 0.0))
+
+
+def test_the_rolling_key_does_not_match_a_mere_mention_of_units() -> None:
+    case = next(c for c in ROLLING_REPLAY if "unit count" in c.name)
+    other = ActionUpsert(text="Charge the spare units overnight", owner="Tomas")
+    delta, state = snapshot_of(other, PRIYA)
+    assert check(case, delta, state, 0.0) == []
+
+
+def test_the_rolling_key_still_finds_the_count_in_other_words() -> None:
+    case = next(c for c in ROLLING_REPLAY if "unit count" in c.name)
+    assert case_finds(case, "Send Tomas the headcount")
+    assert case_finds(case, "Tell Tomas how many handhelds Lakeside needs")
 
 
 GOOD_VENDOR = CopilotDelta(
