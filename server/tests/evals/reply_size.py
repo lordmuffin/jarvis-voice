@@ -26,7 +26,7 @@ from jarvis_live.config import Settings
 from jarvis_live.llm.client import LiteLLMClient
 from tests.evals.harness import check, run_case
 from tests.evals.transcripts import CASES, ROLLING_REPLAY, SMALL_MODEL_CASES, Case
-from tests.evals.variants import VARIANTS, Variant
+from tests.evals.variants import VARIANTS, Variant, compact_grammar
 
 RUNS = 3
 TOKENS_2070 = 225  # 2.5 s on the 2070, at 132 tok/s after 0.8 s of prefill
@@ -106,11 +106,20 @@ def can_still_pass(rows: list[Row]) -> bool:
 class Recorder(httpx.AsyncBaseTransport):
     """Passes each request through and keeps what the client throws away, one row per attempt."""
 
-    def __init__(self, inner: httpx.AsyncBaseTransport | None = None) -> None:
+    def __init__(
+        self, inner: httpx.AsyncBaseTransport | None = None, grammar: str | None = None
+    ) -> None:
         self.inner = inner or httpx.AsyncHTTPTransport()
+        self.grammar = grammar  # sent in place of the schema: llama.cpp only
         self.attempts: list[dict[str, Any]] = []
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if self.grammar is not None:
+            body = json.loads(request.content)
+            del body["response_format"]
+            request = httpx.Request(
+                request.method, request.url, json={**body, "grammar": self.grammar}
+            )
         response = await self.inner.handle_async_request(request)
         await response.aread()
         if response.status_code == 200:
@@ -152,9 +161,11 @@ async def run_one(llm: LiteLLMClient, rec: Recorder, case: Case, cfg: Settings, 
 
 async def run(args: argparse.Namespace) -> int:
     variant = VARIANTS[args.variant]
+    grammar = compact_grammar(variant.schema.model_json_schema()) if args.compact else None
+    label = f"{variant.name}+compact" if args.compact else variant.name
     cfg = Settings(copilot_model=args.model, copilot_timeout_s=args.timeout)
     rows: list[Row] = []
-    rec = Recorder()
+    rec = Recorder(grammar=grammar)
     async with httpx.AsyncClient(transport=rec) as http:
         llm = LiteLLMClient(args.base, http, timeout_s=args.timeout)
         with Path(args.out).open("a", encoding="utf-8") as out:
@@ -162,7 +173,7 @@ async def run(args: argparse.Namespace) -> int:
                 for case in ALL_CASES:
                     t0 = time.monotonic()
                     row = await run_one(llm, rec, case, cfg, variant)
-                    row.run, row.model = run_no, args.tag or args.model
+                    row.run, row.model, row.variant = run_no, args.tag or args.model, label
                     rows.append(row)
                     out.write(json.dumps(asdict(row)) + "\n")
                     out.flush()
@@ -231,6 +242,7 @@ def main() -> int:
     r.add_argument("--out", required=True)
     r.add_argument("--timeout", type=float, default=300.0)
     r.add_argument("--keep-going", action="store_true")
+    r.add_argument("--compact", action="store_true", help="no whitespace, by grammar: llama.cpp")
     p = sub.add_parser("report")
     p.add_argument("paths", nargs="+")
     p.add_argument("--budget", type=int, default=TOKENS_2070)

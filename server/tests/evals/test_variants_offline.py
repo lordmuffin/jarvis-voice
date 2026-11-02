@@ -1,6 +1,7 @@
 """Eval-only reply variants and the bar for step 4, against canned output (no --live needed)."""
 
 import json
+import re
 from typing import Any
 
 import httpx
@@ -20,7 +21,7 @@ from tests.evals.reply_size import (
     verdict,
 )
 from tests.evals.transcripts import CASES, ROLLING_REPLAY, SMALL_MODEL_CASES, VENDOR_CALL
-from tests.evals.variants import TODAY, VARIANTS, Variant, narrowed
+from tests.evals.variants import TODAY, VARIANTS, Variant, compact_grammar, narrowed
 
 ALL_CASES = [*CASES, *SMALL_MODEL_CASES, *ROLLING_REPLAY]
 
@@ -87,6 +88,20 @@ def test_narrowing_can_require_a_nested_action_key() -> None:
     schema = narrowed(action_required=("text", "owner", "due")).model_json_schema()
     assert schema["$defs"]["ActionUpsert"]["required"] == ["text", "owner", "due"]
     assert CopilotDelta.model_json_schema()["$defs"]["ActionUpsert"]["required"] == ["text"]
+
+
+def test_narrowing_can_ask_for_the_owner_before_the_text() -> None:
+    schema = narrowed(action_required=("owner", "due", "text")).model_json_schema()
+    action = schema["$defs"]["ActionUpsert"]
+    assert list(action["properties"])[:3] == ["owner", "due", "text"]
+    assert list(CopilotDelta.model_json_schema()["$defs"]["ActionUpsert"]["properties"])[0] == "id"
+
+
+def test_the_owner_first_variant_keeps_the_rule_against_inventing_owners() -> None:
+    v = VARIANTS["slim-owner"]
+    assert "Do not invent owners or due dates" in v.system
+    assert "owner: the name of the person who will do it" in v.system
+    assert list(sent_schema(v)["$defs"]["ActionUpsert"]["properties"])[0] == "owner"
 
 
 def test_a_narrowed_schema_parses_as_tolerantly_as_todays() -> None:
@@ -176,3 +191,65 @@ async def test_the_recorder_keeps_each_attempt_and_passes_the_reply_through() ->
     assert [(a["tokens"], a["prompt"], a["finish"], a["content"]) for a in rec.attempts] == [
         (7, 90, "stop", "{}")
     ]
+
+
+def test_a_compact_grammar_has_no_whitespace_to_spend_tokens_on() -> None:
+    grammar = compact_grammar(VARIANTS["no-sugg-prop-caps"].schema.model_json_schema())
+    assert "space" not in grammar
+    literals = re.findall(r'"(?:[^"\\]|\\.)*"', grammar.split("\n", 1)[1])  # past char ::=
+    assert literals and not [x for x in literals if " " in x or "\\n" in x or "\\t" in x]
+
+
+def test_a_compact_grammar_keeps_the_keys_in_order_and_requires_them() -> None:
+    grammar = compact_grammar(VARIANTS["no-sugg-prop-caps"].schema.model_json_schema())
+    root = next(x for x in grammar.splitlines() if x.startswith("root ::="))
+    positions = [root.index(f'\\"{k}\\":') for k in ("notes_upsert", "actions_upsert", "title")]
+    assert positions == sorted(positions)
+    assert "suggestions" not in grammar and "proposals" not in grammar
+
+
+def test_a_compact_grammar_keeps_the_caps_and_leaves_actions_open() -> None:
+    grammar = compact_grammar(VARIANTS["no-sugg-prop-caps"].schema.model_json_schema())
+    assert '( "," note-upsert ){0,1}' in grammar  # 2 at most
+    assert '( "," action-upsert )*' in grammar
+
+
+def test_a_compact_grammar_makes_id_optional_and_text_nonempty() -> None:
+    grammar = compact_grammar(VARIANTS["no-sugg-prop-caps"].schema.model_json_schema())
+    action = next(x for x in grammar.splitlines() if x.startswith("action-upsert ::="))
+    assert '( "," "\\"id\\":"' in action and action.count(")?") == 3
+    assert 'string-1 ::= "\\"" char+ "\\""' in grammar
+
+
+def test_a_compact_grammar_refuses_a_shape_it_cannot_write() -> None:
+    with pytest.raises(ValueError, match="integer"):
+        compact_grammar({"type": "object", "properties": {"n": {"type": "integer"}}})
+
+
+async def test_a_grammar_replaces_the_schema_on_the_wire() -> None:
+    sent: list[dict[str, Any]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    rec = Recorder(httpx.MockTransport(answer), grammar='root ::= "{}"')
+    async with httpx.AsyncClient(transport=rec) as http:
+        await run_case(LiteLLMClient("http://local/v1", http), VENDOR_CALL)
+    assert sent[0]["grammar"] == 'root ::= "{}"'
+    assert "response_format" not in sent[0]
+    assert sent[0]["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+async def test_without_a_grammar_the_recorder_leaves_the_request_alone() -> None:
+    sent: list[bytes] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(request.content)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    plain = await body_for(None)
+    rec = Recorder(httpx.MockTransport(answer))
+    async with httpx.AsyncClient(transport=rec) as http:
+        await run_case(LiteLLMClient("http://local/v1", http), VENDOR_CALL)
+    assert json.loads(sent[0]) == plain
