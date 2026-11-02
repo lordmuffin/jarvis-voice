@@ -24,6 +24,12 @@ TRANSCRIPT = """\
 """
 
 
+async def test_asks_the_way_the_copilot_loop_asks() -> None:
+    llm = FakeLLM().queue("CopilotDelta", GOOD)
+    await propose(llm, CASE)
+    assert llm.calls[0].think is False
+
+
 def delta(*items: dict[str, object]) -> CopilotDelta:
     return CopilotDelta.model_validate({"proposals": list(items)})
 

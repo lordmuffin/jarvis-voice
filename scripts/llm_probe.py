@@ -1030,6 +1030,16 @@ COPILOT_SCHEMA: dict[str, Any] = {
             "title": "Title",
         },
     },
+    "required": [
+        "notes_upsert",
+        "actions_upsert",
+        "decisions_upsert",
+        "remove_ids",
+        "suggestions",
+        "proposals",
+        "topics",
+        "title",
+    ],
     "title": "CopilotDelta",
     "type": "object",
 }

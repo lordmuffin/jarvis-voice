@@ -129,6 +129,7 @@ async def propose(llm: LLM, case: ProposalCase, cfg: Settings | None = None) -> 
         user=user,
         schema=CopilotDelta,
         timeout_s=cfg.copilot_timeout_s,
+        think=False,  # as copilot/loop.py asks, or this grades a request nobody sends
     )
     ctx = Context(
         now=datetime.now(UTC), timezone=cfg.timezone, vault_has=lambda _: False, repos=frozenset()

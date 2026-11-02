@@ -1,7 +1,7 @@
 """LLM output schemas. Deliberately tolerant (unknown keys ignored, over-long lists trimmed) so a
 slightly chatty model does not burn the single retry."""
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -33,7 +33,16 @@ class SuggestionIn(_LLMModel):
     ttl_s: Annotated[int, Field(ge=1, le=3600)] = 120
 
 
+def _require_every_key(schema: dict[str, Any]) -> None:
+    """Only the schema sent to the model. An optional key lets the structured output grammar skip
+    it, and Flash skips actions_upsert. Validation ignores this, so a route that does not enforce
+    the schema can still leave a key out and get its default."""
+    schema["required"] = list(schema["properties"])
+
+
 class CopilotDelta(_LLMModel):
+    model_config = ConfigDict(json_schema_extra=_require_every_key)
+
     notes_upsert: list[NoteUpsert] = Field(default_factory=list)
     actions_upsert: list[ActionUpsert] = Field(default_factory=list)
     decisions_upsert: list[NoteUpsert] = Field(default_factory=list)

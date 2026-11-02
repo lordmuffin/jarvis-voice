@@ -4,9 +4,12 @@ from typing import Any
 
 import httpx
 import pytest
+from pydantic import BaseModel
 
-from jarvis_live.copilot.schema import CopilotDelta
+from jarvis_live.copilot.schema import CopilotDelta, FinalNote
 from jarvis_live.llm.client import LiteLLMClient, LLMError
+from jarvis_live.voice.schema import VoiceRequest
+from jarvis_live.workitems.schema import IdeasDelta
 
 
 def _completion(content: str) -> httpx.Response:
@@ -17,6 +20,31 @@ def _client(handler: Any, **kw: Any) -> LiteLLMClient:
     return LiteLLMClient(
         "http://litellm/v1/", httpx.AsyncClient(transport=httpx.MockTransport(handler)), **kw
     )
+
+
+COPILOT_KEYS = [
+    "notes_upsert",
+    "actions_upsert",
+    "decisions_upsert",
+    "remove_ids",
+    "suggestions",
+    "proposals",
+    "topics",
+    "title",
+]
+
+
+async def _sent_schema(schema: type[BaseModel]) -> dict[str, Any]:
+    """The JSON schema the real client puts on the wire for this model."""
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return _completion('{"title": "t", "summary": "s"}')
+
+    await _client(handler).complete_json(model="m", system="s", user="u", schema=schema)
+    sent: dict[str, Any] = json.loads(seen[0].content)["response_format"]["json_schema"]["schema"]
+    return sent
 
 
 async def _call(c: LiteLLMClient) -> CopilotDelta:
@@ -131,3 +159,81 @@ async def test_strips_think_block_and_code_fence() -> None:
 def test_delta_trims_topics_and_ignores_unknown_keys() -> None:
     d = CopilotDelta.model_validate({"topics": [" a ", "", "b", "c", "d", "e", "f"], "extra": 1})
     assert d.topics == ["a", "b", "c", "d", "e"]
+
+
+async def test_every_copilot_key_is_required_on_the_wire() -> None:
+    # Optional keys let the structured output grammar skip them, and Flash skips actions_upsert.
+    sent = await _sent_schema(CopilotDelta)
+    assert sent["required"] == COPILOT_KEYS
+    assert list(sent["properties"]) == COPILOT_KEYS
+
+
+async def test_a_required_title_can_still_be_null() -> None:
+    title = (await _sent_schema(CopilotDelta))["properties"]["title"]
+    assert {"type": "null"} in title["anyOf"]
+
+
+@pytest.mark.parametrize(
+    ("schema", "required", "nested"),
+    [
+        (
+            CopilotDelta,
+            COPILOT_KEYS,
+            {
+                "ActionUpsert": ["text"],
+                "Evidence": ["start_ms"],
+                "NoteUpsert": ["text"],
+                "ProposalIn": ["kind"],
+                "SuggestionIn": ["kind", "text"],
+            },
+        ),
+        (
+            FinalNote,
+            ["title", "summary"],
+            {"Evidence": ["start_ms"], "FinalAction": ["text"], "ProposalIn": ["kind"]},
+        ),
+        (VoiceRequest, None, {"Evidence": ["start_ms"], "ProposalIn": ["kind"]}),
+        (IdeasDelta, None, {"ItemUpsert": ["title"]}),
+    ],
+    ids=lambda v: v.__name__ if isinstance(v, type) else "",
+)
+async def test_each_callers_required_keys_are_exactly_these(
+    schema: type[BaseModel], required: list[str] | None, nested: dict[str, list[str]]
+) -> None:
+    sent = await _sent_schema(schema)
+    assert sent.get("required") == required
+    assert {name: d.get("required") for name, d in sent["$defs"].items()} == nested
+
+
+@pytest.mark.parametrize("missing", COPILOT_KEYS)
+async def test_a_reply_missing_one_key_parses_with_todays_default(missing: str) -> None:
+    # The gateway's ollama route may not enforce the schema, and a retry costs a whole cycle.
+    full = CopilotDelta().model_dump()
+    reply = json.dumps({k: v for k, v in full.items() if k != missing})
+    calls = 0
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return _completion(reply)
+
+    assert await _call(_client(handler)) == CopilotDelta()
+    assert calls == 1
+
+
+async def test_an_empty_reply_parses_with_todays_defaults() -> None:
+    delta = await _call(_client(lambda r: _completion("{}")))
+    assert delta == CopilotDelta(
+        notes_upsert=[],
+        actions_upsert=[],
+        decisions_upsert=[],
+        remove_ids=[],
+        suggestions=[],
+        proposals=[],
+        topics=[],
+        title=None,
+    )
+
+
+def test_delta_still_ignores_unknown_keys_after_requiring_the_known_ones() -> None:
+    assert CopilotDelta.model_validate({"extra": 1}) == CopilotDelta()
