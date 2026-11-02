@@ -637,12 +637,13 @@ class ChatStub(BaseHTTPRequestHandler):
     replies: ClassVar[list[dict[str, Any]]] = []
     posts: ClassVar[int] = 0
     headers_out: ClassVar[dict[str, str]] = {}
-    slots: ClassVar[list[dict[str, Any]]] = []
+    slots: ClassVar[Any] = []
+    slots_cut_short: ClassVar[bool] = False
 
     def do_GET(self) -> None:
         data = json.dumps(ChatStub.slots).encode()
         self.send_response(200)
-        self.send_header("content-length", str(len(data)))
+        self.send_header("content-length", str(len(data) + ChatStub.slots_cut_short))
         self.end_headers()
         self.wfile.write(data)
 
@@ -673,6 +674,7 @@ def chat() -> Iterator[str]:
     ChatStub.posts = 0
     ChatStub.headers_out = {}
     ChatStub.slots = []
+    ChatStub.slots_cut_short = False
     server = ThreadingHTTPServer(("127.0.0.1", 0), ChatStub)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -1442,6 +1444,35 @@ def test_the_guard_forgives_a_moment_with_both_slots_busy(chat: str, tmp_path: P
 
 def test_the_guard_stops_a_small_model_it_cannot_see(tmp_path: Path) -> None:
     guard = probe.SlotGuard("http://127.0.0.1:9/v1", interval_s=0.01, limit=3)
+    with guard:
+        assert guard.tripped.wait(5)
+    assert "slots" in guard.reason
+
+
+def test_the_guard_stops_on_a_slots_reply_cut_short(chat: str, tmp_path: Path) -> None:
+    ChatStub.replies = [reply(COPILOT_REPLY, delay=0.05)]
+    ChatStub.slots = IDLE
+    ChatStub.slots_cut_short = True  # http.client.IncompleteRead, which is not an OSError
+    options = copilot_options(chat, tmp_path, pairs=50)
+    reason = probe.run_copilot(options)
+    assert reason is not None and "slots" in reason
+    assert len(rows_from(options.out)) < 100
+
+
+@pytest.mark.parametrize(
+    "slots",
+    [
+        ["not a slot"],
+        [{"id": 0}],
+        [{"id": 0, "is_processing": "yes"}],
+        [],
+        {"error": "slots endpoint is off"},
+        5,
+    ],
+)
+def test_the_guard_stops_on_slots_it_cannot_make_sense_of(chat: str, slots: Any) -> None:
+    ChatStub.slots = slots
+    guard = probe.SlotGuard(chat, interval_s=0.01, limit=3)
     with guard:
         assert guard.tripped.wait(5)
     assert "slots" in guard.reason

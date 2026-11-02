@@ -1167,22 +1167,35 @@ class SlotGuard:
 
     def _loop(self) -> None:
         while not self._stop.wait(self._interval):
-            started = time.perf_counter()
             try:
-                with urllib.request.urlopen(self._url, timeout=5) as response:
-                    slots = json.load(response)
-            except (OSError, ValueError) as e:
+                self._poll()
+            except Exception as e:  # a guard that dies leaves the run going, unwatched
                 self._misses += 1
                 if self._misses >= self._limit:
-                    self.reason = f"cannot read the small model's slots: {e}"
+                    self.reason = f"cannot read the small model's slots: {type(e).__name__}: {e}"
                     self.tripped.set()
                 continue
             self._misses = 0
-            busy = sum(1 for slot in slots if slot.get("is_processing"))
-            self.samples.append((started, busy >= len(slots) > 0, time.perf_counter() - started))
-            if self.note(busy, len(slots)):
-                self.reason = f"all {len(slots)} slots busy for {self._limit} polls in a row"
-                self.tripped.set()
+
+    def _poll(self) -> None:
+        started = time.perf_counter()
+        with urllib.request.urlopen(self._url, timeout=5) as response:
+            slots = json.load(response)
+        if not isinstance(slots, list) or not slots:
+            raise ValueError(f"expected a list of slots, got {slots!r:.80}")
+        busy = sum(1 for slot in slots if self._is_busy(slot))
+        self.samples.append((started, busy >= len(slots), time.perf_counter() - started))
+        if self.note(busy, len(slots)):
+            self.reason = f"all {len(slots)} slots busy for {self._limit} polls in a row"
+            self.tripped.set()
+
+    @staticmethod
+    def _is_busy(slot: Any) -> bool:
+        """Strict: reading a slot with no ``is_processing`` as idle would blind the guard."""
+        state = slot.get("is_processing") if isinstance(slot, dict) else None
+        if not isinstance(state, bool):
+            raise ValueError(f"not a slot: {slot!r:.80}")
+        return state
 
     def window(self, start: float, end: float) -> dict[str, float]:
         inside = [s for s in self.samples if start <= s[0] <= end]
