@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.32.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.32.1...server-v0.32.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* **server:** require every CopilotDelta key in the schema sent to the model ([4be3bcb](https://github.com/lordmuffin/jarvis-voice/commit/4be3bcbc2059dc808de064c327d2f75c79f13cb2))
+* **server:** require every CopilotDelta key so Flash returns actions ([14abcdc](https://github.com/lordmuffin/jarvis-voice/commit/14abcdc7d8a9a63ffeac98b9eaeb0256cc6a552b))
+
 ## [0.32.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.32.0...server-v0.32.1) (2026-11-02)
 
 
