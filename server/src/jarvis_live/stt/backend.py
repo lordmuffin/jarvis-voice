@@ -21,6 +21,11 @@ class STTBackend(Protocol):
 
     def current_tier(self) -> str | None: ...
 
+    def fault_s(self) -> float:
+        """How long tiers have answered health checks while failing to transcribe. 0: no fault;
+        tiers not answering at all is Whisper being away, not a fault."""
+        ...
+
 
 def pcm_to_wav(pcm: bytes, sample_rate: int = 16_000) -> bytes:
     buf = io.BytesIO()
@@ -44,3 +49,6 @@ class WhisperBackend:
 
     def current_tier(self) -> str | None:
         return self.pool.current_tier()
+
+    def fault_s(self) -> float:
+        return self.pool.fault_s()

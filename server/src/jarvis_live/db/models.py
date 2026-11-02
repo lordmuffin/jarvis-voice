@@ -159,6 +159,10 @@ class Session(Base):
     source: Mapped[str | None] = mapped_column(String(16))
     # The uploader's own id for the recording; makes an upload retry idempotent.
     client_id: Mapped[str | None] = mapped_column(String(64))
+    # Part of the recording could not be transcribed (no STT tier was up). Its note waits, its
+    # audio outlives retention, and the watchdog transcribes it once a tier is back. Never set
+    # on a local-only session.
+    transcription_pending: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
     # Soft delete: set, the session is hidden but its audio and transcript are kept until the
     # trash window ends (``retention.py``); restoring clears it.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

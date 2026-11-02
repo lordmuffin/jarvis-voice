@@ -55,11 +55,21 @@ async def purge_expired_audio(
     *,
     now: float | None = None,
 ) -> int:
-    """Delete ``*.pcm`` older than ``retention_days`` (by mtime) for sessions in ``done``.
-    Returns the number of files removed."""
+    """Delete ``*.pcm`` older than ``retention_days`` (by mtime) for sessions in ``done``, unless
+    the audio still waits to be transcribed. Returns the number of files removed."""
     cutoff = (time.time() if now is None else now) - retention_days * 86_400
     async with sessionmaker() as db:
-        ids = (await db.execute(select(Session.id).where(Session.status == "done"))).scalars().all()
+        ids = (
+            (
+                await db.execute(
+                    select(Session.id).where(
+                        Session.status == "done", Session.transcription_pending.is_(False)
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
     removed = 0
     for sid in ids:
         directory = data_dir / "sessions" / str(sid)

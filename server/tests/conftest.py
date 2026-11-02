@@ -63,6 +63,9 @@ class FakeSTT:
     def current_tier(self) -> str | None:
         return self.tier
 
+    def fault_s(self) -> float:
+        return 0.0
+
 
 def _asyncpg_url(url: str) -> str:
     """Accept plain postgres:// and postgresql:// URLs; the app only ships the asyncpg driver."""

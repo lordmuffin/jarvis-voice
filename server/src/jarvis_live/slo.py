@@ -7,7 +7,8 @@ carries the state.
 
 An effect never repeats its cause: while a tier is breached the authoritative-line SLO is
 tracked but silent, and copilot staleness (which includes the round trip) defers to the round
-trip. All-tiers-down and finalizer-failed have their own alerts and are not repeated here.
+trip. An STT fault and finalizer-failed have their own alerts and are not repeated here. Whisper
+being away has no alert: it is expected, and clients show it.
 """
 
 import math

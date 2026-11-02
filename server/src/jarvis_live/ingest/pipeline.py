@@ -15,7 +15,7 @@ from jarvis_live.db.models import SegmentRow
 from jarvis_live.diarize.client import Embedder
 from jarvis_live.diarize.livelabel import LiveLabeler
 from jarvis_live.ingest.segmenter import Segmenter, SegmenterConfig, SpeechSegment
-from jarvis_live.ingest.store import SPEAKER
+from jarvis_live.ingest.store import SPEAKER, mark_transcription_pending
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import BYTES_PER_MS, DraftSegment, Error, Segment, Status
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
@@ -47,13 +47,18 @@ class SessionPipeline:
         bus: Bus,
         stt: STTBackend,
         embedder: Embedder | None = None,
+        rerun: bool = False,
     ) -> None:
+        """``rerun``: transcribing stored audio again, not a session in progress. A lost segment
+        is the caller's to count, and its queue says nothing about the live path's latency."""
         self.session_id = session_id
         self.channels = channels
         self._cfg = settings
         self._sm = sessionmaker
         self._bus = bus
         self._stt = stt
+        self._rerun = rerun
+        self._stt_away = False  # the last segment found no tier: clients have been told
         self._log = session_logger(__name__, session_id)
         self._labeler = (
             LiveLabeler(session_id, settings, sessionmaker, bus, embedder)
@@ -157,7 +162,8 @@ class SessionPipeline:
 
     def _enqueue(self, channel: str, seg: SpeechSegment) -> None:
         self._inflight[channel].add(seg.start_ms)
-        self._cut_at[(channel, seg.start_ms)] = time.monotonic()
+        if not self._rerun:
+            self._cut_at[(channel, seg.start_ms)] = time.monotonic()
         self._queues[channel].put_nowait(seg)
 
     # --- STT --------------------------------------------------------------------------------
@@ -184,12 +190,9 @@ class SessionPipeline:
         try:
             result = await self._stt.transcribe(seg.pcm, prompt)
         except STTUnavailable:
-            self._log.error("no STT tier available, segment lost", extra={"channel": channel})
-            self._bus.publish(
-                str(self.session_id),
-                Error(code="stt_unavailable", message="No STT tier could transcribe a segment."),
-            )
+            await self._keep_for_later(channel)
             return
+        self._stt_away = False
         text = result.text.strip()
         if not text:
             return
@@ -221,6 +224,21 @@ class SessionPipeline:
                 final.held_at = time.monotonic()
                 self._held_mic.append(final)
             await self._release_held()
+
+    async def _keep_for_later(self, channel: str) -> None:
+        """The audio is already stored. Say so once per outage, not once per segment."""
+        if self._rerun or self._stt_away:
+            return
+        self._log.warning("no STT tier available, audio kept", extra={"channel": channel})
+        await mark_transcription_pending(self._sm, self.session_id)
+        self._stt_away = True
+        self._bus.publish(
+            str(self.session_id),
+            Error(
+                code="stt_unavailable",
+                message="Transcription offline. The audio is kept and will be transcribed later.",
+            ),
+        )
 
     # --- duplicate guard: mic segments wait until the system channel has settled past them ----
 

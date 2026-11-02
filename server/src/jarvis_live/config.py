@@ -131,7 +131,11 @@ class Settings(BaseSettings):
     gotify_url: str = ""
     gotify_token_file: Path | None = None
     public_base_url: str = ""
+    # A tier answers its health probe yet nothing transcribes for this long: an alert. No tier
+    # answering is Whisper being away, which is expected and never alerts.
     stt_outage_notify_s: float = 120.0
+    # A session's kept audio is tried again this long after a failed attempt.
+    stt_backfill_retry_s: float = 300.0
 
     # SLOs on the live path (see slo.py). A breach is sustained when the signal's p95 over
     # `slo_window_s` exceeds its limit with at least `slo_min_samples` samples; it re-arms after

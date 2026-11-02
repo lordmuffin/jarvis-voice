@@ -68,10 +68,18 @@ class TierPool:
         self._healthy: dict[str, bool] = {t.name: False for t in tiers}
         self._probed = False
         self._exhausted = False  # every tier failed since the last probe
+        self._answering = False  # a tier answered the last probe
+        self._fault: tuple[float, float] | None = None  # first and latest failure while it did
 
     def current_tier(self) -> str | None:
         """Name of the first healthy tier."""
         return next((t.name for t in self.tiers if self._healthy[t.name]), None)
+
+    def fault_s(self) -> float:
+        """How long segments have kept failing while a tier answers its health probe. That is a
+        fault, not Whisper being away. A single failure spans 0 s: a tier leaving between two
+        probes looks just like this until the next probe."""
+        return self._fault[1] - self._fault[0] if self._fault else 0.0
 
     async def probe_all(self) -> None:
         results = await asyncio.gather(*(self._probe(t) for t in self.tiers))
@@ -81,6 +89,9 @@ class TierPool:
             self._healthy[tier.name] = ok
         self._probed = True
         self._exhausted = False
+        self._answering = any(results)
+        if not self._answering:
+            self._fault = None  # nothing there: away
         metrics.stt_tiers(self._healthy, self.current_tier())
 
     async def run_probe_loop(self) -> None:
@@ -124,8 +135,12 @@ class TierPool:
                 continue
             metrics.stt_request(tier.name, "ok", self._clock() - started)
             metrics.stt_served(tier.name)
+            self._fault = None
             return text, tier.name
         self._exhausted = True
+        if self._answering:
+            now = self._clock()
+            self._fault = (self._fault[0] if self._fault else now, now)
         raise STTUnavailable("no STT tier could transcribe the segment")
 
     async def _request(self, tier: Tier, wav: bytes, prompt: str) -> str:

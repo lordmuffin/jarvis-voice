@@ -45,6 +45,9 @@ class _CountingSTT:
     def current_tier(self) -> str | None:
         return self._stt.current_tier()
 
+    def fault_s(self) -> float:
+        return self._stt.fault_s()
+
 
 async def retranscribe(
     session_id: uuid.UUID,
@@ -76,7 +79,13 @@ async def retranscribe(
         )
     counting = _CountingSTT(stt)
     pipeline = SessionPipeline(
-        session_id, recorded, settings=settings, sessionmaker=sessionmaker, bus=bus, stt=counting
+        session_id,
+        recorded,
+        settings=settings,
+        sessionmaker=sessionmaker,
+        bus=bus,
+        stt=counting,
+        rerun=True,
     )
     pipeline.start()
     if on_progress is not None:
