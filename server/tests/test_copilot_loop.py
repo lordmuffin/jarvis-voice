@@ -1,7 +1,9 @@
 import asyncio
+import json
 import uuid
 from typing import Any
 
+import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -12,8 +14,11 @@ from jarvis_live.copilot.loop import CopilotLoop
 from jarvis_live.copilot.schema import ActionUpsert, CopilotDelta, NoteUpsert, SuggestionIn
 from jarvis_live.db.models import OWNER_USER_ID, CopilotItem
 from jarvis_live.db.models import Session as SessionRow
-from jarvis_live.llm.client import LLMError
+from jarvis_live.llm.client import LiteLLMClient, LLMError
 from jarvis_live.protocol import Copilot, Related, Status
+from tests.evals.actions import ProposalCase, propose
+from tests.evals.harness import run_case
+from tests.evals.transcripts import VENDOR_CALL
 from tests.fakes import FakeClock, FakeLLM, add_segments, make_session, new_device
 
 SM = async_sessionmaker  # type: ignore[type-arg]
@@ -102,6 +107,30 @@ async def test_a_cycle_does_not_pay_for_reasoning(rig: Rig) -> None:
     await rig.segs(3)
     await rig.loop.tick()
     assert [c.think for c in rig.llm.calls] == [False]
+
+
+async def test_the_evals_send_what_a_cycle_sends(rig: Rig) -> None:
+    sent: list[dict[str, Any]] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "{}"}}]})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(answer)) as http:
+        llm = LiteLLMClient("http://gateway/v1", http)
+        rig.loop._llm = llm
+        await rig.segs(3)
+        await rig.loop.tick()
+        await run_case(llm, VENDOR_CALL)
+        await propose(llm, ProposalCase("vendor", VENDOR_CALL.transcript))
+
+    cycle, copilot_eval, action_eval = sent
+    for body in sent:  # the user turn is each one's own transcript
+        body["messages"] = [body["messages"][0], body["messages"][1]["role"]]
+    assert copilot_eval == cycle
+    assert action_eval == cycle
+    assert cycle["response_format"]["json_schema"]["schema"]["required"]
+    assert cycle["chat_template_kwargs"] == {"enable_thinking": False}
 
 
 async def test_runs_after_25s_with_one_new_segment(rig: Rig) -> None:
