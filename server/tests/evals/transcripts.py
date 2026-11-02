@@ -110,7 +110,7 @@ PLANNING_FIRST = Case(
     transcript=_planning(300),
     actions=(
         Expected(keywords=(("batter",),), owner="tomas", due="thursday"),
-        Expected(keywords=(("count", "unit", "lakeside"),), owner="priya"),
+        Expected(keywords=(("count",),), owner="priya"),
         Expected(keywords=(("survey", "signal", "meter", "wi-fi"),), owner=None),
     ),
 )

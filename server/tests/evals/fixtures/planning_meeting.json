@@ -78,7 +78,7 @@
     {"at": "01:08", "kind": "notes", "text": "Handhelds last about 6 hours at full brightness, nearly 8 lowered."},
     {"at": "01:47", "kind": "decisions", "text": "Buy spare batteries and push the brightness profile before Lakeside."},
     {"at": "01:58", "kind": "actions", "text": "Order the spare batteries", "key": ["batter"], "owner": "Tomas", "due": "Thursday"},
-    {"at": "02:22", "kind": "actions", "text": "Send Tomas the Lakeside unit count", "key": ["count", "unit", "headcount", "handheld"], "owner": "Priya", "due": "today"},
+    {"at": "02:22", "kind": "actions", "text": "Send Tomas the Lakeside unit count", "key": ["count", "headcount", "handheld"], "owner": "Priya", "due": "today"},
     {"at": "03:17", "kind": "actions", "text": "Walk the Lakeside floor with a signal meter", "key": ["signal", "survey", "meter"]},
     {"at": "04:30", "kind": "decisions", "text": "Go live by the 17th at the latest, otherwise wait until January."},
     {"at": "05:30", "kind": "notes", "text": "About 900 returns unprocessed at Riverside, a third marked unavailable online."},
