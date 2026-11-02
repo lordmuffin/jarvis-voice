@@ -119,6 +119,13 @@ describe("every server event type", () => {
 });
 
 describe("hello_ack / ack / status / error / final_note / marker", () => {
+  it("clears a transcription-offline error once a segment shows transcription works again", () => {
+    const away = { type: "error", code: "stt_unavailable", message: "offline" } as ServerEvent;
+    const other = { type: "error", code: "bad_frame", message: "no" } as ServerEvent;
+    expect(fold([away, segment]).error).toBeNull();
+    expect(fold([other, segment]).error).toEqual({ code: "bad_frame", message: "no" });
+  });
+
   it("tracks acked seqs, only moving forward", () => {
     let s = reduce(initialState, fixture<ServerEvent>("hello_ack"));
     expect(s.acked).toEqual({ mic: 41, system: null });

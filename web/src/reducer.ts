@@ -177,7 +177,9 @@ export function reduce(state: LiveState, event: Event): LiveState {
     }
     case "segment": {
       const { type: _t, ...seg } = event;
-      return mergeSegments(state, [seg]);
+      const next = mergeSegments(state, [seg]);
+      // A transcript line arrived, so whatever said transcription was offline is over.
+      return next.error?.code === "stt_unavailable" ? { ...next, error: null } : next;
     }
     case "speaker_update":
       return applySpeakers(state, event);

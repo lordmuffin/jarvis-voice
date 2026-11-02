@@ -16,7 +16,8 @@ import { Timeline } from "../jarvis/Timeline";
 import { useNaming } from "../jarvis/useNaming";
 import { useArrivals } from "../jarvis/useArrivals";
 import { useLookMarker } from "../look";
-import { showsProcessingWhileLive } from "../processing";
+import { SessionWarnings } from "../jarvis/SessionWarnings";
+import { showsProcessingWhileLive, transcriptionOffline } from "../processing";
 import { initialState, reduce, transcriptLines, type Event } from "../reducer";
 import type { SessionDetail, WorkItemPage } from "../types";
 import { watchSession } from "../ws";
@@ -126,6 +127,7 @@ export function LiveSession({
   }
 
   const copilotOffline = !!s.status && !s.status.llm_ok && session.streaming;
+  const sttOffline = transcriptionOffline(s.status, session.streaming);
   return (
     <Column>
       <SessionHeader
@@ -163,7 +165,7 @@ export function LiveSession({
           </>
         }
       />
-      {s.error && <Banner variant="error">{s.error.message}</Banner>}
+      <SessionWarnings sttOffline={sttOffline} error={s.error} />
       {endError && <Banner variant="error">{endError}</Banner>}
       <Section>
         <Timeline
