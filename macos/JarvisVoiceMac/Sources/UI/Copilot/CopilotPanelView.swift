@@ -206,11 +206,11 @@ struct CopilotPanelView: View {
             return "The audio is kept and will be transcribed when Whisper is back."
         }
         switch model.link {
-        case .reconnecting: "Still recording. Nothing is lost."
-        case .failed(let why): why
+        case .reconnecting: return "Still recording. Nothing is lost."
+        case .failed(let why): return why
         case .offlineLocal where model.sessionFellBack:
-            "Server unreachable. Recording on this Mac; it uploads when the server is back."
-        default: nil
+            return "Server unreachable. Recording on this Mac; it uploads when the server is back."
+        default: return nil
         }
     }
 
