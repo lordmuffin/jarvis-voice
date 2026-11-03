@@ -93,7 +93,14 @@ def _eval_record(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     out = args.out or readset.default_output_dir(env)
     recorder = readset.SubprocessRecorder(build_command(find_tool(), args.source))
     try:
-        readset.record(readset.prompts(), out, recorder, ask=input, say=print)
+        readset.record(
+            readset.prompts(),
+            out,
+            recorder,
+            ask=input,
+            say=print,
+            mic=readset.describe_source(args.source),
+        )
     except (readset.RecordError, evalset.PullError) as e:
         print(f"jarvis-voice: {e}", file=sys.stderr)
         return 1

@@ -175,3 +175,30 @@ def test_the_read_set_is_private_and_never_in_a_checkout(tmp_path: Path) -> None
 def test_default_output_is_beside_the_pulled_set(tmp_path: Path) -> None:
     out = readset.default_output_dir({"XDG_DATA_HOME": str(tmp_path), "HOME": "/nowhere"})
     assert out == tmp_path / "jarvis-voice" / "eval-read"
+
+
+def test_says_which_mic_it_records_from(tmp_path: Path) -> None:
+    said: list[str] = []
+    it = keys("q")
+    record(
+        ["One."],
+        tmp_path,
+        FakeRecorder([]),
+        ask=lambda _: next(it),
+        say=said.append,
+        mic="Revelator Dynamic",
+    )
+    assert any("Revelator Dynamic" in s for s in said)
+
+
+def test_pure_zeros_are_reported_as_a_dead_mic_not_as_quiet(tmp_path: Path) -> None:
+    said = run(tmp_path, ["Only one."], [silence(2_000), tone(1_000)], ["", "", "", "", ""])
+    dead = [s for s in said if "no signal at all" in s]
+    assert dead and "muted" in dead[0] and "Bluetooth" in dead[0]
+
+
+def test_a_quiet_take_with_some_signal_is_reported_as_quiet(tmp_path: Path) -> None:
+    hiss = tone(2_000, amplitude=40)
+    said = run(tmp_path, ["Only one."], [hiss, tone(1_000)], ["", "", "", "", ""])
+    assert any("too quiet" in s.lower() for s in said)
+    assert not any("no signal at all" in s for s in said)

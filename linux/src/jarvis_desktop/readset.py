@@ -122,6 +122,7 @@ def record(
     *,
     ask: Callable[[str], str],
     say: Callable[[str], None],
+    mic: str | None = None,
 ) -> int:
     """Walks the sentences not yet recorded. Returns how many takes were kept this run."""
     evalset.check_output_dir(out)
@@ -131,6 +132,8 @@ def record(
     manifest = out / "manifest.jsonl"
     done = _recorded_ids(manifest)
     todo = [(i, p) for i, p in enumerate(ps) if clip_id(i, p) not in done]
+    if mic:
+        say(f"Recording from: {mic}")
     say(f"{len(ps) - len(todo)} of {len(ps)} sentences already recorded; {len(todo)} to go.")
     kept = 0
     for n, (i, prompt) in enumerate(todo, 1):
@@ -143,9 +146,10 @@ def record(
                 break
             recorder.start()
             ask("Recording... Enter to stop: ")
-            pcm = trim_silence(recorder.stop())
+            raw = recorder.stop()
+            pcm = trim_silence(raw)
             if not pcm:
-                say("Didn't hear anything. Check the mic and try again.")
+                say(_nothing_heard(raw))
                 continue
             if ask(f"{len(pcm) / BYTES_PER_MS / 1000:.1f} s. Enter to keep, r to redo: ").strip():
                 continue
@@ -154,6 +158,41 @@ def record(
             break
     say(f"\nDone: {kept} kept this run.")
     return kept
+
+
+def _nothing_heard(raw: bytes) -> str:
+    if not any(raw):
+        return (
+            "Didn't hear anything: the mic sent no signal at all (pure zeros). It may be muted, "
+            "unplugged, or a Bluetooth mic whose headset link isn't working. Check the mic "
+            "named above, or pick another with --source."
+        )
+    return (
+        "Didn't hear anything: the take is too quiet. Speak closer, or raise the mic's input "
+        "level, and try again."
+    )
+
+
+def describe_source(name: str | None) -> str | None:
+    """The sound server's description of a source (the default one if ``name`` is None)."""
+    try:
+        if name is None:
+            name = subprocess.run(
+                ["pactl", "get-default-source"], capture_output=True, text=True, check=True
+            ).stdout.strip()
+        listing = subprocess.run(
+            ["pactl", "list", "sources"], capture_output=True, text=True, check=True
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return name
+    current = None
+    for line in listing.splitlines():
+        line = line.strip()
+        if line.startswith("Name:"):
+            current = line.split(":", 1)[1].strip()
+        elif line.startswith("Description:") and current == name:
+            return f"{line.split(':', 1)[1].strip()} ({name})"
+    return name
 
 
 def default_output_dir(env: Mapping[str, str] = os.environ) -> Path:
