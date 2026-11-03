@@ -19,7 +19,7 @@ from jarvis_live.actions.service import ActionService
 from jarvis_live.actions.state import Context
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
-from jarvis_live.copilot.transcript import Line
+from jarvis_live.copilot.transcript import Line, load_final_lines
 from jarvis_live.db.models import (
     OWNER_USER_ID,
     ActionProposal,
@@ -33,6 +33,7 @@ from jarvis_live.users import create_user
 from jarvis_live.voice.loop import VoiceLoop, own_lines
 from jarvis_live.voice.schema import VoiceRequest
 from jarvis_live.voice.service import VoicePass
+from jarvis_live.voice.wake import Heard
 from jarvis_live.workitems.dispatch import Actor
 from jarvis_live.workitems.service import WorkItemError, WorkItemService
 from tests.fakes import FakeClock, FakeLLM, FakeNotifier, add_segments, make_session, new_device
@@ -431,6 +432,102 @@ async def test_a_request_that_cannot_be_filed_is_reported_once_and_not_retried(r
     assert len(rig.llm.calls) == 1
     assert len(rig.replies) == 1
     assert "Nothing was started" in rig.replies[0]
+
+
+async def test_workflow_actions_switched_off_are_said_so(rig: Rig) -> None:
+    rig.llm.queue(
+        "VoiceRequest",
+        VoiceRequest.model_validate(
+            {"target": "action", "proposals": [{"kind": "task.create", "title": "Invoice"}]}
+        ),
+    )
+    await rig.hear("Jarvis, add a task to send the invoice.")
+    rig.proposals = None  # the deployment runs without the actions queue
+    await rig.loop().tick()
+    assert rig.replies == ["Workflow actions are off here. Nothing was started."]
+    assert await rig.actions_filed() == []
+
+
+async def test_cloud_sessions_switched_off_are_said_so_and_nothing_is_drafted(
+    sm: SM, tmp_path: Path
+) -> None:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    rig = Rig(sm, sid, tmp_path, work_items_enabled=False)
+    rig.llm.queue("VoiceRequest", cloud_request())
+    await rig.hear("Jarvis, open a cloud session to retry failed pushes.")
+    await rig.loop().tick()
+    assert rig.replies == ["Cloud sessions are not available here yet. Nothing was started."]
+    assert await rig.items() == []
+
+
+async def test_a_cloud_request_heard_again_after_a_restart_is_not_drafted_twice(rig: Rig) -> None:
+    """The cursor is stored after filing: a crash in between hears the same words again."""
+    await rig.hear("Jarvis, open a cloud session to retry failed pushes.")
+    async with rig.sm() as db:
+        lines = own_lines(await load_final_lines(db, rig.sid, -1))
+    heard = Heard(tuple(lines), "open a cloud session to retry failed pushes.")
+    runner = VoicePass(rig.cfg, rig.sm, rig.llm, rig.notifier)
+    rig.llm.queue("VoiceRequest", cloud_request())
+    first = await runner.run(rig.sid, OWNER_USER_ID, heard, rig.proposals)
+    again = await runner.run(rig.sid, OWNER_USER_ID, heard, rig.proposals)
+    assert first.startswith("Cloud session drafted")
+    assert again == "That cloud session is already filed. Nothing new was started."
+    assert len(await rig.items()) == 1
+
+
+async def test_a_failing_tick_is_logged_and_the_loop_keeps_listening(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    loop = rig.loop()
+    ticks: list[int] = []
+
+    async def tick() -> None:
+        ticks.append(1)
+        if len(ticks) == 1:
+            raise RuntimeError("database restarting")
+
+    loop.tick = tick  # type: ignore[method-assign]
+    task = asyncio.create_task(loop.run())
+    await asyncio.sleep(0)  # the loop reaches its first sleep
+    try:
+        for _ in range(3):
+            await rig.clock.advance(rig.cfg.copilot_poll_s)
+        assert len(ticks) == 3
+        assert "voice tick failed" in caplog.text
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
+async def test_a_cancelled_loop_stops_instead_of_logging_a_failure(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    loop = rig.loop()
+
+    async def tick() -> None:
+        raise asyncio.CancelledError
+
+    loop.tick = tick  # type: ignore[method-assign]
+    task = asyncio.create_task(loop.run())
+    await asyncio.sleep(0)  # the loop reaches its first sleep
+    await rig.clock.advance(rig.cfg.copilot_poll_s)
+    assert task.done() and task.cancelled()
+    assert "voice tick failed" not in caplog.text
+
+
+async def test_a_failing_final_pass_never_blocks_the_note(
+    rig: Rig, caplog: pytest.LogCaptureFixture
+) -> None:
+    await rig.hear("Jarvis, start a Pi session about Flux.")
+    loop = rig.loop()
+
+    def broken() -> Any:
+        raise RuntimeError("database gone")
+
+    loop._sm = broken  # type: ignore[assignment]
+    await loop.flush()  # returns: the note is written after this
+    assert "final voice pass failed" in caplog.text
+    assert rig.llm.calls == []
 
 
 # --- in a live session --------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import wave
@@ -274,6 +275,56 @@ async def test_malformed_response_is_a_request_error() -> None:
 
     p = TierPool(parse_tiers(SPEC), httpx.AsyncClient(transport=httpx.MockTransport(handler)))
     assert await p.transcribe(b"wav", "") == ("ok", "cpu")
+
+
+async def test_a_transcription_that_is_not_text_falls_through_to_the_next_tier() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/models"):
+            return httpx.Response(200)
+        if request.url.host == "gpu.local":
+            return httpx.Response(200, json={"text": 42})
+        return httpx.Response(200, json={"text": "ok"})
+
+    p = TierPool(parse_tiers(SPEC), httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    assert await p.transcribe(b"wav", "") == ("ok", "cpu")
+    assert p.current_tier() == "cpu"
+
+
+async def test_a_tier_that_cannot_be_reached_is_unhealthy_not_an_error() -> None:
+    """The gaming PC is off: its probes fail to connect, and the pool carries on with the rest."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "gpu.local":
+            raise httpx.ConnectError("no route to host")
+        return httpx.Response(200, json={"text": "ok"})
+
+    p = TierPool(parse_tiers(SPEC), httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    await p.probe_all()
+    assert p.current_tier() == "cpu"
+    assert p.fault_s() == 0.0  # away is not a fault
+
+
+async def test_the_probe_loop_notices_a_tier_coming_back_without_any_traffic() -> None:
+    fake = FakeWhisper(gpu={"models": 503}, cpu={})
+    client = httpx.AsyncClient(transport=httpx.MockTransport(fake))
+    p = TierPool(parse_tiers(SPEC), client, probe_interval_s=0.01)
+    loop = asyncio.create_task(p.run_probe_loop())
+    try:
+        for _ in range(200):
+            if p.current_tier() == "cpu":
+                break
+            await asyncio.sleep(0.01)
+        assert p.current_tier() == "cpu"
+        fake.hosts["gpu"] = {}  # the gaming PC is back
+        for _ in range(200):
+            if p.current_tier() == "gpu":
+                break
+            await asyncio.sleep(0.01)
+        assert p.current_tier() == "gpu"
+        assert fake.posts() == []  # no segment was needed to find out
+    finally:
+        loop.cancel()
+        await asyncio.gather(loop, return_exceptions=True)
 
 
 # --- guards ----------------------------------------------------------------------------------

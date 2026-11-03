@@ -7,6 +7,7 @@ from jarvis_live.copilot.schema import FinalAction, FinalNote
 from jarvis_live.copilot.transcript import Line
 from jarvis_live.finalize.render import (
     NoteMeta,
+    NoteProposal,
     NoteWorkItem,
     render_filename,
     render_note,
@@ -154,3 +155,59 @@ def test_source_is_in_the_frontmatter_only_when_the_recording_states_one() -> No
     assert "source" not in frontmatter(render_note(NOTE, META, LINES))
     watch = dataclasses.replace(META, source="watch")
     assert frontmatter(render_note(NOTE, watch, LINES))["source"] == "watch"
+
+
+def _proposed(out: str) -> list[str]:
+    return out.split("## Proposed actions\n\n", 1)[1].split("\n\n", 1)[0].splitlines()
+
+
+def test_proposed_actions_show_each_kind_as_a_checkbox_snapshot() -> None:
+    proposals = [
+        NoteProposal(
+            "a1", "task.create", {"text": "Send\nthe quote", "due": "2026-10-16"}, "proposed"
+        ),
+        NoteProposal(
+            "a2", "vault.append", {"path": "30 Resources/Sleep.md", "text": "x" * 200}, "succeeded"
+        ),
+        NoteProposal(
+            "a3",
+            "reminder.schedule",
+            {"title": "Call Dana", "at": "2026-10-09T20:00:00+00:00"},
+            "approved",
+        ),
+        NoteProposal(
+            "a4",
+            "github.comment",
+            {"repo": "o/r", "pr": 7, "body": "LGTM"},
+            "failed",
+            "403 Forbidden",
+        ),
+        NoteProposal("a5", "task.create", {"text": "Dropped"}, "rejected"),
+        NoteProposal("a6", "task.create", {"text": "Too late"}, "expired"),
+    ]
+    out = render_note(NOTE, META, LINES, proposals=proposals, review_url="https://live.example/r")
+    assert _proposed(out) == [
+        "- [ ] Task: Send the quote (due 2026-10-16) <!-- action:a1 -->",
+        f"- [x] Append to [[Sleep]]: {'x' * 120} <!-- action:a2 -->",
+        "- [ ] Reminder 2026-10-09 15:00: Call Dana <!-- action:a3 -->",  # in the note's zone
+        "- [ ] Comment on o/r#7: LGTM — failed: 403 Forbidden <!-- action:a4 -->",
+    ]
+    assert "[Review and approve in Jarvis](https://live.example/r)" in out
+    heads = [line for line in out.splitlines() if line.startswith("## ")]
+    assert heads.index("## Proposed actions") == heads.index("## Transcript") - 1
+
+
+def test_only_rejected_or_expired_proposals_leave_no_section() -> None:
+    gone = [NoteProposal("a1", "task.create", {"text": "No"}, "rejected")]
+    assert "## Proposed actions" not in render_note(NOTE, META, LINES, proposals=gone)
+
+
+def test_without_a_review_link_the_proposals_are_still_listed() -> None:
+    out = render_note(
+        NOTE,
+        META,
+        LINES,
+        proposals=[NoteProposal("a1", "task.create", {"text": "Yes"}, "proposed")],
+    )
+    assert _proposed(out) == ["- [ ] Task: Yes <!-- action:a1 -->"]
+    assert "Review and approve" not in out
