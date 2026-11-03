@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.34.1...server-v0.34.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **server:** record a held ask's playback in the order the client sent it ([58d3001](https://github.com/lordmuffin/jarvis-voice/commit/58d300169e685ff94649cda5a4cbfc8394934ff8))
+* **server:** record a held ask's playback in the order the client sent it ([f516ea4](https://github.com/lordmuffin/jarvis-voice/commit/f516ea4dc11ef795541976bb798fdecb4ead4830))
+
 ## [0.34.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.34.0...server-v0.34.1) (2026-11-03)
 
 
