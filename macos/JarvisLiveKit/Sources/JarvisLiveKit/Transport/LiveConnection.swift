@@ -124,6 +124,15 @@ public actor LiveConnection {
         enqueueControl(.marker(marker))
     }
 
+    /// Hold to ask: sent only while connected, and never resent after a reconnect, because an ask
+    /// is live speech. Returns false when dropped.
+    @discardableResult
+    public func sendAsk(_ message: ClientMessage) -> Bool {
+        guard state == .connected else { return false }
+        enqueueControl(message)
+        return true
+    }
+
     /// Flushes all audio, sends `end`, waits for the server to ack everything (and, briefly, for
     /// `final_note`), then closes. Returns once the connection has finished or failed.
     ///
@@ -202,6 +211,7 @@ public actor LiveConnection {
             if let seq = helloAck.acked[channel] { try await outbox.markAcked(channel, seq: seq) }
         }
         failureCount = 0
+        pendingControl.removeAll { $0.isAsk }  // an earlier connection's: never resent
         setState(.connected)
 
         // Everything past the (now authoritative) ack gets replayed by the send loop from seq acked+1.
@@ -250,7 +260,7 @@ public actor LiveConnection {
         }
         components.queryItems = [
             URLQueryItem(name: "ticket", value: ticket),
-            URLQueryItem(name: "features", value: SpeakerUpdate.feature),
+            URLQueryItem(name: "features", value: "\(SpeakerUpdate.feature),\(VoiceState.feature)"),
         ]
         return components.url!
     }
@@ -444,6 +454,15 @@ public actor LiveConnection {
             }
         } onCancel: {
             Task { await self.wake() }
+        }
+    }
+}
+
+extension ClientMessage {
+    var isAsk: Bool {
+        switch self {
+        case .askBegin, .askEnd, .askPlayed: true
+        default: false
         }
     }
 }

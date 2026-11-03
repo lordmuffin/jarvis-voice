@@ -251,7 +251,7 @@ struct LiveConnectionTests {
         #expect(sawFinalNote)
     }
 
-    @Test func streamURLAsksForSpeakerUpdates() {
+    @Test func streamURLAsksForSpeakerUpdatesAndAsks() {
         let url = LiveConnection.streamURL(
             base: URL(string: "https://jarvis.example")!, sessionId: "abc", ticket: "tkt 1"
         )
@@ -259,6 +259,9 @@ struct LiveConnectionTests {
         #expect(parts.scheme == "wss")
         #expect(parts.path == "/v1/sessions/abc/stream")
         #expect(parts.queryItems?.first { $0.name == "ticket" }?.value == "tkt 1")
-        #expect(parts.queryItems?.first { $0.name == "features" }?.value == SpeakerUpdate.feature)
+        #expect(
+            parts.queryItems?.first { $0.name == "features" }?.value
+                == "\(SpeakerUpdate.feature),\(VoiceState.feature)"
+        )
     }
 }

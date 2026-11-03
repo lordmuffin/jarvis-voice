@@ -83,6 +83,8 @@ final class AppModel {
     var dismissedSuggestionIDs: Set<String> = []
     /// Whole seconds into the recording, refreshed once a second; drives the menu-bar and panel clocks.
     private(set) var elapsedSeconds = 0
+    /// Hold to ask (docs/plans/voice-push-to-talk.md): hidden unless the server offers it.
+    private(set) var ask: AskUIState = .hidden
 
     let settings: SettingsModel
     let dictation: DictationController
@@ -102,11 +104,12 @@ final class AppModel {
         refreshLocalSessions()
         // The test host launches the app; global hotkeys have no place there.
         guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
-        hotkeys.register { [weak self] action in
+        hotkeys.register { [weak self] action, pressed in
             guard let self else { return }
             switch action {
-            case .toggleSession: Task { await self.toggle() }
-            case .marker: self.addMarker()
+            case .toggleSession: if pressed { Task { await self.toggle() } }
+            case .marker: if pressed { self.addMarker() }
+            case .ask: self.holdAsk(pressed)
             }
         }
         dictation.startMonitoring()
@@ -306,6 +309,56 @@ final class AppModel {
         }
     }
 
+    // MARK: Hold to ask
+
+    /// ⌃⌥A down and up. The marker times are on the audio frames' clock, which is this session clock.
+    func holdAsk(_ down: Bool) {
+        guard isRecording, let run, let controller = run.ask?.controller else { return }
+        let tMs = run.clock.elapsedMs()
+        if down { controller.down(tMs: tMs) } else { controller.up(tMs: tMs) }
+    }
+
+    /// For a streaming session only: a local-only one has no connection, so asks never exist there.
+    private func openAsk(_ run: Run, connection: LiveConnection) {
+        // One consumer keeps begin, end and played in order on the wire.
+        let (outgoing, sender) = AsyncStream.makeStream(of: ClientMessage.self)
+        let pump = Task { for await message in outgoing { await connection.sendAsk(message) } }
+        let speech = SpeechOutput()
+        let clock = run.clock
+        let ref = AskRef()
+        let route = OutputRouteMonitor { closed in ref.controller?.onRouteChanged(closed: closed) }
+        let controller = AskController(
+            send: { sender.yield($0) },
+            speaker: speech,
+            routeClosed: { route.isClosed() },
+            clock: { clock.elapsedMs() },  // latency is a difference, so the session clock serves
+            streamMs: { clock.elapsedMs() },
+            onChange: { [weak self] state in Task { @MainActor in self?.ask = state } }
+        )
+        ref.controller = controller
+        route.start()
+        run.ask = AskParts(controller: controller, speech: speech, route: route, pump: pump, sender: sender)
+        run.store.onAsk = { event in
+            switch event {
+            case .voiceState(let state): controller.onAvailable(state.available)
+            case .askReply(let reply): controller.onReply(reply)
+            default: break
+            }
+        }
+    }
+
+    private func closeAsk(_ run: Run) {
+        guard let parts = run.ask else { return }
+        run.store.onAsk = nil
+        parts.controller.onAvailable(false)
+        parts.route.stop()
+        parts.speech.stop()
+        parts.sender.finish()
+        parts.pump.cancel()
+        run.ask = nil
+        ask = .hidden
+    }
+
     // MARK: Setup
 
     private func prepare(localOnly requestedLocalOnly: Bool, mode: Mode, store: SessionStore) async throws -> Run {
@@ -416,6 +469,7 @@ final class AppModel {
         }
 
         if let connection {
+            openAsk(run, connection: connection)  // before attach, so no voice_state is missed
             run.store.attach(connection)
             await connection.start()
         }
@@ -442,6 +496,7 @@ final class AppModel {
     // MARK: Teardown
 
     private func tearDown(_ run: Run, writeFile: Bool) async {
+        closeAsk(run)
         run.mic.stop()
         run.system?.stop()
         for pipeline in run.pipelines.values { pipeline.finish() }
@@ -552,6 +607,20 @@ final class AppModel {
 
 /// Everything that exists only while a session is live.
 @MainActor
+/// Lets the route monitor, made first, reach the controller made after it.
+private final class AskRef: @unchecked Sendable {
+    weak var controller: AskController?
+}
+
+/// Everything hold to ask needs for one session.
+private struct AskParts {
+    let controller: AskController
+    let speech: SpeechOutput
+    let route: OutputRouteMonitor
+    let pump: Task<Void, Never>
+    let sender: AsyncStream<ClientMessage>.Continuation
+}
+
 private final class Run {
     struct Emissions {
         let stream: AsyncStream<LocalTranscriber.Emission>
@@ -583,6 +652,7 @@ private final class Run {
     var transcribers: [LocalTranscriber] = []
     var finals: [DraftSegment] = []
     var activity: NSObjectProtocol?
+    var ask: AskParts?
 
     init(
         sessionId: String, channels: [Channel], mode: AppModel.Mode, localOnly: Bool, fellBack: Bool,
