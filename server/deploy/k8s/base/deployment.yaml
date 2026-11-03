@@ -95,6 +95,10 @@ spec:
             - name: metrics
               containerPort: 9100
               protocol: TCP
+            # MediaMTX's auth hook (streams.yaml); listens only when streams are enabled.
+            - name: streams-auth
+              containerPort: 9101
+              protocol: TCP
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true

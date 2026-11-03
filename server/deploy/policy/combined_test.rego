@@ -8,6 +8,8 @@ all := [
 	doc("RoleBinding", "jarvis-dispatch"),
 	doc("ServiceAccount", "jarvis-live"),
 	doc("PersistentVolumeClaim", "jarvis-dispatch-mirrors"),
+	doc("NetworkPolicy", "jarvis-live-streams-auth"),
+	doc("NetworkPolicy", "jarvis-live-mediamtx"),
 ]
 
 test_everything_present_passes if {
@@ -117,4 +119,9 @@ test_cronjob_on_a_shared_rwx_claim_may_run_anywhere if {
 		app_with(["jarvis-live-outbox"]),
 		cron(["jarvis-live-outbox"], {}),
 	]))
+}
+
+test_streams_without_their_fence_denied if {
+	some msg in deny with input as [d | some d in all; d.contents.metadata.name != "jarvis-live-streams-auth"]
+	contains(msg, "NetworkPolicy/jarvis-live-streams-auth")
 }

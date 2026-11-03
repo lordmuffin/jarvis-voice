@@ -8,3 +8,18 @@ deny contains msg if {
 	input.metadata.namespace != "jarvis-live"
 	msg := sprintf("%s/%s: live objects must be in namespace jarvis-live", [input.kind, input.metadata.name])
 }
+
+# Stream ingest (MediaMTX, docs/obs.md) runs on lab only until it is promoted on purpose:
+# turning it on for live is a deliberate edit to this rule, not a side effect of a release.
+deny contains msg if {
+	input.kind == "ConfigMap"
+	input.data.JARVIS_LIVE_STREAMS_ENABLED == "true"
+	msg := sprintf("ConfigMap/%s: live must not ingest streams yet (JARVIS_LIVE_STREAMS_ENABLED)", [input.metadata.name])
+}
+
+deny contains msg if {
+	input.kind == "Deployment"
+	input.metadata.name == "jarvis-live-mediamtx"
+	object.get(input.spec, "replicas", 1) != 0
+	msg := "Deployment/jarvis-live-mediamtx: live must run no stream ingest yet (replicas 0)"
+}

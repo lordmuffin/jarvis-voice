@@ -11,6 +11,10 @@ required := [
 	["RoleBinding", "jarvis-dispatch"],
 	["ServiceAccount", "jarvis-live"],
 	["PersistentVolumeClaim", "jarvis-dispatch-mirrors"],
+	# Stream ingest: the auth hook port is reachable from MediaMTX only, and MediaMTX's
+	# read and API ports from the app only.
+	["NetworkPolicy", "jarvis-live-streams-auth"],
+	["NetworkPolicy", "jarvis-live-mediamtx"],
 ]
 
 present contains [d.contents.kind, d.contents.metadata.name] if some d in input
