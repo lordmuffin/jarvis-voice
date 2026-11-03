@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.16.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.15.1...macos-v0.16.0) (2026-11-03)
+
+
+### Features
+
+* **macos:** hold ⌃⌥A to ask Jarvis, answered into headphones ([35ea33e](https://github.com/lordmuffin/jarvis-voice/commit/35ea33e0115ce37696e17c08c72640c485a7815f))
+* **macos:** hold ⌃⌥A to ask Jarvis, answered into headphones (R6, 3 of 3) ([9cf2be7](https://github.com/lordmuffin/jarvis-voice/commit/9cf2be798f36f736e3e873d774483bc4eda7ff81))
+* **server:** add hold-to-ask messages to protocol v1 ([3ec807b](https://github.com/lordmuffin/jarvis-voice/commit/3ec807bf5c2aebbb7e88c978ceb25370c5075ce3))
+* **server:** hold to ask, answered on the device (R6, 1 of 3) ([c77012b](https://github.com/lordmuffin/jarvis-voice/commit/c77012bf3c48d57e3ffb6c39a04c09bd59320d8c))
+
+
+### Bug Fixes
+
+* **macos:** keep Run's @MainActor on Run, not on the ask helpers ([ebf6d40](https://github.com/lordmuffin/jarvis-voice/commit/ebf6d40c68797b1deeee5b28c1a44781449a2fbb))
+
 ## [0.15.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.15.0...macos-v0.15.1) (2026-11-03)
 
 
