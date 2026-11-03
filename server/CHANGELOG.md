@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.34.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.34.0...server-v0.34.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **server:** run the nightly backup on the app's node ([1fc747a](https://github.com/lordmuffin/jarvis-voice/commit/1fc747ab6c88d17ac15fbcfa94202ebc9ab7707f))
+* **server:** run the nightly backup on the app's node ([7ff12f9](https://github.com/lordmuffin/jarvis-voice/commit/7ff12f95cc55c76f05f8585633dbafe1e9e76acf))
+
 ## [0.34.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.33.1...server-v0.34.0) (2026-11-03)
 
 
