@@ -44,16 +44,16 @@
 #     server-v0.33.0), R3 (#270, server-v0.33.1), R1's first replay (#269), 12 step 3b (#272),
 #     the coverage fix (#278), R6's build (#275, #276, #277, server-v0.34.0, macos-v0.16.0,
 #     android-v1.23.0), R2's voice eval and its bar (#280).
-#   Live runs server-v0.34.0 with JARVIS_LIVE_VOICE_ENABLED false, so hold-to-ask is off there. Lab has it.
+#   Live runs server-v0.34.1 with JARVIS_LIVE_VOICE_ENABLED false, so hold-to-ask is off there. Lab has it.
 #   Nothing is uncommented: herd -f Tasks.herd starts nothing. All decisions are under REPLAN and IN FLIGHT.
-#   RUNNING, do not restart: R2 (session chore-interactive-model-eval, workspace w31). BLOCKED ON ME:
-#     how the bar treats 'cloud, repo not clear'. See R2 below.
+#   RUNNING, do not restart: R2 (session chore-interactive-model-eval, workspace w31), on the repo-rule
+#     variant since 04:49 UTC, after my two answers. See R2 below.
 #   WAITING FOR ME: R4's PR 2, homelab #847. Merge in a quiet hour: it restarts the LiteLLM proxy.
 #     Then R4 runs the failover drills, PR 3 frees pve's card, and I run the one systemctl suspend.
 #   NEXT, me: R6's hardware test on lab. Install the Fold APK from android-v1.23.0 and the Mac app from
 #     macos-v0.16.0, do 30 asks on each, then run jarvis-live ask-report. Mac checks: rows B30-B35 in
 #     macos/JarvisVoiceMac/TESTING.md. Latency shows as qwen3.8-flash-next until R5 lands.
-#   NEXT, me: merge #281, the backup fix (see Backups below).
+#   NEXT, me: check /healthz's backup age after 03:00 UTC on 2026-11-04, the first run with #281.
 #   NEXT, me: check by eye that actions arrive and titles behave on live, session a54a7906.
 #   READY NOW, homelab, see Run above: the rest of 21.
 #   R1b, the busy replay, on a weekday with agents busy. It decides whether the copilot stays on Flash
@@ -131,9 +131,15 @@
 # gemma4-e4b), and so did the q25-3b control, 44 of 75. On the 2070, unproven: 9b and 8b project to
 # 4.73 s and 4.13 s p95 against 2.5 s; the 3B projects to 1.74 s.
 # 'cloud, repo not clear' fails on every model: they take the first repo listed, not null, and live
-# lists jarvis-voice first. R2 asks me whether that case keeps gating. Options: 1. keep it, and add
-# an eval-only prompt variant that says leave repo null (R2 recommends this), 2. score it without
-# gating, 3. keep it with no variant. R2 is also fixing a checker bug that failed "null" strings.
+# lists jarvis-voice first. The list's order decides it, not the word Jarvis, so null is reachable.
+# DECIDED 2026-11-03: 1. The case keeps gating, and the bar stays exactly as committed. R2 adds an
+# eval-only prompt variant, named-day+kinds+repo, whose repo rule says pick a listed repo only if
+# the request names it or says what it is for, otherwise null. The plan reports both requests.
+# 2. A candidate stops as briefed once it cannot pass voice, and only passing candidates get the
+# copilot cases. No complete rows for rescoring: that keeps CPU off Jev's replica.
+# The variant run started 04:49 UTC: gemma4-e4b passed 'cloud, repo not clear' on its first run.
+# R2 also fixed a checker bug that failed "null" strings, and graded an off-list repo as the server
+# stores it (6dea8b4, pushed, no PR yet). Its runs stop if R4's state stops saying #847 is open.
 # Rows and scripts are in ~/.local/share/jarvis-interactive-eval, never in the repo.
 # The gaming PC now runs Jev's CPU replica, so R2's 12-thread runs must not overlap R4's drills.
 #chore/interactive-model-eval @forge: This is R2 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read the REPLAN, docs/plans/fast-tier.md, server/src/jarvis_live/voice/service.py, voice/schema.py, server/tests/evals/ and chore/copilot-reply-size's reply_size.py and write-up. Goal: choose the model for pve's 2070 now it has the whole card: 7 GiB, Whisper elsewhere. Scope: a) No voice eval exists. Build one in eval-only code from invented transcripts, on the real VOICE_SYSTEM and VoiceRequest, thinking off, and state its pass bar before running anything. b) At most 3 candidates that fit 7 GiB with their context and slots, by the plan's evidence, not vendor benchmarks. Say what speed the 2070 should give each and how that is known, and name it unproven if it is an estimate. c) Run each on the voice eval, and on the 17 copilot cases at three runs each, because the copilot falls back to this model if Flash fails the replay. Report the 11 bar cases, tokens per reply and whether voice fits 2.5 s on that card. Stop a candidate once it cannot pass voice. d) If any template ignores enable_thinking, turn reasoning off at the server before judging it: lfm25-26b's first runs measured reasoning, not the reply. Constraints: all inference local on CPU, images by digest, models by SHA256, self-hosted weights only, no Flash, no gateway, no pods. Eval-only code, defaulting to today's requests. This repo is public. One PR, titled chore(plans), left for me to merge. DONE WHEN: the plan names the model and what I still have to decide, from measurements.
@@ -168,12 +174,13 @@
 # Lab only has voice today. The app defaults to live, so without this I never see it there.
 #feat/voice-on-live @forge: This is R7 of the REPLAN in Tasks.herd. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read docs/plans/voice-commands.md, docs/plans/voice-push-to-talk.md, docs/plans/fast-tier.md, server/deploy/k8s/base/configmap.yaml, server/deploy/k8s/jarvis-live-lab/ and server/deploy/README.md. Goal: voice works on live, not only on lab. Scope: a) Set JARVIS_LIVE_VOICE_ENABLED true in base, and VOICE_MODEL to R5's alias if it landed, removing lab's patches that this makes redundant. b) Say what live gains that lab did not exercise, including the action queue, Gotify replies and the owner's sessions. c) Update voice-commands.md's status and section 5 with what I decided. Constraints: this changes what live does, so title it feat(server). VOICE_PI_ENABLED stays false: Pi sessions need their own homelab steps and my decision. Lab must never get a vault write credential or publishing. Never touch deploy branches. Stop if R6's measured latency or R5's voice eval has not been reported. DONE WHEN: the PR is open with tests passing, and after the release a real session on live answers a spoken request.
 
-# Backups. PR #281 OPEN, waiting for me. No herd line: done inline.
+# Backups. MERGED (#281), on live as server-v0.34.1, voice still off. No herd line: done inline.
 # 2026-11-03: the 03:00 UTC live backup sat in ContainerCreating on agent-a for an hour. Its affinity
 # picked eligible nodes but not the app's, and it mounts two ReadWriteOnce claims the app holds.
 # A manual run pinned to the app's node finished at 04:24:59 UTC, and /healthz reports it fresh.
 # #281 adds podAffinity to the app's pods, and a combined policy that denies the old shape.
-# Until it merges, any 03:00 run can hang again: check /healthz's backup age each morning.
+# Live's CronJob carries the podAffinity since 0.34.1. The manual job and three failed vault-clone
+# jobs from 5 and 13 days ago were deleted. The first scheduled run with the fix is 2026-11-04 03:00.
 
 # Task 21: ALERTS THAT FIRE WHEN THE ENGINE FREEZES (priority: high)
 # PLAN APPROVED 2026-11-01, STEPS 1a TO 2 AND #264 MERGED. THE REST IS READY, as feat/llm-path-alerts-rest.
