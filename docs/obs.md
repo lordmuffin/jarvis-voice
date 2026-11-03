@@ -55,7 +55,7 @@ apart by diarization only, and everything is labelled "me".
    - Server: `rtmp://<ingest-host>:1935`
    - Stream Key: `obs-desk?user=obs&pass=<key>`
 2. **Settings → Advanced → Automatically Reconnect**: on, retry delay 2–10 s. A dropped
-   connection that comes back within 60 s continues the same session.
+   connection that comes back within 3 minutes continues the same session.
 3. **Start Streaming.** The session appears in the dashboard within a few seconds.
 4. **Stop Streaming.** Sixty seconds later the session ends and the final note is written.
 
@@ -86,7 +86,7 @@ Your broadcast is untouched.
    - Video: any encoder at a low bitrate (Jarvis ignores video; 500 Kbps is plenty)
    - Audio Track: tick **2** and **3** only
    - Audio Encoder: **aac**, Audio Bitrate 128
-3. **Start Recording** starts the Jarvis session; **Stop Recording** ends it (after the 60 s
+3. **Start Recording** starts the Jarvis session; **Stop Recording** ends it (after the 3-minute
    grace period). Start Streaming is separate and goes wherever it went before.
 
 The first audio track in what OBS sends is the mic, the second desktop audio; any further tracks
@@ -108,9 +108,9 @@ Create its key with `--source mobile`. The phone has to be on the LAN or the VPN
 | You | Jarvis |
 |---|---|
 | Start streaming or recording | A session starts with the key's title, mode and restricted flag, tagged `obs` (or `mobile`). |
-| Network drops for under 60 s, OBS reconnects | The same session continues. The audio sent while disconnected is lost; the timeline skips the gap. |
+| Network drops, OBS is back within 3 minutes | The same session continues. The audio sent while disconnected is lost; the timeline skips the gap. |
 | Network drops for longer | The session ends with a final note; the reconnect starts a new one. |
-| Stop | The session ends 60 s later (`JARVIS_LIVE_STREAMS_STOP_GRACE_S`) and the final note runs. |
+| Stop | The session ends 3 minutes later (`JARVIS_LIVE_STREAMS_STOP_GRACE_S`, 180 s) and the final note runs. OBS gives no sign that tells a stop from a drop, so every end waits out the grace period. |
 | More than 8 streams at once | The ninth is refused (`JARVIS_LIVE_STREAMS_MAX`). |
 
 ## When it does not work
@@ -122,4 +122,4 @@ Create its key with `--source mobile`. The phone has to be on the LAN or the VPN
   in OBS. The server logs `online but has no ingest key` if the name has no key.
 - **Nothing reaches the server at all:** check that you are on the LAN or the VPN, and that
   the homelab exposes the ingest ports (RTMP 1935/tcp, SRT 8890/udp).
-- **A session per reconnect:** OBS's reconnect delay is longer than the 60 s grace period.
+- **A session per reconnect:** OBS took longer than the 3-minute grace period to reconnect. OBS waits longer between each retry, so a short Retry Delay (Settings → Advanced → Automatically Reconnect, 2 s) and a high Maximum Retries help.
