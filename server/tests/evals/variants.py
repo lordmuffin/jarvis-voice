@@ -2,7 +2,7 @@
 the system prompt and the JSON schema. ``TODAY`` is what copilot/loop.py sends, and it is the
 default everywhere here, so the evals keep grading the real request unless asked otherwise.
 
-A real change to the reply is a later PR, after the lab soak of #260: docs/plans/fast-tier.md."""
+A real change to the reply is a later PR: docs/plans/fast-tier.md."""
 
 import re
 from collections.abc import Mapping, Sequence
