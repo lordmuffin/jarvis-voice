@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.36.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.35.0...server-v0.36.0) (2026-11-03)
+
+
+### Features
+
+* **server:** a producer connection can take its tickets from a ticket source ([929824f](https://github.com/lordmuffin/jarvis-voice/commit/929824fe21367ef8e25ea40fa89675bcf54e5125))
+* **server:** decode one audio track of a pushed stream to the wire codec ([7d3d47c](https://github.com/lordmuffin/jarvis-voice/commit/7d3d47cc1ae532dca19fbc0e11743f4de9fb2954))
+* **server:** ingest keys, the publish-only credential for pushed streams ([cfc4ef6](https://github.com/lordmuffin/jarvis-voice/commit/cfc4ef665a4b2e1f61701fc6dcd57f78373e1800))
+* **server:** live sessions from OBS and phones over RTMP/SRT (MediaMTX, lab only) ([60e8bdc](https://github.com/lordmuffin/jarvis-voice/commit/60e8bdc3e605f227c0d74b3de26c674602571ba0))
+* **server:** MediaMTX API client: online paths and their audio tracks ([ed9748b](https://github.com/lordmuffin/jarvis-voice/commit/ed9748b030e79e0699d9cd7afcd65371ced210a1))
+* **server:** MediaMTX auth hook: publish with the path's key, read only as the server ([fde2934](https://github.com/lordmuffin/jarvis-voice/commit/fde2934aa95a824e0974453830b839c085e41d74))
+* **server:** MediaMTX stream ingest manifests, on in lab, fenced and off in live ([951912b](https://github.com/lordmuffin/jarvis-voice/commit/951912b68aafe7d4452ac505ee2cedd37fb1d784))
+* **server:** run stream ingest and its auth hook when enabled, and a stream-key CLI ([2dad9d1](https://github.com/lordmuffin/jarvis-voice/commit/2dad9d10da11d9d553710c50b2ddeb42ef7aad4f))
+* **server:** stream ingest: pushed streams become live sessions that survive drops ([906bf42](https://github.com/lordmuffin/jarvis-voice/commit/906bf426d70193ce51dee9f00adfc0324a8fec4c))
+
+
+### Documentation
+
+* stream from OBS or a phone into Jarvis Live ([e94aaaf](https://github.com/lordmuffin/jarvis-voice/commit/e94aaaf66983949cf2115ce45239091d275e3f72))
+
 ## [0.35.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.34.2...server-v0.35.0) (2026-11-03)
 
 
