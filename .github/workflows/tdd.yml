@@ -30,7 +30,9 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-          cache-dependency-glob: server/uv.lock
+          cache-dependency-glob: |
+            server/uv.lock
+            linux/uv.lock
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

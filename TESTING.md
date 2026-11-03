@@ -7,7 +7,7 @@ what is tested, how to run it, and where the gaps are.
 
 | Command | What | Needs | Runtime |
 |---|---|---|---|
-| `make test` | Fast suite: lint (ruff, mypy, tsc, actionlint), server unit tests, legacy tests, web unit tests, deploy render + kubeconform + conftest | `make deps` once; network for tool/schema downloads; **no Docker** | ~30 s |
+| `make test` | Fast suite: lint (ruff, mypy, tsc, actionlint), server and linux unit tests, legacy tests, web unit tests, deploy render + kubeconform + conftest | `make deps` once; network for tool/schema downloads; **no Docker** | ~30 s |
 | `make test-all` | `make test` + server integration (Postgres) with coverage, legacy and web coverage, Playwright, Android unit tests, Swift tests, ratchets | Docker **or** `JARVIS_LIVE_TEST_DATABASE_URL`; JDK + `ANDROID_HOME`; macOS for Swift | ~3 min |
 | `make lint` | Formatters and linters only | | ~10 s |
 | `make ratchet` | Compare coverage/eval numbers with the baselines (`RATCHET_FLAGS=--update` raises them) | coverage reports from `test-all` | instant |
@@ -17,8 +17,8 @@ path-filtered workflows (`server-ci`, `web-ci`, `python-ci`, `macos-ci`, `deploy
 
 ## What is tested, by tier
 
-1. **Lint / static:** ruff + strict mypy (server), `tsc --noEmit` (web), actionlint (workflows).
-2. **Unit and smoke:** pytest for `server/` and the legacy service (every module imports, the CLI answers `--help`), Vitest for `web/`.
+1. **Lint / static:** ruff + strict mypy (server, linux), `tsc --noEmit` (web), actionlint (workflows).
+2. **Unit and smoke:** pytest for `server/`, `linux/` and the legacy service (every module imports, the CLI answers `--help`), Vitest for `web/`.
    Component tests render views into a DOM with `happy-dom`, opted in per file (`// @vitest-environment happy-dom`;
    the rest stay on `node`). First user: `web/tests/workitems-view.test.ts` (the work item review cards).
    Server tests that need Postgres are marked `integration` automatically (`server/tests/conftest.py`), so `-m "not integration"` is the Docker-free fast suite.
