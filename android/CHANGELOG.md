@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.23.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.22.1...android-v1.23.0) (2026-11-03)
+
+
+### Features
+
+* **android:** hold to ask Jarvis, answered into headphones ([478656d](https://github.com/lordmuffin/jarvis-voice/commit/478656d35b7bd55f671157380344c8ab47765e90))
+* **android:** hold to ask Jarvis, answered into headphones (R6, 2 of 3) ([1317bd8](https://github.com/lordmuffin/jarvis-voice/commit/1317bd85f6ec526432a622196c28899b9e4ecaf6))
+* **server:** add hold-to-ask messages to protocol v1 ([3ec807b](https://github.com/lordmuffin/jarvis-voice/commit/3ec807bf5c2aebbb7e88c978ceb25370c5075ce3))
+* **server:** hold to ask, answered on the device (R6, 1 of 3) ([c77012b](https://github.com/lordmuffin/jarvis-voice/commit/c77012bf3c48d57e3ffb6c39a04c09bd59320d8c))
+
 ## [1.22.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.22.0...android-v1.22.1) (2026-11-03)
 
 

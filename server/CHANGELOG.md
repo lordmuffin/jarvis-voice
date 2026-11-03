@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.34.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.33.1...server-v0.34.0) (2026-11-03)
+
+
+### Features
+
+* **server:** add hold-to-ask messages to protocol v1 ([3ec807b](https://github.com/lordmuffin/jarvis-voice/commit/3ec807bf5c2aebbb7e88c978ceb25370c5075ce3))
+* **server:** answer a held ask from the session, or file it ([3ed6560](https://github.com/lordmuffin/jarvis-voice/commit/3ed656095d282126464e7de0f4975afd46e6fdb9))
+* **server:** hold to ask, answered on the device (R6, 1 of 3) ([c77012b](https://github.com/lordmuffin/jarvis-voice/commit/c77012bf3c48d57e3ffb6c39a04c09bd59320d8c))
+
 ## [0.33.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.33.0...server-v0.33.1) (2026-11-03)
 
 
