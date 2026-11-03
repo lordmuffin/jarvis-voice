@@ -170,6 +170,7 @@ name = "jarvis-desktop"
 version = "0.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "httpx" },
     { name = "jarvis-live" },
 ]
 
@@ -182,7 +183,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "jarvis-live", editable = "../server" }]
+requires-dist = [
+    { name = "httpx" },
+    { name = "jarvis-live", editable = "../server" },
+]
 
 [package.metadata.requires-dev]
 dev = [
