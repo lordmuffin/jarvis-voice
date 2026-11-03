@@ -57,6 +57,7 @@ class AskDesk:
         self._task: asyncio.Task[None] | None = None
         self._replies: dict[str, tuple[int | None, str]] = {}  # ask id -> (row id, reply)
         self._writes: set[asyncio.Task[None]] = set()
+        self._last_write: asyncio.Task[None] | None = None
 
     def state(self) -> VoiceState:
         return VoiceState(available=True)
@@ -146,11 +147,18 @@ class AskDesk:
         )
 
     def _write(self, row_id: int, msg: AskPlayed) -> None:
-        task = asyncio.create_task(self._store_played(row_id, msg))
+        # Each write waits for the one before it: two racing writes once stored "started" over
+        # "done", because the row lock goes to whichever transaction asks first.
+        task = asyncio.create_task(self._store_played(row_id, msg, after=self._last_write))
+        self._last_write = task
         self._writes.add(task)
         task.add_done_callback(self._writes.discard)
 
-    async def _store_played(self, row_id: int, msg: AskPlayed) -> None:
+    async def _store_played(
+        self, row_id: int, msg: AskPlayed, *, after: "asyncio.Task[None] | None" = None
+    ) -> None:
+        if after is not None:
+            await asyncio.wait([after])  # never raises, even if that write was cancelled
         try:
             async with self._sm() as db, db.begin():
                 row = await db.get(CopilotItem, row_id, with_for_update=True)
