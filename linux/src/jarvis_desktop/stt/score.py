@@ -17,6 +17,9 @@ from pathlib import Path
 from jarvis_desktop.stt.engine import Engine
 from jarvis_desktop.stt.wer import edits, normalise
 
+#: Manifest sources whose reference is the exact text: read aloud by you, or synthesised.
+EXACT_SOURCES = frozenset({"read", "tts"})
+
 
 @dataclass
 class Report:
@@ -29,6 +32,8 @@ class Report:
     latency_ms_max: float = 0.0
     rtf: float = 0.0
     per_session: dict[str, float] = field(default_factory=dict)
+    #: Every reference is the exact text (a read or synthetic set), not the server's transcript.
+    exact: bool = False
 
 
 def score(
@@ -77,17 +82,22 @@ def score(
         latency_ms_max=ms[-1] if ms else 0.0,
         rtf=sum(latencies) / audio_s if audio_s else 0.0,
         per_session={s: errors[s] / words[s] if words[s] else 0.0 for s in words},
+        exact=bool(rows) and all(r.get("source") in EXACT_SOURCES for r in rows),
     )
 
 
 def format_report(report: Report) -> str:
     lines = [
         f"engine {report.engine}: {report.clips} clips, {report.audio_s / 60:.1f} min of audio",
-        f"  disagreement with the server (WER vs its transcript): {report.wer:.1%}",
+        f"  WER against the exact text: {report.wer:.1%}"
+        if report.exact
+        else f"  disagreement with the server (WER vs its transcript): {report.wer:.1%}",
         f"  decode latency per clip: p50 {report.latency_ms_p50:.0f} ms, "
         f"p95 {report.latency_ms_p95:.0f} ms, max {report.latency_ms_max:.0f} ms; "
         f"RTF {report.rtf:.3f}",
-        "  by session (agreement with the server is lowest where the audio isn't your voice):",
+        "  by session:"
+        if report.exact
+        else "  by session (agreement with the server is lowest where the audio isn't your voice):",
     ]
     for session, wer in sorted(report.per_session.items(), key=lambda kv: -kv[1]):
         lines.append(f"    {session[:8]}  {wer:6.1%}")

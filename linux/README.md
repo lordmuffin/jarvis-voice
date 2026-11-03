@@ -39,6 +39,19 @@ uv run jarvis-voice eval pull --server https://live.apj.dev --token-file ~/.conf
   agreement with the server.
 - The token goes only in the `Authorization` header; it is never printed or written.
 
+## Reading an eval set in your own voice
+
+```sh
+uv run jarvis-voice eval record            # about 10 minutes for 40 sentences
+uv run jarvis-voice eval score --eval-dir ~/.local/share/jarvis-voice/eval-read
+```
+
+It shows each of the 40 dictation-style sentences in `src/jarvis_desktop/eval_prompts.txt`:
+Enter to start, Enter to stop, then Enter to keep or `r` to redo (`s` skips, `q` quits, and the
+next run resumes). Takes are trimmed of silence and saved owner-only to
+`$XDG_DATA_HOME/jarvis-voice/eval-read/` with the sentence as an exact reference, so `eval score`
+reports a real WER. `--source` picks the mic (`pactl list short sources`).
+
 ## Speech models and scoring
 
 ```sh
