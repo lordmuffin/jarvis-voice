@@ -278,3 +278,16 @@ def test_refuses_to_write_inside_a_git_checkout(tmp_path: Path) -> None:
 def test_default_output_is_under_xdg_data_home(tmp_path: Path) -> None:
     out = evalset.default_output_dir({"XDG_DATA_HOME": str(tmp_path), "HOME": "/nowhere"})
     assert out == tmp_path / "jarvis-voice" / "eval"
+
+
+async def test_the_eval_set_is_private_to_its_owner(tmp_path: Path) -> None:
+    """Recordings of your voice: no other account on the machine may read them."""
+    sid = "aaaa1111-0000-0000-0000-000000000000"
+    server = FakeServer([session(sid)], {sid: [seg(0, 3_000, "One.")]})
+    out = tmp_path / "eval"
+    async with client(server) as c:
+        await pull(c, out, max_clips=10)
+    for p in [out, out / "clips"]:
+        assert p.stat().st_mode & 0o777 == 0o700, p
+    for f in [out / "manifest.jsonl", *(out / "clips").iterdir()]:
+        assert f.stat().st_mode & 0o077 == 0, f
