@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import io
+import json
 import os
 import time
 import uuid
@@ -219,6 +220,77 @@ async def test_bad_frame_and_bad_channel_are_rejected(server: ServerHandle, toke
     p, _ = await RawProducer.connect(rp, sid)
     await p.send_pcm(1, silence(0.2))  # system frame on a mic-only session
     assert (await p.recv_until("error"))["code"] == "bad_channel"
+
+
+async def test_a_second_hello_or_a_malformed_message_ends_the_connection(
+    server: ServerHandle, token: str
+) -> None:
+    rp = ReplayProducer(server.url, token)
+    sid = await rp.create_session()
+    p, _ = await RawProducer.connect(rp, sid)
+    await p.send_json(
+        {
+            "type": "hello",
+            "protocol": 1,
+            "device": "raw",
+            "codec": "pcm16le_16k",
+            "resume": {"mic": None, "system": None},
+        }
+    )
+    assert (await p.recv_until("error"))["code"] == "unexpected_hello"
+
+    p, _ = await RawProducer.connect(rp, sid)
+    await p.send_json({"type": "marker", "t_ms": "soon"})
+    assert (await p.recv_until("error"))["code"] == "bad_message"
+
+
+async def test_a_reconnecting_producer_replaces_the_one_left_behind(
+    server: ServerHandle, token: str, sm: SM
+) -> None:
+    """A phone that switches network opens a new stream before the old one times out: the old
+    connection is closed with 4409, and audio continues on the new one from the stored cursor."""
+    rp = ReplayProducer(server.url, token)
+    sid = await rp.create_session()
+    old, _ = await RawProducer.connect(rp, sid)
+    nxt = await old.send_pcm(0, silence(0.3))
+    while (await old.recv_until("ack"))["seq"] < nxt - 1:
+        pass
+    new, ack = await RawProducer.connect(rp, sid, resume={"mic": nxt - 1, "system": None})
+    assert ack["acked"]["mic"] == nxt - 1
+    with pytest.raises(websockets.ConnectionClosed) as closed:
+        await asyncio.wait_for(old.ws.recv(), 5)
+    assert closed.value.rcvd is not None and closed.value.rcvd.code == 4409
+    last = await new.send_pcm(0, silence(0.2), seq0=nxt)
+    while (await new.recv_until("ack"))["seq"] < last - 1:
+        pass
+    assert [r.seq for r in await chunk_rows(sm, sid)] == list(range(last))
+    await new.close()
+
+
+async def test_a_session_that_has_ended_takes_no_more_audio(
+    server: ServerHandle, token: str
+) -> None:
+    rp = ReplayProducer(server.url, token)
+    sid = await rp.create_session()
+    ticket = await rp.ticket(sid)  # issued while live, used after the end
+    async with httpx.AsyncClient(
+        base_url=server.url, headers={"Authorization": f"Bearer {token}"}
+    ) as c:
+        assert (await c.post(f"/v1/sessions/{sid}/end")).status_code == 200
+    async with websockets.connect(rp._ws_url(sid, ticket)) as ws:
+        await ws.send(
+            json.dumps(
+                {
+                    "type": "hello",
+                    "protocol": 1,
+                    "device": "x",
+                    "codec": "pcm16le_16k",
+                    "resume": {"mic": None, "system": None},
+                }
+            )
+        )
+        msg = json.loads(await asyncio.wait_for(ws.recv(), 5))
+    assert msg["code"] == "session_not_live" and "finalizing" in msg["message"]
 
 
 # --- viewers, tickets, auth --------------------------------------------------------------------

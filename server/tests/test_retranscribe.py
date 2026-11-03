@@ -1,5 +1,6 @@
 """Transcribing a finished session again from its stored audio."""
 
+import asyncio
 import uuid
 from collections.abc import Callable
 from pathlib import Path
@@ -122,3 +123,29 @@ async def test_it_reports_how_much_of_the_recording_is_transcribed(sm: SM, tmp_p
     assert len(seen) == 2 and all(p is not None and p < 1 for p in seen)
     assert seen[0] < seen[1]  # type: ignore[operator]
     assert probes[0]() == 1.0
+
+
+async def test_a_slow_whisper_holds_back_reading_without_losing_audio(
+    sm: SM, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """With the backlog full the reader waits for Whisper instead of queueing the whole file."""
+    from jarvis_live.ingest import retranscribe as module
+
+    monkeypatch.setattr(module, "UPLOAD_MAX_BACKLOG", 1)
+    sid = await _session_with_audio(sm, tmp_path)
+
+    class SlowSTT(FakeSTT):
+        async def transcribe(self, pcm: bytes, prompt: str) -> Transcription:
+            await asyncio.sleep(0.2)
+            return await super().transcribe(pcm, prompt)
+
+    n = await retranscribe(
+        sid,
+        ["mic"],
+        settings=Settings(data_dir=tmp_path),
+        sessionmaker=sm,
+        bus=Bus(),
+        stt=SlowSTT(),
+    )
+    assert n == 2
+    assert await _texts(sm, sid) == ["seg-1", "seg-2"]

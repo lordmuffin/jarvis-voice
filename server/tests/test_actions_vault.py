@@ -13,7 +13,7 @@ from sqlalchemy import select
 
 from jarvis_live.actions.service import ExecutionError
 from jarvis_live.actions.state import payload_sha256
-from jarvis_live.actions.vault import VaultExecutor
+from jarvis_live.actions.vault import VaultExecutor, insert_task
 from jarvis_live.config import Settings
 from jarvis_live.db.models import OWNER_USER_ID, ActionProposal, CopilotItem
 from jarvis_live.publish.github import GitHubClient
@@ -221,6 +221,56 @@ async def test_append_adds_a_block_to_an_existing_note(
     gone = await proposal(sm, "vault.append", path="30 Resources/Gone.md", text="x")
     with pytest.raises(ExecutionError, match="no longer exists"):
         await ex.execute(gone)
+
+
+@pytest.mark.parametrize(
+    ("column", "expected"),
+    [
+        # An empty column with its italic description: the card goes after the description.
+        (
+            "## Needs Triage\n*Ambiguous captures.*\n\n## Done\n",
+            "## Needs Triage\n*Ambiguous captures.*\n\n- [ ] new\n## Done\n",
+        ),
+        # An empty column right under its heading: a blank line keeps the heading readable.
+        ("## Needs Triage\n## Done\n", "## Needs Triage\n\n- [ ] new\n## Done\n"),
+        # The last column, empty, at the end of the file.
+        ("## Needs Triage\n", "## Needs Triage\n\n- [ ] new"),
+    ],
+)
+def test_a_task_in_an_empty_column_lands_under_its_heading(column: str, expected: str) -> None:
+    assert insert_task(column, "- [ ] new", "Needs Triage") == expected
+
+
+async def test_a_missing_work_tracker_fails_visibly_and_opens_nothing(
+    sm: SM, board: FakeGitHub, tmp_path: Path
+) -> None:
+    del board.files("main")[TRACKER]
+    ex, _ = make(sm, board, tmp_path)
+    with pytest.raises(ExecutionError, match="does not exist in the vault"):
+        await ex.execute(await proposal(sm))
+    assert not board.pulls
+
+
+async def test_a_merge_github_refuses_leaves_the_pr_open_and_says_where(
+    sm: SM, board: FakeGitHub, tmp_path: Path
+) -> None:
+    ex, _ = make(sm, board, tmp_path)
+    p = await proposal(sm)
+    board.fail_next[("PUT", "/merge")] = (409, "merge conflict")
+    with pytest.raises(
+        ExecutionError, match="merge failed: .*merge conflict.*pull request is open"
+    ):
+        await ex.execute(p)
+    assert next(iter(board.pulls.values())).state == "open"
+    assert f"^jv-{p.id.hex[:8]}" not in board.files("main")[TRACKER]
+
+
+async def test_reconcile_when_github_is_down_says_it_does_not_know(
+    sm: SM, board: FakeGitHub, tmp_path: Path
+) -> None:
+    ex, _ = make(sm, board, tmp_path)
+    board.fail_next[("GET", f"/contents/{TRACKER}")] = (502, "Bad gateway")
+    assert await ex.reconcile(await proposal(sm)) is None
 
 
 # --- the whole path: the "done when" ---------------------------------------------------------

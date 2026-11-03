@@ -60,6 +60,16 @@ the tests run nearly all of it. The first `make test-all` on `main` after the wo
 (88.1 < 88.9) for that reason. Measured properly the total is 92.7 %; the baseline is 92.5 to leave room for run-to-run
 noise.
 
+From 2026-10-30 to 2026-11-02 `make test-all` on `main` failed the server ratchet on every run (91.0 to 91.8 < 92.5).
+Blaming the missed lines of CI's own `coverage.json` (run 41564166670) to the merges that wrote them: #220 (Linux capture
+client, 287 missed, 186 of them in `client/capture_cli.py`), #222 (copilot actions, 108), #218 (isolation and backups,
+49), #224 (diarization, 21) and #230 (voice, 19). `capture_cli.py` read 19 % because `tests/client/test_capture_cli.py`
+runs the CLI as subprocesses, which coverage does not follow. `tests/client/test_capture_cli_commands.py` now calls the
+same commands in-process against a real control socket and covers every answer a daemon can give. The same fix added
+failure-path tests for the voice loop, the Whisper tier pool, re-transcribing kept audio, the producer stream
+(superseding, refusals), OIDC token checks (`tests/test_oidc_client.py`), vault publishing (`tests/test_publish_failures.py`),
+the vault action executor, the action service and the note's proposed actions. The baseline was not changed.
+
 Counts at baseline: server 310 passed / 4 skipped (the `--live` tests) of which 214 run without Docker; legacy 28; web unit 40;
 Playwright 7; policy tests 28; rendered resources 13 (live) and 12 (lab), all valid.
 

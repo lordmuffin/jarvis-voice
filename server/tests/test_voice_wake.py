@@ -115,3 +115,7 @@ def test_the_end_of_the_session_ends_the_request() -> None:
         [line(0, "Jarvis, add a task")], now_ms=4000, settle_ms=SETTLE, max_ms=MAX, final=True
     )
     assert heard is not None
+
+
+def test_nothing_said_yet_reads_nothing() -> None:
+    assert next_request([], 60_000, SETTLE, MAX) == (None, -1)

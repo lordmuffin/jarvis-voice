@@ -269,3 +269,91 @@ async def test_other_users_cannot_see_or_act(sm: SM) -> None:
     with pytest.raises(ActionError):
         await svc.reject(pid, Actor(other.id, "web"))
     assert await svc.for_session(sid, other.id) == []
+
+
+async def _proposed(
+    sm: SM, *texts: str
+) -> tuple[ActionService, FakeExecutor, uuid.UUID, list[uuid.UUID], list[Proposal]]:
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    svc, ex = make(sm)
+    ps = tasks(*texts)
+    ids = await svc.admit(sid, OWNER_USER_ID, ps, proposed_by="copilot:m")
+    return svc, ex, sid, ids, ps
+
+
+async def test_an_action_that_is_no_longer_proposed_cannot_be_edited_or_rejected(sm: SM) -> None:
+    svc, _, sid, [pid], [p] = await _proposed(sm, "Call the vendor")
+    await svc.approve(sid, WEB, [(pid, p.payload_sha256)])
+    await svc.execute_approved(sid)
+    with pytest.raises(ActionError, match="succeeded, not proposed") as e:
+        await svc.edit(pid, WEB, {"text": "Something else"})
+    assert e.value.status == 409
+    with pytest.raises(ActionError, match="succeeded, not proposed"):
+        await svc.reject(pid, WEB)
+
+
+async def test_an_edit_that_makes_it_invalid_or_a_duplicate_is_refused(sm: SM) -> None:
+    svc, _, _, [a, b], _ = await _proposed(sm, "Call the vendor", "Email the vendor")
+    with pytest.raises(ActionError) as invalid:
+        await svc.edit(a, WEB, {"text": "   "})
+    assert invalid.value.status == 422
+    with pytest.raises(ActionError, match="cannot edit kind") as bad:
+        await svc.edit(a, WEB, {"kind": "pi.session"})
+    assert bad.value.status == 400
+    with pytest.raises(ActionError, match="identical action already exists") as dup:
+        await svc.edit(b, WEB, {"text": "Call the vendor"})
+    assert dup.value.status == 409
+    assert (await row(sm, b)).payload["text"] == "Email the vendor"
+
+
+async def test_rejecting_twice_is_harmless(sm: SM) -> None:
+    svc, _, _, [pid], _ = await _proposed(sm, "Call the vendor")
+    await svc.reject(pid, WEB)
+    assert (await svc.reject(pid, WEB)).state == "rejected"
+    assert [e for e, _ in await audit(sm, pid)] == ["proposed", "rejected"]
+
+
+async def test_approving_an_action_of_another_session_is_not_found(sm: SM) -> None:
+    svc, ex, _, [pid], [p] = await _proposed(sm, "Call the vendor")
+    elsewhere, _ = await owner_with_session(sm, OWNER_USER_ID)
+    [out] = await svc.approve(elsewhere, WEB, [(pid, p.payload_sha256)])
+    [missing] = await svc.approve(elsewhere, WEB, [(uuid.uuid4(), p.payload_sha256)])
+    await svc.execute_approved(elsewhere)
+    assert (out.outcome, missing.outcome) == ("not_found", "not_found")
+    assert (await row(sm, pid)).state == "proposed" and ex.calls == []
+
+
+async def test_an_executor_crash_is_recorded_as_a_failure_with_its_cause(sm: SM) -> None:
+    class Crashing(FakeExecutor):
+        async def execute(self, proposal: ActionProposal) -> dict[str, Any]:
+            raise KeyError("payload/path")
+
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    svc, _ = make(sm, Crashing())
+    [p] = tasks("Call the vendor")
+    [pid] = await svc.admit(sid, OWNER_USER_ID, [p], proposed_by="copilot:m")
+    await svc.approve(sid, WEB, [(pid, p.payload_sha256)])
+    await svc.execute_approved(sid)
+    r = await row(sm, pid)
+    assert r.state == "failed" and r.result == {"error": "KeyError: 'payload/path'"}
+
+
+async def test_a_reconcile_that_errors_counts_as_unknown_not_as_done(sm: SM) -> None:
+    class Unsure(FakeExecutor):
+        async def reconcile(self, proposal: ActionProposal) -> dict[str, Any] | None:
+            raise RuntimeError("GitHub is down")
+
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    svc, ex = make(sm, Unsure())
+    [p] = tasks("Call the vendor")
+    [pid] = await svc.admit(sid, OWNER_USER_ID, [p], proposed_by="copilot:m")
+    await svc.approve(sid, WEB, [(pid, p.payload_sha256)])
+    async with sm() as db:
+        await db.execute(
+            update(ActionProposal).where(ActionProposal.id == pid).values(state="executing")
+        )
+        await db.commit()
+    await svc.recover()
+    r = await row(sm, pid)
+    assert r.state == "failed" and "interrupted" in (r.result or {})["error"]
+    assert ex.calls == []
