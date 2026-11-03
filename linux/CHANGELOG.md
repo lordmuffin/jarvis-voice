@@ -5,6 +5,8 @@
 
 ### Features
 
+* **linux:** make Whisper turbo on Vulkan the default speech engine ([25fff73](https://github.com/lordmuffin/jarvis-voice/commit/25fff73c2e0e7016ea76acd760f210098afde7aa))
+* **linux:** make Whisper turbo on Vulkan the default speech engine ([55cae7a](https://github.com/lordmuffin/jarvis-voice/commit/55cae7aa8097b042e44f993376c46fd50be6f5c6))
 * **linux:** record a read eval set with exact references ([50935d1](https://github.com/lordmuffin/jarvis-voice/commit/50935d16672e2eaf51e4e0b4ca4ed12768268264))
 * **linux:** record a read eval set with exact references ([308be2d](https://github.com/lordmuffin/jarvis-voice/commit/308be2daa6f88e5506b5637c75bfb897ef783a6d))
 * **linux:** record the read eval set on a Mac's built-in mic ([1802b29](https://github.com/lordmuffin/jarvis-voice/commit/1802b29cb452c22b2e6adf1670271433cb8bb59d))
