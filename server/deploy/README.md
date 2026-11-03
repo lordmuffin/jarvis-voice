@@ -111,6 +111,25 @@ it. One-time setup (the sandbox repo, the GitHub App, the `claude-oauth` and
 `jarvis-dispatch-lab-app` items, making the runner package public) is in
 [`docs/plans/copilot-to-claude-code.md`](../../docs/plans/copilot-to-claude-code.md) §3.9.
 
+## Stream ingest (OBS, phones)
+
+`k8s/base/streams.yaml` runs MediaMTX next to the app: OBS and phones push RTMP or SRT into it,
+and the app turns each stream with an ingest key into a live session. How to use it is in
+[`docs/obs.md`](../../docs/obs.md).
+
+- **Lab only.** Base ships it off (MediaMTX at 0 replicas, `JARVIS_LIVE_STREAMS_ENABLED`
+  "false"); the lab overlay turns both on. `policy/live.rego` fails a live render that turns it
+  on, so promoting it is a deliberate edit, not a side effect of a release.
+- **Who may publish or read** is the app's: MediaMTX asks its auth hook (port 9101, never on the
+  Ingress) about every request. A publish needs that path's ingest key
+  (`jarvis-live stream-key create`); reading and the API need a credential the app generates
+  at start. `policy/streams.rego` keeps `authMethod: http` and no exclusions.
+- **How far it is reachable** is the homelab's: the Service here is ClusterIP. The homelab adds
+  a LAN LoadBalancer for RTMP 1935/tcp and SRT 8890/udp, DNS and firewall rules, LAN and VPN
+  only.
+- **Fenced:** NetworkPolicy `jarvis-live-streams-auth` lets only MediaMTX reach the hook, and
+  `jarvis-live-mediamtx` lets only the app read streams or use the API.
+
 ## Resetting lab
 
 Lab data is disposable and is not backed up (its backup CronJob is suspended). To start it from empty, for example after a
