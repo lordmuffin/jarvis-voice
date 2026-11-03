@@ -106,8 +106,18 @@ async def test_cli_creates_lists_and_revokes_stream_keys(
 
         assert await asyncio.to_thread(cli.main, ["stream-key", "create", name]) == 1  # taken
         assert await asyncio.to_thread(cli.main, ["stream-key", "create", "Bad Name"]) == 1
-        assert await asyncio.to_thread(cli.main, ["stream-key", "revoke", name]) == 0
+        rotate = ["stream-key", "rotate", name, "--host", "ingest.example"]
+        assert await asyncio.to_thread(cli.main, rotate) == 0
+        out = capsys.readouterr().out
+        rotated = re.search(r"key:\s+(\S+)", out)
+        assert rotated is not None and rotated[1] != secret[1]
+        assert "rtmp://ingest.example:1935" in out  # the settings to paste, as on create
         assert await keys.verify(sm, name, secret[1]) is None
+        assert await keys.verify(sm, name, rotated[1]) is not None
+
+        assert await asyncio.to_thread(cli.main, ["stream-key", "revoke", name]) == 0
+        assert await keys.verify(sm, name, rotated[1]) is None
         assert await asyncio.to_thread(cli.main, ["stream-key", "revoke", name]) == 1
+        assert await asyncio.to_thread(cli.main, ["stream-key", "rotate", name]) == 1
     finally:
         get_settings.cache_clear()
