@@ -30,25 +30,35 @@
 # Refreshed 2026-11-02, after step 3 (#254), the probe fixes (#257), 3a (#260) and server-v0.32.2.
 # Replanned the same day: see REPLAN below. It overrides anything older it disagrees with.
 # Set up 2026-11-03 to finish the remaining builds: R1, R3 and 3b merged, R7, the rest of 21 and the coverage fix added.
+# Updated 2026-11-03 04:40 UTC: R6 built (#275-#277), the coverage fix merged (#278), server-v0.34.0 on
+# live with voice off, R2 resumed after its session died, R4's PR 1 merged (homelab #846).
+#
+# Releases: never merge a release PR that changes no files. Merging empty #274 tagged 0.34.0 on a
+# commit whose manifests still pinned 0.33.1, so promote refused it. Those four tags and releases
+# were deleted and #279 re-cut them on 3f2d908. Close an empty one instead.
 #
 # Sequence, top to bottom. Do not uncomment a step until the one above it is done. Items sharing
 # a step run together.
 #   Done: voice arm (#252), 12 steps 1, 2, 3 and 3a (#247, homelab #838, #254, #260), the probe
 #     fixes (#257), 21 steps 1a to 2 and the dashboard row (homelab #839, #845, #264), R1 (#267,
-#     server-v0.33.0, on live), R3 (#270, on lab), R1's first replay (#269), 12 step 3b (#272).
-#   All decisions so far are under REPLAN and IN FLIGHT below.
-#   RUNNING, do not restart: R2, the voice eval first, then the copilot cases on what passes.
-#   READY NOW, herd -f Tasks.herd: R6's plan and the coverage fix, both uncommented.
-#   READY NOW, homelab, see Run above: the rest of 21.
-#   NEXT, me: answer R4's three decisions, in session feat-jev-on-gamingpc. Its plan is waiting.
-#     1. JevBackends may give jev and jev-cpu different timeouts. 2. One real systemctl suspend at
-#     the end, which I run, because it stops these sessions. 3. R5 gets its own proxy restart.
-#   NEXT, me: merge release PR #271 to take R3 to live. It is still open, and waits for nothing below.
-#   NEXT, me: approve R6's plan when it stops.
+#     server-v0.33.0), R3 (#270, server-v0.33.1), R1's first replay (#269), 12 step 3b (#272),
+#     the coverage fix (#278), R6's build (#275, #276, #277, server-v0.34.0, macos-v0.16.0,
+#     android-v1.23.0), R2's voice eval and its bar (#280).
+#   Live runs server-v0.34.0 with JARVIS_LIVE_VOICE_ENABLED false, so hold-to-ask is off there. Lab has it.
+#   Nothing is uncommented: herd -f Tasks.herd starts nothing. All decisions are under REPLAN and IN FLIGHT.
+#   RUNNING, do not restart: R2 (session chore-interactive-model-eval, workspace w31). BLOCKED ON ME:
+#     how the bar treats 'cloud, repo not clear'. See R2 below.
+#   WAITING FOR ME: R4's PR 2, homelab #847. Merge in a quiet hour: it restarts the LiteLLM proxy.
+#     Then R4 runs the failover drills, PR 3 frees pve's card, and I run the one systemctl suspend.
+#   NEXT, me: R6's hardware test on lab. Install the Fold APK from android-v1.23.0 and the Mac app from
+#     macos-v0.16.0, do 30 asks on each, then run jarvis-live ask-report. Mac checks: rows B30-B35 in
+#     macos/JarvisVoiceMac/TESTING.md. Latency shows as qwen3.8-flash-next until R5 lands.
+#   NEXT, me: merge #281, the backup fix (see Backups below).
 #   NEXT, me: check by eye that actions arrive and titles behave on live, session a54a7906.
+#   READY NOW, homelab, see Run above: the rest of 21.
 #   R1b, the busy replay, on a weekday with agents busy. It decides whether the copilot stays on Flash
-#   R5, once R2 names a model and R4 has freed pve's card
-#   R6's build, to lab. It can start on today's voice model. Its latency only counts after R5
+#   R5, once R2 names a model and R4 has freed pve's card. It also runs R6's new ask eval, which is what
+#     a hold usually sends. R6 did not run it on Flash, to keep load off the engine before R1b
 #   R7, voice on live. Needs my decision on voice-commands.md section 5, and R6 working on the Fold
 #   22, CoreDNS then the proxy change window, with 11's runs either side
 #   11 step 3, the Flash restart, if still worth it. Needs my approval. Must not overlap 22's window.
@@ -63,7 +73,7 @@
 # No real phone rings before 19. No third party is called until I sign that go/no-go.
 
 # ---------------------------------------------------------------------------
-# IN FLIGHT AND READY. Only R6 is uncommented, so herd -f starts R6 and nothing else. Do not restart the rest.
+# IN FLIGHT AND HELD. Nothing is uncommented, so herd -f starts nothing. Do not restart what runs.
 # ---------------------------------------------------------------------------
 
 # REPLAN 2026-11-02. Overrides the decisions below where they differ:
@@ -107,35 +117,63 @@
 # GPU moves 1 to 3: CANCELLED by the replan. R4 and R5 replace them. Checked 2026-11-02 21:35 UTC: pve
 # runs jev-llm only (speaches and kokoro at 0), and the gaming PC runs whisper-cpp (ollama at 0).
 
-# REPLAN TASKS. R6 is ready. The rest are running or held. Delete the leading # to start one, in the sequence's order.
+# REPLAN TASKS. Running, waiting for me, or held. Delete the leading # to start one, in the sequence's order.
 
 # R1b. Depends on: a weekday with agents busy, on the load gate in fast-tier.md. Held by the clock.
 # R1's first replay failed the load gate on an idle engine: p95 14.75 s, 0 of 24 lost, 0 of 24 cycles
 # saw a queue. So the done test is open, and R1's session expected it to fail under load.
 #chore/copilot-replay-busy @forge: This is R1b of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read the REPLAN, The replay, The done test and What to watch on lab in docs/plans/fast-tier.md, and jarvis_live/replay.py. Goal: finish R1's done test, which its first replay left open because the engine was idle. Scope: a) Before starting, read Flash's metrics. Start only when the engine is busy enough to meet the load gate. If it is not, wait and check again, and say so if the day ends without it. Never add load to make the gate pass. b) Replay against lab at real-time speed, the same way as the first run, and record the load period as Task 11 requires. c) Report p50, p95 by nearest rank, cycles lost, retries and JSON failures, and every row of What to watch on lab. d) If a release has moved lab on, say what changed from the first run. Constraints: no Flash serving args, no cluster or homelab changes, no setting changed. If the run fails the load gate, it does not count, whatever its p95. This repo is public. One PR, titled docs(plans), left for me to merge. DONE WHEN: on a run that passes the load gate, fast-tier.md says whether p95 is under 15 s with 0 cycles lost, and if not, that the next lever is the copilot on R5's model.
 
-# R2. RUNNING, started 2026-11-03 01:40 UTC, do not restart. Local CPU only.
+# R2. RUNNING, started 2026-11-03 01:40 UTC, do not restart. Local CPU only. Session
+# chore-interactive-model-eval, resumed 03:55 UTC after it died at 02:20 mid-run (cause unknown).
+# Merged so far: the voice eval and its bar, and two request variants (#280). Its next PR is new work.
+# First run, today's request: all three candidates failed voice (qwen35-9b, ministral3-8b,
+# gemma4-e4b), and so did the q25-3b control, 44 of 75. On the 2070, unproven: 9b and 8b project to
+# 4.73 s and 4.13 s p95 against 2.5 s; the 3B projects to 1.74 s.
+# 'cloud, repo not clear' fails on every model: they take the first repo listed, not null, and live
+# lists jarvis-voice first. R2 asks me whether that case keeps gating. Options: 1. keep it, and add
+# an eval-only prompt variant that says leave repo null (R2 recommends this), 2. score it without
+# gating, 3. keep it with no variant. R2 is also fixing a checker bug that failed "null" strings.
+# Rows and scripts are in ~/.local/share/jarvis-interactive-eval, never in the repo.
+# The gaming PC now runs Jev's CPU replica, so R2's 12-thread runs must not overlap R4's drills.
 #chore/interactive-model-eval @forge: This is R2 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read the REPLAN, docs/plans/fast-tier.md, server/src/jarvis_live/voice/service.py, voice/schema.py, server/tests/evals/ and chore/copilot-reply-size's reply_size.py and write-up. Goal: choose the model for pve's 2070 now it has the whole card: 7 GiB, Whisper elsewhere. Scope: a) No voice eval exists. Build one in eval-only code from invented transcripts, on the real VOICE_SYSTEM and VoiceRequest, thinking off, and state its pass bar before running anything. b) At most 3 candidates that fit 7 GiB with their context and slots, by the plan's evidence, not vendor benchmarks. Say what speed the 2070 should give each and how that is known, and name it unproven if it is an estimate. c) Run each on the voice eval, and on the 17 copilot cases at three runs each, because the copilot falls back to this model if Flash fails the replay. Report the 11 bar cases, tokens per reply and whether voice fits 2.5 s on that card. Stop a candidate once it cannot pass voice. d) If any template ignores enable_thinking, turn reasoning off at the server before judging it: lfm25-26b's first runs measured reasoning, not the reply. Constraints: all inference local on CPU, images by digest, models by SHA256, self-hosted weights only, no Flash, no gateway, no pods. Eval-only code, defaulting to today's requests. This repo is public. One PR, titled chore(plans), left for me to merge. DONE WHEN: the plan names the model and what I still have to decide, from measurements.
 
-# R4. WAITING FOR ME since 2026-11-03 01:47 UTC, do not restart. Homelab, session feat-jev-on-gamingpc.
-# Plan written, three decisions in the sequence above. R5 waits for it.
+# R4. WAITING FOR ME, do not restart. Homelab, session feat-jev-on-gamingpc. Plan approved with yes
+# to all three decisions: different timeouts for jev and jev-cpu, one real suspend at the end that I
+# run, and R5 gets its own proxy restart. PR 1, the gaming PC replica, merged (homelab #846).
+# PR 2 (homelab #847) is open: jev to the gaming PC with timeout 5 and no retries, jev-cpu keeps
+# 30 s, the fallback requires agent-d. Its CI keeps failing on runner egress timeouts; locally it
+# passes. Merging restarts the LiteLLM proxy, so a quiet hour. Read before merging: 1 of 5 test
+# alerts got a different verdict on CPU than on the GPU (NodeFilesystemSpaceFillingUp), and both
+# CPU backends agreed. Guard p50: GPU 0.15 s, gaming PC 0.70 s, agent-d 1.13-1.34 s.
+# Then: three failover drills, PR 3 frees pve's card, and the suspend. R5 waits for it.
 #feat/jev-on-gamingpc @forge: This is R4 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read docs/jev.md, apps/ai/jev/llm-cpu/, the jev entries in apps/ai/litellm-proxy.yaml, tests/tdd/test_jev_wiring.py, docs/gpu-node-profiles.md and bare-metal/andrew-gamingpc/. Write a short plan and STOP for approval. Goal: Jev's primary runs on the gaming PC's CPU, so pve's card is free, and the guard survives the PC being away. Scope: a) Primary: same GGUF pin and llama.cpp build as today, pinned to andrew-gamingpc, CPU only, on a sensible number of threads for a 12-core 7900X. b) Fallback: jev-llm-cpu stays jev's only fallback, off that node and away from lxc-k3s2-agent-a. c) Decide what gaming-on does to this pod. gaming=true:NoSchedule does not evict it, so say whether it scales down, and check it can't hurt a game. d) Prove failover: sleep or stop the node's pod and show how long guard calls wait. timeout is 30 s, and a dead endpoint may hang rather than refuse. pi-durable fails closed, so measure what that costs it. e) Measure guard latency on primary and fallback against today's GPU, before pve changes. Constraints: JevBackends stays true: never a different model as jev's fallback. Every LiteLLM config change restarts the proxy and interrupts clients, so batch this with R5's alias if you can. DONE WHEN: both backends answer, failover is measured, JevUnavailable stays quiet through it, and pve is free to change.
 
 # R5. Depends on: R2's model and R4. This is step 4, rewritten. Homelab, see Run above.
 #feat/interactive-tier @forge: This is R5 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read R2's result and What step 4 must measure in lordmuffin/jarvis-voice's docs/plans/fast-tier.md, then bare-metal/lxc-k3s2-gpu-a/ and apps/ai/litellm-proxy.yaml. Write a short plan and STOP for approval. Goal: alias interactive on pve's 2070, falling back to heavy, for voice and if needed the copilot. Scope: a new GPU profile and workload, new alias, model by SHA256. Measure on the real card what CPU could not: tok/s with response_format, memory over an hour at one prompt per 25 s with --cache-ram bounded, and slots against both callers. Point VOICE_MODEL at it on lab only, in a separate jarvis-voice PR. Constraints: no Flash restart. Not Jev's pod. Stop at the probe's memory limit. DONE WHEN: the voice eval passes on the real card, with total p95 under 2.5 s for the LLM part.
 
-# Coverage. READY. Depends on: nothing. Test-only, and it touches nothing R6 builds.
-# TDD on main has not passed in the last 30 finished runs, back to 2026-11-01 or earlier. Now:
-# RATCHET FAIL server/.coverage-baseline, 91.8 < 92.5. Everything else in make test-all passed.
-fix/server-coverage @forge: This fixes the TDD workflow on main. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read TESTING.md, the Makefile's ratchet target, scripts/tdd/ratchet.py and server/.coverage-baseline. Goal: main's make test-all is green again. It fails at RATCHET FAIL server/.coverage-baseline, 91.8 < baseline 92.5, and has for many runs. Scope: a) Find which merges lowered coverage and which server code lost it, from the real report. b) Write real tests for that behaviour, so coverage rises back over the baseline. Prefer the paths with the most risk, like the Whisper-away and voice code. c) If a later step of make test-all fails once this passes, fix or report that too. Constraints: do not lower the baseline, do not add omit rules or pragma: no cover to reach the number, and do not change production code unless a test finds a real bug, which you report separately. Title it test(server). One PR, left for me to merge. DONE WHEN: make test-all passes on the PR's CI and the server baseline is unchanged or higher.
+# Coverage. MERGED (#278), main's TDD green again from 3f2d908. Server coverage 95.0 on CI, the
+# baseline left at 92.5: TDD.md says raise it, so about 94.5 in a follow-up. Watch legacy: 23.66
+# against a 23.6 baseline, so any small drop fails main. No bugs found, no production code changed.
+#fix/server-coverage @forge: This fixes the TDD workflow on main. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read TESTING.md, the Makefile's ratchet target, scripts/tdd/ratchet.py and server/.coverage-baseline. Goal: main's make test-all is green again. It fails at RATCHET FAIL server/.coverage-baseline, 91.8 < baseline 92.5, and has for many runs. Scope: a) Find which merges lowered coverage and which server code lost it, from the real report. b) Write real tests for that behaviour, so coverage rises back over the baseline. Prefer the paths with the most risk, like the Whisper-away and voice code. c) If a later step of make test-all fails once this passes, fix or report that too. Constraints: do not lower the baseline, do not add omit rules or pragma: no cover to reach the number, and do not change production code unless a test finds a real bug, which you report separately. Title it test(server). One PR, left for me to merge. DONE WHEN: make test-all passes on the PR's CI and the server baseline is unchanged or higher.
 
-# R6. READY. R3 is merged. The plan and the build no longer wait for R5, only the latency does: until
-# R5, voice runs on the copilot's model. No client has a voice control today, and this adds it.
-feat/voice-push-to-talk @forge: This is R6 of the REPLAN in Tasks.herd. Work in Build mode. You're working in lordmuffin/jarvis-voice. Read docs/designs/voice-talkback.md, server/src/jarvis_live/voice/, protocol/v1/, and Android's and macOS's audio paths. Write docs/plans/voice-push-to-talk.md and STOP for approval. Goal: mid-session, I hold to ask, and hear a short answer through headphones within budget. Scope: push-to-talk markers, the reply as text on the existing WebSocket, spoken by Android TextToSpeech and macOS's speech synthesizer. Headphones only, meeting-silent, hard off in local-only, as the design says. Jarvis's speech stays out of the transcript. Measure end of ask to first audio. Correct the talkback design's Spark and Kokoro assumptions. Constraints: protocol changes need fixtures and server and Swift tests in the same PR. Instrument components only. Lab first. R5's model may not exist yet: build on VOICE_MODEL as it stands, and report latency as measured on whatever model lab has, naming that model. The 2.5 s target is judged only on R5's model. DONE WHEN: I can ask and hear an answer on the Pixel Fold and the Mac, with the latency measured.
+# R6. BUILT AND MERGED: server #275, Android #276, Mac #277. Released as server-v0.34.0 (on lab with
+# voice on, on live with it off), android-v1.23.0 and macos-v0.16.0. Plan: docs/plans/voice-push-to-talk.md.
+# DONE WHEN is not met yet: it needs my 30 asks per device on lab and ask-report (sequence above).
+# Android needs 13 or later for the headphones check; older phones get text only. The plan says so.
+# The idle Record screen screenshots on main still show the old local-only label: R6 left them alone.
+#feat/voice-push-to-talk @forge: This is R6 of the REPLAN in Tasks.herd. Work in Build mode. You're working in lordmuffin/jarvis-voice. Read docs/designs/voice-talkback.md, server/src/jarvis_live/voice/, protocol/v1/, and Android's and macOS's audio paths. Write docs/plans/voice-push-to-talk.md and STOP for approval. Goal: mid-session, I hold to ask, and hear a short answer through headphones within budget. Scope: push-to-talk markers, the reply as text on the existing WebSocket, spoken by Android TextToSpeech and macOS's speech synthesizer. Headphones only, meeting-silent, hard off in local-only, as the design says. Jarvis's speech stays out of the transcript. Measure end of ask to first audio. Correct the talkback design's Spark and Kokoro assumptions. Constraints: protocol changes need fixtures and server and Swift tests in the same PR. Instrument components only. Lab first. R5's model may not exist yet: build on VOICE_MODEL as it stands, and report latency as measured on whatever model lab has, naming that model. The 2.5 s target is judged only on R5's model. DONE WHEN: I can ask and hear an answer on the Pixel Fold and the Mac, with the latency measured.
 
 # R7. Depends on: R6 working on the Fold, and my decision on voice-commands.md section 5. Held.
 # Lab only has voice today. The app defaults to live, so without this I never see it there.
 #feat/voice-on-live @forge: This is R7 of the REPLAN in Tasks.herd. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read docs/plans/voice-commands.md, docs/plans/voice-push-to-talk.md, docs/plans/fast-tier.md, server/deploy/k8s/base/configmap.yaml, server/deploy/k8s/jarvis-live-lab/ and server/deploy/README.md. Goal: voice works on live, not only on lab. Scope: a) Set JARVIS_LIVE_VOICE_ENABLED true in base, and VOICE_MODEL to R5's alias if it landed, removing lab's patches that this makes redundant. b) Say what live gains that lab did not exercise, including the action queue, Gotify replies and the owner's sessions. c) Update voice-commands.md's status and section 5 with what I decided. Constraints: this changes what live does, so title it feat(server). VOICE_PI_ENABLED stays false: Pi sessions need their own homelab steps and my decision. Lab must never get a vault write credential or publishing. Never touch deploy branches. Stop if R6's measured latency or R5's voice eval has not been reported. DONE WHEN: the PR is open with tests passing, and after the release a real session on live answers a spoken request.
+
+# Backups. PR #281 OPEN, waiting for me. No herd line: done inline.
+# 2026-11-03: the 03:00 UTC live backup sat in ContainerCreating on agent-a for an hour. Its affinity
+# picked eligible nodes but not the app's, and it mounts two ReadWriteOnce claims the app holds.
+# A manual run pinned to the app's node finished at 04:24:59 UTC, and /healthz reports it fresh.
+# #281 adds podAffinity to the app's pods, and a combined policy that denies the old shape.
+# Until it merges, any 03:00 run can hang again: check /healthz's backup age each morning.
 
 # Task 21: ALERTS THAT FIRE WHEN THE ENGINE FREEZES (priority: high)
 # PLAN APPROVED 2026-11-01, STEPS 1a TO 2 AND #264 MERGED. THE REST IS READY, as feat/llm-path-alerts-rest.
@@ -146,6 +184,10 @@ feat/voice-push-to-talk @forge: This is R6 of the REPLAN in Tasks.herd. Work in 
 # chore/fast-tier-comparison has cleared (#254).
 # agent-a is not settled: 5 watched containers restarted 19:15 to 19:31 UTC, and Prometheus stayed up
 # through that. The lead is the pve2 host, unproven, not CI. The page path still sits on that node.
+# 2026-11-03 04:10 UTC: agent-a at 74% CPU, most of it short-lived Forgejo runner jobs, with runner
+# pods exiting in Error. Its democratic-csi node plugin failed liveness probes (15 s timeouts) and
+# had restarted 37 times. Lab's image pull took 4m43s there; live's, on agent-d, did not stall.
+# The node reported no pressure. Kubelet and containerd logs were not read: that needs node access.
 # Homelab main's validate was failing, cause unknown, and #845's result was never rechecked.
 # The mimir and grafana HelmReleases are Failed, from 2026-10-13 and 10-15, before this work, so
 # Flux holds observability-mimir, observability-grafana and ai-mcp-status not ready.
@@ -311,7 +353,7 @@ feat/voice-push-to-talk @forge: This is R6 of the REPLAN in Tasks.herd. Work in 
 #feat/copilot-on-flash @forge: This is R1 of the REPLAN in Tasks.herd. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read the REPLAN, The done test and What to watch on lab in docs/plans/fast-tier.md, server/deploy/k8s/base/configmap.yaml, server/deploy/k8s/jarvis-live-lab/, server/src/jarvis_live/slo.py, config.py and replay.py. Goal: the copilot names Flash on purpose, and we learn whether it meets its new bar under real load. Scope: a) Set JARVIS_LIVE_COPILOT_MODEL to qwen3.8-flash-next in base, thinking off as today. Voice follows it because VOICE_MODEL is empty: say what that does on lab. Confirm the alias and thinking setting survive the gateway on the real request. b) Set slo_copilot_roundtrip_p95_s from 8 to 15, with a test. c) Update fast-tier.md's done test, and correct its statements that 3a waits for a soak: server-v0.32.2 reached live without one. Coordinate with chore/copilot-reply-size, which also edits that file. d) After it reaches lab, run jarvis_live/replay.py against lab on a weekday with agents busy, and record the load period as Task 11 requires. Report p50, p95, cycles lost to copilot_timeout_s, retries and JSON failures, and check every row of What to watch on lab, including that actions arrive and titles behave. Constraints: no Flash serving args, no cluster changes by hand, no release PR merged until I have read the replay. Title it feat(server), because it changes what live sends. DONE WHEN: the PR is open with tests passing, then fast-tier.md says from the replay whether p95 is under 15 s with 0 cycles lost.
 
 # R3: KEEP AUDIO WHILE WHISPER IS AWAY (#270)
-# On lab. Live waits for release PR #271.
+# On live since server-v0.33.1 (#271), 2026-11-03 02:08 UTC.
 #fix/stt-away @forge: This is R3 of the REPLAN in Tasks.herd. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read server/src/jarvis_live/stt/tiers.py, ingest/pipeline.py, ingest/retranscribe.py, slo.py and how macOS, Android and web show the stt_unavailable error. Goal: when the gaming PC's Whisper is away, I can see it, the audio is kept, and the session is transcribed later. Scope: a) Fix the probe: whisper-cpp answers /health at its root, but _probe looks under the tier's /v1 endpoint, so gamingpc always reads unhealthy and every segment tries the dead tiers first. b) Test what happens to a session today with no tier: does audio persist, does the session finalize, does the copilot stop cleanly? Report it before changing it. c) Make any client that lacks it show transcription offline, Instrument components only. d) After Whisper returns, transcribe the kept audio using the existing retranscribe path, and say whether that is automatic or one action by me. e) Stop the all-tiers-down alert firing because the PC is away: this is expected now, no page. Keep it useful for a real fault, and if those can't be told apart, say so. Constraints: protocol changes need fixtures and server and Swift tests in the same PR. Local-only stays a hard gate: nothing queued may leave it. Title it fix(server). DONE WHEN: a test with no tier shows audio kept, the state shown, and a later transcript.
 
 # Task 13: LLM GATEWAY ALTERNATIVES BAKE-OFF, RESEARCH, REVIEW AND REWORK (#234, #235, #240)
