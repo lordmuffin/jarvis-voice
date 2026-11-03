@@ -136,7 +136,7 @@ where a leak would land.
 
 | | Android | macOS |
 |---|---|---|
-| Read the real route | `getAudioDevicesForAttributes` (API 31+). Below that, text only | `kAudioHardwarePropertyDefaultOutputDevice`, transport type and data source |
+| Read the real route | `getAudioDevicesForAttributes` (API 33+). Below that, text only | `kAudioHardwarePropertyDefaultOutputDevice`, transport type and data source |
 | Closed | Wired, USB headset, A2DP, BLE headset, hearing aid | Headphone jack, Bluetooth, USB |
 | Never | Built-in speaker, earpiece, BLE speaker, HDMI, anything unknown | Built-in speakers, HDMI, DisplayPort, AirPlay, anything unknown |
 | Route changes while speaking | `AudioDeviceCallback`: stop at once | Property listener: stop at once |

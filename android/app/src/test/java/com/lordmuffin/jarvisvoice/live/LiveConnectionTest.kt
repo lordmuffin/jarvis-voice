@@ -22,6 +22,7 @@ import okio.ByteString
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -131,6 +132,23 @@ class LiveConnectionTest {
         assertEquals("two per connection, none duplicated", 2 * fake.connections, sent)
     }
 
+    /** Hold to ask: the server sends `voice_state` and `ask_reply` only to a client that asks. */
+    @Test fun theStreamAsksForHoldToAsk() = runBlocking {
+        val conn = LiveConnection(api(), sessionId, "android:test", outboxWith(3), scope, fastConfig)
+        conn.start()
+        withTimeout(10_000) { conn.end() }
+        assertTrue(fake.streamQueries.first(), fake.streamQueries.first().contains("features=voice_ask"))
+    }
+
+    /** An ask is live speech: never queued while away, never resent after a reconnect. */
+    @Test fun anAskWhileNotConnectedIsDropped() = runBlocking {
+        val conn = LiveConnection(api(), sessionId, "android:test", outboxWith(3), scope, fastConfig)
+        assertFalse(conn.sendAsk(ClientMessage.AskBegin("a1", 100)))
+        conn.start()
+        withTimeout(10_000) { conn.end() }
+        assertTrue(fake.texts.none { it.contains("ask_begin") })
+    }
+
     @Test fun ticketRejectionIsFatal() = runBlocking {
         fake.ticketStatus = 401
         val conn = LiveConnection(api(), sessionId, "android:test", outboxWith(3), scope, fastConfig)
@@ -166,6 +184,7 @@ class LiveConnectionTest {
         val texts: MutableList<String> = Collections.synchronizedList(ArrayList())
         val hellos: MutableList<String> = Collections.synchronizedList(ArrayList())
         val authHeaders: MutableList<String> = Collections.synchronizedList(ArrayList())
+        val streamQueries: MutableList<String> = Collections.synchronizedList(ArrayList())
         @Volatile var ticketStatus = 200
         @Volatile var tickets = 0
         @Volatile var connections = 0
@@ -189,6 +208,7 @@ class LiveConnectionTest {
                 }
                 path == "/v1/sessions/$sessionId/stream" -> {
                     connections++
+                    streamQueries += request.requestUrl!!.encodedQuery.orEmpty()
                     MockResponse().withWebSocketUpgrade(Producer(connections))
                 }
                 else -> MockResponse().setResponseCode(404)
