@@ -33,8 +33,14 @@ kubectl -n jarvis-live-lab exec deploy/jarvis-live -- \
 - `--source mobile` for a phone, so its sessions are tagged as such (default `obs`).
 
 The key is printed **once**, with the URLs to paste. `jarvis-live stream-key list` shows the
-streams (never the keys); `jarvis-live stream-key revoke obs-desk` revokes one. Revoking is
-the answer to a key that ended up in a screenshot or a shared log.
+streams (never the keys), revoked ones included.
+
+- **Lost the key, or it ended up in a screenshot or a shared log?**
+  `jarvis-live stream-key rotate obs-desk --host <ingest-host>` revokes it and prints a new one
+  with the same name and settings, so only the key in OBS changes. A stream already running on
+  the old key keeps its session until it reconnects.
+- **Done with a stream:** `jarvis-live stream-key revoke obs-desk`. Its name can be created
+  again later.
 
 There is no local-only stream: a stream has left the computer by the time Jarvis sees it.
 For a session that must stay on your machine, use the desktop app's local-only mode instead.

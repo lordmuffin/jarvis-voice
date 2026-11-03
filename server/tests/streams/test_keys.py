@@ -5,6 +5,7 @@ import uuid
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from jarvis_live.db.models import OWNER_USER_ID, IngestKey
@@ -12,7 +13,23 @@ from jarvis_live.streams import keys
 
 SM = async_sessionmaker  # type: ignore[type-arg]
 RUN = uuid.uuid4().hex[:6]  # the test database outlives one test: names must not repeat
-N = {n: f"{n}-{RUN}" for n in ["obs-desk", "cam-a", "cam-b", "cam-c", "phone-x", "dup", "m1", "m2"]}
+N = {
+    n: f"{n}-{RUN}"
+    for n in [
+        "reuse",
+        "rot",
+        "rot-none",
+        "race",
+        "obs-desk",
+        "cam-a",
+        "cam-b",
+        "cam-c",
+        "phone-x",
+        "dup",
+        "m1",
+        "m2",
+    ]
+}
 
 
 @pytest.mark.parametrize("name", [N["obs-desk"], "phone1", "a"])
@@ -71,3 +88,54 @@ async def test_rejects_an_unknown_mode_or_source(sm: SM) -> None:
         await keys.create_key(sm, N["m1"], OWNER_USER_ID, mode="party")
     with pytest.raises(keys.IngestKeyError):
         await keys.create_key(sm, N["m2"], OWNER_USER_ID, source="watch")
+
+
+async def test_a_revoked_name_can_be_created_again(sm: SM) -> None:
+    old = await keys.create_key(sm, N["reuse"], OWNER_USER_ID)
+    await keys.revoke_key(sm, N["reuse"])
+    new = await keys.create_key(sm, N["reuse"], OWNER_USER_ID, mode="meeting")
+    assert await keys.verify(sm, N["reuse"], old) is None
+    found = await keys.verify(sm, N["reuse"], new)
+    assert found is not None and found.mode == "meeting"
+
+
+async def test_rotate_issues_a_new_key_kills_the_old_and_keeps_the_profile(sm: SM) -> None:
+    old = await keys.create_key(
+        sm, N["rot"], OWNER_USER_ID, mode="meeting", title="Desk", restricted=True, source="mobile"
+    )
+    new = await keys.rotate_key(sm, N["rot"])
+    assert new != old
+    assert await keys.verify(sm, N["rot"], old) is None
+    found = await keys.verify(sm, N["rot"], new)
+    assert found is not None
+    assert (found.user_id, found.mode, found.title, found.restricted, found.source) == (
+        OWNER_USER_ID,
+        "meeting",
+        "Desk",
+        True,
+        "mobile",
+    )
+    listed = [k for k in await keys.list_keys(sm) if k.name == N["rot"]]
+    assert sorted(k.revoked_at is None for k in listed) == [False, True]  # history kept
+
+
+async def test_rotating_a_name_without_an_active_key_fails(sm: SM) -> None:
+    with pytest.raises(keys.IngestKeyError):
+        await keys.rotate_key(sm, N["rot-none"])
+    await keys.create_key(sm, N["rot-none"], OWNER_USER_ID)
+    await keys.revoke_key(sm, N["rot-none"])
+    with pytest.raises(keys.IngestKeyError):
+        await keys.rotate_key(sm, N["rot-none"])
+
+
+async def test_the_database_allows_one_active_key_per_name(sm: SM) -> None:
+    """Even past the code's own checks (two creates racing): a partial unique index."""
+    await keys.create_key(sm, N["race"], OWNER_USER_ID)
+    async with sm() as db:
+        db.add(
+            IngestKey(
+                user_id=OWNER_USER_ID, name=N["race"], key_hash="0" * 64, mode="solo", source="obs"
+            )
+        )
+        with pytest.raises(IntegrityError):
+            await db.commit()

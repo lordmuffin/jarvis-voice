@@ -73,6 +73,38 @@ async def create_key(
     return secret
 
 
+async def rotate_key(sm: SM, name: str) -> str:
+    """Revoke path ``name``'s key and issue a new one with the same owner and profile, at once.
+    Returns the new key. A stream running on the old key keeps its session; its next connect
+    needs the new one."""
+    async with sm() as db:
+        old = (
+            await db.execute(
+                select(IngestKey)
+                .where(IngestKey.name == name, IngestKey.revoked_at.is_(None))
+                .with_for_update()
+            )
+        ).scalar_one_or_none()
+        if old is None:
+            raise IngestKeyError(f"no active stream key {name!r} to rotate")
+        secret = secrets.token_urlsafe(32)
+        old.revoked_at = datetime.now(UTC)
+        await db.flush()  # the old row leaves the active-name index before the new one enters
+        db.add(
+            IngestKey(
+                user_id=old.user_id,
+                name=old.name,
+                key_hash=hash_token(secret),
+                mode=old.mode,
+                title=old.title,
+                restricted=old.restricted,
+                source=old.source,
+            )
+        )
+        await db.commit()
+    return secret
+
+
 async def active_key(sm: SM, name: str) -> IngestKey | None:
     """The unrevoked key of path ``name``."""
     async with sm() as db:

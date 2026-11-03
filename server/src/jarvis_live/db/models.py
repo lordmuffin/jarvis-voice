@@ -114,11 +114,18 @@ class IngestKey(Base):
     __table_args__ = (
         CheckConstraint("mode IN ('meeting','solo')", name="ck_ingest_keys_mode"),
         CheckConstraint("source IN ('obs','mobile')", name="ck_ingest_keys_source"),
+        # One active key per path; revoked ones stay as history, so a name can be rotated.
+        Index(
+            "uq_ingest_keys_active_name",
+            "name",
+            unique=True,
+            postgresql_where=text("revoked_at IS NULL"),
+        ),
     )
 
     id: Mapped[uuid.UUID] = _uuid_pk()
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
-    name: Mapped[str] = mapped_column(String(40), unique=True)
+    name: Mapped[str] = mapped_column(String(40))
     key_hash: Mapped[str] = mapped_column(String(64), unique=True)
     mode: Mapped[str] = mapped_column(String(16), default="solo")
     title: Mapped[str | None] = mapped_column(Text)
