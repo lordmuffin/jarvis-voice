@@ -10,7 +10,9 @@ import contextlib
 import hashlib
 import json
 import os
+import shutil
 import subprocess
+import sys
 import threading
 import wave
 from collections.abc import Callable, Mapping
@@ -19,6 +21,7 @@ from pathlib import Path
 from typing import Protocol
 
 import numpy as np
+from jarvis_live.client.capture import build_command, find_tool
 
 from jarvis_desktop import evalset
 
@@ -173,8 +176,25 @@ def _nothing_heard(raw: bytes) -> str:
     )
 
 
-def describe_source(name: str | None) -> str | None:
+def recorder_command(source: str | None, *, platform: str = sys.platform) -> list[str]:
+    """A command that writes 16 kHz mono PCM16 to stdout from ``source`` (the default input if
+    None): the capture client's ``parec``/``pw-record`` on Linux, ffmpeg's AVFoundation input on
+    macOS, so the read set can be recorded on a Mac's built-in mic too."""
+    if platform != "darwin":
+        return build_command(find_tool(), source)
+    if shutil.which("ffmpeg") is None:
+        raise RecordError("recording on macOS needs ffmpeg: brew install ffmpeg")
+    return [
+        "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin",
+        "-f", "avfoundation", "-i", f":{source or 'default'}",
+        "-ac", "1", "-ar", "16000", "-f", "s16le", "-",
+    ]  # fmt: skip
+
+
+def describe_source(name: str | None, *, platform: str = sys.platform) -> str | None:
     """The sound server's description of a source (the default one if ``name`` is None)."""
+    if platform == "darwin":
+        return name or "the macOS default input"
     try:
         if name is None:
             name = subprocess.run(

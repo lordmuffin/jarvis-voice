@@ -8,7 +8,6 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import httpx
-from jarvis_live.client.capture import build_command, find_tool
 from jarvis_live.client.config import load_config
 
 from jarvis_desktop import __version__, evalset, readset
@@ -52,7 +51,11 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
         description=readset.__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--source", help="mic to record (see `pactl list short sources`)")
+    p.add_argument(
+        "--source",
+        help="mic to record: a `pactl list short sources` name on Linux, an AVFoundation "
+        "input name or index on macOS (default: the system default input)",
+    )
     p.add_argument("--out", type=Path, help="default: $XDG_DATA_HOME/jarvis-voice/eval-read")
 
     md = sub.add_parser("models", help="on-device speech models").add_subparsers(
@@ -91,8 +94,8 @@ def _eval_score(args: argparse.Namespace, env: Mapping[str, str]) -> int:
 
 def _eval_record(args: argparse.Namespace, env: Mapping[str, str]) -> int:
     out = args.out or readset.default_output_dir(env)
-    recorder = readset.SubprocessRecorder(build_command(find_tool(), args.source))
     try:
+        recorder = readset.SubprocessRecorder(readset.recorder_command(args.source))
         readset.record(
             readset.prompts(),
             out,

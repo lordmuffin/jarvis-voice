@@ -202,3 +202,46 @@ def test_a_quiet_take_with_some_signal_is_reported_as_quiet(tmp_path: Path) -> N
     said = run(tmp_path, ["Only one."], [hiss, tone(1_000)], ["", "", "", "", ""])
     assert any("too quiet" in s.lower() for s in said)
     assert not any("no signal at all" in s for s in said)
+
+
+# --- which recorder ---------------------------------------------------------------------------
+
+
+def test_on_linux_it_records_with_the_capture_clients_command(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(readset, "find_tool", lambda: "parec")
+    cmd = readset.recorder_command(None, platform="linux")
+    assert cmd[0] == "parec" and "--rate=16000" in cmd
+
+
+def test_on_macos_it_records_the_default_input_with_ffmpeg(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(readset.shutil, "which", lambda tool: f"/opt/homebrew/bin/{tool}")
+    cmd = readset.recorder_command(None, platform="darwin")
+    assert cmd[0] == "ffmpeg"
+    assert cmd[cmd.index("-f") + 1] == "avfoundation"
+    assert cmd[cmd.index("-i") + 1] == ":default"
+    assert ["-ac", "1"] == cmd[cmd.index("-ac") : cmd.index("-ac") + 2]
+    assert ["-ar", "16000"] == cmd[cmd.index("-ar") : cmd.index("-ar") + 2]
+    assert cmd[-3:] == ["-f", "s16le", "-"]
+
+
+def test_on_macos_a_named_input_is_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(readset.shutil, "which", lambda tool: f"/opt/homebrew/bin/{tool}")
+    cmd = readset.recorder_command("MacBook Pro Microphone", platform="darwin")
+    assert cmd[cmd.index("-i") + 1] == ":MacBook Pro Microphone"
+
+
+def test_on_macos_without_ffmpeg_it_says_how_to_get_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(readset.shutil, "which", lambda tool: None)
+    with pytest.raises(readset.RecordError, match="brew install ffmpeg"):
+        readset.recorder_command(None, platform="darwin")
+
+
+def test_on_macos_the_mic_is_described_without_pactl() -> None:
+    assert readset.describe_source(None, platform="darwin") == "the macOS default input"
+    assert readset.describe_source("MacBook Pro Microphone", platform="darwin") == (
+        "MacBook Pro Microphone"
+    )

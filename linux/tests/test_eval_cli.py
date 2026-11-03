@@ -156,7 +156,7 @@ def test_record_walks_the_shipped_sentences_into_the_read_set(
         return 2
 
     monkeypatch.setattr(readset, "record", fake_record)
-    monkeypatch.setattr(app, "find_tool", lambda: "pw-record")
+    monkeypatch.setattr(readset, "find_tool", lambda: "pw-record")
     code = app.main(["eval", "record", "--source", "my-mic"], env=env_for(tmp_path))
     assert code == 0
     assert seen["count"] == 40

@@ -52,6 +52,11 @@ next run resumes). Takes are trimmed of silence and saved owner-only to
 `$XDG_DATA_HOME/jarvis-voice/eval-read/` with the sentence as an exact reference, so `eval score`
 reports a real WER. `--source` picks the mic (`pactl list short sources`).
 
+On a Mac it records the default input (the built-in mic) with ffmpeg (`brew install ffmpeg`;
+the terminal needs Microphone access in System Settings, Privacy & Security). `--source`
+takes an AVFoundation input name, listed by `ffmpeg -f avfoundation -list_devices true -i ""`.
+Copy the folder to the Linux box to score it there.
+
 ## Speech models and scoring
 
 ```sh
