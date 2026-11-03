@@ -112,7 +112,9 @@ async def pull(
     """Adds up to ``max_clips`` new clips to ``out`` (``manifest.jsonl`` + ``clips/*.wav``),
     newest sessions first. Clips already in the manifest are skipped, so it can be re-run."""
     check_output_dir(out)
-    (out / "clips").mkdir(parents=True, exist_ok=True)
+    for d in (out, out / "clips"):  # recordings of your voice: owner only, whatever the umask
+        d.mkdir(parents=True, exist_ok=True)
+        d.chmod(0o700)
     manifest = out / "manifest.jsonl"
     have = _existing_ids(manifest)
     summary = Summary()
@@ -225,6 +227,7 @@ async def _save(
         w.setsampwidth(2)
         w.setframerate(SAMPLE_RATE)
         w.writeframes(pcm)
+    tmp.chmod(0o600)
     tmp.replace(out / rel)
     row = {
         "id": clip.id,
@@ -236,5 +239,8 @@ async def _save(
         "reference": clip.reference,
         "stt_tier": clip.stt_tier,
     }
-    with manifest.open("a") as fh:  # appended after the WAV exists, so a crash leaves no dangler
+    # Appended after the WAV exists, so a crash leaves no dangling row.
+    fd = os.open(manifest, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    with os.fdopen(fd, "a") as fh:
         fh.write(json.dumps(row) + "\n")
+    manifest.chmod(0o600)
