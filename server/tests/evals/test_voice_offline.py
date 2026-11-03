@@ -12,7 +12,7 @@ from jarvis_live.voice.service import VOICE_SYSTEM
 from tests.evals.voice import (
     DECODE_3B_2070,
     PREFILL_3B_2070,
-    REQUIRED_KEYS,
+    VARIANTS,
     Recorder,
     Row,
     break_even,
@@ -226,11 +226,42 @@ async def test_a_real_client_request_is_recorded_with_its_timings_and_reasoning(
     ]
 
 
-def test_the_required_keys_variant_is_off_by_default_and_changes_only_what_is_sent() -> None:
-    assert "required" not in VoiceRequest.model_json_schema()
-    schema = REQUIRED_KEYS.model_json_schema()
-    assert set(schema["required"]) == set(schema["properties"])
-    assert REQUIRED_KEYS.model_validate({}).target == "none"
+async def test_today_is_the_default_and_sends_the_request_the_server_sends() -> None:
+    assert VARIANTS["today"].schema is VoiceRequest
+    llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    await run_case(llm, CLOUD, "m", timeout_s=9.0)
+    assert f"Today: {TODAY}\n" in llm.calls[0].user
+
+
+async def test_the_weekday_variant_names_the_day_and_changes_nothing_else() -> None:
+    plain = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    await run_case(plain, CLOUD, "m", timeout_s=9.0)
+    named = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    await run_case(named, CLOUD, "m", timeout_s=9.0, variant=VARIANTS["named-day"])
+    assert f"Today: Wednesday {TODAY}\n" in named.calls[0].user
+    assert named.calls[0].user.replace("Wednesday ", "") == plain.calls[0].user
+    assert named.calls[0].system == plain.calls[0].system
+
+
+def test_the_kinds_variant_requires_what_the_server_needs_for_each_spoken_kind() -> None:
+    schema = VARIANTS["kinds"].schema.model_json_schema()
+    kinds = {
+        k["properties"]["kind"]["const"]: k
+        for k in schema["properties"]["proposals"]["items"]["anyOf"]
+    }
+    assert set(kinds) == {"task.create", "reminder.schedule", "git.pr_comment"}
+    assert kinds["task.create"]["required"] == ["kind", "text"]
+    assert kinds["reminder.schedule"]["required"] == ["kind", "title", "at"]
+    assert kinds["git.pr_comment"]["required"] == ["kind", "repo", "pr", "body"]
+    assert "ProposalIn" not in schema.get("$defs", {})
+
+
+def test_the_kinds_variant_parses_as_tolerantly_as_today() -> None:
+    assert VARIANTS["kinds"].schema.model_validate({}).target == "none"
+    reply = VARIANTS["kinds"].schema.model_validate(
+        {"target": "action", "proposals": [{"kind": "pi.session", "text": "x"}, {"kind": "bad"}]}
+    )
+    assert reply.proposals == []
 
 
 def all_pass() -> list[Row]:

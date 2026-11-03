@@ -18,8 +18,8 @@ only, and the time verdict is reported with the decode rate it would need.
         --out /somewhere/outside/the/repo/rows.jsonl
     uv run python -m tests.evals.voice report rows.jsonl --control q25-3b
 
-Rows hold whole replies, so keep them out of the repo. --required-keys sends VoiceRequest with its
-keys required, as 3a did for CopilotDelta. The server does not send that, so it is off by default.
+Rows hold whole replies, so keep them out of the repo. --variant changes the request, never the
+bar, and no real voice pass sends one. "today" is what the server sends, and it is the default.
 """
 
 import argparse
@@ -31,7 +31,7 @@ import sys
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -55,15 +55,53 @@ DECODE_3B_2070 = 132.0  # tok/s, same run, grammar on
 _NOW = datetime(2026, 11, 4, 12, tzinfo=UTC)
 
 
-class _RequiredKeys(VoiceRequest):
+def _kind(kind: str, required: Sequence[str], **fields: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {"kind": {"const": kind}, **fields},
+        "required": ["kind", *required],
+    }
+
+
+_TEXT: dict[str, Any] = {"type": "string"}
+_SPOKEN_KINDS = [
+    _kind("task.create", ["text"], text=_TEXT, due=_TEXT),
+    _kind("reminder.schedule", ["title", "at"], title=_TEXT, at=_TEXT, body=_TEXT),
+    _kind("git.pr_comment", ["repo", "pr", "body"], repo=_TEXT, pr={"type": "integer"}, body=_TEXT),
+]
+
+
+class _Kinds(VoiceRequest):
+    """Each spoken kind with the fields build_payload needs, in place of one flat ProposalIn whose
+    fields are all optional. It parses exactly as VoiceRequest does: only what is sent differs."""
+
     @classmethod
     def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
         schema = super().model_json_schema(*args, **kwargs)
-        return {**schema, "required": list(schema["properties"]), "title": "VoiceRequest"}
+        schema["properties"]["proposals"]["items"] = {"anyOf": _SPOKEN_KINDS}
+        schema.pop("$defs", None)
+        return {**schema, "title": "VoiceRequest"}
 
 
-_RequiredKeys.__name__ = "VoiceRequest"
-REQUIRED_KEYS: type[VoiceRequest] = _RequiredKeys
+_Kinds.__name__ = "VoiceRequest"
+
+
+@dataclass(frozen=True)
+class Variant:
+    name: str
+    schema: type[VoiceRequest] = VoiceRequest
+    named_day: bool = False
+
+
+VARIANTS = {
+    v.name: v
+    for v in (
+        Variant("today"),
+        Variant("named-day", named_day=True),
+        Variant("kinds", schema=_Kinds),
+        Variant("named-day+kinds", schema=_Kinds, named_day=True),
+    )
+}
 
 
 @dataclass
@@ -73,6 +111,7 @@ class Row:
     case: str
     ok: bool
     fails: list[str]
+    variant: str = "today"
     tokens: list[int] = field(default_factory=list)  # one per attempt, as the caller waits for all
     prompts: list[int] = field(default_factory=list)
     finish: list[str] = field(default_factory=list)
@@ -196,7 +235,7 @@ async def run_case(
     model: str,
     *,
     timeout_s: float,
-    schema: type[VoiceRequest] = VoiceRequest,
+    variant: Variant = VARIANTS["today"],
 ) -> VoiceRequest:
     user = voice_user(
         today=TODAY,
@@ -205,11 +244,14 @@ async def run_case(
         known=list(case.known),
         said=case.said,
     )
+    if variant.named_day:
+        day = date.fromisoformat(TODAY).strftime("%A")
+        user = user.replace(f"Today: {TODAY}", f"Today: {day} {TODAY}", 1)
     return await llm.complete_json(
         model=model,
         system=VOICE_SYSTEM,
         user=user,
-        schema=schema,
+        schema=variant.schema,
         timeout_s=timeout_s,
         think=False,
     )
@@ -302,15 +344,17 @@ async def run_one(
     llm: LiteLLMClient, rec: Recorder, case: VoiceCase, args: argparse.Namespace
 ) -> Row:
     rec.attempts = []
-    schema = REQUIRED_KEYS if args.required_keys else VoiceRequest
     try:
-        reply = await run_case(llm, case, args.model, timeout_s=args.timeout, schema=schema)
+        reply = await run_case(
+            llm, case, args.model, timeout_s=args.timeout, variant=VARIANTS[args.variant]
+        )
         fails = check(case, reply)
     except Exception as e:  # an unusable reply is a failed case, not a stopped run
         fails = [f"no valid reply: {type(e).__name__}"]
     done = [a for a in rec.attempts if a["tokens"] is not None]
     return Row(
         model=args.tag or args.model,
+        variant=args.variant,
         run=-1,
         case=case.name,
         ok=not fails,
@@ -360,8 +404,8 @@ def report(paths: Sequence[str], control: str | None) -> int:
     for path in paths:
         for line in Path(path).read_text(encoding="utf-8").splitlines():
             row = Row(**json.loads(line))
-            groups.setdefault(row.model, []).append(row)
-    base = groups.get(control or "", [])
+            groups.setdefault(f"{row.model} {row.variant}", []).append(row)
+    base = next((rows for name, rows in groups.items() if name.split()[0] == control), [])
     for model, rows in groups.items():
         v = verdict(rows)
         tokens = sorted(t for r in rows for t in r.tokens) or [0]
@@ -409,7 +453,7 @@ def main() -> int:
     r.add_argument("--out", required=True)
     r.add_argument("--timeout", type=float, default=300.0)
     r.add_argument("--keep-going", action="store_true")
-    r.add_argument("--required-keys", action="store_true")
+    r.add_argument("--variant", default="today", choices=list(VARIANTS))
     p = sub.add_parser("report")
     p.add_argument("paths", nargs="+")
     p.add_argument("--control", default=None)
