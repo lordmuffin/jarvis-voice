@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0](https://github.com/lordmuffin/jarvis-voice/compare/linux-v0.1.0...linux-v0.2.0) (2026-11-03)
+
+
+### Features
+
+* **linux:** record a read eval set with exact references ([50935d1](https://github.com/lordmuffin/jarvis-voice/commit/50935d16672e2eaf51e4e0b4ca4ed12768268264))
+* **linux:** record a read eval set with exact references ([308be2d](https://github.com/lordmuffin/jarvis-voice/commit/308be2daa6f88e5506b5637c75bfb897ef783a6d))
+* **linux:** record the read eval set on a Mac's built-in mic ([1802b29](https://github.com/lordmuffin/jarvis-voice/commit/1802b29cb452c22b2e6adf1670271433cb8bb59d))
+
+
+### Bug Fixes
+
+* **linux:** say which mic eval record uses and why a take was empty ([05e3bb1](https://github.com/lordmuffin/jarvis-voice/commit/05e3bb1550054a76aa2eb43ebcec8ef0384ebde7))
+
 ## 0.1.0 (2026-11-03)
 
 
