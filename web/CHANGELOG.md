@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.35.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.34.2...web-v0.35.0) (2026-11-03)
+
+
+### Miscellaneous Chores
+
+* **web:** Synchronize server and web versions
+
 ## [0.34.2](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.34.1...web-v0.34.2) (2026-11-03)
 
 
