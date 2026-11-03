@@ -371,24 +371,138 @@ To roll back, redeploy lab's previous image with the *Server Image* workflow, or
 
 ### What happens next
 
-**The bar for step 4.** One model, on the 17 cases, three runs each:
+**The REPLAN took the decision away from this bar.** The copilot names Flash, and its done test is p95
+under 15 s with 0 cycles lost, so no small model has to pass anything for the copilot to ship. Step 3b
+stays as a record: [nothing passed](#step-3b-what-was-measured), and that blocks nothing.
 
-1. **Quality:** at least 2 of 3 on each of the 11 cases Flash passes 3 of 3. The 3B reached 5 of 11.
+**The bar as 3b measured it.** One model, on the 17 cases, three runs each:
+
+1. **Quality:** at least 2 of 3 on each of the 11 cases Flash passes 3 of 3.
 2. **Size:** replies at p95 within what 2.5 s allows on that model's card. On the 2070, that is 225
    tokens at 132 tok/s.
 
-The evals run locally on CPU, so this costs no cluster change, and it stops a bad candidate before a
-pod exists.
+**What is left of it:**
 
-Two levers, in this order:
+- **The 11 cases still count.** If the replay fails on Flash, the copilot moves to pve's model only if
+  that model passes them. R2 reports them.
+- **The 225 tokens no longer applies to the copilot.** It came from the copilot's old 2.5 s. Voice keeps
+  2.5 s on its own request, and R2 sets its own eval for that, with the 2070's speed still to be shown.
 
-1. **A smaller reply.** Both models write about 400 tokens, so this is the reply, not the model. The
-   voice arm reached the same place: the reply has to get shorter. Candidates are a cap on items per
-   cycle and leaving `suggestions` and `proposals` to a slower cycle. A shorter reply must still pass the
-   evals.
-2. **A better small model.** The next option remains a small model on the Spark, as this plan said
-   before step 3: 0.06 to 0.10 of its memory budget is free. Its speed under Flash, and whether it needs a
-   Flash restart, are unknown.
+Both levers were tried, in this order:
+
+1. **A smaller reply.** The caps and dropping `suggestions` and `proposals` halved the 3B's reply and
+   still missed 225 at p95. Only a compact grammar fitted, and it lost the notes.
+2. **A better small model.** Three candidates, all stopped in their second run.
+
+**A small model on the Spark is out of the sequence,** because the REPLAN gives the next lever to pve's
+whole 7 GiB card. Nothing was loaded there. If it comes back, it has to pass the 11 cases, fit the 0.06 to
+0.10 of the memory budget that is free, and answer at a usable speed beside Flash. That speed, and
+whether it needs a Flash restart, remain unknown.
+
+### Step 3b: what was measured
+
+**No model and no reply passed the bar.** Quality and size pulled against each other, and the best 3B
+variants reached 6 of 11 while still over 225 at p95. Nothing here changes what lab or live sends.
+
+All runs were local, on CPU, from 2026-11-02 17:40 UTC to 00:16 on 11-03, through the real client, with
+one 4,096 token slot. The figures are from `tests.evals.reply_size report`, unless a line says it tallied
+the rows' failure text. They are about quality and tokens only: no time here means anything for a card.
+Rows hold whole replies, so they are not committed.
+
+**The 3B, all 9 variants to the end, 51 runs each:**
+
+| Variant | What changes | Passed | Bar cases | p50 | p95 | Max | Within 225 | Notes, suggestions per reply |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `today` | Control, the request a cycle sends | 17 | 5 | 395 | 967 | 2,442 | 2 of 52 | 2.4, 2.9 |
+| `caps` | At most 2 notes, 2 decisions, 3 topics, 1 suggestion, 1 proposal | 22 | **6** | 303 | 404 | 446 | 8 of 51 | 1.5, 1.0 |
+| `owners` | `owner` and `due` required in each action | 14 | 3 | 386 | 699 | 2,442 | 3 of 52 | 2.0, 2.8 |
+| `no-sugg-prop` | No `suggestions` or `proposals` | 23 | **6** | 208.5 | 1,994 | 1,994 | 33 of 54 | 2.0, 0 |
+| `no-sugg-prop-caps` | Both of those | 22 | **6** | 197 | **306** | 334 | 32 of 51 | 1.4, 0 |
+| `slim` | That, and `owners` | 18 | **6** | 205 | 321 | 391 | 30 of 51 | 1.4, 0 |
+| `slim-min` | That, and the prompt asks for one-line JSON | 12 | 2 | 145.5 | 283 | 1,977 | 49 of 52 | 1.0, 0 |
+| `slim-owner` | That, owner first, and a prompt line on owners | 13 | 3 | 131 | 1,922 | 3,374 | 49 of 54 | 0.8, 0 |
+| `no-sugg-prop-caps` + compact | No whitespace, by a llama.cpp grammar | 9 | 1 | 95 | **151** | 153 | 51 of 51 | **0**, 0 |
+
+Passed is out of 51 and bar cases out of 11. Within 225 counts every attempt, so a retry adds a reply. `today` repeats the
+step 3 result on the real request, at 5 of 11. Actions held at 1.6 to 2.2 per reply throughout, so no variant
+lost them by count. The loss was in which actions and whose.
+
+**What each costs the copilot:**
+
+- **Dropping `suggestions` and `proposals` takes them out of every cycle.** No slower cycle exists, so
+  this needs one built. None of the 17 cases grades either key, and `actions.py`, the eval that grades
+  proposals, did not run on any variant, so the higher scores show nothing about what was given up.
+- **Caps cost context.** Notes fell from 2.4 to 1.5 per reply and topics from 4.9 to 3.0.
+- **Requiring `owner` invents owners.** Tallied from the rows, invented owner failures rose from 3 to 21.
+  The prompt says not to invent them, and a required key pushes against that.
+- **Compact JSON is the only reply that fits, and it fails.** It wrote no notes at all, and bar cases fell
+  to 1. The grammar allows notes, and all three models that returned content under it wrote none. I do not know
+  why. The model is not told about it, and a real request would need llama.cpp's `grammar`, which the
+  real client does not send.
+
+**Size was not the 3B's only problem.** Tallied from the rows, 4 of the 11 bar cases passed 0 of 27 runs
+across all 9 variants: named speakers, small talk, state carried, and rolling cycle "Order the spare
+batteries". They fail on wrong or missing owners, missing actions and, in small talk, an action nobody
+promised. All 9 variants together reach only 7 of the 11, so no reply shape here gets the 3B past the bar.
+
+**Candidates.** Each was stopped in its second run, once a bar case failed twice. The report prints 0 of 11
+for all of them only because a case needs three runs to count, so read Passed instead.
+
+| Model, Q4_K_M | Variant | Passed | p50 | p95 | Within 225 | Stopped on |
+|---|---|---:|---:|---:|---:|---|
+| `qwen35-4b`, 2.5 GiB | `today` | 6 of 18 | 503.5 | 768 | 2 of 18 | 1:1 status meeting |
+| | `slim-min` | 8 of 20 | 200.5 | 386 | 15 of 20 | Solo brain dump |
+| | `slim-owner` | 6 of 18 | 179 | 405 | 16 of 18 | 1:1 status meeting |
+| | `no-sugg-prop-caps` | 4 of 19 | 260 | 557 | 6 of 19 | Vendor call |
+| | That + compact | 5 of 18 | 52.5 | 170 | 18 of 18 | 1:1 status meeting |
+| `ministral3-3b`, 2.0 GiB | `today` | 4 of 18 | 338 | 855 | 2 of 18 | 1:1 status meeting |
+| | `slim-min` | 4 of 18 | 242.5 | 532 | 6 of 18 | 1:1 status meeting |
+| | `slim-owner` | 2 of 18 | 230 | 416 | 7 of 18 | 1:1 status meeting |
+| | `no-sugg-prop-caps` | 6 of 20 | 255.5 | 461 | 6 of 20 | Solo brain dump |
+| | That + compact | 4 of 19 | 105 | 152 | 19 of 19 | Vendor call |
+| `lfm25-26b`, 1.6 GiB, `--reasoning off` | `today` | 3 of 18 | 2,458 | 3,243 | 0 of 29 | 1:1 status meeting |
+| | `no-sugg-prop-caps` | 9 of 23 | 2,168 | 2,695 | 0 of 31 | Named speakers |
+| | That + compact | 0 of 18 | 60 | 180 | 36 of 36 | **Void:** every reply empty |
+
+**Ranked by these rows, not by any vendor's figures:** `qwen35-4b`, then `ministral3-3b`. Neither beat the
+3B, whose 22 of 51 is the only full result. Both invented or dropped actions on bar cases that the 3B passes,
+such as the 1:1 and the solo brain dump. These ranks rest on partial runs of 18 to 23 cases. The session that
+chose the candidates left no reason for them, so all I can say is that they are small enough for the 3 GiB the
+2070 then had to spare.
+
+**`lfm25-26b` is not ranked, because reasoning never turned off.** Its first three series, on the default
+server, were excluded as reasoning, and these are the rerun meant to fix that. It did not:
+
+- **`--reasoning off` is not enough for this template.** The server logged `thinking = 0`, and its sample
+  prompt still ends in `<think>`. The log holds no generated text, so this is inferred from the rows.
+- **The rows agree.** Its stored replies hold a median 0.2 characters per token, where the others hold 3 to 4.
+  On `no-sugg-prop-caps`, 12 of 31 attempts held no content and 13 hit the slot's limit.
+- **So its token figures are not reply sizes,** and its size is unmeasured. Its 9 of 23 is the best rate
+  here, but it stopped on real misses in finished replies, so it does not pass either. R2's brief turns
+  reasoning off at the server: this template needs more than that.
+- **Its compact row measures nothing.** The grammar forces JSON inside the open block, so all 36 replies
+  came back empty, and that is a failure of my run and not of the model.
+
+**Pins.** `ghcr.io/ggml-org/llama.cpp@sha256:33868c035b21dc63f7c60b7438774283fd99215bc319114eb03de5df4ce7cd6b`.
+
+| Model | Repository, `Q4_K_M` | SHA256 |
+|---|---|---|
+| `q25-3b` | `Qwen/Qwen2.5-3B-Instruct-GGUF` | `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` |
+| `ministral3-3b` | `mistralai/Ministral-3-3B-Instruct-2512-GGUF` | `9ed150d4367e68df0ac8e1540f6ddc65b42d0ee26378329d1ecbca60f93fc5f8` |
+| `qwen35-4b` | `lmstudio-community/Qwen3.5-4B-GGUF` | `25082a7dd3776cc3c741c6347d3bd04523f05796607b3fbc32fa3a25dfa1418c` |
+| `lfm25-26b` | `LiquidAI/LFM2.5-2.6B-GGUF` | `02a8b7e17487d326e46d68ce0ba24211e1b80a14c4cd0597fa73c1cd697f52ed` |
+
+**Limits and what stays open:**
+
+- **Every result is about these small models.** They were picked for 3 GiB. R2 has 7 GiB, so this says
+  nothing about a larger model.
+- **No variant ran on Flash.** The rule was CPU only. Whether `no-sugg-prop-caps` would shorten Flash's reply
+  is unmeasured, and R1's replay left only 0.25 s of margin on an idle engine. Trying it would be a later
+  PR, with `actions.py` run and a slower cycle for what it drops. Nothing here builds it.
+- **`lfm25-26b`'s reply size** needs a template that does not open the block. That is untested, and it is
+  R2's to try only if R2 picks a model with the same template.
+- **Nothing here needs a decision.** The Spark question above is parked with the REPLAN, and whether the
+  copilot leaves Flash waits on R1's replay under load and R2's model.
 
 ### What step 4 must measure
 
@@ -765,7 +879,7 @@ One PR per step. Steps 1, 2, 3 and 3a are done. The REPLAN changes the rest: row
 | 2 | `fast-chat`, `fast-coder`: `timeout: 5`, `num_retries: 0`. Correct the cooldown comment. Pin it in `test_router_config.py` | `homelab-gitops` | **The proxy, so every LLM client** | Revert | After the voice arm. **Before `ollama` returns.** Could share Task 22's window |
 | 3 | Run the comparison on 11's probe, and read arm V for the thinking question | `jarvis-voice` | None | None needed | **Done. Result: 4 and 5 stop** |
 | 3a | Make the top-level `CopilotDelta` keys required, so actions come back. Set the live evals to the same request | `jarvis-voice` | `jarvis-live`, lab first | Revert | **Done: 13 of 17, 17 of 17 replies with actions.** On live in `server-v0.32.2`, with no soak. [R1's replay](#what-to-watch-on-lab) checks it under load |
-| 3b | **New.** Find a model and a reply size that pass [the bar](#what-happens-next), on the evals, before any pod exists | `jarvis-voice` | None | None needed | After 3a |
+| 3b | Find a model and a reply size that pass [the bar](#what-happens-next), on the evals, before any pod exists | `jarvis-voice` | None | None needed | **Done: nothing passed.** Best 6 of 11 at p95 306 on the 3B. A record, not a gate, since the copilot now names Flash: [results](#step-3b-what-was-measured) |
 | 4 | New pve workload and profile, `interactive` alias, copilot evals on it | `homelab-gitops` | Proxy, new pod. No Flash | Remove the alias and the workload | **Blocked on 3b.** The 3B does not go ahead. R5 replaces this for voice |
 | 5 | Set `JARVIS_LIVE_COPILOT_MODEL` to `interactive` on lab, replay, then live. Voice follows, since `VOICE_MODEL` is empty | `jarvis-voice` | `jarvis-live` | Restore `fast-chat` | **No longer applies to the copilot,** which names Flash in R1. `VOICE_MODEL` moves alone, in R5 |
 | 6 | `BestEffortTierDown` and its route, with `promtool` tests | `homelab-gitops` | None | Revert | **Cancelled by the REPLAN:** `ollama` is not coming back |
