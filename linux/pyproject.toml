@@ -1,6 +1,6 @@
 [project]
 name = "jarvis-desktop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Jarvis Voice for the Linux desktop: dictation, tray and Copilot panel"
 requires-python = ">=3.12"
 dependencies = [
