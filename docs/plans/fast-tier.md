@@ -12,6 +12,10 @@ figures, and the verdict stands.
 **Step 4 does not go ahead, on the 3B or any other model. Step 5 waits for it.** There is no model
 to name yet.
 
+**R2, 2026-11-03: no candidate passes the voice eval, so there is still no model.** The nearest is
+`gemma4-e4b`, one case short on an eval-only request. Its 2070 speed is unproven. What you have to
+decide is in [R2](#r2-the-model-for-pves-2070).
+
 - **The 3B fails on quality.** It passed 18 of 51 eval runs against Flash's 37 of 51, on the same
   fixed request. It missed owners and whole actions.
 - **The 3B fails on time.** p95 was 4.35 s to the caller on a request that carries no actions. A
@@ -792,6 +796,167 @@ rollback to `server-v0.32.2` is the *Server Image* workflow.
 **Still owed:** the same replay on a weekday with agents busy. If it passes the gate and misses the bar,
 the next lever is pve's model, from R2. `fast-chat`-era numbers for comparison were not taken, so this
 run does not show what naming Flash changed. Andrew's own recording did not reach lab, so it is not here.
+
+## R2: the model for pve's 2070
+
+**No candidate passes voice, on today's request or on the eval-only request variant, so R2 names no
+model that clears the bar.** The nearest is `gemma4-e4b`. On the variant it failed only one case, by
+filing an already-proposed task again with a due date nobody said. Whether it reaches 2.5 s on the card
+depends on which speed estimate holds, and they disagree. Under the brief, no candidate went on to the
+copilot cases, so none can be the copilot's fallback yet.
+
+Run 2026-11-03, 01:40 to 05:16 UTC, local CPU only, through the real client, one 4,096-token slot per
+server. No Flash, no gateway and no pods. Figures are from `tests.evals.voice report` unless a line says
+otherwise. Rows hold whole replies, so they are not committed.
+
+### The voice eval
+
+No voice eval existed. `server/tests/evals/voice.py` and `voice_cases.py` send what
+`VoicePass._interpret` sends: the real `VOICE_SYSTEM`, `voice_user` and `VoiceRequest`, thinking off.
+They grade what the server would act on: `build_payload` decides whether a proposal is filed, and an
+off-list repo counts as none, as `IdeasState` stores it. The 25 invented requests cover all four targets,
+with speech-to-text slips, a take-back, an instruction to Jarvis said inside a request, a comment on a
+repo that is not allowed, and a repeat of something already proposed. Today is a fixed Wednesday,
+2026-11-04, so a key can name the date a spoken day falls on.
+
+**The bar was committed in af416ec, before any model ran**, and has not changed. Three runs of all 25:
+
+1. Every case passes at least 2 of 3.
+2. The 4 critical cases pass 3 of 3. These are the two take-backs, the instruction to Jarvis, and the
+   comment on a repo that is not allowed.
+3. At least 90% of all runs pass.
+4. No reply is cut off.
+
+Time is judged separately, because CPU times say nothing about a card. Reply p95 at the candidate's
+estimated 2070 rates, counting every attempt, must be within 2.5 s. A candidate stops on quality only.
+
+### Candidates
+
+Three Q4 files that fit 7 GiB with a slot, chosen on 3b's evidence. 3b's small models were Qwen 3.5,
+Ministral 3 and LFM 2.5. LFM's template would not turn reasoning off, so I left that family out. The
+other two families moved up to the largest size that fits, and Gemma 4 came in as a third family:
+
+| Model | Repository and file | Weights | KV, 1 slot / 2 slots | Compute | Total, 1 / 2 slots |
+|---|---|---:|---:|---:|---:|
+| `qwen35-9b` | `lmstudio-community/Qwen3.5-9B-GGUF`, `Qwen3.5-9B-Q4_K_M.gguf` | 5,356 MiB | 128 / 256 | 116 | **5.47 / 5.59 GiB** |
+| `ministral3-8b` | `mistralai/Ministral-3-8B-Instruct-2512-GGUF`, `Ministral-3-8B-Instruct-2512-Q4_K_M.gguf` | 4,919 MiB | 544 / 1,088 | 128 | **5.46 / 5.99 GiB** |
+| `gemma4-e4b` | `google/gemma-4-E4B-it-qat-q4_0-gguf`, `gemma-4-E4B_q4_0-it.gguf` | 4,901 MiB | 104 / 208 | 112 | **5.00 / 5.10 GiB** |
+
+Memory is from each server's load log on CPU at `--ctx-size 4096` per slot. The CUDA context is not in
+it, and is unmeasured. The jev manifest allows about 0.9 GiB over weights and KV for the 3B, so all three
+should fit 7 GiB with two slots. That is unproven until R5 loads one.
+
+**Thinking.** All three honour `enable_thinking: false`, so none needed the server-side switch. Every
+reply held 0 reasoning characters, at 3.1 to 3.8 characters per token, where 3b's LFM held 0.2.
+
+**Speed on the 2070 is estimated, not measured.** The only rate measured on the card is the 3B's on
+`jev-llm`: 3,005 tok/s prefill and 132 tok/s decode, with the grammar on. I scaled it two ways. Both are
+unproven:
+
+| Model | Decode, by CPU ratio | Decode, by file size | Reply p95 at each, today | Decode needed for 2.5 s |
+|---|---:|---:|---:|---:|
+| `q25-3b`, control | 132, measured | 132 | 1.74 s | 92 |
+| `qwen35-9b` | 50 | 49 | 4.73 / 4.98 s | 98 |
+| `ministral3-8b` | 54 | 53 | 4.13 / 4.15 s | 89 |
+| `gemma4-e4b` | **86** | **54** | **2.34 / 3.70 s** | 80 |
+
+- **The CPU ratio** is each model's decode rate against the 3B's, on the same machine, 12 threads and
+  image. It held at 21.7 and 22.1 tok/s for the 3B across the two runs. The file-size scaling assumes
+  decode reads every weight once per token.
+- **They agree for the Qwen and the Ministral, and both miss.** At 50 to 54 tok/s, their replies of about
+  200 tokens at p95 take over 4 s.
+- **They disagree for Gemma.** Its file holds per-layer embedding tables that a token reads only in part,
+  so file size probably overstates its work. That is my explanation, not a measurement. Only R5's card
+  can say whether 86 tok/s holds.
+
+### Results
+
+**Today's request.** Every candidate stopped in its first or second run:
+
+| Model | Passed | Stopped on | Reply tokens p50 / p95 |
+|---|---:|---|---:|
+| `q25-3b`, control, all 3 runs | 44 of 75, 15 of 25 cases | Not stopped: a control | 153 / 206 |
+| `qwen35-9b` | 12 of 17 | Instruction to Jarvis, answered `none` | 123 / 221 |
+| `ministral3-8b` | 11 of 17 | Instruction to Jarvis, answered `none` | 123 / 198 |
+| `gemma4-e4b` | 23 of 29 | Repo not clear, 2 of 2 | 124 / 175 |
+
+The same misses came up on every model, and two of them are faults in the request, not in a model:
+
+- **Today has no weekday.** "Friday" became 2026-11-07, a Saturday, from all three. `voice_user` sends
+  only the ISO date.
+- **`ProposalIn` is one flat shape with every field optional.** The grammar lets a model send a
+  `git.pr_comment` with no `body`, or a reminder with `text` and no `title`, and the server refuses both.
+  All three did this on the PR comment.
+- **The repo list's order decides the repo.** When the request names none, every model picked
+  `jarvis-voice`, which live lists first, where the prompt asks for null. A probe with the list reordered,
+  4 asks per order, showed it is the order, not the word "Jarvis". The 3B took the first repo 12 of 12. Qwen
+  and Gemma gave null 8 of 8 when homelab came first. On 2026-11-03 you kept this case gating.
+
+**The variant, `named-day+kinds+repo`.** Eval-only, never sent by the server. It adds the weekday to
+Today, sends each spoken kind with the fields the server needs, and rewrites only the prompt's repo line:
+a listed repo only if the request names it or says what it is for, otherwise null. Same bar:
+
+| Model | Passed | Stopped on | Reply tokens p50 / p95 | 2070 p95, CPU ratio / file size |
+|---|---:|---|---:|---:|
+| `q25-3b`, control, all 3 runs | 50 of 75, 17 of 25 cases | Not stopped | 162 / 222 | 1.83 / 1.86 s |
+| `qwen35-9b` | 15 of 17 | Instruction to Jarvis, answered `none` | 136 / 218 | 4.59 / 4.94 s |
+| `ministral3-8b` | 13 of 17 | Instruction to Jarvis, answered `none` | 114 / 219 | 4.46 / 4.56 s |
+| `gemma4-e4b` | **42 of 44** | **Already proposed, 2 of 2** | 129 / 188 | **2.41** / 3.95 s |
+
+- **The variant fixed what it targeted on Gemma.** It passed every case in run 1 except the repeat,
+  including the PR comment, both reminders and the unclear repo. In run 2 it passed 18 of 19, missing
+  only the repeat again.
+- **Gemma's miss is real.** Both replies filed "Review the pricing proposal" again with a due date of
+  2026-11-04 that nobody said. That differs from the stored proposal, so the server's dedupe would not
+  catch it, and you would get a duplicate to reject.
+- **The Qwen and the Ministral still miscount weekdays** with the weekday given: "Friday" became the 7th
+  or the 8th.
+- **The 3B is a control, not a candidate.** It fits the time and fails quality on both requests. It
+  turns spoken cloud sessions into actions, and files a session it was told to scratch.
+
+No candidate passed voice, so none ran the 17 copilot cases. That follows your answer of 2026-11-03.
+
+### What you have to decide
+
+1. **Whether the request changes go to the server.** On today's request no model passes. The weekday and
+   the per-kind schema fix faults that every model hit. The repo line is a prompt change, measured only
+   here. It would be a `feat(server)` PR with tests, and R2 does not make it.
+2. **What to do about the repeat.** Either keep the bar, in which case no model is named, or accept a
+   duplicate proposal that you reject by hand. Or make the server's dedupe ignore an unspoken `due` for
+   voice, which is a server change I have not tested.
+3. **Whether R5 measures `gemma4-e4b` on the card anyway.** Its speed estimates are 86 and 54 tok/s
+   decode, against 80 needed, so only the card can settle it. R5 also owes memory under an hour of load and
+   the slot count for both callers.
+4. **Whether Gemma runs the copilot cases.** It has not, by the stop rule. The copilot can fall back to it
+   only after it passes the 11 bar cases.
+
+### Limits
+
+- **Every speed on the 2070 is an estimate.** Prefill and decode on the card, grammar cost and the CUDA
+  context are R5's to measure.
+- **Stopped runs are partial.** 17 to 44 rows per candidate. Qwen and Ministral stopped on the instruction
+  case, where `none` files nothing: the bar calls that critical because the key expects the task. Both
+  also missed ordinary cases in the same run, such as the weekday, so they would probably have failed
+  anyway. A stopped run cannot show that.
+- **The repeat case does not model the server's dedupe.** A verbatim repeat with no `due` would be dropped
+  by the server, and the checker fails it. This affects only Gemma's first run on today's request, which
+  failed on other cases too.
+- **No reference model.** Flash was off limits, so nothing shows that the bar can be passed. The 3B
+  control shows the eval separates models: 44 and 50 of 75.
+- **25 invented requests**, written before any model ran, and not drawn from real sessions.
+- **The machine was shared.** Jev's CPU replica started at 02:19 UTC, after the first run and before the
+  variant's. The 3B's CPU rates moved about 2% between the two, and no run overlapped R4's drills. A guard
+  would have stopped the eval if R4's state had moved on.
+
+**Pins.** Image `ghcr.io/ggml-org/llama.cpp@sha256:33868c035b21dc63f7c60b7438774283fd99215bc319114eb03de5df4ce7cd6b`.
+Models by revision and LFS SHA256:
+
+| Model | Revision | SHA256 |
+|---|---|---|
+| `qwen35-9b` | `1379f25c6b505a3fc737bd7818cb09389cf807c1` | `cd76ec205963b3b33350093e6904d9de16c4e666fd104e1f632d25c7f15f2a13` |
+| `ministral3-8b` | `0102285ad796bd99af90f58de616092e5630e970` | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
+| `gemma4-e4b` | `4b4a2c1d584be7264f87aac328a1bc739ce81b6c` | `676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee` |
+| `q25-3b`, control | `7dabda4d13d513e3e842b20f0d435c732f172cbe` | `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` |
 
 ## The done test
 

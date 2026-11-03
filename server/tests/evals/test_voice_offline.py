@@ -349,3 +349,22 @@ def test_a_rate_on_the_card_scales_the_3b_by_what_the_cpu_saw() -> None:
 def test_break_even_is_the_decode_rate_that_lands_on_the_budget() -> None:
     rows = [row("x", True, prompts=[int(PREFILL_3B_2070)], tokens=[int(DECODE_3B_2070 * 4)])]
     assert break_even(rows) == pytest.approx(DECODE_3B_2070 * 2.0)
+
+
+def test_a_repo_off_the_list_is_graded_as_the_server_stores_it_none() -> None:
+    reply = good_cloud(task="Tidy the readme and fix the links.", repo="null")
+    assert check(NOT_CLEAR, reply) == []
+    assert any("repo" in f for f in check(CLOUD, good_cloud(repo="jarvis-voice")))
+
+
+async def test_the_repo_variant_changes_only_the_repo_rule_in_the_system_prompt() -> None:
+    variant = VARIANTS["named-day+kinds+repo"]
+    llm = FakeLLM().queue("VoiceRequest", variant.schema())
+    await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=variant)
+    system = llm.calls[0].system
+    assert system != VOICE_SYSTEM
+    assert [x for x in system.splitlines() if x not in VOICE_SYSTEM.splitlines()] == [
+        x for x in system.splitlines() if x.startswith("- repo:")
+    ]
+    assert "place in the list" in system
+    assert variant.schema is VARIANTS["kinds"].schema and variant.named_day
