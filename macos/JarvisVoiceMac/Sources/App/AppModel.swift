@@ -605,8 +605,6 @@ final class AppModel {
 
 // MARK: - Run
 
-/// Everything that exists only while a session is live.
-@MainActor
 /// Lets the route monitor, made first, reach the controller made after it.
 private final class AskRef: @unchecked Sendable {
     weak var controller: AskController?
@@ -621,6 +619,8 @@ private struct AskParts {
     let sender: AsyncStream<ClientMessage>.Continuation
 }
 
+/// Everything that exists only while a session is live.
+@MainActor
 private final class Run {
     struct Emissions {
         let stream: AsyncStream<LocalTranscriber.Emission>
