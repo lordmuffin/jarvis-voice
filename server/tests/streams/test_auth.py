@@ -1,5 +1,6 @@
 """MediaMTX asks this hook about every publish, read and API call (authMethod: http)."""
 
+import secrets
 import uuid
 from collections.abc import AsyncIterator
 
@@ -14,7 +15,7 @@ from jarvis_live.streams.auth import ReaderCredential, StreamAuth, auth_app
 SM = async_sessionmaker  # type: ignore[type-arg]
 RUN = uuid.uuid4().hex[:6]  # the test database outlives one test: names must not repeat
 N = {n: f"{n}-{RUN}" for n in ["obs-desk", "phone", "nowhere", "cam", "gone", "busy", "peek"]}
-READER = ReaderCredential(user="jarvis-ingest", password="reader-secret")
+READER = ReaderCredential(user="jarvis-ingest", password=secrets.token_urlsafe(12))
 
 
 class Capacity:
@@ -94,7 +95,7 @@ async def test_a_publish_key_cannot_read_or_use_the_api(sm: SM, client: httpx.As
 
 
 async def test_only_the_servers_reader_may_read_and_use_the_api(client: httpx.AsyncClient) -> None:
-    ok = {"user": "jarvis-ingest", "password": "reader-secret"}
+    ok = {"user": "jarvis-ingest", "password": READER.password}
     assert await _ask(client, action="read", path=N["obs-desk"], protocol="rtsp", **ok) == 200
     assert await _ask(client, action="api", path="", protocol="", **ok) == 200
     assert await _ask(client, action="metrics", path="", **ok) == 401

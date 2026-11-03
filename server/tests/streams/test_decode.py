@@ -14,8 +14,8 @@ SECONDS = len(TWO_UTTERANCES) / (2 * 16_000)
 
 
 def test_reads_one_audio_track_as_16k_mono_pcm() -> None:
-    cmd = ffmpeg_command("rtsp://reader:secret@mediamtx:8554/obs-desk", track=1)
-    assert cmd[cmd.index("-i") + 1] == "rtsp://reader:secret@mediamtx:8554/obs-desk"
+    cmd = ffmpeg_command("rtsp://mediamtx:8554/obs-desk", track=1)
+    assert cmd[cmd.index("-i") + 1] == "rtsp://mediamtx:8554/obs-desk"
     assert cmd[cmd.index("-map") + 1] == "0:a:1"
     assert cmd[cmd.index("-rtsp_transport") + 1] == "tcp"
     i = cmd.index("-f", cmd.index("-i"))

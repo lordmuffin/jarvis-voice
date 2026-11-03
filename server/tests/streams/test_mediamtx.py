@@ -2,6 +2,7 @@
 
 import base64
 import json
+import secrets
 
 import httpx
 import pytest
@@ -9,7 +10,8 @@ import pytest
 from jarvis_live.streams.auth import ReaderCredential
 from jarvis_live.streams.mediamtx import MediaMtx
 
-READER = ReaderCredential(user="jarvis-ingest", password="s3cret")
+# Made up per run: no credential-looking literal in the repo.
+READER = ReaderCredential(user="jarvis-ingest", password=secrets.token_urlsafe(12))
 
 
 def _path(name: str, online: bool, *codecs: str, legacy: bool = False) -> dict[str, object]:
@@ -43,7 +45,7 @@ async def test_lists_online_paths_with_their_audio_track_count() -> None:
         assert await api.online_paths() == {"obs-desk": 2, "phone": 1, "old": 1, "mute": 0}
     assert [r.url.path for r in seen] == ["/v3/paths/list"] * 2
     auth = seen[0].headers["authorization"]
-    assert auth == "Basic " + base64.b64encode(b"jarvis-ingest:s3cret").decode()
+    assert auth == "Basic " + base64.b64encode(f"jarvis-ingest:{READER.password}".encode()).decode()
 
 
 async def test_an_api_error_raises() -> None:
@@ -55,4 +57,6 @@ async def test_an_api_error_raises() -> None:
 
 def test_the_read_url_carries_the_reader_credential() -> None:
     api = MediaMtx("http://mediamtx:9997", READER, httpx.AsyncClient(), rtsp="rtsp://mediamtx:8554")
-    assert api.read_url("obs-desk") == "rtsp://jarvis-ingest:s3cret@mediamtx:8554/obs-desk"
+    assert (
+        api.read_url("obs-desk") == f"rtsp://jarvis-ingest:{READER.password}@mediamtx:8554/obs-desk"
+    )
