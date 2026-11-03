@@ -11,6 +11,9 @@ import httpx
 from jarvis_live.client.config import load_config
 
 from jarvis_desktop import __version__, evalset
+from jarvis_desktop.stt import models
+from jarvis_desktop.stt import score as score_mod
+from jarvis_desktop.stt.engine import Engine, EngineError, ParakeetEngine
 
 MODES = {"solo": frozenset({"solo"}), "meeting": frozenset({"meeting"})}
 MODES["any"] = MODES["solo"] | MODES["meeting"]
@@ -37,9 +40,63 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
     p.add_argument("--mode", choices=sorted(MODES), default="solo")
     p.add_argument("--include-restricted", action="store_true")
 
+    p = ev.add_parser("score", help="run an on-device engine on the eval set and score it")
+    p.add_argument("--engine", choices=["parakeet"], default="parakeet")
+    p.add_argument("--eval-dir", type=Path, help="default: $XDG_DATA_HOME/jarvis-voice/eval")
+    p.add_argument("--limit", type=int, help="score only the first N clips")
+
+    md = sub.add_parser("models", help="on-device speech models").add_subparsers(
+        dest="models_cmd", required=True
+    )
+    md.add_parser("install", help="download and verify the pinned models (about 480 MB)")
+
     args = parser.parse_args(argv)
     if args.cmd == "eval":
-        return _eval_pull(args, env)
+        return _eval_pull(args, env) if args.eval_cmd == "pull" else _eval_score(args, env)
+    if args.cmd == "models":
+        return _models_install(env)
+    return 0
+
+
+def load_engine(name: str, env: Mapping[str, str]) -> Engine:
+    return ParakeetEngine(models.models_dir(env) / models.PARAKEET_TDT_V2.name)
+
+
+def _eval_score(args: argparse.Namespace, env: Mapping[str, str]) -> int:
+    try:
+        engine = load_engine(args.engine, env)
+    except EngineError as e:
+        print(f"jarvis-voice: {e}. Run `jarvis-voice models install` first.", file=sys.stderr)
+        return 1
+    eval_dir = args.eval_dir or evalset.default_output_dir(env)
+    try:
+        report = score_mod.score(engine, eval_dir, limit=args.limit)
+    except FileNotFoundError as e:
+        print(f"jarvis-voice: {e}", file=sys.stderr)
+        return 1
+    print(score_mod.format_report(report))
+    return 0
+
+
+def _models_install(env: Mapping[str, str]) -> int:
+    root = models.models_dir(env)
+    for spec in (models.PARAKEET_TDT_V2, models.SILERO_VAD):
+        shown = [-1]
+
+        def progress(
+            fraction: float, spec: models.ModelSpec = spec, shown: list[int] = shown
+        ) -> None:
+            pct = int(fraction * 100)
+            if pct // 10 != shown[0] // 10:
+                shown[0] = pct
+                print(f"\r{spec.name}: {pct}%", end="", flush=True)
+
+        try:
+            path = models.install(spec, root, progress=progress)
+        except (models.ModelError, httpx.HTTPError) as e:
+            print(f"\njarvis-voice: {e}", file=sys.stderr)
+            return 1
+        print(f"\r{spec.name}: installed in {path}")
     return 0
 
 

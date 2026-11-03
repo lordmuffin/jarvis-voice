@@ -93,3 +93,52 @@ def test_pull_errors_are_reported_not_raised(
     env = env_for(tmp_path, JARVIS_LIVE_SERVER="https://live.example", JARVIS_LIVE_TOKEN=TOKEN)
     assert app.main(["eval", "pull"], env=env) == 1
     assert "rejected the device token" in capsys.readouterr().err
+
+
+def test_score_runs_the_engine_on_the_default_eval_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from jarvis_desktop.stt import score as score_mod
+
+    seen: dict[str, object] = {}
+
+    def fake_score(engine: object, eval_dir: Path, *, limit: int | None = None) -> object:
+        seen.update(engine=engine, eval_dir=eval_dir, limit=limit)
+        return score_mod.Report(engine="fake", clips=2, audio_s=10.0, wer=0.05)
+
+    monkeypatch.setattr(score_mod, "score", fake_score)
+    monkeypatch.setattr(app, "load_engine", lambda name, env: f"engine:{name}")
+    code = app.main(["eval", "score", "--limit", "2"], env=env_for(tmp_path))
+    assert code == 0
+    assert seen == {
+        "engine": "engine:parakeet",
+        "eval_dir": tmp_path / "data" / "jarvis-voice" / "eval",
+        "limit": 2,
+    }
+    assert "disagreement with the server" in capsys.readouterr().out
+
+
+def test_score_without_a_model_says_how_to_install_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code = app.main(["eval", "score"], env=env_for(tmp_path))
+    assert code == 1
+    assert "jarvis-voice models install" in capsys.readouterr().err
+
+
+def test_models_install_fetches_every_pinned_model_into_the_default_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from jarvis_desktop.stt import models
+
+    installed: list[tuple[str, Path]] = []
+
+    def fake_install(spec: models.ModelSpec, root: Path, **_: object) -> Path:
+        installed.append((spec.name, root))
+        return root / spec.name
+
+    monkeypatch.setattr(models, "install", fake_install)
+    assert app.main(["models", "install"], env=env_for(tmp_path)) == 0
+    root = tmp_path / "data" / "jarvis-voice" / "models"
+    assert installed == [(models.PARAKEET_TDT_V2.name, root), (models.SILERO_VAD.name, root)]
+    assert models.PARAKEET_TDT_V2.name in capsys.readouterr().out

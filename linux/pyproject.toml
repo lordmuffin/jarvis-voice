@@ -8,6 +8,8 @@ dependencies = [
     "jarvis-live",
     # Also a dependency of jarvis-live; listed because evalset and the CLI use it directly.
     "httpx",
+    "sherpa-onnx>=2.0.1",
+    "numpy>=2.5.4",
 ]
 
 [project.scripts]
@@ -35,6 +37,9 @@ packages = ["src/jarvis_desktop"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "model: needs an installed speech model (and sometimes a pulled eval set); skipped without",
+]
 
 [tool.ruff]
 line-length = 100
@@ -45,3 +50,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 strict = true
+
+[[tool.mypy.overrides]]
+module = ["sherpa_onnx"]  # ships no type information
+ignore_missing_imports = true
