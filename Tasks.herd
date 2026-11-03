@@ -48,8 +48,9 @@
 #   Nothing is uncommented: herd -f Tasks.herd starts nothing. All decisions are under REPLAN and IN FLIGHT.
 #   RUNNING, do not restart: R2 (session chore-interactive-model-eval, workspace w31), on the repo-rule
 #     variant since 04:49 UTC, after my two answers. See R2 below.
-#   WAITING FOR ME: R4's PR 2, homelab #847. Merge in a quiet hour: it restarts the LiteLLM proxy.
-#     Then R4 runs the failover drills, PR 3 frees pve's card, and I run the one systemctl suspend.
+#   RUNNING, do not restart: R4's failover drills, since about 05:19 UTC, after #847 deployed. Then
+#     PR 3 frees pve's card, and I run the one systemctl suspend. JevUnavailable was already firing,
+#     from a separate bug, so its done test needs a decision from me. See R4 below.
 #   NEXT, me: R6's hardware test on lab. Install the Fold APK from android-v1.23.0 and the Mac app from
 #     macos-v0.16.0, do 30 asks on each, then run jarvis-live ask-report. Mac checks: rows B30-B35 in
 #     macos/JarvisVoiceMac/TESTING.md. Latency shows as qwen3.8-flash-next until R5 lands.
@@ -144,15 +145,29 @@
 # The gaming PC now runs Jev's CPU replica, so R2's 12-thread runs must not overlap R4's drills.
 #chore/interactive-model-eval @forge: This is R2 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read the REPLAN, docs/plans/fast-tier.md, server/src/jarvis_live/voice/service.py, voice/schema.py, server/tests/evals/ and chore/copilot-reply-size's reply_size.py and write-up. Goal: choose the model for pve's 2070 now it has the whole card: 7 GiB, Whisper elsewhere. Scope: a) No voice eval exists. Build one in eval-only code from invented transcripts, on the real VOICE_SYSTEM and VoiceRequest, thinking off, and state its pass bar before running anything. b) At most 3 candidates that fit 7 GiB with their context and slots, by the plan's evidence, not vendor benchmarks. Say what speed the 2070 should give each and how that is known, and name it unproven if it is an estimate. c) Run each on the voice eval, and on the 17 copilot cases at three runs each, because the copilot falls back to this model if Flash fails the replay. Report the 11 bar cases, tokens per reply and whether voice fits 2.5 s on that card. Stop a candidate once it cannot pass voice. d) If any template ignores enable_thinking, turn reasoning off at the server before judging it: lfm25-26b's first runs measured reasoning, not the reply. Constraints: all inference local on CPU, images by digest, models by SHA256, self-hosted weights only, no Flash, no gateway, no pods. Eval-only code, defaulting to today's requests. This repo is public. One PR, titled chore(plans), left for me to merge. DONE WHEN: the plan names the model and what I still have to decide, from measurements.
 
-# R4. WAITING FOR ME, do not restart. Homelab, session feat-jev-on-gamingpc. Plan approved with yes
+# R4. RUNNING, do not restart. Homelab, session feat-jev-on-gamingpc. Plan approved with yes
 # to all three decisions: different timeouts for jev and jev-cpu, one real suspend at the end that I
 # run, and R5 gets its own proxy restart. PR 1, the gaming PC replica, merged (homelab #846).
-# PR 2 (homelab #847) is open: jev to the gaming PC with timeout 5 and no retries, jev-cpu keeps
-# 30 s, the fallback requires agent-d. Its CI keeps failing on runner egress timeouts; locally it
-# passes. Merging restarts the LiteLLM proxy, so a quiet hour. Read before merging: 1 of 5 test
-# alerts got a different verdict on CPU than on the GPU (NodeFilesystemSpaceFillingUp), and both
-# CPU backends agreed. Guard p50: GPU 0.15 s, gaming PC 0.70 s, agent-d 1.13-1.34 s.
-# Then: three failover drills, PR 3 frees pve's card, and the suspend. R5 waits for it.
+# PR 2 MERGED (homelab #847, 2026-11-03 05:00 UTC), and Flux rolled it out about 05:02: the LiteLLM
+# proxy, jev and jev-llm-cpu restarted. jev goes to the gaming PC with timeout 5 and no retries,
+# jev-cpu keeps 30 s, the fallback requires agent-d. Its CI had failed on runner egress timeouts.
+# Same model, not always the same verdict: 1 of 5 test alerts (NodeFilesystemSpaceFillingUp) was
+# incident on the GPU and noise on both CPU backends, which agreed with each other. Not checked
+# with make jev-eval: no decisions are labelled yet. Guard p50 before the change: GPU 0.15 s,
+# gaming PC 0.70 s, agent-d 1.13-1.34 s. After it, three test calls all reached the gaming PC, no
+# fallback, 0.28-0.37 s. The Jev triage pod moved to server-e on its restart, which helps the sleep case.
+# JevUnavailable was ALREADY FIRING before the merge, for at least 24 hours, from a separate bug: one
+# alert's model answers with severity "warning", Jev rejects that severity with a 503, and
+# Alertmanager redelivers it every 10 s. The alert is HomeTileDown, from a service-control tile that
+# has failed its probes for about 33 hours. So DONE WHEN's "JevUnavailable stays quiet" cannot be
+# judged until that bug is fixed or set aside. That is my call, and nothing owns the fix yet.
+# Drills: llama-server frozen with SIGSTOP and resumed with SIGCONT (non-interactive sudo works on
+# the gaming PC), a probe every 5 s, three drills in sequence with recovery waits, about 12 minutes.
+# R2's idle model server held 0% CPU during them.
+# PR 3 is worked out: active_profile off and jev out of pve's catalog, and swap.py scales jev-llm
+# down even off the catalog. The pve workflow does not prune, so its Deployment, Service, PVC and PV
+# stay at 0 replicas: cleanup goes in the PR body as a step after merge. The PV is Retain, so the
+# weights survive. Then the suspend, which I run. R5 waits for PR 3.
 #feat/jev-on-gamingpc @forge: This is R4 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read docs/jev.md, apps/ai/jev/llm-cpu/, the jev entries in apps/ai/litellm-proxy.yaml, tests/tdd/test_jev_wiring.py, docs/gpu-node-profiles.md and bare-metal/andrew-gamingpc/. Write a short plan and STOP for approval. Goal: Jev's primary runs on the gaming PC's CPU, so pve's card is free, and the guard survives the PC being away. Scope: a) Primary: same GGUF pin and llama.cpp build as today, pinned to andrew-gamingpc, CPU only, on a sensible number of threads for a 12-core 7900X. b) Fallback: jev-llm-cpu stays jev's only fallback, off that node and away from lxc-k3s2-agent-a. c) Decide what gaming-on does to this pod. gaming=true:NoSchedule does not evict it, so say whether it scales down, and check it can't hurt a game. d) Prove failover: sleep or stop the node's pod and show how long guard calls wait. timeout is 30 s, and a dead endpoint may hang rather than refuse. pi-durable fails closed, so measure what that costs it. e) Measure guard latency on primary and fallback against today's GPU, before pve changes. Constraints: JevBackends stays true: never a different model as jev's fallback. Every LiteLLM config change restarts the proxy and interrupts clients, so batch this with R5's alias if you can. DONE WHEN: both backends answer, failover is measured, JevUnavailable stays quiet through it, and pve is free to change.
 
 # R5. Depends on: R2's model and R4. This is step 4, rewritten. Homelab, see Run above.
