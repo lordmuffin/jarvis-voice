@@ -46,8 +46,11 @@
 #     android-v1.23.0), R2's voice eval and its bar (#280).
 #   Live runs server-v0.34.1 with JARVIS_LIVE_VOICE_ENABLED false, so hold-to-ask is off there. Lab has it.
 #   Nothing is uncommented: herd -f Tasks.herd starts nothing. All decisions are under REPLAN and IN FLIGHT.
-#   RUNNING, do not restart: R2 (session chore-interactive-model-eval, workspace w31), on the repo-rule
-#     variant since 04:49 UTC, after my two answers. See R2 below.
+#   DONE, waiting for my merge: R2, PR #286. No candidate passes voice, so it names no model.
+#   RUNNING, do not restart: R5 (homelab, session feat-interactive-tier), started 2026-11-03 05:25 UTC on
+#     gemma4-e4b, which I chose to measure anyway. It plans and stops for approval, and loads nothing
+#     on pve until R4's PR 3 frees the card.
+#   READY, start when I say: fix/voice-request, R2's request fixes and the repeat, in the server. See below.
 #   RUNNING, do not restart: R4's failover drills, since about 05:19 UTC, after #847 deployed. Then
 #     PR 3 frees pve's card, and I run the one systemctl suspend. JevUnavailable was already firing,
 #     from a separate bug, so its done test needs a decision from me. See R4 below.
@@ -58,8 +61,9 @@
 #   NEXT, me: check by eye that actions arrive and titles behave on live, session a54a7906.
 #   READY NOW, homelab, see Run above: the rest of 21.
 #   R1b, the busy replay, on a weekday with agents busy. It decides whether the copilot stays on Flash
-#   R5, once R2 names a model and R4 has freed pve's card. It also runs R6's new ask eval, which is what
-#     a hold usually sends. R6 did not run it on Flash, to keep load off the engine before R1b
+#   R5's measurements on the card, once R4's PR 3 merges. They include R6's ask eval, which is what a
+#     hold usually sends. R6 did not run it on Flash, to keep load off the engine before R1b
+#   VOICE_MODEL on lab to interactive: my decision, after R5's numbers and fix/voice-request's rerun
 #   R7, voice on live. Needs my decision on voice-commands.md section 5, and R6 working on the Fold
 #   22, CoreDNS then the proxy change window, with 11's runs either side
 #   11 step 3, the Flash restart, if still worth it. Needs my approval. Must not overlap 22's window.
@@ -125,8 +129,14 @@
 # saw a queue. So the done test is open, and R1's session expected it to fail under load.
 #chore/copilot-replay-busy @forge: This is R1b of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/jarvis-voice. Read the REPLAN, The replay, The done test and What to watch on lab in docs/plans/fast-tier.md, and jarvis_live/replay.py. Goal: finish R1's done test, which its first replay left open because the engine was idle. Scope: a) Before starting, read Flash's metrics. Start only when the engine is busy enough to meet the load gate. If it is not, wait and check again, and say so if the day ends without it. Never add load to make the gate pass. b) Replay against lab at real-time speed, the same way as the first run, and record the load period as Task 11 requires. c) Report p50, p95 by nearest rank, cycles lost, retries and JSON failures, and every row of What to watch on lab. d) If a release has moved lab on, say what changed from the first run. Constraints: no Flash serving args, no cluster or homelab changes, no setting changed. If the run fails the load gate, it does not count, whatever its p95. This repo is public. One PR, titled docs(plans), left for me to merge. DONE WHEN: on a run that passes the load gate, fast-tier.md says whether p95 is under 15 s with 0 cycles lost, and if not, that the next lever is the copilot on R5's model.
 
-# R2. RUNNING, started 2026-11-03 01:40 UTC, do not restart. Local CPU only. Session
-# chore-interactive-model-eval, resumed 03:55 UTC after it died at 02:20 mid-run (cause unknown).
+# R2. DONE, PR #286 open for me: no candidate passes voice, on today's request or the variant. The
+# nearest is gemma4-e4b, 42 of 44 on named-day+kinds+repo, failing only the repeat: it re-filed an
+# already-proposed task with a due date nobody said, which dedupe misses. On the variant the Qwen and
+# the Ministral still miscount weekdays and miss the instruction to Jarvis. The 3B control passed 50
+# of 75. 2070 decode estimates for gemma4-e4b disagree, 86 and 54 tok/s against 80 needed, so R5
+# measures it on the card. I decided 2026-11-03: R5 measures gemma4-e4b, and fix/voice-request takes
+# the request fixes and the repeat into the server. Gemma runs the copilot cases only after it passes.
+# Session chore-interactive-model-eval, started 01:40 UTC, resumed 03:55 after it died at 02:20 (cause unknown).
 # Merged so far: the voice eval and its bar, and two request variants (#280). Its next PR is new work.
 # First run, today's request: all three candidates failed voice (qwen35-9b, ministral3-8b,
 # gemma4-e4b), and so did the q25-3b control, 44 of 75. On the 2070, unproven: 9b and 8b project to
@@ -170,7 +180,15 @@
 # weights survive. Then the suspend, which I run. R5 waits for PR 3.
 #feat/jev-on-gamingpc @forge: This is R4 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read docs/jev.md, apps/ai/jev/llm-cpu/, the jev entries in apps/ai/litellm-proxy.yaml, tests/tdd/test_jev_wiring.py, docs/gpu-node-profiles.md and bare-metal/andrew-gamingpc/. Write a short plan and STOP for approval. Goal: Jev's primary runs on the gaming PC's CPU, so pve's card is free, and the guard survives the PC being away. Scope: a) Primary: same GGUF pin and llama.cpp build as today, pinned to andrew-gamingpc, CPU only, on a sensible number of threads for a 12-core 7900X. b) Fallback: jev-llm-cpu stays jev's only fallback, off that node and away from lxc-k3s2-agent-a. c) Decide what gaming-on does to this pod. gaming=true:NoSchedule does not evict it, so say whether it scales down, and check it can't hurt a game. d) Prove failover: sleep or stop the node's pod and show how long guard calls wait. timeout is 30 s, and a dead endpoint may hang rather than refuse. pi-durable fails closed, so measure what that costs it. e) Measure guard latency on primary and fallback against today's GPU, before pve changes. Constraints: JevBackends stays true: never a different model as jev's fallback. Every LiteLLM config change restarts the proxy and interrupts clients, so batch this with R5's alias if you can. DONE WHEN: both backends answer, failover is measured, JevUnavailable stays quiet through it, and pve is free to change.
 
-# R5. Depends on: R2's model and R4. This is step 4, rewritten. Homelab, see Run above.
+# fix/voice-request. READY, start when I say. Depends on: nothing; R2's findings are on PR #286.
+# Evals run on the gaming PC's CPU: they must not overlap R4's drills, R5's measurements or Jev's
+# replica under test, so check herd ls first.
+#fix/voice-request @forge: This takes R2's voice-eval findings into the server. Work in Build mode and follow TDD.md. You're working in lordmuffin/jarvis-voice. Read R2's section of docs/plans/fast-tier.md (on chore/interactive-model-eval, PR #286, until it merges), server/src/jarvis_live/voice/, the ProposalIn schema and build_payload, how IdeasState stores and dedupes proposals, and the named-day+kinds+repo variant in server/tests/evals/voice.py. Goal: the request the server sends for voice stops causing the faults every model hit, so a model can pass R2's committed bar on the request live actually sends. Scope: a) Today names its weekday in voice_user, and in the ask path if it sends a date. b) Proposals follow each kind's real shape, so the grammar can no longer produce a git.pr_comment with no body or a reminder with no title. The copilot shares action kinds: say what it shares before splitting a schema, and keep the copilot's request unchanged unless its 17 evals still pass on the change. c) The repo rule: a listed repo only if the request names it or says what it is for, otherwise null. The order of the repo list must not decide it. d) The repeat: gemma4-e4b re-filed an already-proposed task with a due date nobody said, and dedupe missed it because the fields differ. Fix it in the server, deterministically: a voice proposal that adds nothing the speaker said is a duplicate of the stored one. State the rule for what counts as said, and test its edges, including a repeat with a newly spoken date, which is not a duplicate. e) Make the voice eval's default request the server's new one, keeping today's old request and the variants reproducible by name. f) Rerun the voice eval locally on CPU on gemma4-e4b and the q25-3b control, against the bar committed in af416ec, unchanged. If gemma4-e4b passes voice, run the 17 copilot cases at three runs each and report the 11 bar cases. Constraints: the bar does not change. No protocol change unless it must; if so, fixtures and server and Swift tests in the same PR. Evals on local CPU only, models by SHA256, images by digest, no Flash and no gateway. The gaming PC also runs Jev's replica, R4's drills and R5's work: check herd ls and do not run evals while either measures. Eval rows are never committed. This changes what the server sends once voice is on, so title it feat(server). Lab first: voice is off on live. One PR, left for me to merge. DONE WHEN: the PR is open with tests passing, and the voice eval's result on the new request is reported for gemma4-e4b and the control.
+
+# R5. RUNNING since 2026-11-03 05:25 UTC, do not restart. Homelab, session feat-interactive-tier, on
+# gemma4-e4b (SHA256 676c3507...fbaee, in its prompt). It writes a plan and stops for my approval.
+# It loads nothing on pve until R4's PR 3 merges, makes no LiteLLM change during R4's drills, and
+# does not point VOICE_MODEL at the alias. The line below is the original prompt, for reference.
 #feat/interactive-tier @forge: This is R5 of the REPLAN in Tasks.herd. Work in Operate mode. You're working in lordmuffin/homelab-gitops on Forgejo. Read R2's result and What step 4 must measure in lordmuffin/jarvis-voice's docs/plans/fast-tier.md, then bare-metal/lxc-k3s2-gpu-a/ and apps/ai/litellm-proxy.yaml. Write a short plan and STOP for approval. Goal: alias interactive on pve's 2070, falling back to heavy, for voice and if needed the copilot. Scope: a new GPU profile and workload, new alias, model by SHA256. Measure on the real card what CPU could not: tok/s with response_format, memory over an hour at one prompt per 25 s with --cache-ram bounded, and slots against both callers. Point VOICE_MODEL at it on lab only, in a separate jarvis-voice PR. Constraints: no Flash restart. Not Jev's pod. Stop at the probe's memory limit. DONE WHEN: the voice eval passes on the real card, with total p95 under 2.5 s for the LLM part.
 
 # Coverage. MERGED (#278), main's TDD green again from 3f2d908. Server coverage 95.0 on CI, the
