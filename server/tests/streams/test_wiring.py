@@ -30,7 +30,10 @@ def _listening(port: int) -> bool:
 def test_streams_are_off_by_default() -> None:
     cfg = Settings(database_url="postgresql+asyncpg://x/y")
     assert cfg.streams_enabled is False
-    assert cfg.streams_stop_grace_s == 60.0  # covers a 30 s network drop
+    # A 30 s network drop must stay one session. OBS's reconnect backoff came back 63 s and
+    # 65 s after its connection died in the lab test (2026-11-03), past a 60 s grace: give it
+    # three minutes. The cost: the final note starts three minutes after Stop.
+    assert cfg.streams_stop_grace_s == 180.0
 
 
 async def test_enabled_serves_the_auth_hook_on_its_own_port_only(
