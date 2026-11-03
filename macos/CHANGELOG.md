@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.15.1](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.15.0...macos-v0.15.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **android,macos:** show transcription offline and queued sessions ([49924e3](https://github.com/lordmuffin/jarvis-voice/commit/49924e367c0280c506190127659bd11ac894163f))
+* **macos:** return explicitly from the panel's connection note ([8adab2e](https://github.com/lordmuffin/jarvis-voice/commit/8adab2eb23190ba2dbc427b3fb6062f7cb9f0a71))
+* **server:** keep audio while Whisper is away and transcribe it later ([94e244f](https://github.com/lordmuffin/jarvis-voice/commit/94e244f14bbe7bac28fe8964168200a17e723369))
+
 ## [0.15.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.14.0...macos-v0.15.0) (2026-10-31)
 
 

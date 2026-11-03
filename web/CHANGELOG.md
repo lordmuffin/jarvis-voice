@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.33.1](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.33.0...web-v0.33.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **server:** keep audio while Whisper is away and transcribe it later ([94e244f](https://github.com/lordmuffin/jarvis-voice/commit/94e244f14bbe7bac28fe8964168200a17e723369))
+* **web:** show transcription offline and queued sessions ([6dcda45](https://github.com/lordmuffin/jarvis-voice/commit/6dcda45f90f915d8ba89762a02c66e4f4fb5ea48))
+
 ## [0.33.0](https://github.com/lordmuffin/jarvis-voice/compare/web-v0.32.2...web-v0.33.0) (2026-11-02)
 
 

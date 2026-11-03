@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.22.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.22.0...android-v1.22.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **android,macos:** show transcription offline and queued sessions ([49924e3](https://github.com/lordmuffin/jarvis-voice/commit/49924e367c0280c506190127659bd11ac894163f))
+* **server:** keep audio while Whisper is away and transcribe it later ([94e244f](https://github.com/lordmuffin/jarvis-voice/commit/94e244f14bbe7bac28fe8964168200a17e723369))
+
 ## [1.22.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.21.0...android-v1.22.0) (2026-10-31)
 
 
