@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.33.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.33.0...server-v0.33.1) (2026-11-03)
+
+
+### Bug Fixes
+
+* **android,macos:** show transcription offline and queued sessions ([49924e3](https://github.com/lordmuffin/jarvis-voice/commit/49924e367c0280c506190127659bd11ac894163f))
+* **server:** keep audio while Whisper is away and transcribe it later ([94e244f](https://github.com/lordmuffin/jarvis-voice/commit/94e244f14bbe7bac28fe8964168200a17e723369))
+* **server:** keep audio while Whisper is away and transcribe it when a tier returns ([f8264d1](https://github.com/lordmuffin/jarvis-voice/commit/f8264d1512af2ee3266098331054f06f48d8a632))
+* **server:** probe whisper-cpp's health at its root, try dead tiers once per probe ([dd57393](https://github.com/lordmuffin/jarvis-voice/commit/dd57393e7d1a834cf21a6bde99678181fb5755eb))
+
 ## [0.33.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.32.2...server-v0.33.0) (2026-11-02)
 
 
