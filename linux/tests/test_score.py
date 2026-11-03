@@ -97,3 +97,17 @@ def test_the_report_names_what_the_number_means(tmp_path: Path) -> None:
     assert "scripted" in text
     assert "agreement with the server" in text
     assert "p95" in text
+
+
+def test_a_set_with_exact_text_is_reported_as_wer(tmp_path: Path) -> None:
+    eval_dir = write_eval(tmp_path, [("read", "hello", 2_000)])
+    rows = [json.loads(line) for line in (eval_dir / "manifest.jsonl").read_text().splitlines()]
+    (eval_dir / "manifest.jsonl").write_text(
+        "".join(json.dumps({**r, "source": "read"}) + "\n" for r in rows)
+    )
+    clock = ticking_clock(0.1)
+    report = score(ScriptedEngine({32_000: "hello"}), eval_dir, clock=lambda: next(clock))
+    assert report.exact
+    text = format_report(report)
+    assert "WER against the exact text" in text
+    assert "server" not in text

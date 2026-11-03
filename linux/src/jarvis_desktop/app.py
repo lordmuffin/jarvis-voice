@@ -10,7 +10,7 @@ from pathlib import Path
 import httpx
 from jarvis_live.client.config import load_config
 
-from jarvis_desktop import __version__, evalset
+from jarvis_desktop import __version__, evalset, readset
 from jarvis_desktop.stt import models
 from jarvis_desktop.stt import score as score_mod
 from jarvis_desktop.stt.engine import Engine, EngineError, ParakeetEngine
@@ -45,6 +45,19 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
     p.add_argument("--eval-dir", type=Path, help="default: $XDG_DATA_HOME/jarvis-voice/eval")
     p.add_argument("--limit", type=int, help="score only the first N clips")
 
+    p = ev.add_parser(
+        "record",
+        help="read known sentences into your mic: an eval set with exact references",
+        description=readset.__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument(
+        "--source",
+        help="mic to record: a `pactl list short sources` name on Linux, an AVFoundation "
+        "input name or index on macOS (default: the system default input)",
+    )
+    p.add_argument("--out", type=Path, help="default: $XDG_DATA_HOME/jarvis-voice/eval-read")
+
     md = sub.add_parser("models", help="on-device speech models").add_subparsers(
         dest="models_cmd", required=True
     )
@@ -52,7 +65,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
 
     args = parser.parse_args(argv)
     if args.cmd == "eval":
-        return _eval_pull(args, env) if args.eval_cmd == "pull" else _eval_score(args, env)
+        commands = {"pull": _eval_pull, "score": _eval_score, "record": _eval_record}
+        return commands[args.eval_cmd](args, env)
     if args.cmd == "models":
         return _models_install(env)
     return 0
@@ -75,6 +89,27 @@ def _eval_score(args: argparse.Namespace, env: Mapping[str, str]) -> int:
         print(f"jarvis-voice: {e}", file=sys.stderr)
         return 1
     print(score_mod.format_report(report))
+    return 0
+
+
+def _eval_record(args: argparse.Namespace, env: Mapping[str, str]) -> int:
+    out = args.out or readset.default_output_dir(env)
+    try:
+        recorder = readset.SubprocessRecorder(readset.recorder_command(args.source))
+        readset.record(
+            readset.prompts(),
+            out,
+            recorder,
+            ask=input,
+            say=print,
+            mic=readset.describe_source(args.source),
+        )
+    except (readset.RecordError, evalset.PullError) as e:
+        print(f"jarvis-voice: {e}", file=sys.stderr)
+        return 1
+    except (KeyboardInterrupt, EOFError):
+        print("\nStopped; run it again to carry on.")
+    print(f"Score it with: jarvis-voice eval score --eval-dir {out}")
     return 0
 
 

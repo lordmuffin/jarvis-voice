@@ -142,3 +142,35 @@ def test_models_install_fetches_every_pinned_model_into_the_default_root(
     root = tmp_path / "data" / "jarvis-voice" / "models"
     assert installed == [(models.PARAKEET_TDT_V2.name, root), (models.SILERO_VAD.name, root)]
     assert models.PARAKEET_TDT_V2.name in capsys.readouterr().out
+
+
+def test_record_walks_the_shipped_sentences_into_the_read_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from jarvis_desktop import readset
+
+    seen: dict[str, object] = {}
+
+    def fake_record(ps: list[str], out: Path, recorder: object, **_: object) -> int:
+        seen.update(count=len(ps), out=out, cmd=getattr(recorder, "cmd", None))
+        return 2
+
+    monkeypatch.setattr(readset, "record", fake_record)
+    monkeypatch.setattr(readset, "find_tool", lambda: "pw-record")
+    code = app.main(["eval", "record", "--source", "my-mic"], env=env_for(tmp_path))
+    assert code == 0
+    assert seen["count"] == 40
+    assert seen["out"] == tmp_path / "data" / "jarvis-voice" / "eval-read"
+    assert seen["cmd"] == [
+        "pw-record",
+        "--rate",
+        "16000",
+        "--channels",
+        "1",
+        "--format",
+        "s16",
+        "--target",
+        "my-mic",
+        "-",
+    ]
+    assert "jarvis-voice eval score --eval-dir" in capsys.readouterr().out
