@@ -1,0 +1,5 @@
+{
+  "type": "voice_state",
+  "available": true,
+  "reason": "off"
+}

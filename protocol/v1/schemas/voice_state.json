@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/voice_state.json",
+  "title": "voice_state",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "voice_state"
+    },
+    "available": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "type",
+    "available"
+  ],
+  "additionalProperties": false
+}

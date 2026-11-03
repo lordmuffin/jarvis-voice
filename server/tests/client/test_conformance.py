@@ -21,6 +21,10 @@ CLIENT_SENT = {
     "draft_segment",
     "marker",
     "end",
+    # Hold to ask: this client has no ask key, so it never sends these.
+    "ask_begin",
+    "ask_end",
+    "ask_played",
 }
 SERVER_EVENTS = {
     "hello_ack",
@@ -31,6 +35,8 @@ SERVER_EVENTS = {
     "status",
     "final_note",
     "error",
+    "voice_state",  # only with `features=voice_ask`, which this client does not send
+    "ask_reply",
 }
 REST_RESPONSES = {"session_create_response", "ticket_response"}
 

@@ -1,0 +1,7 @@
+{
+  "type": "ask_played",
+  "id": "a1",
+  "state": "skipped",
+  "t_ms": 67300,
+  "reason": "route"
+}

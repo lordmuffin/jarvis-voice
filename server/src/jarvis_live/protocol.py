@@ -89,7 +89,40 @@ class End(_Model):
     type: Literal["end"] = "end"
 
 
-ClientMessage = Annotated[Hello | DraftSegment | Marker | End, Field(discriminator="type")]
+AskId = Annotated[str, Field(min_length=1, max_length=64)]
+
+
+class AskBegin(_Model):
+    """The ask key went down. ``t_ms`` is on the audio frames' clock."""
+
+    type: Literal["ask_begin"] = "ask_begin"
+    id: AskId
+    t_ms: NonNegInt
+
+
+class AskEnd(_Model):
+    type: Literal["ask_end"] = "ask_end"
+    id: AskId
+    t_ms: NonNegInt
+
+
+class AskPlayed(_Model):
+    """What the client did with a reply. ``latency_ms``: key up to first audio, client clock."""
+
+    type: Literal["ask_played"] = "ask_played"
+    id: AskId
+    state: Literal["started", "done", "skipped"]
+    t_ms: NonNegInt
+    latency_ms: NonNegInt | None = None
+    reason: Literal["route", "muted", "stale", "tts_failed", "interrupted", "superseded"] | None = (
+        None
+    )
+
+
+ClientMessage = Annotated[
+    Hello | DraftSegment | Marker | End | AskBegin | AskEnd | AskPlayed,
+    Field(discriminator="type"),
+]
 client_message_adapter: TypeAdapter[ClientMessage] = TypeAdapter(ClientMessage)
 
 
@@ -198,8 +231,36 @@ class Error(_Model):
     message: str
 
 
+class VoiceState(_Model):
+    """Whether this session takes asks. Sent only to clients with ``features=voice_ask``."""
+
+    type: Literal["voice_state"] = "voice_state"
+    available: bool
+
+
+AskOutcome = Literal["answer", "filed", "empty", "no_stt", "timeout", "failed"]
+
+
+class AskReply(_Model):
+    """The answer to one ask, to be spoken on the device. Never stored as transcript."""
+
+    type: Literal["ask_reply"] = "ask_reply"
+    id: AskId
+    outcome: AskOutcome
+    text: str
+
+
 ServerMessage = Annotated[
-    HelloAck | Ack | Segment | SpeakerUpdate | Copilot | Status | FinalNote | Error,
+    HelloAck
+    | Ack
+    | Segment
+    | SpeakerUpdate
+    | Copilot
+    | Status
+    | FinalNote
+    | Error
+    | VoiceState
+    | AskReply,
     Field(discriminator="type"),
 ]
 server_message_adapter: TypeAdapter[ServerMessage] = TypeAdapter(ServerMessage)

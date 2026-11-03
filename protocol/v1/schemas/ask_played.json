@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/ask_played.json",
+  "title": "ask_played",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "ask_played"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "state": {
+      "enum": [
+        "started",
+        "done",
+        "skipped"
+      ]
+    },
+    "t_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "latency_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "reason": {
+      "enum": [
+        "route",
+        "muted",
+        "stale",
+        "tts_failed",
+        "interrupted",
+        "superseded"
+      ]
+    }
+  },
+  "required": [
+    "type",
+    "id",
+    "state",
+    "t_ms"
+  ],
+  "additionalProperties": false
+}

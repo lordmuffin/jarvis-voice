@@ -60,6 +60,34 @@ sealed class ClientMessage {
             .put("label", label)
     }
 
+    /** Hold to ask: the key went down. [tMs] is on the audio frames' clock. */
+    data class AskBegin(val id: String, val tMs: Long) : ClientMessage() {
+        override fun toJson(): JSONObject = JSONObject().put("type", "ask_begin").put("id", id).put("t_ms", tMs)
+    }
+
+    data class AskEnd(val id: String, val tMs: Long) : ClientMessage() {
+        override fun toJson(): JSONObject = JSONObject().put("type", "ask_end").put("id", id).put("t_ms", tMs)
+    }
+
+    /** What this phone did with a reply: [state] started, done or skipped. [latencyMs]: key up to first audio. */
+    data class AskPlayed(
+        val id: String,
+        val state: String,
+        val tMs: Long,
+        val latencyMs: Long? = null,
+        val reason: String? = null,
+    ) : ClientMessage() {
+        override fun toJson(): JSONObject = JSONObject()
+            .put("type", "ask_played")
+            .put("id", id)
+            .put("state", state)
+            .put("t_ms", tMs)
+            .apply {
+                if (latencyMs != null) put("latency_ms", latencyMs)
+                if (reason != null) put("reason", reason)
+            }
+    }
+
     data object End : ClientMessage() {
         override fun toJson(): JSONObject = JSONObject().put("type", "end")
     }

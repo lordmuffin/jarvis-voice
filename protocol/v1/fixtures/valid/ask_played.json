@@ -1,0 +1,7 @@
+{
+  "type": "ask_played",
+  "id": "a1",
+  "state": "started",
+  "t_ms": 67300,
+  "latency_ms": 3180
+}

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/ask_reply.json",
+  "title": "ask_reply",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "ask_reply"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "outcome": {
+      "enum": [
+        "answer",
+        "filed",
+        "empty",
+        "no_stt",
+        "timeout",
+        "failed"
+      ]
+    },
+    "text": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "type",
+    "id",
+    "outcome",
+    "text"
+  ],
+  "additionalProperties": false
+}

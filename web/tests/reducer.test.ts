@@ -66,7 +66,18 @@ describe("every server event type", () => {
       .filter((f) => f.endsWith(".json"))
       .map((f) => fixture<{ type?: string }>(f.replace(/\.json$/, "")).type)
       .filter((t): t is string => !!t);
-    const clientOnly = new Set(["hello", "end"]);
+    // Client to server only: the server does not relay hold-to-ask markers.
+    // voice_state and ask_reply go only to a producer that asked for features=voice_ask; the
+    // dashboard is a viewer and never asks (docs/plans/voice-push-to-talk.md).
+    const clientOnly = new Set([
+      "hello",
+      "end",
+      "ask_begin",
+      "ask_end",
+      "ask_played",
+      "voice_state",
+      "ask_reply",
+    ]);
     for (const t of types.filter((t) => !clientOnly.has(t))) {
       const ev = fixture<ServerEvent>(t);
       expect(reduce(initialState, ev), t).not.toBe(initialState);

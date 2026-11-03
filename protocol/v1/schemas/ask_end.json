@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jarvis-live/protocol/v1/ask_end.json",
+  "title": "ask_end",
+  "type": "object",
+  "properties": {
+    "type": {
+      "const": "ask_end"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "t_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": [
+    "type",
+    "id",
+    "t_ms"
+  ],
+  "additionalProperties": false
+}

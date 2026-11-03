@@ -38,9 +38,14 @@ sealed class ServerEvent {
     data class Status(val sttTier: String?, val llmOk: Boolean, val lagMs: Long) : ServerEvent()
     data class FinalNote(val path: String, val title: String) : ServerEvent()
     data class Error(val code: String, val message: String) : ServerEvent()
+    /** Hold to ask is offered here. Only sent to a client that asked for `features=voice_ask`. */
+    data class VoiceState(val available: Boolean) : ServerEvent()
+    /** The answer to one ask, to be spoken on this phone. Never part of the transcript. */
+    data class AskReply(val id: String, val outcome: String, val text: String) : ServerEvent()
 
     companion object {
         private val SUGGESTION_KINDS = setOf("question", "gap", "counterpoint", "fact_check")
+        private val ASK_OUTCOMES = setOf("answer", "filed", "empty", "no_stt", "timeout", "failed")
 
         /** Parses one text message; returns null for types this client does not handle. */
         fun parse(text: String): ServerEvent? {
@@ -86,6 +91,12 @@ sealed class ServerEvent {
             "status" -> Status(json.nullableStr("stt_tier"), json.bool("llm_ok"), json.long("lag_ms"))
             "final_note" -> FinalNote(json.str("path"), json.str("title"))
             "error" -> Error(json.str("code"), json.str("message"))
+            "voice_state" -> VoiceState(json.bool("available"))
+            "ask_reply" -> {
+                val outcome = json.str("outcome")
+                if (outcome !in ASK_OUTCOMES) throw ProtocolException("bad ask outcome $outcome")
+                AskReply(json.str("id"), outcome, json.str("text"))
+            }
             else -> null
         }
 

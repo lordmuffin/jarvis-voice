@@ -103,6 +103,8 @@ public final class SessionStore {
             lastError = error
         case .ack, .helloAck:
             break  // Handled by the transport.
+        case .voiceState, .askReply:
+            break  // Hold to ask: the app's ask controller handles these, not the transcript.
         }
     }
 

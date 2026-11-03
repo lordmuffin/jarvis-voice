@@ -68,6 +68,7 @@ class SessionStore {
             is ServerEvent.FinalNote -> snapshot = snapshot.copy(finalNote = event)
             is ServerEvent.Error -> snapshot = snapshot.copy(lastError = event)
             is ServerEvent.Ack, is ServerEvent.HelloAck -> Unit  // handled by the transport
+            is ServerEvent.VoiceState, is ServerEvent.AskReply -> Unit  // hold to ask, not the transcript
         }
         return publish()
     }
