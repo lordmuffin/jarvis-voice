@@ -55,3 +55,41 @@ deny contains msg if {
 	model != copilot_model
 	msg := sprintf("JARVIS_LIVE_COPILOT_MODEL is %q, expected %q", [model, copilot_model])
 }
+
+# A CronJob that mounts a ReadWriteOnce claim the app also mounts can only start on the app's
+# node. Eligible nodes are not enough: the 2026-11-03 backup sat in ContainerCreating on another
+# node for an hour, waiting for a detach that never comes while the app runs.
+rwo_claims contains d.contents.metadata.name if {
+	some d in input
+	d.contents.kind == "PersistentVolumeClaim"
+	"ReadWriteOnce" in d.contents.spec.accessModes
+}
+
+claims(spec) := {v.persistentVolumeClaim.claimName |
+	some v in object.get(spec, "volumes", [])
+	v.persistentVolumeClaim
+}
+
+app_pod := d.contents.spec.template if {
+	some d in input
+	d.contents.kind == "Deployment"
+	d.contents.metadata.name == "jarvis-live"
+}
+
+beside_app(spec) if {
+	some term in spec.affinity.podAffinity.requiredDuringSchedulingIgnoredDuringExecution
+	term.topologyKey == "kubernetes.io/hostname"
+	count(term.labelSelector.matchLabels) > 0
+	object.subset(object.get(app_pod, ["metadata", "labels"], {}), term.labelSelector.matchLabels)
+}
+
+deny contains msg if {
+	some d in input
+	d.contents.kind == "CronJob"
+	spec := d.contents.spec.jobTemplate.spec.template.spec
+	some c in claims(spec)
+	c in rwo_claims
+	c in claims(app_pod.spec)
+	not beside_app(spec)
+	msg := sprintf("CronJob/%s mounts ReadWriteOnce %s with the app, so it needs podAffinity to Deployment/jarvis-live's pods on kubernetes.io/hostname", [d.contents.metadata.name, c])
+}
