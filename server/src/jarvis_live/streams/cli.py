@@ -19,6 +19,9 @@ def add_parser(sub: Any) -> None:
     m.add_argument("--user", help="email or id of the user it belongs to (default: the owner)")
     m.add_argument("--host", default="<ingest-host>", help="MediaMTX's address, for the hints")
     c.add_parser("list", help="list stream keys (never the keys themselves)")
+    o = c.add_parser("rotate", help="replace a stream's key with a new one, same settings")
+    o.add_argument("name")
+    o.add_argument("--host", default="<ingest-host>", help="MediaMTX's address, for the hints")
     r = c.add_parser("revoke", help="revoke a stream's key")
     r.add_argument("name")
 
@@ -28,6 +31,8 @@ def run(args: argparse.Namespace, with_db: Any) -> int:
         return int(with_db(lambda sm: _create(sm, args)))
     if args.stream_cmd == "list":
         return int(with_db(_list))
+    if args.stream_cmd == "rotate":
+        return int(with_db(lambda sm: _rotate(sm, args)))
     return int(with_db(lambda sm: _revoke(sm, args.name)))
 
 
@@ -57,15 +62,7 @@ async def _create(sm: Any, args: argparse.Namespace) -> int:
     except keys.IngestKeyError as e:
         print(f"jarvis-live: {e}", file=sys.stderr)
         return 1
-    n, h = args.name, args.host
-    print(f"stream: {n}")
-    print(f"key:    {secret}")
-    print()
-    print(
-        f"OBS, SRT (Settings > Stream > Custom), Server:\n  srt://{h}:8890?streamid=publish:{n}:obs:{secret}&pkt_size=1316"
-    )
-    print(f"OBS, RTMP: Server rtmp://{h}:1935  Stream Key {n}?user=obs&pass={secret}")
-    print("Store this key now; it is not shown again.", file=sys.stderr)
+    _print_key(args.name, secret, args.host)
     return 0
 
 
@@ -87,3 +84,30 @@ async def _revoke(sm: Any, name: str) -> int:
         return 0
     print(f"jarvis-live: no active stream key {name!r}", file=sys.stderr)
     return 1
+
+
+async def _rotate(sm: Any, args: argparse.Namespace) -> int:
+    from jarvis_live.streams import keys
+
+    try:
+        secret = await keys.rotate_key(sm, args.name)
+    except keys.IngestKeyError as e:
+        print(f"jarvis-live: {e}", file=sys.stderr)
+        return 1
+    _print_key(args.name, secret, args.host)
+    print(
+        "The old key no longer works. A stream running on it continues until it reconnects.",
+        file=sys.stderr,
+    )
+    return 0
+
+
+def _print_key(n: str, secret: str, h: str) -> None:
+    print(f"stream: {n}")
+    print(f"key:    {secret}")
+    print()
+    print(
+        f"OBS, SRT (Settings > Stream > Custom), Server:\n  srt://{h}:8890?streamid=publish:{n}:obs:{secret}&pkt_size=1316"
+    )
+    print(f"OBS, RTMP: Server rtmp://{h}:1935  Stream Key {n}?user=obs&pass={secret}")
+    print("Store this key now; it is not shown again.", file=sys.stderr)
