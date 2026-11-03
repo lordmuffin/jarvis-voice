@@ -122,5 +122,7 @@ credential. Removing that step is your call, not a code review's. The options:
 
 ## Out of scope
 
-Spoken replies, a push-to-talk control, proposals in the macOS and Android apps, and any way to
-approve by voice.
+Proposals in the macOS and Android apps, and any way to approve by voice. Spoken replies and a
+push-to-talk control are now `voice-push-to-talk.md`: with the key held, words opening with
+"Jarvis" are filed through this same pass, and its reply is spoken. Without the key, replies stay
+copilot notices and are never spoken.

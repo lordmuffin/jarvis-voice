@@ -1,17 +1,28 @@
 # Voice talkback for Live sessions — design
 
-Status: **design only, no code.** Date: 2026-10-30. Backlog item: Tasks.txt #7.
+Status: **design, corrected 2026-11-03** (see the note below). Date: 2026-10-30. Backlog item: Tasks.txt #7.
 
 Goal: while a Live session runs on the Pixel Fold or the Mac, with headphones on, (a) hear Jarvis speak short responses or suggestions, and (b) ask it a question by voice mid-session.
+
+> **Corrected 2026-11-03 (R6, `docs/plans/voice-push-to-talk.md`).** The first slice is built on that plan, and it overrides this design where they differ:
+>
+> - **TTS is on the device**: Android `TextToSpeech` (offline voices only) and the macOS speech synthesizer, rendered with `write(_:toBufferCallback:)` and played from the app's own process. **No Kokoro, no TTS on the Spark or any GPU**: no `tts/tiers.py`, no binary downlink, no channel `2`, no `PcmPlayer`. Kokoro is at 0 replicas; §1.1's address and §5.3's VRAM tables no longer apply.
+> - **Whisper runs on the gaming PC only** (`gamingpc`), not `pve` or `spark` (§1.3, §5.1). Live may depend on it, and says so when it is away.
+> - **No streaming LLM and no sentence splitting** (§5.1 conditions 2 and 3): one non-streaming call returns a whole reply, capped at 40 words, spoken once it arrives.
+> - **The 1.5 s p50 / 2.5 s p95 end-to-end target cannot hold** on today's Whisper, which alone takes about 1 to 2 s. 2.5 s now applies to the LLM stage (the REPLAN); end to end is reported beside it. See the plan's Budget.
+> - **Jarvis's speech stays out of the transcript**: no `speaker: "jarvis"`, no `kind: "ask"` (§2.1, §3.3 item 5). The question stays as ordinary `me` speech.
+> - **Protocol** (§2.1): `ask_begin`, `ask_end`, `ask_played` up; `voice_state`, `ask_reply` down, behind the stream URL's existing `features=voice_ask` (not `hello.features`). No `speak`, `speak_state` or `talkback` messages.
+> - **Local-only** (§7): `EgressGate` exists on both clients; asks are hard off there by three routes. `local-only-audit.md` records that local-only is a fallback, not a privacy barrier.
+> - **Phase 1 (speak a suggestion on tap) is skipped**: R6 goes straight to the ask. Unprompted speech, Phases 3 and 4 stay later work.
 
 ## 0. Summary and recommendations
 
 | Question | Recommendation |
 |---|---|
-| Where does TTS run? | Server-side, on the Spark, behind a tier list like `WHISPER_TIERS`. Kokoro first. Audio streams down the **existing Live WebSocket** as PCM. No client-to-TTS direct HTTP. |
+| Where does TTS run? | ~~Server-side, on the Spark, behind a tier list like `WHISPER_TIERS`. Kokoro first. Audio streams down the existing Live WebSocket as PCM.~~ **Corrected: on the device.** The reply is text on the existing Live WebSocket. No client-to-TTS direct HTTP. |
 | How does the user ask? | **Push-to-talk first.** The client sends `ask_begin` / `ask_end` markers on the audio it already streams. The release is the endpoint, so there is no VAD wait. No wake word in v1. |
 | Reuse Android chat AEC and barge-in? | **No, not for barge-in.** The chat code itself turns auto barge-in off for Kokoro (§3.2). Reuse the playback and sentence-splitting pieces, not the barge-in. |
-| Keeping Jarvis out of the transcript | Headphone-only gating, plus server-side tagging of the playback window, plus a text-similarity echo filter. No reliance on acoustic AEC. |
+| Keeping Jarvis out of the transcript | Headphone-only gating, plus server-side tagging of the playback window, plus a text-similarity echo filter. No reliance on acoustic AEC. Jarvis's words are never a transcript entry. |
 | Unprompted speech | **Meeting: never.** Solo: allowed, throttled by a pure policy function keyed on the `mode` flag. Any route change away from headphones mutes. |
 | Local-only | Talkback is **hard off**: no ask, no speak, no on-device LLM fallback. Gated at the same transport layer as task 6. |
 | First slice | Phase 1: "speak this suggestion" on tap, headphones only, meeting-silent by construction. |
