@@ -40,8 +40,16 @@ spec:
         spec:
           restartPolicy: Never
           automountServiceAccountToken: false
-          # The data volumes are RWO NFS: run beside the app, on the same eligible nodes.
+          # The data volumes are RWO NFS, so the backup can only start on the app's node: the
+          # node rule alone once left it waiting an hour for a detach on another node. If the
+          # app is down at 03:00, it waits for it, inside activeDeadlineSeconds.
           affinity:
+            podAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchLabels:
+                      app: jarvis-live
+                  topologyKey: kubernetes.io/hostname
             nodeAffinity:
               requiredDuringSchedulingIgnoredDuringExecution:
                 nodeSelectorTerms:

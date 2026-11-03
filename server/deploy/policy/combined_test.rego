@@ -54,3 +54,67 @@ test_copilot_on_a_best_effort_alias_denied if {
 	some msg in deny with input as array.concat(all, [cm({"JARVIS_LIVE_COPILOT_MODEL": "fast-chat"})])
 	contains(msg, "JARVIS_LIVE_COPILOT_MODEL")
 }
+
+pvc(name, mode) := {"contents": {"kind": "PersistentVolumeClaim", "metadata": {"name": name}, "spec": {"accessModes": [mode]}}}
+
+claim(name) := {"name": name, "persistentVolumeClaim": {"claimName": name}}
+
+app_with(claims) := {"contents": {
+	"kind": "Deployment",
+	"metadata": {"name": "jarvis-live"},
+	"spec": {"template": {
+		"metadata": {"labels": {"app": "jarvis-live"}},
+		"spec": {"containers": [{"name": "jarvis-live"}], "volumes": [claim(c) | some c in claims]},
+	}},
+}}
+
+app_affinity := {"podAffinity": {"requiredDuringSchedulingIgnoredDuringExecution": [{
+	"labelSelector": {"matchLabels": {"app": "jarvis-live"}},
+	"topologyKey": "kubernetes.io/hostname",
+}]}}
+
+cron(claims, affinity) := {"contents": {
+	"kind": "CronJob",
+	"metadata": {"name": "jarvis-live-backup"},
+	"spec": {"jobTemplate": {"spec": {"template": {"spec": {
+		"affinity": affinity,
+		"volumes": [claim(c) | some c in claims],
+	}}}}},
+}}
+
+volumes := [pvc("jarvis-live-data", "ReadWriteOnce"), pvc("jarvis-live-outbox", "ReadWriteMany")]
+
+test_cronjob_beside_the_app_on_its_rwo_claim_passes if {
+	count(deny) == 0 with input as array.concat(all, array.concat(volumes, [
+		app_with(["jarvis-live-data"]),
+		cron(["jarvis-live-data"], app_affinity),
+	]))
+}
+
+test_cronjob_sharing_an_rwo_claim_anywhere_denied if {
+	some msg in deny with input as array.concat(all, array.concat(volumes, [
+		app_with(["jarvis-live-data"]),
+		cron(["jarvis-live-data"], {}),
+	]))
+	contains(msg, "CronJob/jarvis-live-backup")
+	contains(msg, "jarvis-live-data")
+}
+
+test_affinity_on_another_label_denied if {
+	other := {"podAffinity": {"requiredDuringSchedulingIgnoredDuringExecution": [{
+		"labelSelector": {"matchLabels": {"app": "something-else"}},
+		"topologyKey": "kubernetes.io/hostname",
+	}]}}
+	some msg in deny with input as array.concat(all, array.concat(volumes, [
+		app_with(["jarvis-live-data"]),
+		cron(["jarvis-live-data"], other),
+	]))
+	contains(msg, "CronJob/jarvis-live-backup")
+}
+
+test_cronjob_on_a_shared_rwx_claim_may_run_anywhere if {
+	count(deny) == 0 with input as array.concat(all, array.concat(volumes, [
+		app_with(["jarvis-live-outbox"]),
+		cron(["jarvis-live-outbox"], {}),
+	]))
+}
