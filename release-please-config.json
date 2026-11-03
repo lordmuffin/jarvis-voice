@@ -13,7 +13,13 @@
     },
     "macos": { "release-type": "simple", "package-name": "macos", "component": "macos" },
     "android": { "release-type": "simple", "package-name": "android", "component": "android" },
-    "web": { "release-type": "simple", "package-name": "web", "component": "web" }
+    "web": { "release-type": "simple", "package-name": "web", "component": "web" },
+    "linux": {
+      "release-type": "python", "package-name": "jarvis-desktop", "component": "linux",
+      "extra-files": [
+        { "type": "toml", "path": "uv.lock", "jsonpath": "$.package[?(@.name.value=='jarvis-desktop')].version" }
+      ]
+    }
   },
   "plugins": [
     { "type": "linked-versions", "groupName": "server and web", "components": ["server", "web"] }

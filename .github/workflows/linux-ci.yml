@@ -1,0 +1,43 @@
+name: Linux CI
+
+on:
+  # Push builds main only; branches get CI through their PR, not twice.
+  push:
+    branches: [main]
+    paths: ["linux/**", "server/src/jarvis_live/client/**", "server/pyproject.toml", ".github/workflows/linux-ci.yml"]
+  pull_request:
+    paths: ["linux/**", "server/src/jarvis_live/client/**", "server/pyproject.toml", ".github/workflows/linux-ci.yml"]
+
+# One run per PR or branch: a newer push cancels the older PR run. Runs on main always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: linux
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: linux/uv.lock
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src
+      - run: uv run pytest -q
+
+  notify-failure:
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: check
+    uses: ./.github/workflows/notify-gotify.yml
+    with:
+      title: "Linux CI failed on main"
+      message: "${{ github.event.head_commit.message }}"
+      priority: 7
+      url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    secrets: inherit

@@ -5,8 +5,8 @@
 LEGACY_PY ?= python3
 RATCHET := python3 scripts/tdd/ratchet.py
 
-.PHONY: help deps tools test test-all lint lint-server lint-web lint-workflows lint-design lint-android lint-swift lint-egress \
-	test-server test-legacy test-web test-policy \
+.PHONY: help deps tools test test-all lint lint-server lint-linux lint-web lint-workflows lint-design lint-android lint-swift lint-egress \
+	test-server test-linux test-legacy test-web test-policy \
 	test-server-full test-legacy-cov test-web-cov test-e2e test-android test-macos ratchet
 
 help:
@@ -17,6 +17,7 @@ help:
 
 deps:
 	cd server && uv sync --frozen
+	cd linux && uv sync --frozen
 	cd web && npm ci
 	$(LEGACY_PY) -m pip install -r requirements.txt -r requirements-dev.txt
 
@@ -24,10 +25,13 @@ tools:
 	scripts/tdd/install-tools.sh
 
 # ---- lint -------------------------------------------------------------------------------
-lint: lint-server lint-web lint-workflows lint-design
+lint: lint-server lint-linux lint-web lint-workflows lint-design
 
 lint-server:
 	cd server && uv run ruff check . && uv run ruff format --check . && uv run mypy src
+
+lint-linux:
+	cd linux && uv run ruff check . && uv run ruff format --check . && uv run mypy src
 
 lint-web:
 	cd web && npx tsc --noEmit && npm run lint:css
@@ -51,11 +55,15 @@ lint-swift:
 	else echo "SKIP swiftlint: not installed (CI runs it; brew install swiftlint)"; fi
 
 # ---- fast suite -------------------------------------------------------------------------
-test: lint test-server test-legacy test-web test-policy
+test: lint test-server test-linux test-legacy test-web test-policy
 
 # `integration` is added automatically to every test that needs Postgres (server/tests/conftest.py)
 test-server:
 	cd server && uv run pytest -q -m "not integration"
+
+# The Linux desktop app (linux/). Its pure modules and fakes need no desktop session.
+test-linux:
+	cd linux && uv run pytest -q
 
 test-legacy:
 	$(LEGACY_PY) -m pytest -q tests/
