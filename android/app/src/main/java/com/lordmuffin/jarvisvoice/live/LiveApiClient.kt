@@ -216,10 +216,15 @@ class LiveApiClient(
         return RemoteSessions.parseDeviceToken(execute(req))
     }
 
-    /** `wss://…/v1/sessions/{id}/stream?ticket=…` */
+    /**
+     * `wss://…/v1/sessions/{id}/stream?ticket=…&features=voice_ask`. `features` opts in to server
+     * messages older clients cannot read: here hold to ask (docs/plans/voice-push-to-talk.md).
+     */
     fun streamUrl(sessionId: String, ticket: String): String {
         val url = url("v1/sessions/$sessionId/stream").newBuilder()
-            .addQueryParameter("ticket", ticket).build().toString()
+            .addQueryParameter("ticket", ticket)
+            .addQueryParameter("features", "voice_ask")
+            .build().toString()
         return when {
             url.startsWith("https://") -> "wss://" + url.removePrefix("https://")
             url.startsWith("http://") -> "ws://" + url.removePrefix("http://")

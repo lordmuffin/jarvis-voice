@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +34,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -78,6 +82,8 @@ fun InstButton(
     size: ButtonSize = ButtonSize.Md,
     enabled: Boolean = true,
     contentDescription: String? = null,
+    /** Press and release, for a hold-to-talk control. [onClick] stays the accessibility action. */
+    onHold: ((down: Boolean) -> Unit)? = null,
 ) {
     val c = Inst.colors
     val sp = InstUi.space
@@ -107,7 +113,23 @@ fun InstButton(
             .heightIn(min = sp.touchTarget)
             .widthIn(min = sp.touchTarget)
             .clip(InstUi.shapes.pill)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .then(
+                if (onHold != null && enabled) {
+                    Modifier
+                        .pointerInput(onHold) {
+                            detectTapGestures(onPress = {
+                                onHold(true)
+                                try { tryAwaitRelease() } finally { onHold(false) }
+                            })
+                        }
+                        .semantics {
+                            role = Role.Button
+                            onClick { onClick(); true }
+                        }
+                } else {
+                    Modifier.clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                }
+            )
             .semantics { if (contentDescription != null) this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center,
         propagateMinConstraints = true, // a full-width button draws full width

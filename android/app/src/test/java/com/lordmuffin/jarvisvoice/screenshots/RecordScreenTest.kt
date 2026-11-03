@@ -1,6 +1,7 @@
 package com.lordmuffin.jarvisvoice.screenshots
 
 import com.lordmuffin.jarvisvoice.live.ConnectionKind
+import com.lordmuffin.jarvisvoice.live.ask.AskUi
 import com.lordmuffin.jarvisvoice.ui.compose.JarvisTheme
 import com.lordmuffin.jarvisvoice.ui.compose.RecentUi
 import com.lordmuffin.jarvisvoice.ui.compose.RecordActions
@@ -32,6 +33,13 @@ class RecordScreenTest(private val variant: Variant) {
         "record_recording_reconnecting",
         Fixtures.recording.copy(connection = ConnectionKind.RECONNECTING, connectionDetail = "Reconnecting (attempt 2)", message = "Server ended the session: it restarted."),
     )
+
+    @Test fun recordingCanAsk() = shot("record_recording_ask", Fixtures.recording.copy(ask = AskUi.Ready))
+    @Test fun recordingAnsweredAsText() = shot(
+        "record_recording_ask_text",
+        Fixtures.recording.copy(ask = AskUi.Answered("Priya runs the survey, due Friday.", spoken = false, why = AskUi.Why.ROUTE)),
+    )
+    @Test fun recordingLocalOnlyCannotAsk() = shot("record_recording_ask_local", Fixtures.recording.copy(askLocalOnly = true))
 
     companion object {
         @JvmStatic @Parameterized.Parameters(name = "{0}")

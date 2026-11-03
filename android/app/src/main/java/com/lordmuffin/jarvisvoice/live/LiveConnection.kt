@@ -118,6 +118,16 @@ class LiveConnection(
     fun sendMarker(marker: ClientMessage.Marker) = enqueueControl(marker)
 
     /**
+     * Hold to ask: sent only while connected, and never resent after a reconnect, because an ask
+     * is live speech. Returns false when dropped.
+     */
+    fun sendAsk(message: ClientMessage): Boolean {
+        if (state.value != ConnState.Connected) return false
+        enqueueControl(message)
+        return true
+    }
+
+    /**
      * Flushes all audio, sends `end`, waits for the server to ack everything (and, briefly, for
      * `final_note`), then closes. Returns the terminal state.
      */
@@ -195,6 +205,7 @@ class LiveConnection(
             helloAck.acked[channel]?.let { outbox.markAcked(channel, it) }
         }
         failureCount = 0
+        synchronized(lock) { pendingControl.removeAll { it.isAsk() } }  // an earlier connection's
         setState(ConnState.Connected)
         queueAllMarkers()
 
@@ -444,3 +455,6 @@ class LiveConnection(
         val FATAL_ERROR_CODES = setOf("session_not_live")
     }
 }
+
+private fun ClientMessage.isAsk(): Boolean =
+    this is ClientMessage.AskBegin || this is ClientMessage.AskEnd || this is ClientMessage.AskPlayed
