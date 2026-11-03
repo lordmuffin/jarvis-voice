@@ -8,6 +8,8 @@ dependencies = [
     "jarvis-live",
     # Also a dependency of jarvis-live; listed because evalset and the CLI use it directly.
     "httpx",
+    "sherpa-onnx>=2.0.1",
+    "numpy>=2.5.4",
 ]
 
 [project.scripts]
