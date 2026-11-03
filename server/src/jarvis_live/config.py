@@ -165,7 +165,9 @@ class Settings(BaseSettings):
     # This server's own app port, where the ingest connects as a producer.
     streams_self_url: str = "http://127.0.0.1:8080"
     # A publisher away this long has stopped: the session ends. Back sooner: the same session.
-    streams_stop_grace_s: float = 60.0
+    # OBS's reconnect backoff took 63-65 s to get back after a 30 s Wi-Fi drop (lab, 2026-11-03),
+    # so 60 s split one stream into several. Also how long after Stop the final note starts.
+    streams_stop_grace_s: float = 180.0
     streams_max: int = 8  # concurrent streams; a publish beyond this is refused
 
     # Sign-in with Pocket-ID (OIDC). Unset issuer: no web sign-in; device tokens still work.

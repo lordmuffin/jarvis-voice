@@ -76,7 +76,7 @@ class StreamIngest:
         server_url: str,
         ticket_for: TicketFor,
         state_dir: Path,
-        stop_grace_s: float = 60.0,
+        stop_grace_s: float = 180.0,
         max_streams: int = 8,
         poll_s: float = 1.0,
         ffmpeg: str = "ffmpeg",
