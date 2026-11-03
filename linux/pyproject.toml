@@ -6,6 +6,8 @@ requires-python = ">=3.12"
 dependencies = [
     # The headless capture client (task 10). The desktop app drives it; it is not a second client.
     "jarvis-live",
+    # Also a dependency of jarvis-live; listed because evalset and the CLI use it directly.
+    "httpx",
 ]
 
 [project.scripts]
