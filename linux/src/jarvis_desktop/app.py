@@ -11,10 +11,13 @@ import httpx
 from jarvis_live.client.config import load_config
 
 from jarvis_desktop import __version__, evalset, readset
+from jarvis_desktop.stt import engine as engine_mod
 from jarvis_desktop.stt import models
 from jarvis_desktop.stt import score as score_mod
-from jarvis_desktop.stt.engine import Engine, EngineError, ParakeetEngine
+from jarvis_desktop.stt.engine import Engine, EngineError
 
+#: The default first (plan section 2.2).
+ENGINES = ["whisper-turbo", "parakeet"]
 MODES = {"solo": frozenset({"solo"}), "meeting": frozenset({"meeting"})}
 MODES["any"] = MODES["solo"] | MODES["meeting"]
 
@@ -41,7 +44,12 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
     p.add_argument("--include-restricted", action="store_true")
 
     p = ev.add_parser("score", help="run an on-device engine on the eval set and score it")
-    p.add_argument("--engine", choices=["parakeet"], default="parakeet")
+    p.add_argument(
+        "--engine",
+        choices=ENGINES,
+        default=ENGINES[0],
+        help="scored alone, without the fallback dictation uses (default: %(default)s)",
+    )
     p.add_argument("--eval-dir", type=Path, help="default: $XDG_DATA_HOME/jarvis-voice/eval")
     p.add_argument("--limit", type=int, help="score only the first N clips")
 
@@ -61,7 +69,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
     md = sub.add_parser("models", help="on-device speech models").add_subparsers(
         dest="models_cmd", required=True
     )
-    md.add_parser("install", help="download and verify the pinned models (about 480 MB)")
+    md.add_parser("install", help="download and verify the pinned models (about 1.06 GB)")
 
     args = parser.parse_args(argv)
     if args.cmd == "eval":
@@ -73,7 +81,12 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
 
 
 def load_engine(name: str, env: Mapping[str, str]) -> Engine:
-    return ParakeetEngine(models.models_dir(env) / models.PARAKEET_TDT_V2.name)
+    """One engine on its own (no fallback), so a score says which engine produced it."""
+    root = models.models_dir(env)
+    if name == "parakeet":
+        return engine_mod.ParakeetEngine(root / models.PARAKEET_TDT_V2.name)
+    spec = models.WHISPER_TURBO_Q5
+    return engine_mod.WhisperCppEngine(root / spec.name / spec.files[0])
 
 
 def _eval_score(args: argparse.Namespace, env: Mapping[str, str]) -> int:
@@ -115,7 +128,7 @@ def _eval_record(args: argparse.Namespace, env: Mapping[str, str]) -> int:
 
 def _models_install(env: Mapping[str, str]) -> int:
     root = models.models_dir(env)
-    for spec in (models.PARAKEET_TDT_V2, models.SILERO_VAD):
+    for spec in models.ALL:
         shown = [-1]
 
         def progress(

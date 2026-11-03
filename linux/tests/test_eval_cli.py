@@ -111,7 +111,7 @@ def test_score_runs_the_engine_on_the_default_eval_set(
     code = app.main(["eval", "score", "--limit", "2"], env=env_for(tmp_path))
     assert code == 0
     assert seen == {
-        "engine": "engine:parakeet",
+        "engine": "engine:whisper-turbo",
         "eval_dir": tmp_path / "data" / "jarvis-voice" / "eval",
         "limit": 2,
     }
@@ -140,8 +140,8 @@ def test_models_install_fetches_every_pinned_model_into_the_default_root(
     monkeypatch.setattr(models, "install", fake_install)
     assert app.main(["models", "install"], env=env_for(tmp_path)) == 0
     root = tmp_path / "data" / "jarvis-voice" / "models"
-    assert installed == [(models.PARAKEET_TDT_V2.name, root), (models.SILERO_VAD.name, root)]
-    assert models.PARAKEET_TDT_V2.name in capsys.readouterr().out
+    assert installed == [(spec.name, root) for spec in models.ALL]
+    assert models.WHISPER_TURBO_Q5.name in capsys.readouterr().out
 
 
 def test_record_walks_the_shipped_sentences_into_the_read_set(
@@ -174,3 +174,31 @@ def test_record_walks_the_shipped_sentences_into_the_read_set(
         "-",
     ]
     assert "jarvis-voice eval score --eval-dir" in capsys.readouterr().out
+
+
+def test_score_can_pick_parakeet(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from jarvis_desktop.stt import score as score_mod
+
+    monkeypatch.setattr(
+        score_mod, "score", lambda engine, eval_dir, **_: score_mod.Report(engine=str(engine))
+    )
+    monkeypatch.setattr(app, "load_engine", lambda name, env: f"engine:{name}")
+    assert app.main(["eval", "score", "--engine", "parakeet"], env=env_for(tmp_path)) == 0
+
+
+def test_load_engine_builds_each_engine_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from jarvis_desktop.stt import engine as engine_mod
+
+    made: list[tuple[str, Path]] = []
+    monkeypatch.setattr(engine_mod, "WhisperCppEngine", lambda m, **_: made.append(("w", m)) or "W")
+    monkeypatch.setattr(engine_mod, "ParakeetEngine", lambda m, **_: made.append(("p", m)) or "P")
+    env = env_for(tmp_path)
+    root = tmp_path / "data" / "jarvis-voice" / "models"
+    assert app.load_engine("whisper-turbo", env) == "W"
+    assert app.load_engine("parakeet", env) == "P"
+    assert made == [
+        ("w", root / "whisper-large-v3-turbo-q5_0" / "ggml-large-v3-turbo-q5_0.bin"),
+        ("p", root / "parakeet-tdt-0.6b-v2-int8"),
+    ]

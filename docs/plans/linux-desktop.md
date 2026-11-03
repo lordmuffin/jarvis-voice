@@ -14,7 +14,7 @@ Builds on the headless client from task 10 (`server/src/jarvis_live/client/`); n
 | Portals: `GlobalShortcuts` v2, `RemoteDesktop` v2, `InputCapture` v2, `Clipboard` v1 (xdg-desktop-portal 1.22.1, KDE backend) | `busctl` on `org.freedesktop.portal.Desktop` | Chord shortcuts and portal input injection are available |
 | `org.kde.StatusNotifierWatcher`, `org.kde.kglobalaccel`, `org.freedesktop.secrets` (ksecretd) on the session bus | `busctl --user list` | SNI tray, KGlobalAccel and Secret Service all present |
 | Andrew is already in the `input` group; `/dev/uinput` is `root:input 0660` with an ACL | `id`, `ls -l` | evdev reading and uinput writing work today with no new grant |
-| **GPU is AMD** (Radeon RX 9070 XT + Radeon 610M iGPU). There is no NVIDIA GPU on the daily driver | `lspci`, no `nvidia-smi` | CUDA-only GPU paths (faster-whisper, sherpa-onnx GPU builds) don't apply; GPU means whisper.cpp on Vulkan. **NVIDIA is out of scope** (decided 2026-11-03): only the 9070 XT matters |
+| **GPU is AMD** (Radeon RX 9070 XT + Radeon 610M iGPU). There is no NVIDIA GPU on the daily driver | `lspci`, no `nvidia-smi` | CUDA-only GPU paths (faster-whisper, sherpa-onnx GPU builds) don't apply; GPU means whisper.cpp on Vulkan, which is now the default engine (section 2.2). **NVIDIA is out of scope** (decided 2026-11-03): only the 9070 XT matters |
 | CPU Ryzen 9 7900X (24 threads), 61 GiB RAM (about 17 GiB free while working) | `lscpu`, `free` | CPU inference is a real option |
 | Qt 6.12 system packages (`pyside6` 6.12.0, `qt6-webengine` 6.12, `kirigami`, `python-evdev`, `python-secretstorage` all in the repos); system Python 3.14 | `pacman -Si` | A Python + PySide6 app packages cleanly for Arch |
 | The task 10 client shipped: `capture`, `config`, `control`, `daemon`, `local`, `outbox`, `transport`, `render`, `capture_cli`. Server deps are already in the `server` extra, so `jarvis-live` core is slim (httpx, pydantic, websockets) | `server/pyproject.toml`, `client/` | The desktop app can depend on `jarvis-live` without pulling in the server stack |
@@ -124,40 +124,59 @@ whisper.cpp figures are `total time - load time` from `whisper_print_timings` (c
 | whisper.cpp | small.en | Vulkan, RX 9070 XT | 221 ms | 0.020 |
 | whisper.cpp | large-v3-turbo q5_0 | Vulkan, RX 9070 XT | 234 ms | 0.021 |
 
-All of them transcribed this clean utterance correctly. TTS audio says nothing about accuracy on
-a real mic. On published English benchmarks parakeet-tdt-0.6b-v2 beats whisper-large-v3-turbo on
-WER, and both beat base.en/small.en by a wide margin. PR 1.3 re-checks this on 20 of Andrew's own
-recordings before the choice is final. NVIDIA is out of scope (decided); the only GPU that matters
-is the RX 9070 XT, so the GPU runner-up is whisper.cpp on Vulkan.
+All of them transcribed this clean utterance correctly, so a single TTS clip can't rank them.
+NVIDIA is out of scope (decided); the only GPU that matters is the RX 9070 XT.
 
-**Decision: sherpa-onnx + Parakeet-TDT-0.6B-v2 int8 on CPU.**
-- 311 ms for 10.9 s leaves about 3× headroom on the 1 s budget, with no GPU at all, so there is
-  no VRAM contention with local LLMs or games, no RADV driver risk (it warns that it is "not a
-  conformant Vulkan implementation"), and the same speed on any Linux box.
-- The same engine family as Android's offline STT (sherpa-onnx, there with Whisper models), so
-  model handling and knowledge transfer.
-- Output has punctuation and casing, and the model loads in 1.8 s once, at app start.
-- Rejected: faster-whisper (accurate models too slow on CPU, no AMD GPU path); whisper.cpp
-  (fastest on the GPU, but the accurate model is 5.9 s on CPU, so it would depend on the GPU).
-  `stt/engine.py` is a narrow `Engine` protocol, so a whisper.cpp-Vulkan engine can be added
-  later if the real-mic comparison asks for it, without touching the controller.
+**Accuracy, measured 2026-11-03** (PRs #297 and #298; WER computed by `jarvis-voice eval score`):
 
-**Streaming and latency.** Parakeet is an offline model. While listening, a worker re-decodes the
-open segment about every 0.7 s for the pill's live words. The sherpa-onnx Silero VAD closes a
-segment at each pause of 0.6 s or more and finalises it, so at release only the last open segment
-(usually under 5 s, about 150 ms) is left to decode, however long the dictation. The mic opens at
+| Set | Parakeet-TDT-0.6B-v2 int8, CPU | whisper.cpp large-v3-turbo q5_0, Vulkan |
+|---|---|---|
+| **Andrew reading 40 known sentences** (MacBook Pro built-in mic, 2 min) | 10.5 % (6.9 % ignoring number and time formatting) | **7.2 %** (**4.8 %**) |
+| 400 TTS clips, 5 voices, clean and 10 dB noise (exact text) | 4.7 % (4.5 % noisy) | **4.0 %** (4.1 % noisy) |
+| 200 real clips from live (the server's transcript as reference) | 24.7 % disagreement | **19.9 %** |
+
+The live clips' references are often cut short mid-word, so that row only ranks the engines. On
+the read set Parakeet's mistakes were also the worse kind ("look at the cooling" became "Kool
+Aid", "standup" became "stain up", "GPU" became "G P U", numbers spelled out), while Whisper's were
+small and it writes digits.
+
+**Decision (revised 2026-11-03): whisper.cpp large-v3-turbo q5_0 on Vulkan, with Parakeet on CPU
+as the automatic fallback.**
+- **Accuracy:** best on all three sets, most clearly on Andrew's own voice.
+- **Latency:** `whisper-cli` loads the model on every call (about 200 ms), and a 10 s utterance
+  still takes about 430 ms end to end (306 ms p50 on the 2 to 5 s read clips), inside the 1 s
+  release budget. A resident model (whisper.cpp's library in-process) would cut about 200 ms; it
+  is a later optimisation, not needed for the budget.
+- **Fallback:** `FallbackEngine` uses Parakeet (311 ms for 10.9 s on CPU) whenever Whisper fails:
+  a lost GPU, the RADV driver (which calls itself "not a conformant Vulkan implementation"), a
+  missing `whisper-cli`. The GPU then rests for 5 minutes before it is tried again, and the pill
+  says the fallback is in use.
+- **Rejected:** faster-whisper (CUDA only for the GPU, too slow on CPU); Parakeet as the default
+  (less accurate on Andrew's voice, spelled-out numbers).
+- **Boundary:** `WhisperCppEngine` runs `whisper-cli` on a private temporary WAV (a 0700 directory
+  under `$XDG_RUNTIME_DIR`, a 0600 file, deleted after each call). It never opens a socket; the
+  `whisper-server` HTTP listener is deliberately not used.
+
+**Streaming and latency.** Both engines are offline models. The pill's live words come from
+Parakeet on CPU, which re-decodes the open segment about every 0.7 s (cheap, and it keeps the GPU
+idle while you talk). The text that is pasted comes from Whisper. The sherpa-onnx Silero VAD closes
+a segment at each pause of 0.6 s or more and Whisper finalises it in the background, so at release
+only the last open segment (usually under 5 s, about 300 ms) is left to decode, however long the
+dictation. PR 3b decides this split with a test on the read set. The mic opens at
 `begin` and a pre-roll keeps the first word while the engine warms up, as on the Mac.
 
-Budget from release to text in the field, 10 s utterance: last segment ≤ 350 ms + join/cleanup
+Budget from release to text in the field, 10 s utterance: last segment ≤ 450 ms + join/cleanup
 < 1 ms + `wl-copy` about 15 ms + waiting for the user's modifiers to come up (0 to 200 ms) +
-paste chord 4 × 10 ms ≈ **0.4 to 0.6 s**. Each stage is timed and logged locally, numbers only
+paste chord 4 × 10 ms ≈ **0.5 to 0.7 s**. Each stage is timed and logged locally, numbers only
 (section 2.6).
 
-**Model delivery.** About 640 MB. Downloaded once from the k2-fsa GitHub release on first run,
-with a pinned SHA-256 and progress in the pill (the Mac's `assetProgress`), into
-`$XDG_DATA_HOME/jarvis-voice/models/`. The AUR package can ship it as a separate
-`jarvis-voice-model-parakeet` package instead (open question C). The download is the only network
-access dictation makes and carries no user content.
+**Model delivery.** About 1.06 GB: the Whisper turbo q5_0 GGML file (574 MB, from
+`huggingface.co/ggerganov/whisper.cpp` pinned to revision `5359861c`), Parakeet (482 MB archive
+from the k2-fsa release) and Silero VAD (0.6 MB), each with a pinned SHA-256, installed by
+`jarvis-voice models install` (progress in the pill on first run) into
+`$XDG_DATA_HOME/jarvis-voice/models/`. The downloads are the only network access dictation makes
+and carry no user content. `whisper-cli` itself comes from a whisper.cpp build with Vulkan
+(packaging, section 6).
 
 ### 2.3 Text into the focused app
 
@@ -395,8 +414,11 @@ plus `makepkg --printsrcinfo` and `namcap` in an `archlinux` container.
   builds `server/` as the `python-jarvis-live` client (core deps only) and `linux/`. Depends on
   `pyside6`, `qt6-declarative`, `layer-shell-qt`, `qt6-webengine` (phase 3), `python-evdev`,
   `python-secretstorage`, `python-httpx`, `python-pydantic`, `python-websockets`, `wl-clipboard`,
-  `pipewire` (or `libpulse` for `parec`). sherpa-onnx: the `python-sherpa-onnx` AUR package if it
-  is current, otherwise a pinned wheel vendored into `/usr/lib/jarvis-voice/` (open question C).
+  `pipewire` (or `libpulse` for `parec`), and **whisper.cpp built with Vulkan** for `whisper-cli`
+  (an AUR package such as `whisper.cpp-vulkan` if one is current, otherwise built in the PKGBUILD
+  with `-DGGML_VULKAN=1`, needing `vulkan-headers` and `shaderc`; the PKGBUILD PR settles which).
+  sherpa-onnx (the fallback): the `python-sherpa-onnx` AUR package if it is current, otherwise a
+  pinned wheel vendored into `/usr/lib/jarvis-voice/` (open question C).
   Installs the udev rule and the user unit, and prints the `input` group note.
   A `linux-v*` tag triggers a workflow that renders `.SRCINFO` and attaches the PKGBUILD to the
   GitHub release; pushing to the AUR stays manual at first.
@@ -423,10 +445,10 @@ Every step is red then green per `TDD.md`; `make test` before done.
    `DictationTriggerTests` case, plus autorepeat.
 2. `feat(linux): dictation text and filler cleanup` — `dictation_text.py` (twins of
    `DictationTextTests`), `filler.py` table tests.
-3. `feat(linux): on-device STT engine` — `Engine` protocol, sherpa parakeet + VAD, model
-   download with checksum; tests: fake engine contract, VAD segmentation on a fixture WAV,
-   checksum mismatch rejected, a `@pytest.mark.model` real-model test (skipped in CI). Includes
-   the real-mic accuracy and latency check, results in the PR.
+3. `feat(linux): on-device STT engine` — done in #297, #298 and the Whisper switch: model
+   install with pinned SHA-256, `Engine`, `ParakeetEngine`, `WhisperCppEngine`, `FallbackEngine`,
+   `eval pull|record|score`, and the measurements that chose Whisper turbo (section 2.2).
+   3b: VAD segmentation and the Parakeet-partials / Whisper-final split.
 4. `feat(linux): dictation controller` — the state machine with fakes: hold/tap/double-tap flows,
    cancel, 300 s cap, finish timeout, empty result is "Didn't catch that", **import guard and
    egress tests**, stats log has no text.
@@ -519,14 +541,24 @@ it is out of scope.
   PySide6's `QtAsyncio` event loop. If it proves flaky, asyncio runs in one worker thread and
   talks to Qt through signals. Decided in PR 7, with a test that a hold timer fires while QML
   renders.
-- **R5 Accuracy on a real mic.** The numbers are from clean TTS. PR 3's check on Andrew's
-  recordings can still change the model (whisper.cpp-Vulkan turbo is the runner-up, behind the
-  same `Engine`).
-- **R6 Memory over a week.** Parakeet int8 plus Qt plus WebEngine; the 60-minute RSS test and the
-  week's journal cover it. The model stays resident (about 1 GB expected; measured in PR 3).
-- **R7 Disk.** `/home` is 94 % full (103 GB free). The 640 MB model is fine, but a local-only
+- **R5 Accuracy on a real mic.** Measured (section 2.2): it changed the default engine to
+  Whisper turbo. The read set is 40 sentences on a MacBook mic; re-run `eval record` on the
+  desktop's own mic once dictation works there.
+- **R6 Memory over a week.** Parakeet stays resident for the pill (about 1 GB RSS) plus Qt and
+  WebEngine; Whisper runs as a short-lived process per segment, so its VRAM (about 1 GB) is held
+  only while it decodes. The 60-minute RSS test and the week's journal cover it.
+- **R7 Disk.** `/home` is 94 % full (103 GB free). The 1.06 GB of models is fine, but a local-only
   outbox (1.92 MB/min/channel) is capped by the existing `max_outbox_mb`.
 - **R8 Phase 3 shows nothing for local-only sessions**, unlike the Mac panel, unless G is taken up.
+- **R9 GPU dependence.** The default engine needs the RX 9070 XT through RADV, shared with games
+  and local LLMs. Mitigated by `FallbackEngine` (Parakeet on CPU, a pill notice, a 5-minute rest
+  before retrying the GPU); the week-long done test logs which engine served each dictation.
+- **R10 The mic that disappears.** Found 2026-11-03: a USB hub dropped the Revelator mic, the
+  default fell back to a Bluetooth speakerphone, and this machine's Bluetooth adapter delivers
+  pure zeros over HFP ("adapter firmware bug?" in WirePlumber). Dictation must name the mic it
+  uses and treat an all-zero take as a dead mic, not as silence ("Mic sent no signal: check
+  <name>"), never pasting nothing silently. `eval record` already does (#298); the controller
+  PR adds the same check, and `TESTING.md` gets "unplug the mic mid-dictation".
 
 ## 12. Open questions (need your call before I code)
 
