@@ -50,9 +50,11 @@ def derive(
     job: Job | None,
     transcription_failed: bool,
     progress: float | None = None,
+    transcription_pending: bool = False,
 ) -> ProcessingState:
     """``started_at`` is the session's; the rest describe what is in flight for it. ``progress``
-    is the in-flight transcription's, if its length is known."""
+    is the in-flight transcription's, if its length is known. ``transcription_pending``: its
+    audio waits for an STT tier, and the note waits for that."""
     state = _derive(
         status,
         started_at=started_at,
@@ -62,6 +64,7 @@ def derive(
         draining_since=draining_since,
         job=job,
         transcription_failed=transcription_failed,
+        transcription_pending=transcription_pending,
     )
     if state.transcription == "running" and state.job_source != "live":
         state.progress = progress
@@ -83,6 +86,7 @@ def _derive(
     draining_since: datetime | None,
     job: Job | None,
     transcription_failed: bool,
+    transcription_pending: bool,
 ) -> ProcessingState:
     # Local-only sessions are never sent to an LLM: no note is ever queued for them.
     then: Phase = "idle" if local_only else "queued"
@@ -112,6 +116,10 @@ def _derive(
     if status == "live" and streaming:  # the note waits until the recording is ended
         return ProcessingState(
             transcription="running", summary="idle", started_at=started_at, job_source="live"
+        )
+    if transcription_pending and status in ("done", "failed"):
+        return ProcessingState(
+            transcription="queued", summary=then, started_at=None, job_source=None
         )
     return ProcessingState(
         transcription="failed" if transcription_failed else "idle",

@@ -230,6 +230,7 @@ def processing_of(request: Request, row: SessionRow) -> ProcessingState:
         draining_since=state.hub.draining_since(row.id),
         job=orchestrator.job(row.id) if orchestrator else None,
         transcription_failed=bool(orchestrator and orchestrator.transcription_failed(row.id)),
+        transcription_pending=row.transcription_pending,
         progress=next((p for p in measures if p is not None), None),
     )
 

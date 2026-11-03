@@ -67,10 +67,19 @@ class TierPool:
         self._clock = clock
         self._healthy: dict[str, bool] = {t.name: False for t in tiers}
         self._probed = False
+        self._exhausted = False  # every tier failed since the last probe
+        self._answering = False  # a tier answered the last probe
+        self._fault: tuple[float, float] | None = None  # first and latest failure while it did
 
     def current_tier(self) -> str | None:
         """Name of the first healthy tier."""
         return next((t.name for t in self.tiers if self._healthy[t.name]), None)
+
+    def fault_s(self) -> float:
+        """How long segments have kept failing while a tier answers its health probe. That is a
+        fault, not Whisper being away. A single failure spans 0 s: a tier leaving between two
+        probes looks just like this until the next probe."""
+        return self._fault[1] - self._fault[0] if self._fault else 0.0
 
     async def probe_all(self) -> None:
         results = await asyncio.gather(*(self._probe(t) for t in self.tiers))
@@ -79,6 +88,10 @@ class TierPool:
                 log.info("stt tier %s is now %s", tier.name, "healthy" if ok else "unhealthy")
             self._healthy[tier.name] = ok
         self._probed = True
+        self._exhausted = False
+        self._answering = any(results)
+        if not self._answering:
+            self._fault = None  # nothing there: away
         metrics.stt_tiers(self._healthy, self.current_tier())
 
     async def run_probe_loop(self) -> None:
@@ -87,9 +100,11 @@ class TierPool:
             await asyncio.sleep(self._probe_interval)
 
     async def _probe(self, tier: Tier) -> bool:
-        for path in ("/models", "/health"):
+        # OpenAI-style servers answer under the tier's /v1; whisper-cpp only at its root.
+        root = tier.endpoint.removesuffix("/v1")
+        for url in (f"{tier.endpoint}/models", f"{tier.endpoint}/health", f"{root}/health"):
             try:
-                r = await self._client.get(tier.endpoint + path, timeout=self._probe_timeout)
+                r = await self._client.get(url, timeout=self._probe_timeout)
             except httpx.HTTPError:
                 continue
             if r.is_success:
@@ -99,11 +114,14 @@ class TierPool:
     async def transcribe(self, wav: bytes, prompt: str) -> tuple[str, str]:
         """Return ``(text, tier name)``. Tries healthy tiers in order, falling through to the
         next on any request error. If none are healthy per the last probe (which may be up to
-        one interval stale) every tier is tried in order as a last resort."""
+        one interval stale) every tier is tried in order as a last resort, once per probe: with
+        Whisper away, a session's queue must not wait on dead tiers segment by segment."""
         if not self._probed:
             await self.probe_all()
-        candidates = [t for t in self.tiers if self._healthy[t.name]] or self.tiers
-        for tier in candidates:
+        healthy = [t for t in self.tiers if self._healthy[t.name]]
+        if not healthy and self._exhausted:
+            raise STTUnavailable("no STT tier is up")
+        for tier in healthy or self.tiers:
             started = self._clock()
             try:
                 text = await self._request(tier, wav, prompt)
@@ -117,7 +135,12 @@ class TierPool:
                 continue
             metrics.stt_request(tier.name, "ok", self._clock() - started)
             metrics.stt_served(tier.name)
+            self._fault = None
             return text, tier.name
+        self._exhausted = True
+        if self._answering:
+            now = self._clock()
+            self._fault = (self._fault[0] if self._fault else now, now)
         raise STTUnavailable("no STT tier could transcribe the segment")
 
     async def _request(self, tier: Tier, wav: bytes, prompt: str) -> str:

@@ -303,7 +303,7 @@ class LiveActivity : AppCompatActivity() {
             LiveUiState.Phase.STOPPING -> getString(R.string.livesess_finishing)
         }
         val chip = if (idle) ConnectionChip(ConnectionKind.IDLE)
-        else ConnectionChip.of(state.connection, state.localOnly, state.session.lagMs, state.session.llmOk)
+        else ConnectionChip.of(state.connection, state.localOnly, state.session.lagMs, state.session.llmOk, state.session.sttOffline)
 
         if (state.phase == LiveUiState.Phase.RECORDING) levels.push(state.level) else levels.clear()
 
@@ -337,6 +337,7 @@ class LiveActivity : AppCompatActivity() {
             connection = chip.kind,
             connectionDetail = if (idle) "" else connectionDetail(state),
             copilotOffline = chip.copilotOffline,
+            transcriptionOffline = chip.transcriptionOffline,
             message = state.message,
             levels = levels.snapshot(),
             details = details,
@@ -359,6 +360,7 @@ class LiveActivity : AppCompatActivity() {
             else -> {}
         }
         state.session.sttTier?.let { parts += getString(R.string.livesess_stt_tier, it) }
+        if (state.session.sttOffline) parts += getString(R.string.livesess_stt_offline)
         if (state.session.lagMs > 0) parts += getString(R.string.livesess_lag, state.session.lagMs)
         if (state.unackedMs > 1_000) parts += getString(R.string.livesess_queued, state.unackedMs / 1000.0)
         return parts.joinToString(" · ")

@@ -5,6 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import httpx
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -13,7 +14,8 @@ from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.db.models import OWNER_USER_ID
 from jarvis_live.orchestrator import Orchestrator
-from jarvis_live.stt.backend import Transcription
+from jarvis_live.stt.backend import Transcription, WhisperBackend
+from jarvis_live.stt.tiers import TierPool, parse_tiers
 from tests.conftest import FakeSTT
 from tests.fakes import FakeClock, FakeLLM, FakeNotifier, make_session, new_device
 from tests.helpers import eventually
@@ -126,32 +128,66 @@ async def test_live_session_without_producer_is_ended_after_idle_period(rig: Any
     assert sid in rig.hub.ended
 
 
-async def test_stt_outage_notifies_once_after_two_minutes(rig: Any) -> None:
+class Faulty(FakeSTT):
+    """A tier answers its health probe, but nothing has transcribed for ``seconds``."""
+
+    def __init__(self, seconds: float) -> None:
+        super().__init__()
+        self.seconds = seconds
+
+    def fault_s(self) -> float:
+        return self.seconds
+
+
+async def test_whisper_being_away_never_pages(rig: Any) -> None:
+    # Rule change (REPLAN 2026-11-02): the gaming PC being away is expected. This replaced
+    # test_stt_outage_notifies_once_after_two_minutes, which asserted the page it now forbids.
     rig.orch._stt = NoTier()
     rig.hub.states = [_state(rig.clock)]
-    await rig.orch.check_once()
-    await rig.clock.advance(119)
-    rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
-    await rig.orch.check_once()
-    assert rig.notifier.sent == []
-    await rig.clock.advance(2)
-    rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
-    await rig.orch.check_once()
-    assert [s.priority for s in rig.notifier.sent] == [8]
-    for _ in range(3):  # same outage: no repeats
+    for _ in range(40):
         await rig.clock.advance(60)
         rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
         await rig.orch.check_once()
-    assert len(rig.notifier.sent) == 1
+    assert rig.notifier.sent == []
+
+
+async def test_a_real_stt_fault_alerts_once_after_two_minutes(rig: Any) -> None:
+    rig.orch._stt = Faulty(119)
+    await rig.orch.check_once()
+    assert rig.notifier.sent == []
+    rig.orch._stt = Faulty(121)
+    for _ in range(3):  # same fault: no repeats
+        await rig.orch.check_once()
+    assert [(s.title, s.priority) for s in rig.notifier.sent] == [
+        ("Jarvis: transcription failing", 8)
+    ]
     # recovery re-arms the alert
-    rig.orch._stt = FakeSTT()
+    rig.orch._stt = Faulty(0)
     await rig.orch.check_once()
-    rig.orch._stt = NoTier()
-    await rig.orch.check_once()
-    await rig.clock.advance(121)
-    rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
+    rig.orch._stt = Faulty(121)
     await rig.orch.check_once()
     assert len(rig.notifier.sent) == 2
+
+
+async def test_a_tier_answering_health_at_its_root_keeps_the_live_slos_judged(rig: Any) -> None:
+    # Lab, 0.33.0: gamingpc served a 24-cycle replay while its probe read unhealthy, so stt_up was
+    # false and every live_only SLO was skipped for the whole session.
+    def whisper_cpp(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200 if request.url.path == "/health" else 404)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(whisper_cpp))
+    pool = TierPool(parse_tiers("gamingpc http://whisper.local:8080/v1 m"), client)
+    await pool.probe_all()
+    assert pool.current_tier() == "gamingpc"
+    rig.orch._stt = WhisperBackend(pool)
+    rig.hub.states = [_state(rig.clock)]
+    for _ in range(10):
+        metrics.copilot_roundtrip("ok", 60.0)
+        await rig.clock.advance(1)
+        rig.hub.states[0].pipeline.last_audio_at = rig.clock.now
+    await rig.orch.check_once()
+    assert [s.title for s in rig.notifier.sent] == ["Jarvis: Copilot LLM slow"]
+    await rig.orch.shutdown()
 
 
 async def test_a_sustained_slow_tier_alerts_once_through_the_watchdog(rig: Any) -> None:
@@ -164,14 +200,6 @@ async def test_a_sustained_slow_tier_alerts_once_through_the_watchdog(rig: Any) 
         await rig.orch.check_once()
     assert [s.title for s in rig.notifier.sent] == ["Jarvis: STT tier watchdog-tier slow"]
     await rig.orch.shutdown()
-
-
-async def test_no_outage_alert_without_a_live_session(rig: Any) -> None:
-    rig.orch._stt = NoTier()
-    await rig.orch.check_once()
-    await rig.clock.advance(600)
-    await rig.orch.check_once()
-    assert rig.notifier.sent == []
 
 
 async def test_recover_finalizes_recent_finalizing_sessions_only(rig: Any, sm: SM) -> None:

@@ -3,6 +3,7 @@ import { render } from "preact";
 import { act } from "preact/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConnectionChip } from "../src/jarvis/ConnectionChip";
+import { SessionWarnings } from "../src/jarvis/SessionWarnings";
 import { CopilotItem, FinalNoteRow } from "../src/jarvis/CopilotItem";
 import { dockView } from "../src/jarvis/dock";
 import { FeedFilter } from "../src/jarvis/FeedFilter";
@@ -319,6 +320,20 @@ describe("ConnectionChip", () => {
     render(<ConnectionChip connection="open" status={{ ...status, stt_tier: null }} />, document.body);
     expect(document.body.textContent).toContain("— · lag 840 ms");
     expect(document.body.textContent).not.toContain("copilot degraded");
+  });
+
+  it("warns that transcription is offline, once, and keeps other errors", () => {
+    const away = { code: "stt_unavailable", message: "Transcription offline." };
+    render(<SessionWarnings sttOffline error={away} />, document.body);
+    expect(document.body.textContent).toContain("Transcription offline. The audio is kept");
+    expect(document.querySelectorAll("[role=status]").length).toBe(1);
+    expect(document.querySelector("[role=alert]")).toBeNull();
+    render(<SessionWarnings sttOffline error={{ code: "bad_frame", message: "No." }} />, document.body);
+    expect(document.querySelector("[role=alert]")?.textContent).toContain("No.");
+    render(<SessionWarnings sttOffline={false} error={away} />, document.body);
+    expect(document.querySelector("[role=alert]")?.textContent).toBe("Transcription offline.");
+    render(<SessionWarnings sttOffline={false} error={null} />, document.body);
+    expect(document.body.textContent).toBe("");
   });
 
   it("has the degraded and queued shells for fields the server doesn't send yet", () => {

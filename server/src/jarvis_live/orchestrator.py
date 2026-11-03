@@ -1,6 +1,6 @@
 """Wires the A3 services to session lifecycle events: copilot loop (and ideas loop) per live
-session, a last ideas pass then the finalizer on end, idle-session ending, and the STT-outage
-alert."""
+session, a last ideas pass then the finalizer on end, idle-session ending, transcribing audio kept
+while Whisper was away, and the STT-fault alert."""
 
 import asyncio
 import logging
@@ -9,19 +9,21 @@ import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live import metrics
 from jarvis_live.actions.intake import ActionIntake, SessionProposals
+from jarvis_live.api.audio import audio_available
 from jarvis_live.bus import Bus
 from jarvis_live.config import Settings
 from jarvis_live.copilot.loop import Clock, CopilotLoop, RealClock
-from jarvis_live.db.models import OWNER_USER_ID, User
+from jarvis_live.db.models import OWNER_USER_ID, NotePublication, User
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.diarize.client import Diarizer
 from jarvis_live.diarize.service import DiarizeService
 from jarvis_live.finalize.finalizer import Finalizer
+from jarvis_live.finalize.outbox import latest_final_note
 from jarvis_live.ingest.hub import IngestHub, SessionIngest
 from jarvis_live.ingest.retranscribe import RetranscribeFailed, retranscribe
 from jarvis_live.llm.client import LLM
@@ -77,8 +79,9 @@ class Orchestrator:
         self._orphans: dict[uuid.UUID, float] = {}  # live in the DB, no ingest state: first seen
         self._slo = SloMonitor(settings, notifier, self._clock)
         metrics.add_observer(self._slo.observe)
-        self._outage_since: float | None = None
-        self._outage_notified = False
+        self._fault_notified = False
+        self._backfilling: uuid.UUID | None = None  # at most one, so Whisper is not swamped
+        self._backfill_after: dict[uuid.UUID, float] = {}  # failed: not before this
 
     def attach(self, hub: IngestHub) -> None:
         self._hub = hub
@@ -225,9 +228,27 @@ class Orchestrator:
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
         await self.stop_voice(session_id)
+        if await self._waits_for_transcript(session_id):
+            await self._label_speakers(session_id)
+            await self._set_done(session_id)  # the note follows the transcript: _backfill_one
+            return
         await self._flush_ideas(session_id)
         await self._label_speakers(session_id)
         await self._finalize(session_id)
+
+    async def _waits_for_transcript(self, session_id: uuid.UUID) -> bool:
+        async with self._sm() as db:
+            row = await db.get(SessionRow, session_id)
+        return row is not None and row.transcription_pending
+
+    async def _set_done(self, session_id: uuid.UUID) -> None:
+        async with self._sm() as db:
+            await db.execute(
+                update(SessionRow)
+                .where(SessionRow.id == session_id, SessionRow.status == "finalizing")
+                .values(status="done")
+            )
+            await db.commit()
 
     async def stop_voice(self, session_id: uuid.UUID) -> None:
         """Stop listening, and hear out a request the session ended on."""
@@ -259,7 +280,11 @@ class Orchestrator:
         except Exception:
             log.exception("final ideas pass failed for %s", session_id)
 
-    async def _reprocess(self, session_id: uuid.UUID, replace: str | None, restore: str) -> None:
+    async def _reprocess(
+        self, session_id: uuid.UUID, replace: str | None, restore: str, *, backfill: bool = False
+    ) -> None:
+        """``backfill``: nobody asked for this run. The session had no note yet, so this one is
+        announced like any new note, and a failure is only a reason to try again later."""
         async with self._sm() as db:
             row = await db.get(SessionRow, session_id)
         if row is None:
@@ -282,7 +307,11 @@ class Orchestrator:
             )
         except RetranscribeFailed as e:
             log.warning("could not transcribe %s again: %s", session_id, e)
-            self._transcription_failed.add(session_id)
+            if backfill:
+                retry_at = self._clock.monotonic() + self._cfg.stt_backfill_retry_s
+                self._backfill_after[session_id] = retry_at
+            else:
+                self._transcription_failed.add(session_id)
             async with self._sm() as db:
                 await db.execute(
                     update(SessionRow)
@@ -291,10 +320,23 @@ class Orchestrator:
                 )
                 await db.commit()
             return
+        await self._clear_pending(session_id)
         if job is not None:
             job.stage = "summary"
+        if backfill:
+            await self._flush_ideas(session_id)
         await self._diarize.realign(session_id)  # the new segments, from the stored turns
-        await self._finalize(session_id, replace=replace, notify=False)
+        await self._finalize(session_id, replace=replace, notify=backfill)
+
+    async def _clear_pending(self, session_id: uuid.UUID) -> None:
+        self._backfill_after.pop(session_id, None)
+        async with self._sm() as db:
+            await db.execute(
+                update(SessionRow)
+                .where(SessionRow.id == session_id)
+                .values(transcription_pending=False)
+            )
+            await db.commit()
 
     async def _finalize(
         self, session_id: uuid.UUID, *, replace: str | None = None, notify: bool = True
@@ -348,7 +390,8 @@ class Orchestrator:
         now = self._clock.monotonic()
         live = self._hub.live_sessions()
         metrics.sessions(len(live), max((st.pipeline.lag_ms() for st in live), default=0))
-        await self._check_stt_outage(now, bool(live))
+        await self._check_stt_fault()
+        await self._backfill_one(now, bool(live))
         await self._slo.check(now, any_live=bool(live), stt_up=self._stt.current_tier() is not None)
         for st in live:
             if (
@@ -387,20 +430,73 @@ class Orchestrator:
                 log.info("ending idle session %s (no producer)", sid)
                 await self._hub.end(sid)
 
-    async def _check_stt_outage(self, now: float, any_live: bool) -> None:
-        if not any_live or self._stt.current_tier() is not None:
-            self._outage_since, self._outage_notified = None, False
-            return
-        if self._outage_since is None:
-            self._outage_since = now
-        if not self._outage_notified and now - self._outage_since > self._cfg.stt_outage_notify_s:
-            self._outage_notified = True  # once per outage
+    async def _check_stt_fault(self) -> None:
+        """Whisper being away is expected: clients show it and nothing alerts. A tier that
+        answers its health check but cannot transcribe is a fault, whoever is recording. A tier
+        that crashes looks like one that is away, so this cannot see it: server/deploy/README.md.
+        """
+        fault_s = self._stt.fault_s()
+        if fault_s <= 0:
+            self._fault_notified = False
+        elif not self._fault_notified and fault_s > self._cfg.stt_outage_notify_s:
+            self._fault_notified = True  # once per fault
             await self._notifier.notify(
-                "Jarvis: transcription down",
-                "All speech-to-text tiers have been unhealthy for over "
-                f"{int(self._cfg.stt_outage_notify_s // 60)} minutes during a live session.",
+                "Jarvis: transcription failing",
+                "Whisper answers its health check but has transcribed nothing for over "
+                f"{int(self._cfg.stt_outage_notify_s // 60)} minutes. The audio is kept.",
                 8,
             )
+
+    async def _backfill_one(self, now: float, any_live: bool) -> None:
+        """Audio kept while no tier was up: once one is back and no session needs it, transcribe
+        the oldest waiting session, then write its note. Never a local-only session."""
+        if any_live or self._backfilling is not None or self._stt.current_tier() is None:
+            return
+        waiting = (
+            select(SessionRow.id, SessionRow.status, SessionRow.channels)
+            .outerjoin(NotePublication, NotePublication.session_id == SessionRow.id)
+            .where(
+                SessionRow.transcription_pending,
+                SessionRow.status.in_(("done", "failed")),
+                SessionRow.local_only.is_(False),
+                SessionRow.deleted_at.is_(None),
+                or_(
+                    NotePublication.state.is_(None),
+                    NotePublication.state.not_in(("open", "publishing")),  # as ``_reopen``
+                ),
+            )
+            .order_by(SessionRow.started_at)
+        )
+        async with self._sm() as db:
+            rows = (await db.execute(waiting)).all()
+            pick = next((r for r in rows if now >= self._backfill_after.get(r.id, now)), None)
+            if pick is None:
+                return
+            reopened = await db.execute(
+                update(SessionRow)
+                .where(SessionRow.id == pick.id, SessionRow.status == pick.status)
+                .values(status="finalizing")
+            )
+            await db.commit()
+            if not reopened.rowcount:  # type: ignore[attr-defined]
+                return  # someone else's run got there first
+            note = await latest_final_note(db, pick.id)
+        replace = note[0] if note else None
+        if not any(audio_available(self._cfg.data_dir, pick.id, c) for c in pick.channels):
+            await self._clear_pending(pick.id)  # nothing to transcribe: a note from what arrived
+            self.regenerate(pick.id, replace)
+            return
+        self._backfilling = pick.id
+        log.info("transcribing kept audio of %s", pick.id)
+        self._track(
+            pick.id, "reprocess", "transcription", self._backfill(pick.id, replace, pick.status)
+        )
+
+    async def _backfill(self, session_id: uuid.UUID, replace: str | None, restore: str) -> None:
+        try:
+            await self._reprocess(session_id, replace, restore, backfill=True)
+        finally:
+            self._backfilling = None
 
     # --- shutdown ---------------------------------------------------------------------------
 

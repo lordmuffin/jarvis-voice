@@ -35,6 +35,8 @@ data class SessionSnapshot(
     val sttTier: String? = null,
     val lagMs: Long = 0,
     val llmOk: Boolean = true,
+    /** The server's last `status` named no Whisper tier. False until a `status` has arrived. */
+    val sttOffline: Boolean = false,
     val finalNote: ServerEvent.FinalNote? = null,
     val lastError: ServerEvent.Error? = null,
 )
@@ -61,6 +63,7 @@ class SessionStore {
             }
             is ServerEvent.Status -> snapshot = snapshot.copy(
                 sttTier = event.sttTier, lagMs = event.lagMs, llmOk = event.llmOk,
+                sttOffline = event.sttTier == null,
             )
             is ServerEvent.FinalNote -> snapshot = snapshot.copy(finalNote = event)
             is ServerEvent.Error -> snapshot = snapshot.copy(lastError = event)

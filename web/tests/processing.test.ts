@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { processingView, showsProcessingWhileLive } from "../src/processing";
+import { processingView, showsProcessingWhileLive, transcriptionOffline } from "../src/processing";
 import type { Processing } from "../src/types";
 
 const p = (over: Partial<Processing> = {}): Processing => ({
@@ -10,7 +10,29 @@ const p = (over: Partial<Processing> = {}): Processing => ({
   ...over,
 });
 
+describe("transcriptionOffline", () => {
+  const status = (stt_tier: string | null) => ({ stt_tier, llm_ok: true, lag_ms: 0 });
+
+  it("is true while a recording streams and the server reports no tier", () => {
+    expect(transcriptionOffline(status(null), true)).toBe(true);
+  });
+
+  it("is false with a tier, before any status arrives, and once audio has stopped", () => {
+    expect(transcriptionOffline(status("gamingpc"), true)).toBe(false);
+    expect(transcriptionOffline(null, true)).toBe(false);
+    expect(transcriptionOffline(status(null), false)).toBe(false);
+  });
+});
+
 describe("processingView", () => {
+  it("says the session is queued, not transcribing, while its audio waits for Whisper", () => {
+    expect(processingView(p({ transcription: "queued", summary: "queued" }))).toEqual({
+      busy: true,
+      label: "Queued for transcription",
+      tone: "progress",
+    });
+  });
+
   it("is quiet when nothing runs, or for a server that does not say", () => {
     expect(processingView(p())).toEqual({ busy: false, label: null, tone: null });
     expect(processingView(undefined)).toEqual({ busy: false, label: null, tone: null });

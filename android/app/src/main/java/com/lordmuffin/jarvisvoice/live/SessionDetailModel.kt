@@ -275,6 +275,7 @@ class SessionDetailModel(
         ui = ui.copy(
             processBusy = p.busy,
             processing = when {
+                p.activity == RemoteProcessing.Activity.QUEUED -> app.getString(R.string.detail_processing_queued)
                 p.activity == RemoteProcessing.Activity.TRANSCRIBING -> app.getString(R.string.detail_processing_transcribing)
                 p.activity == RemoteProcessing.Activity.SUMMARIZING -> app.getString(R.string.detail_processing_summarizing)
                 p.transcriptionFailed -> app.getString(R.string.detail_processing_transcription_failed)

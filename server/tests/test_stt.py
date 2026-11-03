@@ -58,6 +58,8 @@ class FakeWhisper:
         host = request.url.host.split(".")[0]
         behaviour = self.hosts[host]
         path = request.url.path
+        if path == "/health":
+            return httpx.Response(behaviour.get("root_health", 404))
         if path.endswith("/models"):
             return httpx.Response(behaviour.get("models", 200), json={"data": []})
         if path.endswith("/health"):
@@ -126,6 +128,100 @@ async def test_probe_recovers_tier() -> None:
     fake.hosts["gpu"] = {}
     await p.probe_all()
     assert p.current_tier() == "gpu"
+
+
+async def test_a_tier_that_only_answers_health_at_its_root_is_healthy() -> None:
+    # whisper-cpp: 404 on /v1/models and /v1/health, 200 on /health (seen on lab, 2026-11-02).
+    seen: list[str] = []
+
+    def whisper_cpp(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        return httpx.Response(200 if request.url.path == "/health" else 404)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(whisper_cpp))
+    p = TierPool(parse_tiers("gamingpc http://whisper.local:8080/v1 m"), client)
+    await p.probe_all()
+    assert p.current_tier() == "gamingpc"
+    assert seen[-1] == "/health"
+
+
+async def test_a_healthy_tier_is_tried_before_tiers_that_are_down() -> None:
+    down = {"models": 500, "transcribe": -1}
+    spec = "spark http://spark.local/v1 m\npve http://pve.local/v1 m\ngpc http://gpc.local/v1 m"
+    fake = FakeWhisper(spark=down, pve=down, gpc={"models": 404, "root_health": 200})
+    p = TierPool(parse_tiers(spec), httpx.AsyncClient(transport=httpx.MockTransport(fake)))
+    assert await p.transcribe(b"wav", "") == ("from gpc", "gpc")
+    assert [r.url.host for r in fake.posts()] == ["gpc.local"]
+
+
+async def test_all_tiers_down_tries_them_once_per_probe_not_once_per_segment() -> None:
+    fake = FakeWhisper(
+        gpu={"models": 500, "transcribe": -1}, cpu={"models": 500, "transcribe": 500}
+    )
+    p = pool(fake)
+    for _ in range(3):
+        with pytest.raises(STTUnavailable):
+            await p.transcribe(b"wav", "")
+    assert (
+        len(fake.posts()) == 2
+    )  # a session's queue must not wait on dead tiers segment by segment
+    await p.probe_all()
+    with pytest.raises(STTUnavailable):
+        await p.transcribe(b"wav", "")
+    assert len(fake.posts()) == 4
+
+
+def _timed_pool(fake: FakeWhisper) -> tuple[TierPool, list[float]]:
+    now = [0.0]
+    client = httpx.AsyncClient(transport=httpx.MockTransport(fake))
+    return TierPool(parse_tiers(SPEC), client, clock=lambda: now[0]), now
+
+
+async def _fail_for(p: TierPool, now: list[float], seconds: float) -> None:
+    """Segments keep failing, with the probe running between them."""
+    while True:
+        with pytest.raises(STTUnavailable):
+            await p.transcribe(b"wav", "")
+        if now[0] >= seconds:
+            return
+        now[0] += 30
+        await p.probe_all()
+
+
+async def test_a_tier_that_answers_health_but_cannot_transcribe_is_a_fault() -> None:
+    fake = FakeWhisper(gpu={"transcribe": 500}, cpu={"transcribe": -1})
+    p, now = _timed_pool(fake)
+    await _fail_for(p, now, 150)
+    assert p.fault_s() == 150
+
+
+async def test_tiers_that_do_not_answer_at_all_are_away_not_a_fault() -> None:
+    down = {"models": 500, "transcribe": -1}
+    p, now = _timed_pool(FakeWhisper(gpu=down, cpu=down))
+    await _fail_for(p, now, 150)
+    assert p.fault_s() == 0
+
+
+async def test_a_tier_leaving_between_probes_is_not_a_fault() -> None:
+    # Failing while the last probe still says it answers, then the probe finds it gone.
+    fake = FakeWhisper(gpu={"transcribe": -1}, cpu={"transcribe": -1})
+    p, now = _timed_pool(fake)
+    with pytest.raises(STTUnavailable):
+        await p.transcribe(b"wav", "")
+    fake.hosts["gpu"] = fake.hosts["cpu"] = {"models": 500, "transcribe": -1}
+    now[0] += 30
+    await p.probe_all()
+    assert p.fault_s() == 0
+
+
+async def test_a_transcribed_segment_clears_the_fault() -> None:
+    fake = FakeWhisper(gpu={"transcribe": 500}, cpu={"transcribe": 500})
+    p, now = _timed_pool(fake)
+    await _fail_for(p, now, 60)
+    fake.hosts["gpu"] = {}
+    await p.probe_all()
+    await p.transcribe(b"wav", "")
+    assert p.fault_s() == 0
 
 
 async def test_all_unhealthy_still_tries_every_tier() -> None:

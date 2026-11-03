@@ -108,6 +108,15 @@ struct SessionStoreTests {
         #expect(store.llmOk == false)
     }
 
+    @Test func transcriptionIsOfflineOnlyOnceTheServerSaysSo() {
+        let store = SessionStore()
+        #expect(store.sttOffline == false)  // No status yet: nothing is known.
+        store.apply(.status(Status(sttTier: nil, llmOk: true, lagMs: 0)))
+        #expect(store.sttOffline == true)
+        store.apply(.status(Status(sttTier: "gamingpc", llmOk: true, lagMs: 0)))
+        #expect(store.sttOffline == false)
+    }
+
     @Test func connectionFinalNoteAndErrorAreRecorded() {
         let store = SessionStore()
         store.setConnection(.reconnecting(attempt: 2))

@@ -130,3 +130,14 @@ def test_fraction_is_the_share_of_a_recording_done_capped_at_all_of_it() -> None
     assert fraction(500, 2000) == 0.25
     assert fraction(2500, 2000) == 1.0
     assert fraction(0, 0) is None  # nothing to transcribe: no measure
+
+
+def test_a_session_waiting_for_whisper_reads_queued() -> None:
+    s = state("done", transcription_pending=True)
+    assert (s.transcription, s.summary) == ("queued", "queued")
+
+
+def test_a_job_outranks_the_queue() -> None:
+    job = Job("reprocess", "transcription", T1)
+    s = state("finalizing", transcription_pending=True, job=job)
+    assert s.transcription == "running"

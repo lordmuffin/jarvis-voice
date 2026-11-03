@@ -1,4 +1,4 @@
-import type { Processing, SessionStatus } from "./types";
+import type { Processing, SessionStatus, Status } from "./types";
 
 export interface ProcessingView {
   /** A job is in flight: a new one would not start. */
@@ -10,6 +10,9 @@ export interface ProcessingView {
 /** What to show for a session's jobs. The note waits for the transcript, so transcribing comes first. */
 export function processingView(p: Processing | undefined): ProcessingView {
   if (!p) return { busy: false, label: null, tone: null };
+  if (p.transcription === "queued") {
+    return { busy: true, label: "Queued for transcription", tone: "progress" };
+  }
   const active = (x: string) => x === "running" || x === "queued";
   if (active(p.transcription)) {
     // Rounded down: 100% only once it is all done.
@@ -19,6 +22,11 @@ export function processingView(p: Processing | undefined): ProcessingView {
   if (active(p.summary)) return { busy: true, label: "Summarizing…", tone: "progress" };
   if (p.transcription === "failed") return { busy: false, label: "Transcription failed", tone: "failed" };
   return { busy: false, label: null, tone: null };
+}
+
+/** The server has no Whisper tier for a recording that is streaming. The audio is still kept. */
+export function transcriptionOffline(status: Status | null, streaming: boolean): boolean {
+  return streaming && status !== null && status.stt_tier === null;
 }
 
 /**

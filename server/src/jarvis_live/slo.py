@@ -7,7 +7,8 @@ carries the state.
 
 An effect never repeats its cause: while a tier is breached the authoritative-line SLO is
 tracked but silent, and copilot staleness (which includes the round trip) defers to the round
-trip. All-tiers-down and finalizer-failed have their own alerts and are not repeated here.
+trip. An STT fault and finalizer-failed have their own alerts and are not repeated here. Whisper
+being away has no alert: it is expected, and clients show it.
 """
 
 import math
@@ -100,7 +101,7 @@ class SloMonitor:
             return
         for spec in self._specs:
             if spec.live_only and not (any_live and stt_up):
-                continue  # nothing to judge, or the outage alert owns it
+                continue  # nothing to judge: no session, or Whisper is away
             for (signal, key), window in list(self._windows.items()):
                 if signal == spec.signal:
                     await self._judge(spec, key, window, now)

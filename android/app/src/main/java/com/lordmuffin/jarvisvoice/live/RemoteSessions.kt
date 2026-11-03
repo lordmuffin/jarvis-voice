@@ -108,7 +108,7 @@ data class RemoteProcessing(
     /** `live`, `upload`, `finalize`, `regenerate` or `reprocess`; null when nothing runs. */
     val jobSource: String? = null,
 ) {
-    enum class Activity { TRANSCRIBING, SUMMARIZING }
+    enum class Activity { QUEUED, TRANSCRIBING, SUMMARIZING }
 
     /** A job is in flight: a new one would not start. */
     val busy: Boolean get() = listOf(transcription, summary).any { it == RUNNING || it == QUEUED }
@@ -116,7 +116,8 @@ data class RemoteProcessing(
     /** What to tell the user; the note waits for the transcript, so transcribing comes first. */
     val activity: Activity?
         get() = when {
-            transcription == RUNNING || transcription == QUEUED -> Activity.TRANSCRIBING
+            transcription == QUEUED -> Activity.QUEUED  // the audio is kept, waiting for Whisper
+            transcription == RUNNING -> Activity.TRANSCRIBING
             summary == RUNNING || summary == QUEUED -> Activity.SUMMARIZING
             else -> null
         }

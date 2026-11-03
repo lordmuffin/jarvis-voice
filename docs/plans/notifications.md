@@ -15,7 +15,7 @@ Gotify is already partly wired, so this is a refactor + extension, not a greenfi
 | Token Secret | `deploy/k8s/base/onepassword-items.yaml`, `deployment.yaml` | `OnePasswordItem jarvis-live-gotify-token` → Secret, mounted at `/secrets/gotify/password`, `JARVIS_LIVE_GOTIFY_TOKEN_FILE` points there. Lab shares it via `../base`. |
 | URL | `deploy/k8s/base/configmap.yaml` | `JARVIS_LIVE_GOTIFY_URL: http://gotify.gotify.svc.cluster.local` |
 | Call sites | `finalize/finalizer.py` | "Jarvis: note ready" (prio 5) and "Jarvis: note failed" (prio 8), owner's sessions only, skipped on a user-asked regeneration |
-| | `orchestrator.py` | "Jarvis: transcription down" (prio 8), once per STT outage, deployment-wide |
+| | `orchestrator.py` | "Jarvis: transcription failing" (prio 8), once per STT fault, deployment-wide. Whisper being away is expected and does not alert (`server/deploy/README.md`) |
 | Notifier only built with an LLM | `app.py` | `GotifyNotifier` is created inside the `if llm or litellm_base_url` branch |
 
 There is **no Helm chart** in the repo; deployment is Kustomize (`server/deploy/k8s/`). The
@@ -41,7 +41,7 @@ so the server sees an upload exactly like a live session.
 | 5 | Audio store closed + fsynced: every received frame is durable | `IngestHub.end` after `state.store.close()` | `recording.saved` — the server-side "upload complete" |
 | 6 | Pipeline drained: every segment transcribed | `IngestHub.end` after `state.pipeline.finish()` | `transcription.completed` |
 | 7 | A segment lost because no STT tier was up | `ingest/pipeline.py: _process` (`STTUnavailable`) | `transcription.failed` (once per session, first loss) |
-| 8 | All STT tiers down during a live session (deployment-wide) | `orchestrator.py: _check_stt_outage` | `system.stt_outage` (no recording; owner only; keeps today's message) |
+| 8 | A tier answers its health check but nothing transcribes (deployment-wide) | `orchestrator.py: _check_stt_fault` | `system.stt_outage` (no recording; owner only; keeps today's message) |
 | 9 | Finalizer: note written, `finalizing → done` | `finalize/finalizer.py: _finalize` | `summary.completed` (`summary` = note summary, `regenerated` flag) |
 | 10 | Finalizer: local-only or empty transcript → `done`, no note | `_finalize` early returns | — (`recording.saved` already told the user) |
 | 11 | Finalizer raised, `finalizing → failed` | `Finalizer.run` except branch | `summary.failed` (`error`) |
@@ -189,7 +189,7 @@ Untitled sessions fall back to `Untitled <mode> session, <HH:MM>` in the deploym
 | `vault_note.proposed` | `Note proposed to vault: <title>` | PR link |
 | `vault_note.written` | `Note in vault: <title>` | first summary line if available, PR link |
 | `vault_note.failed` | `Vault publish failed: <title>` | error |
-| `system.stt_outage` | `Jarvis: transcription down` | today's text |
+| `system.stt_outage` | `Jarvis: transcription failing` | today's text |
 
 The `url` (Gotify click action) is always the session page. "First line of the summary"
 = first non-empty line of `FinalNote.summary`, Markdown list/heading marker stripped,

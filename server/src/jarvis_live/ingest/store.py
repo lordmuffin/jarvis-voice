@@ -7,11 +7,11 @@ import uuid
 from pathlib import Path
 from typing import IO, Literal
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from jarvis_live.db.models import AudioChunk, MarkerRow, SegmentRow
+from jarvis_live.db.models import AudioChunk, MarkerRow, SegmentRow, Session
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import CHANNEL_MIC, CHANNEL_SYSTEM, DraftSegment, Frame, Marker
 
@@ -151,6 +151,20 @@ class AudioStore:
             for f in self._files.values():
                 f.close()
             self._files.clear()
+
+
+async def mark_transcription_pending(
+    sessionmaker: "async_sessionmaker[AsyncSession]", session_id: uuid.UUID
+) -> None:
+    """Keep this session for later: the watchdog transcribes it once a tier is back. Local-only
+    sessions are never queued, so nothing is sent on their behalf later."""
+    async with sessionmaker() as db:
+        await db.execute(
+            update(Session)
+            .where(Session.id == session_id, Session.local_only.is_(False))
+            .values(transcription_pending=True)
+        )
+        await db.commit()
 
 
 async def save_draft(

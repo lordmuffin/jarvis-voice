@@ -73,6 +73,7 @@ data class RecordUi(
     val connection: ConnectionKind = ConnectionKind.IDLE,
     val connectionDetail: String = "",
     val copilotOffline: Boolean = false,
+    val transcriptionOffline: Boolean = false,
     val message: String? = null,
     val dictation: DictationUi = DictationUi(false, ""),
     val mode: SessionMode = SessionMode.SOLO,
@@ -159,6 +160,7 @@ private fun ServerRow(ui: RecordUi, modifier: Modifier = Modifier) {
     val sp = InstUi.space
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
         InstText(ui.serverLine, InstUi.type.caption, Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (ui.transcriptionOffline) InstChip(stringResource(R.string.conn_transcription_offline), Inst.colors.warning)
         if (ui.copilotOffline) InstChip(stringResource(R.string.conn_copilot_offline), Inst.colors.warning)
         ConnectionChipUi(ui.connection)
     }
@@ -360,6 +362,7 @@ private fun SessionHeader(ui: RecordUi, modifier: Modifier = Modifier) {
                 ui.sessionTitle.ifBlank { ui.serverLine }, InstUi.type.bodyStrong, Modifier.weight(1f),
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
+            if (ui.transcriptionOffline) InstChip(stringResource(R.string.conn_transcription_offline), c.warning)
             if (ui.copilotOffline) InstChip(stringResource(R.string.conn_copilot_offline), c.warning)
             ConnectionChipUi(ui.connection)
         }

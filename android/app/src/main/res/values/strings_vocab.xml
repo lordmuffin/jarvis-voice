@@ -10,6 +10,7 @@
     <string name="conn_offline">○ Offline</string>
     <string name="conn_failed">○ Offline</string>
     <string name="conn_copilot_offline">⚑ Copilot offline</string>
+    <string name="conn_transcription_offline">⚑ Transcription offline</string>
     <string name="conn_offline_hint">No audio is streaming. The session resumes if the recorder reconnects, or ends on its own after a while.</string>
     <string name="conn_attempt">attempt %1$d</string>
     <string name="conn_failed_reason">Offline. %1$s</string>

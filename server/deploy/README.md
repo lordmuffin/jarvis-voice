@@ -52,6 +52,27 @@ Go to Actions, open **Server Image** and choose **Run workflow**:
 
 Fill in one input, not both.
 
+## When Whisper is away
+
+Live may depend on the gaming PC's Whisper. Gaming mode scales it to zero, so this is normal:
+
+- **During a recording**, clients show "Transcription offline" (`status.stt_tier` is null) and the
+  audio is stored as usual. The session is marked `transcription_pending`.
+- **After it ends**, the session is `done` with `processing.transcription: queued`. Its note waits
+  and audio retention skips it. A session that lost only part of its transcript waits too, so no
+  note goes out, or to a PR, from half a meeting.
+- **When a tier is back**, the watchdog transcribes the oldest waiting session through the
+  retranscribe path, one at a time and only while nothing is live. The transcript is replaced
+  whole, the note is written and pushed as usual. **This is automatic: there is nothing to press.**
+  A failed attempt retries after `stt_backfill_retry_s`. Local-only sessions are never queued.
+
+**What alerts.** "Jarvis: transcription failing" fires when a tier answers its health check but
+nothing transcribes for `stt_outage_notify_s`. No tier answering never alerts.
+
+**What cannot be told apart.** From here, whisper-cpp crashing, its node dying and gaming mode all
+look the same: no tier answers. jarvis-live does not know the PC's profile. The cluster does, so
+an alert for "whisper-cpp should be up and is not" belongs in the homelab repo. None exists today.
+
 ## How lab is fenced off
 
 Lab runs code no release has vouched for, so `k8s/jarvis-live-lab/` keeps it away from

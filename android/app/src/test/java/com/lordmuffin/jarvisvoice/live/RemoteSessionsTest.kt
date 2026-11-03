@@ -152,6 +152,12 @@ class RemoteSessionsTest {
         assertTrue(d.canRegenerate)
     }
 
+    @Test fun audioWaitingForWhisperIsQueuedNotTranscribing() {
+        val p = RemoteSessions.parseProcessing("""{"transcription": "queued", "summary": "queued"}""")
+        assertTrue(p.busy)
+        assertEquals(RemoteProcessing.Activity.QUEUED, p.activity)
+    }
+
     @Test fun summarizingAfterTheTranscript() {
         val p = RemoteSessions.parseProcessing("""{"transcription": "idle", "summary": "running", "job_source": "regenerate"}""")
         assertTrue(p.busy)
