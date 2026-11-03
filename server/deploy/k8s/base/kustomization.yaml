@@ -25,6 +25,7 @@ resources:
   - pvc-dispatch-mirrors.yaml
   - pvc-backups.yaml
   - cronjob-backup.yaml
+  - streams.yaml
 # The backup CronJob runs the Deployment's image, so release-please's one version bump
 # moves both.
 replacements:

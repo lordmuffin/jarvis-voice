@@ -1,0 +1,201 @@
+# Stream ingest: OBS and phones push SRT or RTMP into MediaMTX, and the app turns each stream
+# into a live session (server/src/jarvis_live/streams/, docs/obs.md).
+#
+#   publisher --SRT 8890/udp, RTMP 1935--> MediaMTX --RTSP 8554, API 9997--> jarvis-live
+#                                          MediaMTX --auth hook 9101-------> jarvis-live
+#
+# Off in base (replicas 0, JARVIS_LIVE_STREAMS_ENABLED "false"); the lab overlay turns it on and
+# policy/live.rego keeps live off. This Service stays ClusterIP: exposing SRT and RTMP on the
+# LAN (a LoadBalancer IP, DNS, firewall; LAN and VPN only) is the homelab's, in its own repo.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jarvis-live-mediamtx
+  labels:
+    app: jarvis-live-mediamtx
+data:
+  # Every key not set here keeps MediaMTX's default; see its mediamtx.yml for v1.21.2.
+  mediamtx.yml: |
+    logLevel: info
+    # Every publish, read and API call is decided by the app (policy/streams.rego):
+    # publish needs the path's ingest key, read and API the app's own per-process credential.
+    authMethod: http
+    authHTTPAddress: http://jarvis-live:9101/mediamtx/auth
+    authHTTPExclude: []
+    api: true
+    apiAddress: :9997
+    metrics: false
+    pprof: false
+    playback: false
+    # The app reads streams over RTSP inside the cluster.
+    rtsp: true
+    rtspTransports: [tcp]
+    rtspAddress: :8554
+    # What publishers use.
+    rtmp: true
+    rtmpAddress: :1935
+    srt: true
+    srtAddress: :8890
+    # Nothing else is offered.
+    hls: false
+    webrtc: false
+    moq: false
+    pathDefaults:
+      source: publisher
+    paths:
+      all_others:
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jarvis-live-mediamtx
+  labels:
+    app: jarvis-live-mediamtx
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: jarvis-live-mediamtx
+  template:
+    metadata:
+      labels:
+        app: jarvis-live-mediamtx
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mediamtx
+          image: docker.io/bluenviron/mediamtx:1.21.2
+          args: ["/config/mediamtx.yml"]
+          ports:
+            - name: rtsp
+              containerPort: 8554
+              protocol: TCP
+            - name: api
+              containerPort: 9997
+              protocol: TCP
+            - name: rtmp
+              containerPort: 1935
+              protocol: TCP
+            - name: srt
+              containerPort: 8890
+              protocol: UDP
+          readinessProbe:
+            tcpSocket:
+              port: rtsp
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: rtsp
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: jarvis-live-mediamtx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jarvis-live-mediamtx
+  labels:
+    app: jarvis-live-mediamtx
+spec:
+  type: ClusterIP
+  selector:
+    app: jarvis-live-mediamtx
+  ports:
+    - name: rtsp
+      port: 8554
+      targetPort: rtsp
+      protocol: TCP
+    - name: api
+      port: 9997
+      targetPort: api
+      protocol: TCP
+    - name: rtmp
+      port: 1935
+      targetPort: rtmp
+      protocol: TCP
+    - name: srt
+      port: 8890
+      targetPort: srt
+      protocol: UDP
+---
+# The app's pods: the app and metrics ports as before (the Ingress, Prometheus); the stream
+# auth hook from MediaMTX only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jarvis-live-streams-auth
+  labels:
+    app: jarvis-live
+spec:
+  podSelector:
+    matchLabels:
+      app: jarvis-live
+  policyTypes: ["Ingress"]
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+        - protocol: TCP
+          port: 9100
+    - from:
+        - podSelector:
+            matchLabels:
+              app: jarvis-live-mediamtx
+      ports:
+        - protocol: TCP
+          port: 9101
+---
+# MediaMTX: publishers may reach SRT and RTMP (how far is the homelab's: LAN and VPN only);
+# only the app may read streams (RTSP) or use the API.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: jarvis-live-mediamtx
+  labels:
+    app: jarvis-live-mediamtx
+spec:
+  podSelector:
+    matchLabels:
+      app: jarvis-live-mediamtx
+  policyTypes: ["Ingress"]
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 1935
+        - protocol: UDP
+          port: 8890
+    - from:
+        - podSelector:
+            matchLabels:
+              app: jarvis-live
+      ports:
+        - protocol: TCP
+          port: 8554
+        - protocol: TCP
+          port: 9997

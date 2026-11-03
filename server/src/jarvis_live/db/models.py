@@ -106,6 +106,28 @@ class Device(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class IngestKey(Base):
+    """A stream pushed in over SRT or RTMP (OBS, a phone) publishes to path ``name`` with this
+    key. It can only publish, never read, and carries the profile of the sessions it starts."""
+
+    __tablename__ = "ingest_keys"
+    __table_args__ = (
+        CheckConstraint("mode IN ('meeting','solo')", name="ck_ingest_keys_mode"),
+        CheckConstraint("source IN ('obs','mobile')", name="ck_ingest_keys_source"),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(40), unique=True)
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    mode: Mapped[str] = mapped_column(String(16), default="solo")
+    title: Mapped[str | None] = mapped_column(Text)
+    restricted: Mapped[bool] = mapped_column(default=False, server_default=text("false"))
+    source: Mapped[str] = mapped_column(String(16), default="obs")
+    created_at: Mapped[datetime] = _now()
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 class Session(Base):
     __tablename__ = "sessions"
     __table_args__ = (

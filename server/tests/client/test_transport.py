@@ -4,6 +4,7 @@ import asyncio
 import uuid
 from pathlib import Path
 
+import httpx
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker
@@ -171,3 +172,30 @@ async def _until(cond, timeout: float = 15.0) -> None:  # type: ignore[no-untype
     async with asyncio.timeout(timeout):
         while not cond():
             await asyncio.sleep(0.02)
+
+
+async def test_takes_tickets_from_a_ticket_source_instead_of_the_rest_api(
+    server: ServerHandle, token: str, sm: SM, tmp_path: Path
+) -> None:
+    """The in-server stream ingest has no device token: it mints its tickets itself."""
+    sid = await _new_session(server, token)
+    issued: list[str] = []
+
+    async def ticket() -> str:
+        async with httpx.AsyncClient(base_url=server.url) as c:
+            r = await c.post(
+                f"/v1/sessions/{sid}/ticket",
+                json={"role": "producer"},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        issued.append(r.json()["ticket"])
+        return issued[-1]
+
+    # A bad token: any REST ticket request would be a fatal 401.
+    conn = _conn(server, "not-a-token", sid, tmp_path, ticket_source=ticket)
+    conn.start()
+    for i, pcm in enumerate(FRAMES):
+        conn.outbox.append("mic", pcm, t_ms=i * 100)
+    conn.kick()
+    assert await conn.end(timeout=30) is True
+    assert issued and await _seqs(sm, sid) == list(range(len(FRAMES)))

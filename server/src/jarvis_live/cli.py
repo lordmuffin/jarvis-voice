@@ -297,14 +297,18 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     from jarvis_live.client import capture_cli
+    from jarvis_live.streams import cli as stream_cli
 
     capture_cli.add_parser(sub)
+    stream_cli.add_parser(sub)
 
     args = parser.parse_args(argv)
     if args.cmd == "capture":
         return capture_cli.run(args)
     if args.cmd == "create-device":
         return _create_device(args.name, args.user)
+    if args.cmd == "stream-key":
+        return stream_cli.run(args, _with_db)
     if args.cmd == "list-users":
         return _list_users()
     if args.cmd == "set-admin":

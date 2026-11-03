@@ -12,7 +12,7 @@ This is the only module in ``jarvis_live.client`` allowed to touch the network.
 import asyncio
 import contextlib
 import random
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -76,6 +76,7 @@ class ProducerConnection:
         reconnect: ReconnectPolicy = ReconnectPolicy(),  # noqa: B008
         handshake_timeout: float = 10.0,
         end_grace: float = 10.0,
+        ticket_source: Callable[[], Awaitable[str]] | None = None,
     ) -> None:
         self.server = server.rstrip("/")
         self.session_id = session_id
@@ -86,6 +87,8 @@ class ProducerConnection:
         self.handshake_timeout = handshake_timeout
         self.end_grace = end_grace
         self._auth = {"Authorization": f"Bearer {token}"}
+        # Who mints this connection's tickets; by default ``POST .../ticket`` with the token.
+        self._ticket_source = ticket_source
 
         self.state: State = "idle"
         self.failure: str | None = None
@@ -180,6 +183,8 @@ class ProducerConnection:
             await asyncio.sleep(delay)
 
     async def _ticket(self) -> str:
+        if self._ticket_source is not None:
+            return await self._ticket_source()
         async with httpx.AsyncClient(base_url=self.server, headers=self._auth, timeout=10) as c:
             r = await c.post(f"/v1/sessions/{self.session_id}/ticket", json=ticket_body())
         if r.status_code in FATAL_HTTP:

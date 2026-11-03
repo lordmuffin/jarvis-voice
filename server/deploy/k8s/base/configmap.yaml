@@ -64,6 +64,9 @@ data:
   # routes the app port to the internet; only the Service exposes this one, in-cluster.
   # Scraped by the PodMonitor in np-home-homelab apps/observability/jarvis-live.
   JARVIS_LIVE_METRICS_PORT: "9100"
+  # Stream ingest through MediaMTX (streams.yaml, docs/obs.md). Off; lab turns it on.
+  JARVIS_LIVE_STREAMS_ENABLED: "false"
+  JARVIS_LIVE_STREAMS_AUTH_PORT: "9101"
 
   JARVIS_LIVE_DATA_DIR: "/data"
   JARVIS_LIVE_INDEX_DIR: "/index"
