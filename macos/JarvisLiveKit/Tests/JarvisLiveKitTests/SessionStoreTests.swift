@@ -219,4 +219,23 @@ struct SessionStoreTests {
         #expect(store.who(for: store.lines[0]) == Who(text: "Them", kind: .them))
         #expect(store.who(for: store.lines[1]) == Who(text: "Me", kind: .me))
     }
+
+    @Test func askEventsGoToTheAskHookNotTheTranscript() {
+        let store = SessionStore()
+        var got: [ServerEvent] = []
+        store.onAsk = { got.append($0) }
+        store.apply(.voiceState(VoiceState(available: true)))
+        store.apply(.askReply(AskReply(id: "a1", outcome: .answer, text: "Priya.")))
+        #expect(got == [.voiceState(VoiceState(available: true)), .askReply(AskReply(id: "a1", outcome: .answer, text: "Priya."))])
+        #expect(store.lines.isEmpty)
+    }
+
+    @Test func losingTheConnectionWithdrawsAsks() {
+        let store = SessionStore()
+        var got: [ServerEvent] = []
+        store.onAsk = { got.append($0) }
+        store.setConnection(.connected)
+        store.setConnection(.reconnecting(attempt: 1))
+        #expect(got == [.voiceState(VoiceState(available: false))])
+    }
 }

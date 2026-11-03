@@ -4,35 +4,39 @@ import Foundation
 /// System-wide hotkeys through Carbon's `RegisterEventHotKey`, which needs no privacy permission.
 @MainActor
 final class HotKeys {
-    enum Action: UInt32 { case toggleSession = 1, marker = 2 }
+    enum Action: UInt32 { case toggleSession = 1, marker = 2, ask = 3 }
 
     private var refs: [EventHotKeyRef] = []
     private var installed = false
-    nonisolated(unsafe) private static var handler: (@MainActor (Action) -> Void)?
+    nonisolated(unsafe) private static var handler: (@MainActor (Action, Bool) -> Void)?
 
-    /// ⌃⌥J start/stop, ⌃⌥M marker.
-    func register(_ handler: @escaping @MainActor (Action) -> Void) {
+    /// ⌃⌥J start/stop, ⌃⌥M marker, ⌃⌥A hold to ask. The handler gets `true` on press and `false`
+    /// on release; only hold to ask uses the release.
+    func register(_ handler: @escaping @MainActor (Action, Bool) -> Void) {
         Self.handler = handler
         if !installed {
-            var spec = EventTypeSpec(
-                eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)
-            )
+            var specs = [
+                EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed)),
+                EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyReleased)),
+            ]
             InstallEventHandler(GetApplicationEventTarget(), { _, event, _ -> OSStatus in
                 var id = EventHotKeyID()
                 GetEventParameter(
                     event, EventParamName(kEventParamDirectObject), EventParamType(typeEventHotKeyID),
                     nil, MemoryLayout<EventHotKeyID>.size, nil, &id
                 )
+                let pressed = GetEventKind(event) == UInt32(kEventHotKeyPressed)
                 if let action = HotKeys.Action(rawValue: id.id) {
-                    DispatchQueue.main.async { MainActor.assumeIsolated { HotKeys.handler?(action) } }
+                    DispatchQueue.main.async { MainActor.assumeIsolated { HotKeys.handler?(action, pressed) } }
                 }
                 return noErr
-            }, 1, &spec, nil, nil)
+            }, specs.count, &specs, nil, nil)
             installed = true
         }
         let modifiers = UInt32(controlKey | optionKey)
         add(keyCode: UInt32(kVK_ANSI_J), modifiers: modifiers, action: .toggleSession)
         add(keyCode: UInt32(kVK_ANSI_M), modifiers: modifiers, action: .marker)
+        add(keyCode: UInt32(kVK_ANSI_A), modifiers: modifiers, action: .ask)
     }
 
     private func add(keyCode: UInt32, modifiers: UInt32, action: Action) {
