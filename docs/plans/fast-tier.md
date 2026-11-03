@@ -16,6 +16,10 @@ to name yet.
 `gemma4-e4b`, one case short on an eval-only request. Its 2070 speed is unproven. What you have to
 decide is in [R2](#r2-the-model-for-pves-2070).
 
+**R5, 2026-11-03: `gemma4-e4b` on the card fits 7 GiB with room to spare and serves alias `interactive`.**
+Its ask p95 is 0.72 s. Voice p95 is 2.46 to 2.67 s, just over 2.5 s, and its quality is unchanged from
+R2. See [R5](#r5-gemma4-e4b-on-the-card).
+
 - **The 3B fails on quality.** It passed 18 of 51 eval runs against Flash's 37 of 51, on the same
   fixed request. It missed owners and whole actions.
 - **The 3B fails on time.** p95 was 4.35 s to the caller on a request that carries no actions. A
@@ -957,6 +961,154 @@ Models by revision and LFS SHA256:
 | `ministral3-8b` | `0102285ad796bd99af90f58de616092e5630e970` | `33e7a72cf5e6e2cfc2f2847075acc013d68bba023e35310cef86b5cf8fdca761` |
 | `gemma4-e4b` | `4b4a2c1d584be7264f87aac328a1bc739ce81b6c` | `676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee` |
 | `q25-3b`, control | `7dabda4d13d513e3e842b20f0d435c732f172cbe` | `626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d` |
+
+## R5: `gemma4-e4b` on the card
+
+**It fits 7 GiB with room to spare, and the ask meets 2.5 s. Voice does not, quite.** On the card,
+`gemma4-e4b` decodes at 77 to 80 tok/s, against the 80 that R2 worked out voice needs. Through LiteLLM,
+voice's reply p95 is 2.46 s on today's request and 2.67 s on the eval-only variant, with 3 and 7 of 75
+replies over 2.5 s. The ask is p95 0.72 s with 180 s of transcript. Quality is unchanged from R2's CPU
+runs: voice still fails the bar on both requests, and the ask eval fails 3 of its 12 cases.
+
+Measured 2026-11-03, 13:42 to 18:11 UTC, on pve's RTX 2070 (lxc-k3s2-gpu-a). The pod is
+`interactive-llm`, separate from Jev's, and LiteLLM serves it as alias `interactive`, falling back to
+`heavy` with `timeout: 5` and `num_retries: 0` (homelab #849, #853, #854). `VOICE_MODEL` was not changed.
+No Flash restart. All inference stayed on the homelab.
+
+**Setup.**
+- **Server:** llama.cpp `server-cuda12-b11459`, the build R2 ran on CPU.
+- **Flags:**
+  - `--n-gpu-layers 99`, `--ctx-size 8192` and `--parallel 2`, so two 4,096-token slots
+  - `--cache-ram 256`
+  - `--temp 0`
+  - `--reasoning-budget 0`
+- **Model:** the same file and pins as R2.
+- **Pod limits:** memory 7 GiB, one `nvidia.com/gpu` time slice.
+- **Harness:** the evals go through the real client (`LiteLLMClient`), so each row counts every attempt
+  and records LiteLLM's `x-litellm-*` headers. The harness is not committed.
+
+### Thinking has to be off at the server
+
+**Gemma 4's template does not hold `enable_thinking: false` on the ask.** On the first pass, 15 of 36
+ask replies reasoned anyway, up to 435 tokens before a 9 to 19 word answer, and p95 was 4.27 s.
+`thinking_budget_tokens: 0` in the request stopped it: 0 of 36 reasoned, the pass count was the same,
+and p95 was 0.86 s. The pod now runs `--reasoning-budget 0` (homelab #853), so no caller can get
+reasoning from it. Voice replies held 0 reasoning characters either way. R2's finding that Gemma
+honours the switch held for voice, which is all R2 ran.
+
+### Memory
+
+| | Measured | How |
+|---|---:|---|
+| Weights on the card | 2,696 MiB | Load log, `CUDA0 model buffer size`: all 43 layers offloaded |
+| KV, two slots | 208 MiB | 128 + 80 MiB, the two KV caches in the load log |
+| Compute | 106 MiB | Load log |
+| CUDA context | **about 112 MiB** | Process usage 3,122 MiB less the 3,010 MiB of buffers |
+| Card in use, idle and loaded | **3,173 MiB of 8,192** | nvidia-smi, flat for the hour |
+| Weights left in host memory | 2,730 MiB | `CPU_Mapped`: the two embedding tables, mmapped from the file |
+
+- **The card holds well under half its budget.** R2's 5.10 GiB was the whole file plus KV and compute. On
+  the card, llama.cpp keeps the token and per-layer embedding tables in host memory as lookup tables, so
+  only 2.6 GiB of weights are on the GPU. The catalog's estimate of 6 GiB can come down. Whisper's 4 GiB
+  plus this pod comes to about 7.1 GiB on an 8 GiB card, which is over the 7 GiB budget. The two do not
+  fit together without measuring Whisper's real use.
+- **The CUDA context** came from a one-off pod, deleted afterwards. It ran the same image, model and
+  flags with `-lv 4`, so that its load log printed every buffer.
+- **Host memory was flat for the hour**, at one ask every 25 s with 180 s of transcript, 144 prompts:
+
+| | Start | Min | Max | End |
+|---|---:|---:|---:|---:|
+| Anon | 1,221 MiB | 1,221 | 1,222 | 1,222 MiB |
+| Container cgroup | 1,306 MiB | 1,306 | 1,307 | 1,306 MiB |
+| Card | 3,173 MiB | 3,173 | 3,173 | 3,173 MiB |
+
+  There were 0 restarts and every reply came back 200, at p50 0.51 s, p95 0.60 s, and max 0.96 s.
+  `--cache-ram 256` bounded the growth that the jev-llm incident points at. A first run of 20 minutes
+  was just as flat, but stopped when the harness timed out reading memory. That was a harness bug, since
+  fixed.
+- **The cgroup figure depends on who reads the file first.** On the pod's first start, the mmapped file
+  counted against its cgroup as 5.0 GiB of page cache, bringing it to 6.0 of 7 GiB. On the pod that ran
+  the soak it counted against something else, because the file was already in the node's page cache. A
+  cold node takes the first figure. Page cache can be reclaimed, so this is not an OOM risk, but 7 GiB
+  is not loose.
+
+### Speed
+
+Measured at 13:42 UTC, before #853, with `cache_prompt: false` and a fresh prefix on every request, 10
+requests each. The reasoning budget does not change these rates:
+
+| Prompt | `response_format` | Prefill p50 | Decode p50 |
+|---|---|---:|---:|
+| Ask, 180 s, about 1,257 tokens | on | 2,319 tok/s | 78.9 tok/s |
+| | off | 2,446 | 78.2 |
+| About 3,800 tokens | on | 2,533 | 77.5 |
+| | off | 2,566 | 76.6 |
+
+- **R2's CPU-ratio estimate of 86 tok/s was close, and the file-size estimate of 54 was not.** The card
+  decodes at 77 to 80 tok/s, with the grammar or without. The grammar costs about 1 to 5% of prefill and
+  nothing on decode.
+- **Prefill does not matter here.** A voice request is about 550 tokens and takes about 0.25 s. The time
+  is in decode: voice's slowest replies are 175 to 210 tokens, which take 2.2 to 2.7 s at 80 tok/s.
+
+### Reply time and quality
+
+On the warm pod, every attempt counted, through LiteLLM. Every one of the 222 attempts was served by
+`interactive`, with `x-litellm-attempted-fallbacks: 0`. None were retried and none reached `heavy`.
+
+| Eval | Passed | Below the bar | p50 | p95 | Max | Within 2.5 s |
+|---|---:|---|---:|---:|---:|---:|
+| Voice, today's request | 62 of 75 | Repo not clear, reminder on a weekday, PR comment, already proposed | 1.60 s | **2.46 s** | 2.77 s | 72 of 75 |
+| Voice, `named-day+kinds+repo` | 71 of 75 | Already proposed | 1.69 s | **2.67 s** | 2.76 s | 68 of 75 |
+| Ask, 180 s of transcript | 27 of 36 | Speech-to-text errors, not in the transcript, common knowledge | 0.56 s | **0.72 s** | 1.03 s | 36 of 36 |
+| Ask, as written | 29 of 36 | Speech-to-text errors, common knowledge | 0.61 s | **0.71 s** | 0.72 s | 36 of 36 |
+
+- **Voice sits on the line.** Run straight at the pod, the same evals gave p95 2.40 s and 2.46 s. The
+  proxy adds about 0.05 to 0.2 s. All four critical voice cases passed 3 of 3 on both requests. On the
+  variant, Gemma's only miss is R2's: it files the pricing review again with a due date nobody said.
+- **The ask is fast and short of the bar.**
+  - *Speech-to-text errors:* it says it did not catch who is running the server, where the key wants Priya.
+  - *Common knowledge:* it either refuses or says a leap year has "thirty-six hundred and six" days.
+  - *Not in the transcript:* it answers "the transcript does not mention…". The checker's phrase list
+    has no "does not mention", so this miss is partly the checker's. I left the checker alone.
+- **The 180 s of transcript** is the ask case's own transcript, preceded by neutral filler lines between
+  two invented speakers. The filler adds about 570 words, which is roughly 180 s of speech. That brings
+  the prompt to about 1,220 tokens, well inside one slot.
+
+### Slots against both callers
+
+24 pairs: an ask with 180 s of transcript and a voice request, sent at the same moment to the warm pod
+at `--parallel 2`. No request queued.
+
+| | p50 | p95 | Max | Within 2.5 s | Decode p50 |
+|---|---:|---:|---:|---:|---:|
+| Ask | 0.60 s | 1.02 s | 1.03 s | 24 of 24 | 68 tok/s |
+| Voice | 1.76 s | 2.60 s | 2.89 s | 21 of 24 | 74 tok/s |
+
+**Two slots hold both callers, and sharing costs voice about 0.15 s at p95.** Each decode slows by 7 to
+15% while the other runs. A third caller would queue.
+
+### Restart cost
+
+**The first request after a restart is slow, and LiteLLM will send it to `heavy`.** On the pod's first
+minute, the first ask took 27.8 s. Six of the next 16 took about 2 s, prefilling 14 new tokens at
+8 tok/s after a 1,206-token cache hit. A warm rerun of the same 36 asks had no row over 1.03 s. The
+likely cause is page faults on the mmapped embedding tables, whose rows are read from disk the first
+time a token uses them. That is my explanation, not a measurement. At `timeout: 5`, the first request
+after each restart falls back to `heavy`. A warm-up request in the pod's startup would cover it.
+`--mlock` would too, but it would pin about 4.9 GiB against the 7 GiB limit.
+
+### Verdict
+
+| Question | Answer |
+|---|---|
+| Fits 7 GiB? | **Yes.** 3,173 MiB on the card, about 112 MiB of it CUDA context, flat for an hour. 1.3 GiB anon in host memory, plus up to 5.0 GiB of reclaimable page cache |
+| Voice within 2.5 s at p95? | **No, by 0 to 0.2 s.** p95 2.46 s on today's request and 2.67 s on the variant through LiteLLM, and 2.60 s beside an ask. It is decode-bound: replies of about 190 tokens at about 80 tok/s |
+| Ask within 2.5 s at p95? | **Yes.** p95 0.72 s with 180 s of transcript, and 1.02 s beside a voice request |
+| Quality? | **Unchanged from R2.** Voice still misses the bar on both requests, and the ask misses 3 of 12 cases |
+
+`VOICE_MODEL` still does not point at it. What would change the voice answer is shorter replies, not a
+faster card. At 80 tok/s, 2.5 s leaves room for about 180 tokens after prefill, and voice's p95 is 176
+to 189.
 
 ## The done test
 
