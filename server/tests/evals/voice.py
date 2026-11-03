@@ -86,11 +86,22 @@ class _Kinds(VoiceRequest):
 _Kinds.__name__ = "VoiceRequest"
 
 
+_REPO_RULE = (
+    "- repo: for cloud, exactly one of the repositories listed, or null if it is not clear which."
+)
+_REPO_NULL = (
+    "- repo: for cloud, exactly one of the repositories listed, only if the request names it or "
+    "says what it is for. Otherwise null: never pick one for its place in the list."
+)
+assert _REPO_RULE in VOICE_SYSTEM
+
+
 @dataclass(frozen=True)
 class Variant:
     name: str
     schema: type[VoiceRequest] = VoiceRequest
     named_day: bool = False
+    system: str = VOICE_SYSTEM
 
 
 VARIANTS = {
@@ -100,6 +111,12 @@ VARIANTS = {
         Variant("named-day", named_day=True),
         Variant("kinds", schema=_Kinds),
         Variant("named-day+kinds", schema=_Kinds, named_day=True),
+        Variant(
+            "named-day+kinds+repo",
+            schema=_Kinds,
+            named_day=True,
+            system=VOICE_SYSTEM.replace(_REPO_RULE, _REPO_NULL),
+        ),
     )
 }
 
@@ -209,7 +226,8 @@ def _check_session(case: VoiceCase, reply: VoiceRequest) -> list[str]:
     if not _has(f"{reply.title} {reply.task}".lower(), case.keywords):
         fails.append(f"missing {case.keywords} from the title and task")
     if case.target == "cloud":
-        if reply.repo != case.repo:
+        repo = reply.repo if reply.repo in REPOS else None  # as IdeasState stores it
+        if repo != case.repo:
             fails.append(f"repo {reply.repo!r}, expected {case.repo!r}")
         if not 1 <= len(reply.acceptance_criteria) <= MAX_CRITERIA:
             fails.append(f"{len(reply.acceptance_criteria)} acceptance criteria")
@@ -249,7 +267,7 @@ async def run_case(
         user = user.replace(f"Today: {TODAY}", f"Today: {day} {TODAY}", 1)
     return await llm.complete_json(
         model=model,
-        system=VOICE_SYSTEM,
+        system=variant.system,
         user=user,
         schema=variant.schema,
         timeout_s=timeout_s,
