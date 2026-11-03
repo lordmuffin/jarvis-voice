@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.35.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.34.2...server-v0.35.0) (2026-11-03)
+
+
+### Features
+
+* **linux:** land the dictation trigger, text and eval pull on main ([872386b](https://github.com/lordmuffin/jarvis-voice/commit/872386bb830b58da8e5b54c98ca771ca94750110))
+* **linux:** pull an STT eval set from the server ([c9872d3](https://github.com/lordmuffin/jarvis-voice/commit/c9872d31cf243089ce563953ddc2306d3d395203))
+
 ## [0.34.2](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.34.1...server-v0.34.2) (2026-11-03)
 
 
