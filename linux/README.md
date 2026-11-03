@@ -39,6 +39,19 @@ uv run jarvis-voice eval pull --server https://live.apj.dev --token-file ~/.conf
   agreement with the server.
 - The token goes only in the `Authorization` header; it is never printed or written.
 
+## Speech models and scoring
+
+```sh
+uv run jarvis-voice models install   # Parakeet-TDT-0.6B-v2 int8 + Silero VAD, about 480 MB, SHA-256 pinned
+uv run jarvis-voice eval score       # run Parakeet on the pulled eval set
+```
+
+Models go to `$XDG_DATA_HOME/jarvis-voice/models/`. `eval score` prints disagreement with the
+server's transcript and per-clip decode latency, and writes each hypothesis to
+`<eval>/results/<engine>.jsonl` (owner-only). The server's references are often cut short and
+spell numbers out, so disagreement overstates errors: use it to compare engines, not as a WER.
+Tests marked `model` run only where the model is installed (`uv run pytest -m model`).
+
 ## Release
 
 A release-please component tagged `linux-vX.Y.Z`. Packaging (an AUR PKGBUILD first) arrives with
