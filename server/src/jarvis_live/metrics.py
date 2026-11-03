@@ -14,13 +14,14 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, star
 log = logging.getLogger(__name__)
 
 REGISTRY = CollectorRegistry(auto_describe=True)
-ALLOWED_LABELS = frozenset({"channel", "tier", "outcome", "source", "slo"})
+ALLOWED_LABELS = frozenset({"channel", "tier", "outcome", "source", "slo", "stage"})
 _P = "jarvis_live_"
 
 _SHORT = (0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8, 15, 30)
 _SEGMENT = (0.5, 1, 2, 3, 5, 8, 12, 15, 20, 30, 60)  # authoritative line: budget edges at 2-15 s
 _COPILOT = (1, 2, 4, 8, 15, 25, 35, 45, 60, 90)
 _FINALIZE = (5, 10, 30, 60, 90, 120, 180, 300, 600)
+_ASK = (0.25, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 7, 10, 15, 20, 30)  # held ask: edges around 2.5 s
 
 
 def _hist(name: str, doc: str, buckets: Iterable[float], labels: tuple[str, ...] = ()) -> Histogram:
@@ -49,6 +50,12 @@ _COPILOT_STALE = _hist(
 _FINALIZE_S = _hist(
     "finalize_seconds", "Session end to note written.", _FINALIZE, ("source", "outcome")
 )
+
+_ASK_STAGE = _hist("voice_ask_seconds", "One stage of a held ask.", _ASK, ("stage",))
+_ASK_FIRST_AUDIO = _hist(
+    "voice_ask_first_audio_seconds", "Key released to first audio, client clock.", _ASK
+)
+_ASK_OUTCOME = Counter(_P + "voice_ask", "Held asks, by outcome.", ["outcome"], registry=REGISTRY)
 
 _STT_SERVED = Counter(
     _P + "stt_served", "Segments transcribed, by tier.", ["tier"], registry=REGISTRY
@@ -197,3 +204,19 @@ def serve(port: int) -> MetricsServer:
     """Serve ``/metrics`` on its own port, in a daemon thread. The app port is routed to the
     internet by each channel's Ingress; this one is exposed only on the Service, for Prometheus."""
     return MetricsServer(port)
+
+
+@_safe
+def voice_ask_stage(stage: str, seconds: float) -> None:
+    """``stage``: wait, stt or llm."""
+    _ASK_STAGE.labels(stage).observe(seconds)
+
+
+@_safe
+def voice_ask_outcome(outcome: str) -> None:
+    _ASK_OUTCOME.labels(outcome).inc()
+
+
+@_safe
+def voice_ask_first_audio(seconds: float) -> None:
+    _ASK_FIRST_AUDIO.observe(seconds)

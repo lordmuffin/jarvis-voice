@@ -32,6 +32,8 @@ from jarvis_live.processing import Job, JobSource, Stage
 from jarvis_live.slo import SloMonitor
 from jarvis_live.stt.backend import STTBackend
 from jarvis_live.vault.index import NullVault, VaultContext
+from jarvis_live.voice.ask_pass import AskPass
+from jarvis_live.voice.desk import AskDesk
 from jarvis_live.voice.loop import VoiceLoop
 from jarvis_live.voice.service import VoicePass
 from jarvis_live.workitems.ideas import IdeasLoop, IdeasPass
@@ -68,6 +70,7 @@ class Orchestrator:
         self._copilots: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._ideas: dict[uuid.UUID, asyncio.Task[None]] = {}
         self._voices: dict[uuid.UUID, tuple[VoiceLoop, asyncio.Task[None]]] = {}
+        self._desks: dict[uuid.UUID, AskDesk] = {}
         self._ideas_pass = (
             IdeasPass(settings, sessionmaker, llm) if settings.work_items_enabled else None
         )
@@ -188,19 +191,47 @@ class Orchestrator:
             proposals=proposals,
         )
         if self._cfg.voice_enabled and await self._ideas_eligible(row):
+            runner = VoicePass(self._cfg, self._sm, self._llm, self._notifier)
+            desk = self._open_desk(state, row.user_id, runner, proposals)
             voice = VoiceLoop(
                 state.session_id,
                 row.user_id,
                 settings=self._cfg,
                 sessionmaker=self._sm,
-                runner=VoicePass(self._cfg, self._sm, self._llm, self._notifier),
+                runner=runner,
                 proposals=proposals,
                 stream_ms=pipeline.position_ms,
                 reply=loop.announce,
                 clock=self._clock,
+                skip=desk.windows,
             )
             self._voices[state.session_id] = (voice, asyncio.create_task(voice.run()))
         await loop.run()
+
+    def _open_desk(
+        self,
+        state: SessionIngest,
+        user_id: uuid.UUID,
+        runner: VoicePass,
+        proposals: SessionProposals | None,
+    ) -> AskDesk:
+        """Held asks, for a session the voice loop serves. Clients that asked for
+        ``voice_ask`` are told they can ask; the reply is theirs, never a copilot notice."""
+        desk = AskDesk(
+            state.session_id,
+            user_id,
+            settings=self._cfg,
+            sessionmaker=self._sm,
+            bus=self._bus,
+            runner=AskPass(self._cfg, self._sm, self._llm, self._stt, runner),
+            queue=proposals,
+            position_ms=state.pipeline.position_ms,
+        )
+        self._desks[state.session_id] = desk
+        state.asks = desk
+        state.pipeline.echo = desk.is_echo
+        self._bus.publish(str(state.session_id), desk.state())
+        return desk
 
     async def _proposals_for(self, row: SessionRow) -> SessionProposals | None:
         """Action proposals are reviewed by the vault's owner: only the owner's and admins'
@@ -252,6 +283,8 @@ class Orchestrator:
 
     async def stop_voice(self, session_id: uuid.UUID) -> None:
         """Stop listening, and hear out a request the session ended on."""
+        if (desk := self._desks.pop(session_id, None)) is not None:
+            await desk.close()
         if (entry := self._voices.pop(session_id, None)) is None:
             return
         voice, task = entry
