@@ -155,6 +155,19 @@ class Settings(BaseSettings):
     # Prometheus scrape port, separate from the app port (which the Ingress routes). 0: off.
     metrics_port: int = 0
 
+    # Streams pushed in over SRT or RTMP (OBS, phones) through MediaMTX become live sessions
+    # (streams/ingest.py, docs/obs.md). Off in base; lab turns it on.
+    streams_enabled: bool = False
+    # MediaMTX's auth hook (authHTTPAddress). Its own port: never the app port the Ingress routes.
+    streams_auth_port: int = 9101
+    streams_mediamtx_api: str = "http://jarvis-live-mediamtx:9997"
+    streams_mediamtx_rtsp: str = "rtsp://jarvis-live-mediamtx:8554"
+    # This server's own app port, where the ingest connects as a producer.
+    streams_self_url: str = "http://127.0.0.1:8080"
+    # A publisher away this long has stopped: the session ends. Back sooner: the same session.
+    streams_stop_grace_s: float = 60.0
+    streams_max: int = 8  # concurrent streams; a publish beyond this is refused
+
     # Sign-in with Pocket-ID (OIDC). Unset issuer: no web sign-in; device tokens still work.
     # The redirect URI is <public_base_url>/auth/callback.
     oidc_issuer: str = ""

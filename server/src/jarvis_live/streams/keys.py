@@ -18,9 +18,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from jarvis_live.auth import hash_token
 from jarvis_live.db.models import IngestKey
+from jarvis_live.streams import MODES, SOURCES
 
-MODES = ("meeting", "solo")
-SOURCES = ("obs", "mobile")
 # A MediaMTX path, an SRT streamid part and an RTMP app path all at once: nothing to escape.
 _NAME = re.compile(r"[a-z0-9][a-z0-9-]{0,39}")
 

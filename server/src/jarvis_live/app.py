@@ -363,6 +363,15 @@ def create_app(
             )
         )
         metrics_server = metrics.serve(cfg.metrics_port) if cfg.metrics_port else None
+        ingest = None
+        if cfg.streams_enabled:
+            from jarvis_live.streams import wiring
+
+            if client is None:
+                client = httpx.AsyncClient()
+            ingest, hook = wiring.build(cfg, sm, app.state.tickets, client)
+            tasks.append(asyncio.create_task(hook.serve()))
+            tasks.append(asyncio.create_task(ingest.run()))
         try:
             yield
         finally:
@@ -371,6 +380,8 @@ def create_app(
             for t in tasks:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
+            if ingest is not None:
+                await ingest.shutdown()
             await publisher.shutdown()
             await uploads.shutdown()
             if orchestrator is not None:
