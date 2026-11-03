@@ -31,9 +31,7 @@ class ReaderCredential:
     password: str
 
     def matches(self, user: str, password: str) -> bool:
-        return hmac.compare_digest(user, self.user) and hmac.compare_digest(
-            password, self.password
-        )
+        return hmac.compare_digest(user, self.user) and hmac.compare_digest(password, self.password)
 
 
 class AuthRequest(BaseModel):

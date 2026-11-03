@@ -8,7 +8,7 @@ from jarvis_live.client.capture import FrameCutter
 from jarvis_live.protocol import BYTES_PER_MS
 from jarvis_live.streams.decode import ffmpeg_command
 from tests.audio import TWO_UTTERANCES, dominant_freq
-from tests.streams.clips import obs_clip, system_tone
+from tests.streams.clips import SYSTEM_BURST_S, obs_clip, system_audio
 
 SECONDS = len(TWO_UTTERANCES) / (2 * 16_000)
 
@@ -40,12 +40,14 @@ def _decode(clip: Path, track: int) -> bytes:
 
 
 def test_each_obs_track_decodes_to_its_own_audio(tmp_path: Path) -> None:
-    clip = obs_clip(tmp_path / "obs.ts", TWO_UTTERANCES, system_tone(SECONDS))
+    clip = obs_clip(tmp_path / "obs.ts", TWO_UTTERANCES, system_audio(SECONDS))
     mic = _decode(clip, 0)
     system = _decode(clip, 1)
     for pcm in (mic, system):
         assert abs(len(pcm) / BYTES_PER_MS - SECONDS * 1000) < 150  # AAC priming, nothing more
     # The mic track's tone is 440 Hz, the desktop track's 880 Hz: neither leaks into the other.
-    speech = slice(int(1.2 * 32_000), int(2.3 * 32_000))  # inside the first 1.5 s burst
-    assert abs(dominant_freq(mic[speech]) - 440) < 10
-    assert abs(dominant_freq(system[speech]) - 880) < 10
+    mic_burst = slice(int(1.2 * 32_000), int(2.3 * 32_000))  # inside the first 1.5 s burst
+    system_burst = slice(*(int(s * 32_000) for s in SYSTEM_BURST_S))
+    assert abs(dominant_freq(mic[mic_burst]) - 440) < 10
+    assert abs(dominant_freq(system[system_burst]) - 880) < 10
+    assert max(abs(x) for x in memoryview(system[mic_burst]).cast("h")) < 300  # no mic in it

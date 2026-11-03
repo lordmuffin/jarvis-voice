@@ -5,7 +5,7 @@ committed and no OBS is needed."""
 import subprocess
 from pathlib import Path
 
-from tests.audio import SR, TWO_UTTERANCES, tone
+from tests.audio import SR, TWO_UTTERANCES, silence, tone
 
 
 def _raw(path: Path, pcm: bytes) -> Path:
@@ -38,6 +38,13 @@ def obs_clip(
     return path
 
 
-def system_tone(seconds: float) -> bytes:
-    """What the "desktop audio" track carries in tests: a tone the mic track never has."""
-    return tone(seconds, freq=880.0)
+def system_audio(seconds: float) -> bytes:
+    """What the "desktop audio" track carries in tests: one 880 Hz burst (a tone the mic track
+    never has) in the mic's pause at 5.5-6.5 s, then silence. It must have gaps, like real
+    desktop audio: the server holds mic segments until the system channel has settled past
+    them (the duplicate guard)."""
+    burst = silence(5.75) + tone(0.6, freq=880.0)
+    return burst + silence(seconds - len(burst) / (2 * SR))
+
+
+SYSTEM_BURST_S = (5.85, 6.25)  # inside the system burst
