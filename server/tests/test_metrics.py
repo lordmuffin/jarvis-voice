@@ -116,3 +116,18 @@ def test_segmenter_feed_cost_is_unchanged_by_metrics() -> None:
         seg.feed(frame)
     per_call = (time.perf_counter() - t0) / calls
     assert per_call < 0.0005  # 0.5 ms/frame: orders of magnitude under a 30 ms frame
+
+
+def test_asks_are_recorded_by_stage_outcome_and_first_audio() -> None:
+    def value(name: str, labels: dict[str, str]) -> float:
+        return metrics.REGISTRY.get_sample_value(name, labels) or 0.0
+
+    stt = value("jarvis_live_voice_ask_seconds_count", {"stage": "stt"})
+    ok = value("jarvis_live_voice_ask_total", {"outcome": "answer"})
+    heard = value("jarvis_live_voice_ask_first_audio_seconds_count", {})
+    metrics.voice_ask_stage("stt", 1.2)
+    metrics.voice_ask_outcome("answer")
+    metrics.voice_ask_first_audio(3.4)
+    assert value("jarvis_live_voice_ask_seconds_count", {"stage": "stt"}) == stt + 1
+    assert value("jarvis_live_voice_ask_total", {"outcome": "answer"}) == ok + 1
+    assert value("jarvis_live_voice_ask_first_audio_seconds_count", {}) == heard + 1

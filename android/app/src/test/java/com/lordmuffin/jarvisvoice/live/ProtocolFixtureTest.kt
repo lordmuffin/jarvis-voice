@@ -70,6 +70,19 @@ class ProtocolFixtureTest {
         assertSameJson(fixture("valid", "marker"), ClientMessage.Marker(5000, "decision").toJson())
     }
 
+    @Test fun askMessagesMatchFixtures() {
+        assertSameJson(fixture("valid", "ask_begin"), ClientMessage.AskBegin("a1", 61200).toJson())
+        assertSameJson(fixture("valid", "ask_end"), ClientMessage.AskEnd("a1", 64100).toJson())
+        assertSameJson(
+            fixture("valid", "ask_played"),
+            ClientMessage.AskPlayed("a1", "started", 67300, latencyMs = 3180).toJson(),
+        )
+        assertSameJson(
+            fixture("valid", "ask_played__skipped"),
+            ClientMessage.AskPlayed("a1", "skipped", 67300, reason = "route").toJson(),
+        )
+    }
+
     @Test fun endMatchesFixture() {
         assertSameJson(fixture("valid", "end"), ClientMessage.End.toJson())
     }
@@ -104,6 +117,7 @@ class ProtocolFixtureTest {
 
     private val serverFixtures = listOf(
         "hello_ack", "ack", "segment", "copilot", "copilot__empty", "status", "status__no_tier", "final_note", "error",
+        "voice_state", "ask_reply", "ask_reply__empty",
     )
 
     @Test fun parsesEveryValidServerFixture() {
@@ -131,12 +145,19 @@ class ProtocolFixtureTest {
 
         val status = ServerEvent.parse(fixture("valid", "status__no_tier")) as ServerEvent.Status
         assertNull(status.sttTier)
+
+        assertEquals(ServerEvent.VoiceState(true), ServerEvent.parse(fixture("valid", "voice_state")))
+        val reply = ServerEvent.parse(fixture("valid", "ask_reply")) as ServerEvent.AskReply
+        assertEquals("a1", reply.id)
+        assertEquals("answer", reply.outcome)
+        assertEquals("Priya owns the survey, due Friday.", reply.text)
     }
 
     @Test fun rejectsInvalidServerFixtures() {
         val invalid = listOf(
             "ack__string_seq", "copilot__bad_suggestion_kind", "error__missing_message",
             "final_note__missing_title", "hello_ack__missing_acked", "segment__bad_speaker", "status__missing_lag",
+            "ask_reply__bad_outcome",
         )
         for (name in invalid) {
             assertThrows(name, ProtocolException::class.java) { ServerEvent.parse(fixture("invalid", name)) }

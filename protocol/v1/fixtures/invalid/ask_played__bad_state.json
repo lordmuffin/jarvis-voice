@@ -1,0 +1,6 @@
+{
+  "type": "ask_played",
+  "id": "a1",
+  "state": "playing",
+  "t_ms": 0
+}

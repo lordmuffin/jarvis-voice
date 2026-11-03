@@ -6,7 +6,7 @@ from collections import defaultdict
 
 from pydantic import BaseModel
 
-from jarvis_live.protocol import SpeakerUpdate
+from jarvis_live.protocol import AskReply, SpeakerUpdate, VoiceState
 
 log = logging.getLogger(__name__)
 
@@ -14,7 +14,11 @@ _CLOSED = object()
 
 # Events a client receives only if it asked for them (``features`` on the stream URL): clients
 # that predate them reject unknown message types.
-FEATURE_OF: dict[type[BaseModel], str] = {SpeakerUpdate: "speaker_update"}
+FEATURE_OF: dict[type[BaseModel], str] = {
+    SpeakerUpdate: "speaker_update",
+    VoiceState: "voice_ask",
+    AskReply: "voice_ask",
+}
 
 
 class Subscription:

@@ -218,6 +218,13 @@ class Settings(BaseSettings):
     voice_timeout_s: float = 30.0
     voice_settle_s: float = 10.0  # quiet that ends a request
     voice_max_s: float = 90.0  # the longest request
+    # Hold to ask (docs/plans/voice-push-to-talk.md): on wherever voice is, never local-only.
+    voice_ask_timeout_s: float = 20.0  # an answer later than this has lost its point
+    voice_ask_window_s: float = 180.0  # transcript an answer may draw on
+    voice_ask_preroll_ms: int = 300  # audio kept from before the key, so the first word survives
+    voice_ask_tail_ms: int = 400  # how long to wait for the frame carrying the release
+    voice_ask_max_s: float = 30.0  # the longest hold
+    voice_ask_max_words: int = 40  # a reply is cut to this, on a sentence where one fits
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.

@@ -29,6 +29,7 @@ import com.lordmuffin.jarvisvoice.BottomNav
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.live.ConnectionKind
 import com.lordmuffin.jarvisvoice.live.ServerChannel
+import com.lordmuffin.jarvisvoice.live.ask.AskUi
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
 import com.lordmuffin.jarvisvoice.ui.label
 import instrument.Inst
@@ -89,6 +90,11 @@ data class RecordUi(
     val transcript: List<FeedLine> = emptyList(),
     val copilot: List<CopilotBlock> = emptyList(),
     val copilotExpanded: Boolean = true,
+    /** Hold to ask (docs/plans/voice-push-to-talk.md). */
+    val ask: AskUi = AskUi.Hidden,
+    val askMuted: Boolean = false,
+    /** The running session is local-only: say why there is no ask control. */
+    val askLocalOnly: Boolean = false,
 )
 
 class RecordActions(
@@ -108,6 +114,8 @@ class RecordActions(
     val onRetryRecent: () -> Unit = {},
     val onOpenSettings: () -> Unit = {},
     val onNav: (BottomNav.Tab) -> Unit = {},
+    /** true on press, false on release, null to toggle (TalkBack). */
+    val onAsk: (Boolean?) -> Unit = {},
 )
 
 /** The Record tab: new session, pending uploads, recent history and the live feed, on one page. */
@@ -427,6 +435,7 @@ private fun RecordControls(ui: RecordUi, actions: RecordActions, modifier: Modif
     Column(modifier.fillMaxWidth().background(c.surface), verticalArrangement = Arrangement.spacedBy(sp.s8)) {
         Hairline(Modifier.fillMaxWidth().height(sp.hairline))
         Column(Modifier.padding(horizontal = sp.s16).padding(bottom = sp.s12), verticalArrangement = Arrangement.spacedBy(sp.s8)) {
+            if (!stop) AskControl(ui, actions)
             if (stacked) {
                 RecPill(ui.timer, ui.levels, Modifier.fillMaxWidth())
                 Row(horizontalArrangement = Arrangement.spacedBy(sp.s8)) {
@@ -442,6 +451,48 @@ private fun RecordControls(ui: RecordUi, actions: RecordActions, modifier: Modif
             }
         }
     }
+}
+
+/** Hold to ask: only once the server has offered it, so never in a local-only session. */
+@Composable
+private fun AskControl(ui: RecordUi, actions: RecordActions) {
+    if (ui.askLocalOnly) {
+        InstText(stringResource(R.string.live_ask_local_only), InstUi.type.caption)
+        return
+    }
+    val ask = ui.ask
+    if (ask == AskUi.Hidden) return
+    val label = when (ask) {
+        AskUi.Listening -> R.string.live_ask_listening
+        AskUi.Waiting -> R.string.live_ask_waiting
+        else -> R.string.live_ask_hold
+    }
+    InstButton(
+        stringResource(label),
+        onClick = { actions.onAsk(null) },
+        modifier = Modifier.fillMaxWidth(),
+        kind = if (ask == AskUi.Listening) ButtonKind.Primary else ButtonKind.Secondary,
+        size = ButtonSize.Lg,
+        enabled = !ui.askMuted,
+        onHold = actions.onAsk,
+    )
+    val line = when {
+        ui.askMuted -> stringResource(R.string.live_ask_muted)
+        ask is AskUi.Speaking -> ask.text
+        ask is AskUi.Answered -> listOfNotNull(
+            ask.text.takeIf { it.isNotBlank() },
+            when (ask.why) {
+                AskUi.Why.ROUTE -> stringResource(R.string.live_ask_why_route)
+                AskUi.Why.STALE -> stringResource(R.string.live_ask_why_stale)
+                AskUi.Why.NOTHING_HEARD -> stringResource(R.string.live_ask_why_nothing)
+                AskUi.Why.SPEECH_FAILED -> stringResource(R.string.live_ask_why_failed)
+                AskUi.Why.INTERRUPTED -> stringResource(R.string.live_ask_why_interrupted)
+                null -> null
+            },
+        ).joinToString(" ")
+        else -> null
+    }
+    if (!line.isNullOrBlank()) InstText(line, InstUi.type.caption)
 }
 
 @Composable

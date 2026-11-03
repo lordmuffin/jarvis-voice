@@ -2,9 +2,12 @@ import Foundation
 import Testing
 @testable import JarvisLiveKit
 
-private let clientTypes: Set<String> = ["hello", "draft_segment", "marker", "end"]
+private let clientTypes: Set<String> = [
+    "hello", "draft_segment", "marker", "end", "ask_begin", "ask_end", "ask_played",
+]
 private let serverTypes: Set<String> = [
     "hello_ack", "ack", "segment", "speaker_update", "copilot", "status", "final_note", "error",
+    "voice_state", "ask_reply",
 ]
 
 private struct UnknownSchema: Error { let name: String }
@@ -93,5 +96,24 @@ struct ProtocolFixtureTests {
             return
         }
         #expect(renamed.speakers.first?.ordinal == nil)  // optional: a rename need not repeat it
+    }
+
+    @Test func askPlayedLeavesOutWhatItDoesNotKnow() throws {
+        let data = try JSONEncoder().encode(
+            ClientMessage.askPlayed(AskPlayed(id: "a1", state: .skipped, tMs: 9, reason: .route))
+        )
+        let object = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        #expect(object["latency_ms"] == nil)
+        #expect(object["reason"] as? String == "route")
+    }
+
+    @Test func askReplyReadsItsOutcome() throws {
+        let data = try Data(contentsOf: Fixtures.root.appending(path: "valid/ask_reply.json"))
+        guard case .askReply(let reply) = try JSONDecoder().decode(ServerEvent.self, from: data) else {
+            Issue.record("not an ask_reply")
+            return
+        }
+        #expect(reply.outcome == .answer)
+        #expect(reply.id == "a1")
     }
 }

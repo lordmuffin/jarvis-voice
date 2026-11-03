@@ -249,3 +249,45 @@ enum MenuText {
 
     static func warning(_ text: String) -> String { "\u{2691} \(text)" }
 }
+
+/// One line of the panel's hold-to-ask strip.
+struct AskLine: Equatable {
+    enum Tone: Equatable { case neutral, live, progress, error }
+    let chip: String
+    let tone: Tone
+    let text: String?
+}
+
+/// What the panel says about hold to ask (docs/plans/voice-push-to-talk.md).
+enum AskPresentation {
+    static func line(for state: AskUIState, localOnly: Bool) -> AskLine? {
+        if localOnly {
+            return AskLine(chip: "LOCAL ONLY", tone: .neutral, text: "Jarvis can't hear or speak in a local-only session.")
+        }
+        switch state {
+        case .hidden:
+            return nil
+        case .ready:
+            return AskLine(chip: "HOLD ⌃⌥A TO ASK", tone: .neutral, text: nil)
+        case .listening:
+            return AskLine(chip: "LISTENING", tone: .live, text: "Release ⌃⌥A to ask.")
+        case .waiting:
+            return AskLine(chip: "THINKING", tone: .progress, text: nil)
+        case .speaking(let text):
+            return AskLine(chip: "SPEAKING", tone: .live, text: text)
+        case .answered(let text, let spoken, let why):
+            if spoken { return AskLine(chip: "ANSWERED", tone: .neutral, text: text) }
+            let note: String
+            switch why {
+            case .route: note = "Not spoken: no headphones."
+            case .stale: note = "Not spoken: it came too late."
+            case .nothingHeard: note = "Nothing heard."
+            case .speechFailed: note = "Not spoken: speech is unavailable."
+            case .interrupted: note = "Stopped: headphones disconnected."
+            case nil: note = ""
+            }
+            let joined = [text, note].filter { !$0.isEmpty }.joined(separator: " ")
+            return AskLine(chip: why == .speechFailed ? "NOT SPOKEN" : "TEXT ONLY", tone: why == .speechFailed ? .error : .neutral, text: joined)
+        }
+    }
+}

@@ -109,6 +109,7 @@ class LiveActivity : AppCompatActivity() {
                         onRetryRecent = ::refreshRecent,
                         onOpenSettings = { startActivity(Intent(this, SettingsActivity::class.java)) },
                         onNav = { BottomNav.open(this, it) },
+                        onAsk = { down -> LiveSessionService.ask(this, down) },
                     ),
                 )
             }
@@ -347,6 +348,9 @@ class LiveActivity : AppCompatActivity() {
             },
             copilot = copilotBlocks(state.session, streamMs),
             copilotExpanded = copilotExpanded,
+            ask = state.ask,
+            askMuted = state.muted,
+            askLocalOnly = !idle && state.localOnly,
         )
     }
 

@@ -14,6 +14,9 @@ from jarvis_live.ingest.store import CHANNEL_NAMES, SeqGap, StoreClosed, save_dr
 from jarvis_live.logging_setup import SessionLogger, session_logger
 from jarvis_live.protocol import (
     Ack,
+    AskBegin,
+    AskEnd,
+    AskPlayed,
     DraftSegment,
     End,
     Error,
@@ -135,6 +138,8 @@ async def _producer(
     cursor = ing.store.cursor()
     sub.put(HelloAck(session=str(row.id), acked={"mic": cursor["mic"], "system": cursor["system"]}))  # type: ignore[arg-type]
     log.info("producer connected", extra={"cursor": cursor, "resume": hello.resume.model_dump()})
+    if ing.asks is not None and "voice_ask" in sub.features:
+        sub.put(ing.asks.state())  # a reconnect, or eligibility found before this producer came
 
     dirty: set[str] = set()
     ack_task = asyncio.create_task(_ack_loop(sub, ing, dirty, settings.ack_interval_ms / 1000))
@@ -205,6 +210,8 @@ async def _producer_loop(
                 return False
             if outcome == "stored":
                 ing.pipeline.feed(channel, frame.pcm)
+                if channel == "mic" and ing.asks is not None:
+                    ing.asks.feed(frame.t_ms, frame.pcm)
             dirty.add(channel)
             continue
 
@@ -221,6 +228,8 @@ async def _producer_loop(
         elif isinstance(parsed, Marker):
             await save_marker(sm, ing.session_id, parsed)
             bus.publish(sid, parsed)
+        elif isinstance(parsed, AskBegin | AskEnd | AskPlayed):
+            _ask(ing, parsed, log)
         elif isinstance(parsed, End):
             await hub.end(ing.session_id, caller=ws)
             return True
@@ -228,3 +237,17 @@ async def _producer_loop(
             await _reject(sub, ws, "unexpected_hello", "Hello was already received.", log)
             return False
     return False
+
+
+def _ask(ing: SessionIngest, msg: AskBegin | AskEnd | AskPlayed, log: SessionLogger) -> None:
+    """Asks go to the session's desk. Where there is none (voice off, local-only, restricted)
+    they are ignored: the client was never told it could ask, and the audio carries on."""
+    desk = ing.asks
+    if desk is None:
+        log.info("ignored %s: this session takes no asks", msg.type)
+    elif isinstance(msg, AskBegin):
+        desk.begin(msg)
+    elif isinstance(msg, AskEnd):
+        desk.end(msg)
+    else:
+        desk.played(msg)

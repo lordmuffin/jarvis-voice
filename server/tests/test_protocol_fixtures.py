@@ -18,6 +18,11 @@ MODELS: dict[str, type[BaseModel]] = {
     "draft_segment": p.DraftSegment,
     "marker": p.Marker,
     "end": p.End,
+    "ask_begin": p.AskBegin,
+    "ask_end": p.AskEnd,
+    "ask_played": p.AskPlayed,
+    "voice_state": p.VoiceState,
+    "ask_reply": p.AskReply,
     "hello_ack": p.HelloAck,
     "ack": p.Ack,
     "segment": p.Segment,
@@ -75,6 +80,14 @@ def test_invalid_fixture(fixture: Path) -> None:
 
 def test_message_unions_dispatch_on_type() -> None:
     assert isinstance(p.client_message_adapter.validate_python({"type": "end"}), p.End)
+    assert isinstance(
+        p.client_message_adapter.validate_python({"type": "ask_end", "id": "a", "t_ms": 1}),
+        p.AskEnd,
+    )
+    assert isinstance(
+        p.server_message_adapter.validate_python({"type": "voice_state", "available": False}),
+        p.VoiceState,
+    )
     assert isinstance(
         p.server_message_adapter.validate_python({"type": "ack", "channel": "mic", "seq": 1}), p.Ack
     )

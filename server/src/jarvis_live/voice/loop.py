@@ -16,15 +16,17 @@ from jarvis_live.copilot.loop import Clock, RealClock
 from jarvis_live.copilot.transcript import Line, load_final_lines
 from jarvis_live.db.models import CopilotItem
 from jarvis_live.logging_setup import session_logger
+from jarvis_live.voice.ask_pass import outside
 from jarvis_live.voice.service import Queue, VoicePass
 from jarvis_live.voice.wake import next_request
 
 CURSOR = "voice_cursor"  # copilot_items kind: {"until_ms": end of the last request handled}
 
 
-def own_lines(lines: Sequence[Line]) -> list[Line]:
-    """The lines only the owner can have said. ``speaker_label`` is set for another voice."""
-    return [x for x in lines if x.speaker == "me" and x.speaker_label is None]
+def own_lines(lines: Sequence[Line], skip: Sequence[tuple[int, int | None]] = ()) -> list[Line]:
+    """The lines only the owner can have said. ``speaker_label`` is set for another voice.
+    Lines inside ``skip`` (held asks, answered already) are left out."""
+    return outside([x for x in lines if x.speaker == "me" and x.speaker_label is None], skip)
 
 
 class VoiceLoop:
@@ -40,8 +42,10 @@ class VoiceLoop:
         stream_ms: Callable[[], int],
         reply: Callable[[str], Awaitable[None]],
         clock: Clock | None = None,
+        skip: Callable[[], Sequence[tuple[int, int | None]]] = list,
     ) -> None:
         self.session_id = session_id
+        self._skip = skip
         self._user_id = user_id
         self._cfg = settings
         self._sm = sessionmaker
@@ -78,7 +82,9 @@ class VoiceLoop:
             self._cursor = await self._stored_cursor()
         while True:
             async with self._sm() as db:
-                lines = own_lines(await load_final_lines(db, self.session_id, self._cursor))
+                lines = own_lines(
+                    await load_final_lines(db, self.session_id, self._cursor), self._skip()
+                )
             if not lines:
                 return
             heard, cursor = next_request(

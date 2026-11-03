@@ -7,6 +7,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from fastapi import WebSocket
 from sqlalchemy import update
@@ -22,6 +23,9 @@ from jarvis_live.ingest.store import AudioStore
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.processing import fraction
 from jarvis_live.stt.backend import STTBackend
+
+if TYPE_CHECKING:
+    from jarvis_live.voice.desk import AskDesk
 
 
 async def close_producer(ws: WebSocket, code: int) -> None:
@@ -42,6 +46,8 @@ class SessionIngest:
     producer_gone_at: float | None = None
     # Fed from an uploaded file rather than a producer (see ingest/upload.py).
     uploading: bool = False
+    # Held asks, set by the orchestrator once the session is found eligible; None: no asks.
+    asks: "AskDesk | None" = None
     ended: asyncio.Event = field(default_factory=asyncio.Event)
 
 

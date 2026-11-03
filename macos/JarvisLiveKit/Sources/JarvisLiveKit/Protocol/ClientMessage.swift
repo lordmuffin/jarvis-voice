@@ -146,6 +146,9 @@ public enum ClientMessage: Equatable, Sendable, Codable {
     case draftSegment(DraftSegment)
     case marker(Marker)
     case end
+    case askBegin(AskBegin)
+    case askEnd(AskEnd)
+    case askPlayed(AskPlayed)
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: AnyCodingKey.self)
@@ -157,6 +160,9 @@ public enum ClientMessage: Equatable, Sendable, Codable {
         case End.typeTag:
             _ = try End(from: decoder)
             self = .end
+        case AskBegin.typeTag: self = .askBegin(try AskBegin(from: decoder))
+        case AskEnd.typeTag: self = .askEnd(try AskEnd(from: decoder))
+        case AskPlayed.typeTag: self = .askPlayed(try AskPlayed(from: decoder))
         default:
             throw DecodingError.dataCorrupted(.init(
                 codingPath: decoder.codingPath, debugDescription: "Unknown client message type \"\(tag)\""
@@ -170,6 +176,9 @@ public enum ClientMessage: Equatable, Sendable, Codable {
         case .draftSegment(let m): try m.encode(to: encoder)
         case .marker(let m): try m.encode(to: encoder)
         case .end: try End().encode(to: encoder)
+        case .askBegin(let m): try m.encode(to: encoder)
+        case .askEnd(let m): try m.encode(to: encoder)
+        case .askPlayed(let m): try m.encode(to: encoder)
         }
     }
 }

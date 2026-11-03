@@ -22,9 +22,15 @@ import com.lordmuffin.jarvisvoice.DebugLog
 import com.lordmuffin.jarvisvoice.LlmEnhancer
 import com.lordmuffin.jarvisvoice.R
 import com.lordmuffin.jarvisvoice.VoiceOverlayService
+import com.lordmuffin.jarvisvoice.live.ask.AskController
+import com.lordmuffin.jarvisvoice.live.ask.AskUi
+import com.lordmuffin.jarvisvoice.live.ask.OutputRoute
+import com.lordmuffin.jarvisvoice.live.ask.TtsAskSpeaker
+import com.lordmuffin.jarvisvoice.live.protocol.AudioFrame
 import com.lordmuffin.jarvisvoice.live.protocol.Channel
 import com.lordmuffin.jarvisvoice.live.protocol.ClientMessage
 import com.lordmuffin.jarvisvoice.live.protocol.DraftSegment
+import com.lordmuffin.jarvisvoice.live.protocol.ServerEvent
 import com.lordmuffin.jarvisvoice.live.protocol.SessionMode
 import com.lordmuffin.jarvisvoice.speech.SherpaOnnxSpeechEngine
 import com.lordmuffin.jarvisvoice.speech.WhisperRecognizer
@@ -64,6 +70,8 @@ data class LiveUiState(
     val muted: Boolean = false,
     /** Last user-facing problem or notice. */
     val message: String? = null,
+    /** Hold to ask (docs/plans/voice-push-to-talk.md). Hidden unless the server offers it. */
+    val ask: AskUi = AskUi.Hidden,
 ) {
     enum class Phase { IDLE, STARTING, RECORDING, STOPPING }
     enum class LocalStt { OFF, LOADING, READY, UNAVAILABLE }
@@ -108,6 +116,9 @@ class LiveSessionService : Service() {
         @Volatile var lastPartialSentAt: Long = 0
         val markers = ArrayList<LocalMarkdown.Marker>()
         val jobs = ArrayList<Job>()
+        var ask: AskController? = null
+        var speaker: TtsAskSpeaker? = null
+        var route: OutputRoute? = null
     }
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -140,6 +151,7 @@ class LiveSessionService : Service() {
             }
             ACTION_MUTE -> toggleMute()
             ACTION_MARKER -> addMarker(intent.getStringExtra(EXTRA_LABEL) ?: "marker")
+            ACTION_ASK -> onAsk(if (intent.hasExtra(EXTRA_ASK_DOWN)) intent.getBooleanExtra(EXTRA_ASK_DOWN, false) else null)
             else -> if (run == null) stopSelf()
         }
         // Not sticky: a restarted service would have no capture to resume; the outbox survives.
@@ -150,6 +162,7 @@ class LiveSessionService : Service() {
         // Killed without a stop (e.g. swiped away with "stop" in the app info). Keep the audio.
         run?.let { r ->
             runCatching { r.capture.stop() }
+            closeAsk(r)
             r.transcriber?.cancel()
             r.connection?.stop()
             r.outbox.close()
@@ -230,13 +243,27 @@ class LiveSessionService : Service() {
         run = r
 
         connection?.let { conn ->
+            val ask = withContext(Dispatchers.Main) { openAsk(r, conn) }  // TTS and the route callback
             r.jobs += scope.launch {
                 conn.events.collect { e ->
-                    r.store.apply(e)
-                    _ui.update { it.copy(session = r.store.snapshot) }
+                    when (e) {
+                        is ServerEvent.VoiceState -> ask.onAvailable(e.available)
+                        is ServerEvent.AskReply -> ask.onReply(e)
+                        else -> {
+                            r.store.apply(e)
+                            _ui.update { it.copy(session = r.store.snapshot) }
+                        }
+                    }
                 }
             }
-            r.jobs += scope.launch { conn.state.collect { s -> _ui.update { it.copy(connection = s) }; updateNotification() } }
+            r.jobs += scope.launch { ask.ui.collect { a -> _ui.update { it.copy(ask = a) } } }
+            r.jobs += scope.launch {
+                conn.state.collect { s ->
+                    if (s != ConnState.Connected) ask.onAvailable(false)  // the server re-offers on reconnect
+                    _ui.update { it.copy(connection = s) }
+                    updateNotification()
+                }
+            }
         }
 
         try {
@@ -342,6 +369,41 @@ class LiveSessionService : Service() {
         conn.sendDraft(ClientMessage.Draft(draft))
     }
 
+    /** Hold to ask, for a streaming session. Local-only sessions have no connection, so never get one. */
+    private fun openAsk(r: Run, conn: LiveConnection): AskController {
+        val speaker = TtsAskSpeaker(this)
+        lateinit var ask: AskController
+        val route = OutputRoute(this) { closed -> ask.onRouteChanged(closed) }
+        ask = AskController(
+            send = { conn.sendAsk(it) },
+            speaker = speaker,
+            routeClosed = route::isClosed,
+            clock = SystemClock::elapsedRealtime,
+            streamMs = { r.lastTMs + AudioFrame.FRAME_MS },
+        )
+        route.start()
+        r.ask = ask
+        r.speaker = speaker
+        r.route = route
+        return ask
+    }
+
+    /** [down]: the key went down (true) or came up (false); null toggles, for TalkBack. */
+    private fun onAsk(down: Boolean?) {
+        val r = run ?: return
+        val ask = r.ask ?: return
+        if (_ui.value.muted) return
+        val held = _ui.value.ask == AskUi.Listening
+        val tMs = r.lastTMs + AudioFrame.FRAME_MS  // the end of the last frame captured: now
+        if (down ?: !held) ask.down(tMs) else ask.up(tMs)
+    }
+
+    private fun closeAsk(r: Run) {
+        r.ask?.onAvailable(false)
+        r.route?.stop()
+        r.speaker?.destroy()
+    }
+
     private fun addMarker(label: String) {
         val r = run ?: return
         val marker = LocalMarkdown.Marker(r.lastTMs, label)
@@ -367,6 +429,7 @@ class LiveSessionService : Service() {
         _ui.update { it.copy(phase = LiveUiState.Phase.STOPPING, message = error ?: it.message) }
         updateNotification()
 
+        main.post { closeAsk(r) }
         withContext(Dispatchers.IO) {
             r.capture.stop()
             r.transcriber?.finish()
@@ -572,6 +635,8 @@ class LiveSessionService : Service() {
         const val ACTION_STOP = "com.lordmuffin.jarvisvoice.live.STOP"
         const val ACTION_MARKER = "com.lordmuffin.jarvisvoice.live.MARKER"
         const val ACTION_MUTE = "com.lordmuffin.jarvisvoice.live.MUTE"
+        const val ACTION_ASK = "com.lordmuffin.jarvisvoice.live.ASK"
+        private const val EXTRA_ASK_DOWN = "ask_down"
         private const val EXTRA_BUILTIN_MIC = "builtin_mic"
         private const val EXTRA_MODE = "mode"
         private const val EXTRA_TITLE = "title"
@@ -606,6 +671,13 @@ class LiveSessionService : Service() {
             context.startService(
                 Intent(context, LiveSessionService::class.java).setAction(ACTION_MARKER).putExtra(EXTRA_LABEL, label)
             )
+        }
+
+        /** Hold to ask: [down] true on press, false on release, null to toggle (accessibility). */
+        fun ask(context: Context, down: Boolean?) {
+            val intent = Intent(context, LiveSessionService::class.java).setAction(ACTION_ASK)
+            if (down != null) intent.putExtra(EXTRA_ASK_DOWN, down)
+            context.startService(intent)
         }
 
         fun clearMessage() = _ui.update { it.copy(message = null) }

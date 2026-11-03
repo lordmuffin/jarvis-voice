@@ -28,6 +28,7 @@ struct CopilotPanelView: View {
             let layout = PanelLayout.forWidth(geo.size.width)
             VStack(spacing: 0) {
                 titleStrip
+                askStrip
                 if collapsed {
                     collapsedBody
                 } else {
@@ -50,6 +51,38 @@ struct CopilotPanelView: View {
 
     private var rows: [FeedRow] {
         FeedBuilder.rows(lines: model.store.lines, markers: model.markers)
+    }
+
+    // MARK: Hold to ask
+
+    @ViewBuilder private var askStrip: some View {
+        if model.isRecording,
+           let line = AskPresentation.line(for: model.ask, localOnly: model.sessionIsLocalOnly) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                InstChip(text: line.chip, tone: chipTone(line.tone), spinner: line.tone == .progress)
+                if let text = line.text {
+                    Text(text)
+                        .instStyle(InstType.caption)
+                        .foregroundStyle(Color.inst.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, InstSpace.s12)
+            .padding(.vertical, InstSpace.s8)
+            .background(Color.inst.surface)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private func chipTone(_ tone: AskLine.Tone) -> InstChip.Tone {
+        switch tone {
+        case .neutral: .neutral
+        case .live: .live
+        case .progress: .progress
+        case .error: .error
+        }
     }
 
     // MARK: Title strip

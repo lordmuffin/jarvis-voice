@@ -206,6 +206,22 @@ def _restore_session(args: argparse.Namespace) -> int:
     return 0
 
 
+def _ask_report(args: argparse.Namespace) -> int:
+    from jarvis_live.ask_report import load, render, summarize
+    from jarvis_live.config import get_settings
+    from jarvis_live.db.session import make_engine, make_sessionmaker
+
+    async def go() -> str:
+        engine = make_engine(get_settings().database_url)
+        try:
+            return render(summarize(await load(make_sessionmaker(engine), days=args.days)))
+        finally:
+            await engine.dispose()
+
+    print(asyncio.run(go()))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jarvis-live")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -245,6 +261,9 @@ def main(argv: list[str] | None = None) -> int:
         help="print a session's transcript as the action eval reads it (for tests/evals/private)",
     )
     p.add_argument("session_id")
+
+    p = sub.add_parser("ask-report", help="how fast held asks were answered, per device and model")
+    p.add_argument("--days", type=int, default=7)
 
     sub.add_parser("backup", help="dump the database and write the recordings manifest")
 
@@ -297,6 +316,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "export-transcript":
         return _export_transcript(args.session_id)
 
+    if args.cmd == "ask-report":
+        return _ask_report(args)
     if args.cmd == "backup":
         return _backup()
     if args.cmd == "restore-session":

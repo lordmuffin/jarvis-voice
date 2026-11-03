@@ -78,6 +78,10 @@ public final class SessionStore {
     @ObservationIgnored private var assignments: [String: SpeakerAssignment] = [:]
     @ObservationIgnored private var draftCounter = 0
     @ObservationIgnored private var consumers: [Task<Void, Never>] = []
+    /// Hold to ask: `voice_state` and `ask_reply` go here, never into the transcript. Asks are
+    /// withdrawn (`available: false`) whenever the connection is not up; the server offers them
+    /// again after the next handshake.
+    @ObservationIgnored public var onAsk: (@MainActor (ServerEvent) -> Void)?
 
     public init() {}
 
@@ -103,6 +107,8 @@ public final class SessionStore {
             lastError = error
         case .ack, .helloAck:
             break  // Handled by the transport.
+        case .voiceState, .askReply:
+            onAsk?(event)
         }
     }
 
@@ -141,6 +147,7 @@ public final class SessionStore {
 
     public func setConnection(_ state: ConnectionState) {
         connection = state
+        if state != .connected { onAsk?(.voiceState(VoiceState(available: false))) }
     }
 
     /// Streams `connection`'s events and state changes into this store until `detach()`.

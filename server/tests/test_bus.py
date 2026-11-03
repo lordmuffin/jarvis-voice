@@ -1,5 +1,5 @@
 from jarvis_live.bus import Bus
-from jarvis_live.protocol import Ack, SpeakerUpdate
+from jarvis_live.protocol import Ack, AskReply, SpeakerUpdate, VoiceState
 
 
 def _update() -> SpeakerUpdate:
@@ -20,3 +20,15 @@ async def test_speaker_update_reaches_only_subscribers_that_opted_in() -> None:
 async def test_direct_put_is_not_filtered() -> None:
     sub = Bus().subscribe("s")
     assert sub.put(Ack(channel="mic", seq=1))
+
+
+async def test_ask_messages_reach_only_subscribers_that_opted_in() -> None:
+    bus = Bus()
+    plain = bus.subscribe("s")
+    opted = bus.subscribe("s", features=frozenset({"voice_ask"}))
+    bus.publish("s", VoiceState(available=True))
+    bus.publish("s", AskReply(id="a1", outcome="answer", text="Friday."))
+    bus.publish("s", Ack(channel="mic", seq=1))
+    assert isinstance(await opted.get(), VoiceState)
+    assert isinstance(await opted.get(), AskReply)
+    assert isinstance(await plain.get(), Ack)

@@ -4,6 +4,7 @@ import asyncio
 import math
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -92,6 +93,9 @@ class SessionPipeline:
         self._last_partial_at: dict[str, float] = {}
         self._first_partial_seen = False
         self._tasks: list[asyncio.Task[None]] = []
+        # Jarvis's own reply picked up by a mic: (start_ms, end_ms, text) -> drop it. Set while
+        # the session takes asks.
+        self.echo: Callable[[int, int, str], bool] | None = None
 
     def start(self) -> None:
         self._tasks = [asyncio.create_task(self._worker(c)) for c in self.channels]
@@ -203,6 +207,9 @@ class SessionPipeline:
             self._cfg.hallucination_rms_threshold,
         ):
             self._log.info("dropped hallucination", extra={"channel": channel, "text": text})
+            return
+        if self.echo is not None and self.echo(seg.start_ms, seg.end_ms, text):
+            self._log.info("dropped Jarvis heard back", extra={"channel": channel, "text": text})
             return
         self._prev_text[channel] = text
         stt_ms = int((time.monotonic() - began) * 1000)

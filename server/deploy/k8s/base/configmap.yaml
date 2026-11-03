@@ -138,6 +138,8 @@ data:
   # work for approval, and never start anything. Off here: a channel turns it on. Workflow steps
   # and Pi sessions need JARVIS_LIVE_ACTIONS_ENABLED too. Pi also needs the jarvis-live namespace
   # admitted by dpi-backend's NetworkPolicy, and the token above; lab must never turn it on.
+  # It also offers hold to ask (docs/plans/voice-push-to-talk.md) to clients that ask for it:
+  # spoken answers on the device, never in local-only or restricted sessions.
   JARVIS_LIVE_VOICE_ENABLED: "false"
   JARVIS_LIVE_VOICE_PI_ENABLED: "false"
   JARVIS_LIVE_VOICE_MODEL: ""

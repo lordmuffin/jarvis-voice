@@ -509,6 +509,8 @@ public enum ServerEvent: Equatable, Sendable, Codable {
     case status(Status)
     case finalNote(FinalNote)
     case error(ServerError)
+    case voiceState(VoiceState)
+    case askReply(AskReply)
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: AnyCodingKey.self)
@@ -522,6 +524,8 @@ public enum ServerEvent: Equatable, Sendable, Codable {
         case Status.typeTag: self = .status(try Status(from: decoder))
         case FinalNote.typeTag: self = .finalNote(try FinalNote(from: decoder))
         case ServerError.typeTag: self = .error(try ServerError(from: decoder))
+        case VoiceState.typeTag: self = .voiceState(try VoiceState(from: decoder))
+        case AskReply.typeTag: self = .askReply(try AskReply(from: decoder))
         default:
             throw DecodingError.dataCorrupted(.init(
                 codingPath: decoder.codingPath, debugDescription: "Unknown server event type \"\(tag)\""
@@ -539,6 +543,8 @@ public enum ServerEvent: Equatable, Sendable, Codable {
         case .status(let m): try m.encode(to: encoder)
         case .finalNote(let m): try m.encode(to: encoder)
         case .error(let m): try m.encode(to: encoder)
+        case .voiceState(let m): try m.encode(to: encoder)
+        case .askReply(let m): try m.encode(to: encoder)
         }
     }
 }

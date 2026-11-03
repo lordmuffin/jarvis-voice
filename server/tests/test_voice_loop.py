@@ -101,7 +101,7 @@ class Rig:
         self.clock = FakeClock()
         self.proposals: Any = ActionIntake(self.actions, context).for_session(sid, OWNER_USER_ID)
 
-    def loop(self) -> VoiceLoop:
+    def loop(self, skip: Any = list) -> VoiceLoop:
         async def reply(text: str) -> None:
             self.replies.append(text)
 
@@ -115,6 +115,7 @@ class Rig:
             stream_ms=lambda: self.now_ms,
             reply=reply,
             clock=self.clock,
+            skip=skip,
         )
 
     async def hear(self, text: str, *, at: int = 60_000, who: str = "me") -> None:
@@ -629,3 +630,19 @@ async def test_a_session_jarvis_may_not_act_for_is_not_listened_to(
     assert [c for c in llm.calls if c.schema == "VoiceRequest"] == []
     for t in orch._copilots.values():
         t.cancel()
+
+
+async def test_a_held_request_is_not_filed_again_by_the_loop(rig: Rig) -> None:
+    """Hold to ask already filed it: its words reach the transcript later, inside the window."""
+    rig.llm.queue("VoiceRequest", pi_request())
+    await rig.hear("Jarvis, start a Pi session to find out why Flux is failing.")
+    await rig.loop(skip=lambda: [(59_700, 64_000)]).tick()
+    assert await rig.actions_filed() == []
+    assert rig.llm.calls == []
+
+
+async def test_a_held_ask_still_being_held_is_skipped_too(rig: Rig) -> None:
+    rig.llm.queue("VoiceRequest", pi_request())
+    await rig.hear("Jarvis, start a Pi session to find out why Flux is failing.")
+    await rig.loop(skip=lambda: [(59_700, None)]).tick()
+    assert rig.llm.calls == []

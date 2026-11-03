@@ -140,6 +140,8 @@ final class TestWebSocketServer: @unchecked Sendable {
             snapshot.markers.append(marker)
         case .draftSegment(let draft):
             snapshot.drafts.append(draft)
+        case .askBegin, .askEnd, .askPlayed:
+            break  // hold to ask: no transport test sends these yet
         case .end:
             snapshot.endReceived = true
             if let note = finalNoteOnEnd { send(.finalNote(note), on: connection) }
