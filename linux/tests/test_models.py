@@ -124,7 +124,25 @@ def test_default_root_is_under_xdg_data_home(tmp_path: Path) -> None:
     assert root == tmp_path / "jarvis-voice" / "models"
 
 
-def test_the_shipped_pins_are_sha256_and_https() -> None:
-    for spec in (models.PARAKEET_TDT_V2, models.SILERO_VAD):
+def test_the_shipped_pins_are_sha256_and_immutable_https_urls() -> None:
+    for spec in models.ALL:
         assert len(spec.sha256) == 64 and int(spec.sha256, 16) >= 0
-        assert spec.url.startswith("https://github.com/k2-fsa/sherpa-onnx/releases/download/")
+        assert spec.url.startswith(
+            (
+                "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
+                # A Hugging Face file pinned to a repo revision, never a moving branch.
+                "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c",
+            )
+        ), spec.url
+        assert "/resolve/main/" not in spec.url
+
+
+def test_whisper_turbo_is_the_q5_ggml_file_benchmarked_in_the_plan() -> None:
+    spec = models.WHISPER_TURBO_Q5
+    assert spec.files == ("ggml-large-v3-turbo-q5_0.bin",)
+    assert spec.sha256.startswith("39422170") and spec.size == 574_041_195
+    assert not spec.archive
+
+
+def test_the_default_set_is_whisper_first_then_the_fallback_and_vad() -> None:
+    assert models.ALL == (models.WHISPER_TURBO_Q5, models.PARAKEET_TDT_V2, models.SILERO_VAD)

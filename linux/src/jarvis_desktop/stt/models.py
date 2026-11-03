@@ -44,6 +44,17 @@ PARAKEET_TDT_V2 = ModelSpec(
     archive=True,
     files=("encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"),
 )
+#: The default engine's model (plan section 2.2): Whisper large-v3-turbo, q5_0 GGML, for
+#: whisper.cpp on Vulkan. Pinned to a Hugging Face repo revision, not the moving ``main`` branch.
+WHISPER_TURBO_Q5 = ModelSpec(
+    name="whisper-large-v3-turbo-q5_0",
+    url="https://huggingface.co/ggerganov/whisper.cpp/resolve/"
+    "5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q5_0.bin",
+    sha256="394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2",
+    size=574_041_195,
+    archive=False,
+    files=("ggml-large-v3-turbo-q5_0.bin",),
+)
 SILERO_VAD = ModelSpec(
     name="silero-vad",
     url=_RELEASES + "silero_vad.onnx",
@@ -52,6 +63,9 @@ SILERO_VAD = ModelSpec(
     archive=False,
     files=("silero_vad.onnx",),
 )
+
+#: What ``jarvis-voice models install`` fetches: the default engine, its CPU fallback, the VAD.
+ALL = (WHISPER_TURBO_Q5, PARAKEET_TDT_V2, SILERO_VAD)
 
 
 def models_dir(env: Mapping[str, str] = os.environ) -> Path:

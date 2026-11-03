@@ -60,9 +60,13 @@ Copy the folder to the Linux box to score it there.
 ## Speech models and scoring
 
 ```sh
-uv run jarvis-voice models install   # Parakeet-TDT-0.6B-v2 int8 + Silero VAD, about 480 MB, SHA-256 pinned
-uv run jarvis-voice eval score       # run Parakeet on the pulled eval set
+uv run jarvis-voice models install   # Whisper turbo + Parakeet + Silero VAD, about 1.06 GB, SHA-256 pinned
+uv run jarvis-voice eval score       # Whisper turbo on the pulled eval set (--engine parakeet for the fallback)
 ```
+
+The default engine is Whisper large-v3-turbo through whisper.cpp built with Vulkan; it needs
+`whisper-cli` on `PATH` or named by `JARVIS_WHISPER_CLI`. Dictation falls back to Parakeet on CPU
+when Whisper fails. See `docs/plans/linux-desktop.md` section 2.2 for the measurements.
 
 Models go to `$XDG_DATA_HOME/jarvis-voice/models/`. `eval score` prints disagreement with the
 server's transcript and per-clip decode latency, and writes each hypothesis to
