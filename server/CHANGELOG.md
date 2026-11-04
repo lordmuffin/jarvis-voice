@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.36.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.36.0...server-v0.36.1) (2026-11-04)
+
+
+### Bug Fixes
+
+* **deploy:** send each channel's own litellm-proxy key ([25b766e](https://github.com/lordmuffin/jarvis-voice/commit/25b766eee2f87ca54bc3dfcf1e37ea1cbb8024c8))
+* **deploy:** send each channel's own litellm-proxy key ([fc1db93](https://github.com/lordmuffin/jarvis-voice/commit/fc1db93fe797e5a3c847a475b2d15bacea5d6203))
+* **server:** stream-key rotate, and revoked stream names can be reused ([052decd](https://github.com/lordmuffin/jarvis-voice/commit/052decd7d3fbd7796ce16f046bc142ca660326f6))
+* **server:** stream-key rotate, and revoked stream names can be reused ([ec9484d](https://github.com/lordmuffin/jarvis-voice/commit/ec9484d5433ad89b076559736820e18c95fcdba9))
+* **server:** wait 180 s before a pushed stream counts as stopped ([636dc92](https://github.com/lordmuffin/jarvis-voice/commit/636dc926e2b9f456d054e10be17950bdb5896fa5))
+* **server:** wait 180 s before a pushed stream counts as stopped ([90b6fa5](https://github.com/lordmuffin/jarvis-voice/commit/90b6fa56cad3a801880e3f7af275015020d9a89b))
+
 ## [0.36.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.35.0...server-v0.36.0) (2026-11-03)
 
 
