@@ -53,6 +53,11 @@ patches:
       - op: replace
         path: /data/JARVIS_LIVE_VOICE_ENABLED
         value: "true"
+      # Voice and hold-to-ask on pve's card: LiteLLM's interactive alias (gemma4-e4b), falling
+      # back to heavy (docs/plans/fast-tier.md, "The voice request, fixed"). Lab only for now.
+      - op: replace
+        path: /data/JARVIS_LIVE_VOICE_MODEL
+        value: interactive
       - op: add
         path: /data/JARVIS_LIVE_ACTIONS_ENABLED
         value: "true"
