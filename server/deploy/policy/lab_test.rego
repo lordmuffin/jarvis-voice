@@ -132,3 +132,12 @@ test_lab_with_lives_litellm_key_denied if {
 	some msg in deny with input as litellm_item("vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live")
 	contains(msg, "litellm-proxy-key")
 }
+
+test_lab_voice_calls_the_interactive_alias if {
+	count(deny) == 0 with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_VOICE_ENABLED": "true", "JARVIS_LIVE_VOICE_MODEL": "interactive"})
+}
+
+test_lab_voice_must_not_fall_back_to_the_copilots_model if {
+	some msg in deny with input as cm({"JARVIS_LIVE_ENVIRONMENT": "lab", "JARVIS_LIVE_VOICE_ENABLED": "true", "JARVIS_LIVE_VOICE_MODEL": ""})
+	contains(msg, "interactive")
+}

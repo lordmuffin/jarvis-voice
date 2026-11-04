@@ -118,3 +118,13 @@ deny contains msg if {
 	input.spec.itemPath != "vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live-lab"
 	msg := sprintf("OnePasswordItem/litellm-proxy-key: lab must use its own item, not %q", [input.spec.itemPath])
 }
+
+# Lab's voice runs on pve's card through LiteLLM's interactive alias (gemma4-e4b, falling back to
+# heavy), chosen 2026-11-04 after docs/plans/fast-tier.md "The voice request, fixed". Empty would
+# send voice to the copilot's model instead.
+deny contains msg if {
+	input.kind == "ConfigMap"
+	input.data.JARVIS_LIVE_VOICE_ENABLED == "true"
+	input.data.JARVIS_LIVE_VOICE_MODEL != "interactive"
+	msg := sprintf("ConfigMap/%s: lab voice must call the interactive alias", [input.metadata.name])
+}
