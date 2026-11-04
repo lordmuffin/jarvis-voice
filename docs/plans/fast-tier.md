@@ -1110,6 +1110,54 @@ after each restart falls back to `heavy`. A warm-up request in the pod's startup
 faster card. At 80 tok/s, 2.5 s leaves room for about 180 tokens after prefill, and voice's p95 is 176
 to 189.
 
+## The voice request, fixed
+
+**`gemma4-e4b` misses the bar on the server's new request by one case and 0.01 s.** On the card it
+passed 73 of 75, 24 of 25 cases and every critical case 3 of 3, with nothing cut off. It failed "two
+steps" 1 of 3: "Friday at ten" became Saturday the 7th twice, with "Wednesday" given. Reply p95 was
+2.51 s against 2.5 s, 70 of 75 within. The repeat that stopped it in R2 and R5 now passes 3 of 3.
+
+Run 2026-11-04, 23:18 to 23:21 UTC, through lab's own proxy key and alias `interactive`, timeout 30 s
+as lab sets it, on the pod R5 measured (model SHA256 `676c3507…baee` checked on the pod). All 75
+attempts carried `x-litellm-model-group: interactive`, `x-litellm-attempted-fallbacks: 0` and
+`x-litellm-attempted-retries: 0`, so none reached `heavy`. The bar is af416ec's, unchanged.
+
+**What the server now sends** (`feat(server)`, the PR that adds this section). It is R2's
+`named-day+kinds+repo`, which a test pins as identical to the server's request:
+
+- **Today names its weekday**, "Wednesday 2026-11-04", in the voice request and in the ask.
+- **Each spoken kind has its real shape in the grammar.** `task.create` needs `text`,
+  `reminder.schedule` needs `title` and `at`, `git.pr_comment` needs `repo`, `pr` and `body`. A test
+  ties each required field to `build_payload`. The copilot shares `ProposalIn` and `Proposals` for
+  parsing, and only the voice request's grammar changed. The copilot's two schemas are pinned to a
+  snapshot from before the change, so its request is unchanged and its evals were not rerun for it.
+- **The repo rule:** a listed repo only if the request names it or says what it is for, otherwise
+  null. With the list reversed, Gemma passed the three repo cases 9 of 9.
+- **The voice dedupe.** A voice proposal is a repeat of a stored one of the same kind when every field
+  equals the stored field (case, spacing and end punctuation aside), or is `due` or `at` and the request
+  named no date or time. A field the stored one has and the new one lacks adds nothing. A date or time
+  is said when the request holds a digit or a whole word naming a day, month, time of day, span, or a
+  number up to thirty. It errs towards said, so the worst case is a repeat for the owner to reject.
+  The copilot's dedupe is unchanged. The eval's repeat case is now graded through the server's real
+  `ProposalState`, which closes R2's limit that the checker did not model the dedupe.
+
+| Model | Where | Passed | Cases | Critical | Reply p95 | Fallbacks |
+|---|---|---:|---:|---|---:|---:|
+| `gemma4-e4b` | card, `interactive` | 73 of 75 | 24 of 25 | 3 of 3 each | **2.51 s** measured | 0 of 75 |
+| `q25-3b`, control | local CPU | 50 of 75 | 17 of 25 | no | 2.16 s projected | n/a |
+
+- **Gemma's weekday miss survives the weekday.** In the two failing replies the task got a due of the
+  7th as well, which nobody said. The checker does not grade an unspoken `due` on a step whose key
+  has none, so the passing run carries it too.
+- **The control still takes the first repo** when none is named, 3 of 3, and fails as it did in R2.
+  Its repeat files "Add a task to review the pricing proposal" with a due date. The text is new words,
+  so under the rule it is a new task. It is a model fault the dedupe is not meant to catch.
+- **Not run:** R6's ask eval and the 17 copilot cases on the card. Gemma did not pass voice.
+
+**Limits.** One run of 75 on the card. Time on the line is within run-to-run noise: R5 saw 2.46 s and
+2.67 s on the two requests. The client sends temperature 0.2, which the pod's `--temp 0` does not
+override, so replies vary between runs. The CPU run shared the machine with Jev's gaming-PC replica.
+
 ## The done test
 
 **Replaced by the REPLAN, 2026-11-02. The copilot is done when p95 is under 15 s with 0 cycles lost, on
