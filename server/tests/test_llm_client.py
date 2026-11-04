@@ -192,7 +192,7 @@ async def test_a_required_title_can_still_be_null() -> None:
             ["title", "summary"],
             {"Evidence": ["start_ms"], "FinalAction": ["text"], "ProposalIn": ["kind"]},
         ),
-        (VoiceRequest, None, {"Evidence": ["start_ms"], "ProposalIn": ["kind"]}),
+        (VoiceRequest, None, {}),  # per-kind proposals inline: tests/test_voice_request.py
         (IdeasDelta, None, {"ItemUpsert": ["title"]}),
     ],
     ids=lambda v: v.__name__ if isinstance(v, type) else "",
@@ -202,7 +202,7 @@ async def test_each_callers_required_keys_are_exactly_these(
 ) -> None:
     sent = await _sent_schema(schema)
     assert sent.get("required") == required
-    assert {name: d.get("required") for name, d in sent["$defs"].items()} == nested
+    assert {name: d.get("required") for name, d in sent.get("$defs", {}).items()} == nested
 
 
 @pytest.mark.parametrize("missing", COPILOT_KEYS)

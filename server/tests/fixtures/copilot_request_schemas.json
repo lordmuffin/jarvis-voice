@@ -1,0 +1,578 @@
+{
+  "CopilotDelta": {
+    "$defs": {
+      "ActionUpsert": {
+        "properties": {
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Due"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Owner"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ActionUpsert",
+        "type": "object"
+      },
+      "Evidence": {
+        "description": "The transcript line a proposal rests on. The model cites it as ``at: \"mm:ss\"`` (the\ntranscript's own timestamps); the server replaces it with the real line (``ground``).",
+        "properties": {
+          "start_ms": {
+            "minimum": 0,
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_ms"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "NoteUpsert": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Id"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "NoteUpsert",
+        "type": "object"
+      },
+      "ProposalIn": {
+        "description": "One flat shape for all kinds; ``actions.state`` checks the fields each kind needs.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "At"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Body"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Due"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "task.create",
+              "vault.append",
+              "reminder.schedule",
+              "git.pr_comment",
+              "pi.session"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "pr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pr"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Title"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ProposalIn",
+        "type": "object"
+      },
+      "SuggestionIn": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "question",
+              "gap",
+              "counterpoint",
+              "fact_check"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "ttl_s": {
+            "default": 120,
+            "maximum": 3600,
+            "minimum": 1,
+            "title": "Ttl S",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "SuggestionIn",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "actions_upsert": {
+        "items": {
+          "$ref": "#/$defs/ActionUpsert"
+        },
+        "title": "Actions Upsert",
+        "type": "array"
+      },
+      "decisions_upsert": {
+        "items": {
+          "$ref": "#/$defs/NoteUpsert"
+        },
+        "title": "Decisions Upsert",
+        "type": "array"
+      },
+      "notes_upsert": {
+        "items": {
+          "$ref": "#/$defs/NoteUpsert"
+        },
+        "title": "Notes Upsert",
+        "type": "array"
+      },
+      "proposals": {
+        "items": {
+          "$ref": "#/$defs/ProposalIn"
+        },
+        "title": "Proposals",
+        "type": "array"
+      },
+      "remove_ids": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Remove Ids",
+        "type": "array"
+      },
+      "suggestions": {
+        "items": {
+          "$ref": "#/$defs/SuggestionIn"
+        },
+        "title": "Suggestions",
+        "type": "array"
+      },
+      "title": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null,
+        "title": "Title"
+      },
+      "topics": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Topics",
+        "type": "array"
+      }
+    },
+    "required": [
+      "notes_upsert",
+      "actions_upsert",
+      "decisions_upsert",
+      "remove_ids",
+      "suggestions",
+      "proposals",
+      "topics",
+      "title"
+    ],
+    "title": "CopilotDelta",
+    "type": "object"
+  },
+  "FinalNote": {
+    "$defs": {
+      "Evidence": {
+        "description": "The transcript line a proposal rests on. The model cites it as ``at: \"mm:ss\"`` (the\ntranscript's own timestamps); the server replaces it with the real line (``ground``).",
+        "properties": {
+          "start_ms": {
+            "minimum": 0,
+            "title": "Start Ms",
+            "type": "integer"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_ms"
+        ],
+        "title": "Evidence",
+        "type": "object"
+      },
+      "FinalAction": {
+        "properties": {
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Due"
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Owner"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "FinalAction",
+        "type": "object"
+      },
+      "ProposalIn": {
+        "description": "One flat shape for all kinds; ``actions.state`` checks the fields each kind needs.",
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "At"
+          },
+          "body": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Body"
+          },
+          "due": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Due"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/$defs/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "task.create",
+              "vault.append",
+              "reminder.schedule",
+              "git.pr_comment",
+              "pi.session"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Path"
+          },
+          "pr": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pr"
+          },
+          "repo": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Repo"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Text"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Title"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ProposalIn",
+        "type": "object"
+      }
+    },
+    "properties": {
+      "actions": {
+        "items": {
+          "$ref": "#/$defs/FinalAction"
+        },
+        "title": "Actions",
+        "type": "array"
+      },
+      "decisions": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Decisions",
+        "type": "array"
+      },
+      "follow_ups": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Follow Ups",
+        "type": "array"
+      },
+      "open_questions": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Open Questions",
+        "type": "array"
+      },
+      "proposals": {
+        "items": {
+          "$ref": "#/$defs/ProposalIn"
+        },
+        "title": "Proposals",
+        "type": "array"
+      },
+      "related": {
+        "items": {
+          "type": "string"
+        },
+        "title": "Related",
+        "type": "array"
+      },
+      "summary": {
+        "title": "Summary",
+        "type": "string"
+      },
+      "title": {
+        "minLength": 1,
+        "title": "Title",
+        "type": "string"
+      }
+    },
+    "required": [
+      "title",
+      "summary"
+    ],
+    "title": "FinalNote",
+    "type": "object"
+  }
+}

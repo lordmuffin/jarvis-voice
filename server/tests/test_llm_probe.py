@@ -576,6 +576,14 @@ def test_voice_user_renders_as_the_server_does() -> None:
     assert probe.voice_user(**args) == voice_user(**args)
 
 
+def test_voice_today_names_the_weekday_as_the_server_does() -> None:
+    from datetime import UTC, datetime
+
+    from jarvis_live.voice.service import named_today
+
+    assert probe.voice_today() == named_today(datetime.now(UTC).date())
+
+
 def test_voice_timeout_is_the_servers_default() -> None:
     assert probe.VOICE_TIMEOUT_S == Settings.model_fields["voice_timeout_s"].default
 

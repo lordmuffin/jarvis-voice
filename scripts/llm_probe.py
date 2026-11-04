@@ -581,7 +581,8 @@ Reply with JSON only:
 about Jarvis, or one you cannot understand.
 - title: a short imperative phrase, under 10 words (cloud, pi).
 - task: 1-4 sentences on what to do, in the speaker's terms (cloud, pi).
-- repo: for cloud, exactly one of the repositories listed, or null if it is not clear which.
+- repo: for cloud, exactly one of the repositories listed, only if the request names it or says \
+what it is for. Otherwise null: never pick one for its place in the list.
 - acceptance_criteria: for cloud, 1-6 short, checkable statements.
 - done_when: for cloud, one sentence.
 - proposals: for action, the steps. Kinds: task.create {text, due}; reminder.schedule {title, \
@@ -591,87 +592,86 @@ under ALREADY PROPOSED.
 
 Use only what was said; do not invent requirements."""
 
-VOICE_SCHEMA: dict[str, Any] = {
-    "$defs": {
-        "Evidence": {
-            "description": "The transcript line a proposal rests on. The model "
-            'cites it as ``at: "mm:ss"`` (the\n'
-            "transcript's own timestamps); the server replaces it "
-            "with the real line (``ground``).",
-            "properties": {
-                "start_ms": {"minimum": 0, "title": "Start Ms", "type": "integer"},
-                "text": {"default": "", "title": "Text", "type": "string"},
-            },
-            "required": ["start_ms"],
-            "title": "Evidence",
-            "type": "object",
+# The copilot's proposal shape, shared by its FinalNote and CopilotDelta. The voice request sends
+# each spoken kind inline instead (server/src/jarvis_live/voice/schema.py).
+_PROPOSAL_DEFS: dict[str, Any] = {
+    "Evidence": {
+        "description": "The transcript line a proposal rests on. The model cites it as "
+        '``at: "mm:ss"`` (the\n'
+        "transcript's own timestamps); the server replaces it with the "
+        "real line (``ground``).",
+        "properties": {
+            "start_ms": {"minimum": 0, "title": "Start Ms", "type": "integer"},
+            "text": {"default": "", "title": "Text", "type": "string"},
         },
-        "ProposalIn": {
-            "description": "One flat shape for all kinds; ``actions.state`` "
-            "checks the fields each kind needs.",
-            "properties": {
-                "kind": {
-                    "enum": [
-                        "task.create",
-                        "vault.append",
-                        "reminder.schedule",
-                        "git.pr_comment",
-                        "pi.session",
-                    ],
-                    "title": "Kind",
-                    "type": "string",
-                },
-                "evidence": {
-                    "items": {"$ref": "#/$defs/Evidence"},
-                    "title": "Evidence",
-                    "type": "array",
-                },
-                "text": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Text",
-                },
-                "due": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Due",
-                },
-                "path": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Path",
-                },
-                "title": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Title",
-                },
-                "body": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Body",
-                },
-                "at": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "At",
-                },
-                "repo": {
-                    "anyOf": [{"type": "string"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Repo",
-                },
-                "pr": {
-                    "anyOf": [{"type": "integer"}, {"type": "null"}],
-                    "default": None,
-                    "title": "Pr",
-                },
-            },
-            "required": ["kind"],
-            "title": "ProposalIn",
-            "type": "object",
-        },
+        "required": ["start_ms"],
+        "title": "Evidence",
+        "type": "object",
     },
+    "ProposalIn": {
+        "description": "One flat shape for all kinds; ``actions.state`` checks the "
+        "fields each kind needs.",
+        "properties": {
+            "kind": {
+                "enum": [
+                    "task.create",
+                    "vault.append",
+                    "reminder.schedule",
+                    "git.pr_comment",
+                    "pi.session",
+                ],
+                "title": "Kind",
+                "type": "string",
+            },
+            "evidence": {
+                "items": {"$ref": "#/$defs/Evidence"},
+                "title": "Evidence",
+                "type": "array",
+            },
+            "text": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "title": "Text",
+            },
+            "due": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "title": "Due",
+            },
+            "path": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "title": "Path",
+            },
+            "title": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "title": "Title",
+            },
+            "body": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "title": "Body",
+            },
+            "at": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None, "title": "At"},
+            "repo": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "title": "Repo",
+            },
+            "pr": {
+                "anyOf": [{"type": "integer"}, {"type": "null"}],
+                "default": None,
+                "title": "Pr",
+            },
+        },
+        "required": ["kind"],
+        "title": "ProposalIn",
+        "type": "object",
+    },
+}
+
+VOICE_SCHEMA: dict[str, Any] = {
     "properties": {
         "target": {
             "default": "none",
@@ -693,7 +693,39 @@ VOICE_SCHEMA: dict[str, Any] = {
             "title": "Done When",
         },
         "proposals": {
-            "items": {"$ref": "#/$defs/ProposalIn"},
+            "items": {
+                "anyOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"const": "task.create"},
+                            "text": {"type": "string"},
+                            "due": {"type": "string"},
+                        },
+                        "required": ["kind", "text"],
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"const": "reminder.schedule"},
+                            "title": {"type": "string"},
+                            "at": {"type": "string"},
+                            "body": {"type": "string"},
+                        },
+                        "required": ["kind", "title", "at"],
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "kind": {"const": "git.pr_comment"},
+                            "repo": {"type": "string"},
+                            "pr": {"type": "integer"},
+                            "body": {"type": "string"},
+                        },
+                        "required": ["kind", "repo", "pr", "body"],
+                    },
+                ]
+            },
             "title": "Proposals",
             "type": "array",
         },
@@ -743,6 +775,11 @@ def voice_user(
         f"ALREADY PROPOSED\n{chr(10).join(known) or '(none)'}\n\n"
         f'SPOKEN REQUEST\n"""\n{said}\n"""'
     )
+
+
+def voice_today() -> str:
+    """Today as the voice pass tells it, weekday first (``voice.service.named_today``)."""
+    return time.strftime("%A %Y-%m-%d", time.gmtime())
 
 
 def build_voice_body(model: str, *, pair: int, today: str) -> dict[str, Any]:
@@ -975,14 +1012,14 @@ COPILOT_SCHEMA: dict[str, Any] = {
             "title": "ActionUpsert",
             "type": "object",
         },
-        "Evidence": VOICE_SCHEMA["$defs"]["Evidence"],
+        "Evidence": _PROPOSAL_DEFS["Evidence"],
         "NoteUpsert": {
             "properties": {"id": _UPSERT_ID, "text": _UPSERT_TEXT},
             "required": ["text"],
             "title": "NoteUpsert",
             "type": "object",
         },
-        "ProposalIn": VOICE_SCHEMA["$defs"]["ProposalIn"],
+        "ProposalIn": _PROPOSAL_DEFS["ProposalIn"],
         "SuggestionIn": {
             "properties": {
                 "kind": {
@@ -1486,9 +1523,7 @@ def run_voice(o: VoiceOptions) -> None:
         for pair in range(o.pairs):
             if time.monotonic() - began >= o.max_s:
                 break
-            body = build_voice_body(
-                o.model, pair=pair, today=time.strftime("%Y-%m-%d", time.gmtime())
-            )
+            body = build_voice_body(o.model, pair=pair, today=voice_today())
             for path in pair_order(pair):
                 wall = time.time()
                 start = time.perf_counter()

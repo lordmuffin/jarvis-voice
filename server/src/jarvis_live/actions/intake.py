@@ -15,7 +15,7 @@ from jarvis_live.copilot.transcript import Line
 from jarvis_live.db.models import ActionProposal
 
 
-def _label(kind: str, payload: dict[str, object]) -> str:
+def label(kind: str, payload: dict[str, object]) -> str:
     text = payload.get("text") or payload.get("title") or payload.get("body") or ""
     return f"{kind}: {text}"
 
@@ -56,15 +56,21 @@ class SessionProposals:
         self._intake, self._sid, self._uid = intake, session_id, user_id
 
     async def propose(
-        self, incoming: Sequence[ProposalIn], lines: Sequence[Line], *, proposed_by: str
+        self,
+        incoming: Sequence[ProposalIn],
+        lines: Sequence[Line],
+        *,
+        proposed_by: str,
+        said: str | None = None,
     ) -> int:
-        """File the valid, new, transcript-backed proposals for review; returns how many."""
+        """File the valid, new, transcript-backed proposals for review; returns how many.
+        ``said``: the spoken request they came from, for the voice dedupe (``ProposalState``)."""
         grounded = ground(incoming, lines)
         if not grounded:
             return 0
         async with self._intake._lock:  # one admit at a time: refs and dedupe stay consistent
             state = await self._intake._state(self._sid, self._uid)
-            admitted = state.apply(grounded, self._intake._context())
+            admitted = state.apply(grounded, self._intake._context(), said=said)
             if not admitted:
                 return 0
             stored = await self._intake.service.admit(
@@ -79,7 +85,7 @@ class SessionProposals:
 
     async def known(self) -> list[str]:
         """Everything proposed so far, open or closed: told to the model so it does not repeat."""
-        return [_label(r.kind, r.payload) for r in await self.listing()]
+        return [label(r.kind, r.payload) for r in await self.listing()]
 
     def can_run(self, kind: str) -> bool:
         """Does this deployment have an executor for ``kind``?"""

@@ -1,6 +1,8 @@
 """The voice eval itself, against canned LLM output (no model needed)."""
 
 import json
+from datetime import date
+from pathlib import Path
 
 import httpx
 import pytest
@@ -8,9 +10,10 @@ import pytest
 from jarvis_live.actions.schema import ProposalIn
 from jarvis_live.llm.client import LiteLLMClient
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM
+from jarvis_live.voice.service import VOICE_SYSTEM, named_today
 from tests.evals.voice import (
     DECODE_3B_2070,
+    DEFAULT_VARIANT,
     PREFILL_3B_2070,
     VARIANTS,
     Recorder,
@@ -19,14 +22,18 @@ from tests.evals.voice import (
     can_still_pass,
     card_rates,
     check,
+    fell_back,
     p95,
+    pick,
     project,
     run_case,
     verdict,
+    waited,
 )
-from tests.evals.voice_cases import HOMELAB, TODAY, VOICE, VOICE_CASES
+from tests.evals.voice_cases import HOMELAB, REPOS, TODAY, VOICE, VOICE_CASES
 from tests.fakes import FakeLLM
 
+FIXTURES = Path(__file__).parent / "fixtures"
 BY_NAME = {c.name: c for c in VOICE_CASES}
 CLOUD = BY_NAME["cloud, repo named"]
 NOT_CLEAR = BY_NAME["cloud, repo not clear"]
@@ -154,10 +161,18 @@ def test_a_comment_on_a_repo_off_the_list_may_file_nothing_whatever_the_target()
     assert check(OFF_LIST, VoiceRequest(target="cloud", title="x", task="y"))
 
 
-def test_a_repeat_of_what_is_already_proposed_files_nothing() -> None:
-    again = ProposalIn(kind="task.create", text="Review the pricing proposal")
-    assert check(REPEAT, VoiceRequest(target="action", proposals=[again]))
+def test_a_repeat_of_what_is_already_proposed_is_graded_through_the_servers_dedupe() -> None:
+    # Was: any filable repeat failed, though the server drops a verbatim one (R2's Limits). The
+    # checker now asks the server's ProposalState, voice rule included, what it would file.
+    def reply(**kw: object) -> VoiceRequest:
+        step = ProposalIn(kind="task.create", text="Review the pricing proposal", **kw)  # type: ignore[arg-type]
+        return VoiceRequest(target="action", proposals=[step])
+
     assert check(REPEAT, VoiceRequest(target="action")) == []
+    assert check(REPEAT, reply()) == []
+    assert check(REPEAT, reply(due="2026-11-04")) == []  # R2's Gemma miss: a date nobody said
+    other = ProposalIn(kind="task.create", text="Review the pricing proposal with Sam")
+    assert check(REPEAT, VoiceRequest(target="action", proposals=[other]))
 
 
 def test_a_reply_with_no_target_key_reads_as_none_as_the_server_would() -> None:
@@ -177,7 +192,7 @@ async def test_it_sends_the_real_system_prompt_schema_and_thinking_off() -> None
     await run_case(llm, CLOUD, "m", timeout_s=9.0)
     call = llm.calls[0]
     assert (call.system, call.schema, call.think) == (VOICE_SYSTEM, "VoiceRequest", False)
-    assert f"Today: {TODAY}" in call.user
+    assert f"Today: {named_today(date.fromisoformat(TODAY))}\n" in call.user
     assert CLOUD.said in call.user
 
 
@@ -205,7 +220,9 @@ async def test_a_real_client_request_is_recorded_with_its_timings_and_reasoning(
 
     def answer(request: httpx.Request) -> httpx.Response:
         sent.append(json.loads(request.content))
-        return httpx.Response(200, json=reply)
+        return httpx.Response(
+            200, json=reply, headers={"x-litellm-attempted-fallbacks": "0", "server": "x"}
+        )
 
     rec = Recorder(httpx.MockTransport(answer))
     async with httpx.AsyncClient(transport=rec) as http:
@@ -213,8 +230,11 @@ async def test_a_real_client_request_is_recorded_with_its_timings_and_reasoning(
     schema = sent[0]["response_format"]["json_schema"]  # type: ignore[index]
     assert schema["schema"] == VoiceRequest.model_json_schema()
     assert sent[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert rec.attempts[0].pop("seconds") >= 0
     assert rec.attempts == [
         {
+            "status": 200,
+            "headers": {"x-litellm-attempted-fallbacks": "0"},
             "prompt": 600,
             "tokens": 9,
             "finish": "stop",
@@ -226,17 +246,43 @@ async def test_a_real_client_request_is_recorded_with_its_timings_and_reasoning(
     ]
 
 
-async def test_today_is_the_default_and_sends_the_request_the_server_sends() -> None:
-    assert VARIANTS["today"].schema is VoiceRequest
-    llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
-    await run_case(llm, CLOUD, "m", timeout_s=9.0)
+async def test_today_still_sends_the_request_the_server_sent_before_r2s_fixes() -> None:
+    # Was the default; the default is now "server". "today" keeps its name from R2's and R5's
+    # rows, and replays the request recorded at fc4b075 exactly.
+    old = json.loads((FIXTURES / "voice_request_2026-11-03.json").read_text())
+    llm = FakeLLM().queue("VoiceRequest", VARIANTS["today"].schema())
+    await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=VARIANTS["today"])
     assert f"Today: {TODAY}\n" in llm.calls[0].user
+    assert llm.calls[0].system == old["system"]
+    assert VARIANTS["today"].schema.model_json_schema() == old["schema"]
+    assert VARIANTS["today"].schema.__name__ == "VoiceRequest"
+
+
+async def test_the_default_is_the_request_the_server_sends_now() -> None:
+    assert DEFAULT_VARIANT == "server"
+    variant = VARIANTS["server"]
+    assert (variant.system, variant.schema, variant.named_day) == (VOICE_SYSTEM, VoiceRequest, True)
+
+
+async def test_the_server_now_sends_what_r2_measured_as_named_day_kinds_repo() -> None:
+    sent = []
+    for name in ("server", "named-day+kinds+repo"):
+        llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+        await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=VARIANTS[name])
+        sent.append((llm.calls[0], VARIANTS[name].schema.model_json_schema()))
+    assert sent[0] == sent[1]
+    old = json.loads((FIXTURES / "voice_request_2026-11-03.json").read_text())["schema"]
+    old.pop("$defs")
+    old["properties"]["proposals"]["items"] = VoiceRequest.model_json_schema()["properties"][
+        "proposals"
+    ]["items"]
+    assert VoiceRequest.model_json_schema() == old  # only the proposal items changed
 
 
 async def test_the_weekday_variant_names_the_day_and_changes_nothing_else() -> None:
-    plain = FakeLLM().queue("VoiceRequest", VoiceRequest())
-    await run_case(plain, CLOUD, "m", timeout_s=9.0)
-    named = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    plain = FakeLLM().queue("VoiceRequest", VARIANTS["today"].schema())
+    await run_case(plain, CLOUD, "m", timeout_s=9.0, variant=VARIANTS["today"])
+    named = FakeLLM().queue("VoiceRequest", VARIANTS["named-day"].schema())
     await run_case(named, CLOUD, "m", timeout_s=9.0, variant=VARIANTS["named-day"])
     assert f"Today: Wednesday {TODAY}\n" in named.calls[0].user
     assert named.calls[0].user.replace("Wednesday ", "") == plain.calls[0].user
@@ -361,10 +407,51 @@ async def test_the_repo_variant_changes_only_the_repo_rule_in_the_system_prompt(
     variant = VARIANTS["named-day+kinds+repo"]
     llm = FakeLLM().queue("VoiceRequest", variant.schema())
     await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=variant)
-    system = llm.calls[0].system
-    assert system != VOICE_SYSTEM
-    assert [x for x in system.splitlines() if x not in VOICE_SYSTEM.splitlines()] == [
+    system, old = llm.calls[0].system, VARIANTS["today"].system  # was VOICE_SYSTEM, now the same
+    assert system != old
+    assert [x for x in system.splitlines() if x not in old.splitlines()] == [
         x for x in system.splitlines() if x.startswith("- repo:")
     ]
     assert "place in the list" in system
     assert variant.schema is VARIANTS["kinds"].schema and variant.named_day
+
+
+def test_every_attempt_counts_toward_the_measured_reply_time() -> None:
+    assert waited(row("x", True, seconds=[1.25, 0.5])) == 1.75
+
+
+def test_an_attempt_that_fell_back_or_went_elsewhere_is_counted() -> None:
+    ok = {"x-litellm-attempted-fallbacks": "0", "x-litellm-model-group": "interactive"}
+    rows = [
+        row("a", True, headers=[ok]),
+        row("b", True, headers=[{**ok, "x-litellm-attempted-fallbacks": "1"}]),
+        row("c", True, headers=[ok, {**ok, "x-litellm-model-group": "heavy"}]),
+        row("d", True, headers=[{}]),  # no proxy headers: not through LiteLLM, cannot be shown
+    ]
+    assert fell_back(rows, "interactive") == (2, 1)
+
+
+async def test_a_failed_attempt_is_recorded_with_its_time_and_headers() -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, headers={"x-litellm-attempted-fallbacks": "1"})
+
+    rec = Recorder(httpx.MockTransport(answer))
+    async with httpx.AsyncClient(transport=rec) as http:
+        await http.post("http://x/v1/chat/completions", json={})
+    (attempt,) = rec.attempts
+    assert (attempt["status"], attempt["tokens"]) == (500, None)
+    assert attempt["headers"] == {"x-litellm-attempted-fallbacks": "1"}
+
+
+async def test_the_repo_list_can_be_sent_reversed_to_show_its_order_decides_nothing() -> None:
+    llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    await run_case(llm, NOT_CLEAR, "m", timeout_s=9.0, reversed_repos=True)
+    names = [x.split(":")[0][2:] for x in llm.calls[0].user.splitlines() if x.startswith("- ")]
+    assert names == list(reversed(list(REPOS)))
+
+
+def test_a_run_can_be_limited_to_named_cases() -> None:
+    assert [c.name for c in pick(["cloud, repo not clear"])] == ["cloud, repo not clear"]
+    assert pick([]) == VOICE_CASES
+    with pytest.raises(SystemExit):
+        pick(["no such case"])

@@ -19,7 +19,11 @@ only, and the time verdict is reported with the decode rate it would need.
     uv run python -m tests.evals.voice report rows.jsonl --control q25-3b
 
 Rows hold whole replies, so keep them out of the repo. --variant changes the request, never the
-bar, and no real voice pass sends one. "today" is what the server sends, and it is the default.
+bar. "server" is what the server sends, and it is the default. "today" is the request the server
+sent until R2's fixes, replayed exactly from fixtures/voice_request_2026-11-03.json, and keeps the
+name R2's and R5's rows carry; the other variants are built on it as R2 ran them. Through LiteLLM,
+each attempt keeps its wall time and its x-litellm-* headers, so the report can show reply p95 as
+measured and any attempt that fell back (--expect-group names the alias it should stay on).
 """
 
 import argparse
@@ -37,11 +41,18 @@ from typing import Any
 
 import httpx
 
-from jarvis_live.actions.schema import ProposalIn
-from jarvis_live.actions.state import Context, build_payload
+from jarvis_live.actions.schema import Evidence, ProposalIn
+from jarvis_live.actions.state import (
+    Context,
+    Proposal,
+    ProposalState,
+    build_payload,
+    dedupe_key,
+    payload_sha256,
+)
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, voice_user
+from jarvis_live.voice.service import VOICE_SYSTEM, named_today, voice_user
 from tests.evals.harness import due_matches
 from tests.evals.voice_cases import REPOS, TODAY, VOICE_CASES, Step, VoiceCase
 
@@ -55,35 +66,21 @@ DECODE_3B_2070 = 132.0  # tok/s, same run, grammar on
 _NOW = datetime(2026, 11, 4, 12, tzinfo=UTC)
 
 
-def _kind(kind: str, required: Sequence[str], **fields: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "type": "object",
-        "properties": {"kind": {"const": kind}, **fields},
-        "required": ["kind", *required],
-    }
+_OLD = json.loads(
+    (Path(__file__).parent / "fixtures" / "voice_request_2026-11-03.json").read_text("utf-8")
+)
 
 
-_TEXT: dict[str, Any] = {"type": "string"}
-_SPOKEN_KINDS = [
-    _kind("task.create", ["text"], text=_TEXT, due=_TEXT),
-    _kind("reminder.schedule", ["title", "at"], title=_TEXT, at=_TEXT, body=_TEXT),
-    _kind("git.pr_comment", ["repo", "pr", "body"], repo=_TEXT, pr={"type": "integer"}, body=_TEXT),
-]
-
-
-class _Kinds(VoiceRequest):
-    """Each spoken kind with the fields build_payload needs, in place of one flat ProposalIn whose
-    fields are all optional. It parses exactly as VoiceRequest does: only what is sent differs."""
+class _Flat(VoiceRequest):
+    """The request's schema as the server sent it until R2's fixes: one flat ProposalIn with every
+    field optional. It parses exactly as VoiceRequest does: only what is sent differs."""
 
     @classmethod
     def model_json_schema(cls, *args: Any, **kwargs: Any) -> dict[str, Any]:
-        schema = super().model_json_schema(*args, **kwargs)
-        schema["properties"]["proposals"]["items"] = {"anyOf": _SPOKEN_KINDS}
-        schema.pop("$defs", None)
-        return {**schema, "title": "VoiceRequest"}
+        return json.loads(json.dumps(_OLD["schema"]))
 
 
-_Kinds.__name__ = "VoiceRequest"
+_Flat.__name__ = "VoiceRequest"
 
 
 _REPO_RULE = (
@@ -93,7 +90,8 @@ _REPO_NULL = (
     "- repo: for cloud, exactly one of the repositories listed, only if the request names it or "
     "says what it is for. Otherwise null: never pick one for its place in the list."
 )
-assert _REPO_RULE in VOICE_SYSTEM
+_OLD_SYSTEM: str = _OLD["system"]
+assert _REPO_RULE in _OLD_SYSTEM and _REPO_NULL in VOICE_SYSTEM
 
 
 @dataclass(frozen=True)
@@ -104,18 +102,19 @@ class Variant:
     system: str = VOICE_SYSTEM
 
 
+DEFAULT_VARIANT = "server"
 VARIANTS = {
     v.name: v
     for v in (
-        Variant("today"),
-        Variant("named-day", named_day=True),
-        Variant("kinds", schema=_Kinds),
-        Variant("named-day+kinds", schema=_Kinds, named_day=True),
+        Variant("server", named_day=True),
+        Variant("today", schema=_Flat, system=_OLD_SYSTEM),
+        Variant("named-day", schema=_Flat, named_day=True, system=_OLD_SYSTEM),
+        Variant("kinds", system=_OLD_SYSTEM),
+        Variant("named-day+kinds", named_day=True, system=_OLD_SYSTEM),
         Variant(
             "named-day+kinds+repo",
-            schema=_Kinds,
             named_day=True,
-            system=VOICE_SYSTEM.replace(_REPO_RULE, _REPO_NULL),
+            system=_OLD_SYSTEM.replace(_REPO_RULE, _REPO_NULL),
         ),
     )
 }
@@ -128,7 +127,7 @@ class Row:
     case: str
     ok: bool
     fails: list[str]
-    variant: str = "today"
+    variant: str = "today"  # rows written before the "server" variant are all "today"
     tokens: list[int] = field(default_factory=list)  # one per attempt, as the caller waits for all
     prompts: list[int] = field(default_factory=list)
     finish: list[str] = field(default_factory=list)
@@ -136,6 +135,8 @@ class Row:
     prompt_rates: list[float] = field(default_factory=list)  # tok/s here, not on a card
     decode_rates: list[float] = field(default_factory=list)
     replies: list[str] = field(default_factory=list)
+    seconds: list[float] = field(default_factory=list)  # wall time, one per attempt
+    headers: list[dict[str, str]] = field(default_factory=list)  # x-litellm-*, one per attempt
 
 
 @dataclass(frozen=True)
@@ -213,8 +214,23 @@ def _check_nothing_filed(case: VoiceCase, reply: VoiceRequest) -> list[str]:
         return [f"filed a {reply.target} session"]
     if reply.target == "none":
         return []
-    ctx = _context(case)
-    return [f"filed {p.kind}" for p in reply.proposals if build_payload(p, ctx) is not None]
+    return [f"filed {p.kind}" for p in _admitted(case, reply.proposals)]
+
+
+def _admitted(case: VoiceCase, proposals: Sequence[ProposalIn]) -> list[Proposal]:
+    """What the server's queue would file: the case's stored proposals, then these, as
+    VoicePass._file_actions sends them, the spoken words included for the voice dedupe."""
+    state = ProposalState.restore(
+        [
+            Proposal(
+                f"p{i}", kind, payload, [], dedupe_key(kind, payload), payload_sha256(kind, payload)
+            )
+            for i, (kind, payload) in enumerate(case.stored, 1)
+        ]
+    )
+    heard = [Evidence(start_ms=0, text=case.said)]
+    steps = [p.model_copy(update={"evidence": heard}) for p in proposals]
+    return state.apply(steps, _context(case), said=case.said)
 
 
 def _check_session(case: VoiceCase, reply: VoiceRequest) -> list[str]:
@@ -253,18 +269,17 @@ async def run_case(
     model: str,
     *,
     timeout_s: float,
-    variant: Variant = VARIANTS["today"],
+    variant: Variant = VARIANTS[DEFAULT_VARIANT],
+    reversed_repos: bool = False,
 ) -> VoiceRequest:
+    today = named_today(date.fromisoformat(TODAY)) if variant.named_day else TODAY
     user = voice_user(
-        today=TODAY,
-        repos=REPOS,
+        today=today,
+        repos=dict(reversed(REPOS.items())) if reversed_repos else REPOS,
         commentable=case.commentable,
         known=list(case.known),
         said=case.said,
     )
-    if variant.named_day:
-        day = date.fromisoformat(TODAY).strftime("%A")
-        user = user.replace(f"Today: {TODAY}", f"Today: {day} {TODAY}", 1)
     return await llm.complete_json(
         model=model,
         system=variant.system,
@@ -283,14 +298,26 @@ class Recorder(httpx.AsyncBaseTransport):
         self.attempts: list[dict[str, Any]] = []
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        began = time.monotonic()
         response = await self.inner.handle_async_request(request)
         await response.aread()
+        attempt: dict[str, Any] = {
+            "seconds": time.monotonic() - began,
+            "status": response.status_code,
+            "headers": {
+                k.lower(): v
+                for k, v in response.headers.items()
+                if k.lower().startswith("x-litellm-")
+            },
+            "tokens": None,
+        }
+        self.attempts.append(attempt)
         if response.status_code == 200:
             reply = json.loads(response.content)
             choice, usage = reply["choices"][0], reply.get("usage") or {}
             timings = reply.get("timings") or {}
             message = choice["message"]
-            self.attempts.append(
+            attempt.update(
                 {
                     "prompt": usage.get("prompt_tokens"),
                     "tokens": usage.get("completion_tokens"),
@@ -331,6 +358,26 @@ def can_still_pass(rows: Sequence[Row]) -> bool:
     )
 
 
+def waited(row: Row) -> float:
+    """Measured seconds the caller waited for this reply: every attempt the client made."""
+    return sum(row.seconds)
+
+
+def fell_back(rows: Sequence[Row], group: str) -> tuple[int, int]:
+    """Attempts LiteLLM did not serve from ``group`` on the first try (a fallback was attempted or
+    another group answered), and attempts with no proxy headers, which cannot show either way."""
+    off = blind = 0
+    for h in (h for r in rows for h in r.headers):
+        if not h:
+            blind += 1
+        elif (
+            h.get("x-litellm-attempted-fallbacks", "0") != "0"
+            or h.get("x-litellm-model-group", group) != group
+        ):
+            off += 1
+    return off, blind
+
+
 def project(row: Row, *, prefill: float, decode: float) -> float:
     """Seconds this reply would take at these rates. A retry is time the caller waited."""
     return sum(row.prompts) / prefill + sum(row.tokens) / decode
@@ -364,13 +411,20 @@ async def run_one(
     rec.attempts = []
     try:
         reply = await run_case(
-            llm, case, args.model, timeout_s=args.timeout, variant=VARIANTS[args.variant]
+            llm,
+            case,
+            args.model,
+            timeout_s=args.timeout,
+            variant=VARIANTS[args.variant],
+            reversed_repos=args.repos_reversed,
         )
         fails = check(case, reply)
     except Exception as e:  # an unusable reply is a failed case, not a stopped run
         fails = [f"no valid reply: {type(e).__name__}"]
     done = [a for a in rec.attempts if a["tokens"] is not None]
     return Row(
+        seconds=[a["seconds"] for a in rec.attempts],
+        headers=[a["headers"] for a in rec.attempts],
         model=args.tag or args.model,
         variant=args.variant,
         run=-1,
@@ -391,10 +445,15 @@ async def run(args: argparse.Namespace) -> int:
     rows: list[Row] = []
     rec = Recorder()
     async with httpx.AsyncClient(transport=rec) as http:
-        llm = LiteLLMClient(args.base, http, timeout_s=args.timeout)
+        llm = LiteLLMClient(
+            args.base,
+            http,
+            timeout_s=args.timeout,
+            api_key_file=Path(args.api_key_file) if args.api_key_file else None,
+        )
         with Path(args.out).open("a", encoding="utf-8") as out:
             for run_no in range(args.runs):
-                for case in VOICE_CASES:
+                for case in pick(args.only):
                     t0 = time.monotonic()
                     row = await run_one(llm, rec, case, args)
                     row.run = run_no
@@ -412,12 +471,22 @@ async def run(args: argparse.Namespace) -> int:
     return 0
 
 
+def pick(names: Sequence[str]) -> tuple[VoiceCase, ...]:
+    """The cases to run: all of them, or those named. A partial run never meets the bar."""
+    if not names:
+        return VOICE_CASES
+    unknown = set(names) - {c.name for c in VOICE_CASES}
+    if unknown:
+        raise SystemExit(f"no such case: {sorted(unknown)}")
+    return tuple(c for c in VOICE_CASES if c.name in names)
+
+
 def _rate(rows: Sequence[Row], name: str) -> float:
     values = [x for r in rows for x in getattr(r, name)]
     return statistics.median(values) if values else 0.0
 
 
-def report(paths: Sequence[str], control: str | None) -> int:
+def report(paths: Sequence[str], control: str | None, group: str = "") -> int:
     groups: dict[str, list[Row]] = {}
     for path in paths:
         for line in Path(path).read_text(encoding="utf-8").splitlines():
@@ -452,6 +521,17 @@ def report(paths: Sequence[str], control: str | None) -> int:
                 f"  2070, unproven: prefill {prefill:.0f} decode {decode:.0f} tok/s, "
                 f"projected p95 {seconds:.2f} s, {'fits' if seconds <= BUDGET_S else 'misses'}"
             )
+        if any(r.seconds for r in rows):
+            measured = [waited(r) for r in rows]
+            print(
+                f"  measured: reply p50 {statistics.median(measured):.2f} p95 {p95(measured):.2f} "
+                f"max {max(measured):.2f} s, within {BUDGET_S} s "
+                f"{sum(x <= BUDGET_S for x in measured)}/{len(measured)}, "
+                f"attempts {sum(len(r.seconds) for r in rows)}"
+            )
+        if group:
+            off, blind = fell_back(rows, group)
+            print(f"  LiteLLM: {off} attempts off {group!r} or fell back, {blind} without headers")
         passes, fails = _counts(rows)
         for c in VOICE_CASES:
             if fails[c.name]:
@@ -471,13 +551,17 @@ def main() -> int:
     r.add_argument("--out", required=True)
     r.add_argument("--timeout", type=float, default=300.0)
     r.add_argument("--keep-going", action="store_true")
-    r.add_argument("--variant", default="today", choices=list(VARIANTS))
+    r.add_argument("--variant", default=DEFAULT_VARIANT, choices=list(VARIANTS))
+    r.add_argument("--api-key-file", default="")
+    r.add_argument("--repos-reversed", action="store_true", help="send the repo list reversed")
+    r.add_argument("--only", action="append", default=[], help="run only this case (repeatable)")
     p = sub.add_parser("report")
     p.add_argument("paths", nargs="+")
     p.add_argument("--control", default=None)
+    p.add_argument("--expect-group", default="", help="the LiteLLM alias every attempt should hit")
     args = parser.parse_args()
     if args.cmd == "report":
-        return report(args.paths, args.control)
+        return report(args.paths, args.control, args.expect_group)
     return asyncio.run(run(args))
 
 

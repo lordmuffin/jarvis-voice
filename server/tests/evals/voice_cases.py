@@ -4,7 +4,9 @@ with the speech-to-text slips it warns about. Requests, repos and dates here are
 TODAY is fixed, a Wednesday, so a key can name the date a spoken day resolves to."""
 
 from dataclasses import dataclass
+from typing import Any
 
+from jarvis_live.actions.intake import label
 from jarvis_live.voice.schema import Target
 
 TODAY = "2026-11-04"
@@ -41,9 +43,14 @@ class VoiceCase:
     repo: str | None = None  # cloud: exactly this, None meaning it was not clear which
     steps: tuple[Step, ...] = ()  # action: exactly these, an extra one is an invention
     commentable: tuple[str, ...] = ()
-    known: tuple[str, ...] = ()
+    stored: tuple[tuple[str, dict[str, Any]], ...] = ()  # (kind, payload) already in the queue
     files_nothing: bool = False  # either answer is fine as long as nothing gets filed
     critical: bool = False  # a wrong answer files what nobody asked for: 3 of 3, not 2 of 3
+
+    @property
+    def known(self) -> tuple[str, ...]:
+        """ALREADY PROPOSED, as the queue tells the model (``SessionProposals.known``)."""
+        return tuple(label(kind, payload) for kind, payload in self.stored)
 
 
 VOICE_CASES: tuple[VoiceCase, ...] = (
@@ -176,7 +183,7 @@ VOICE_CASES: tuple[VoiceCase, ...] = (
         "action, already proposed",
         "Jarvis, add a task to review the pricing proposal.",
         "action",
-        known=("task.create: Review the pricing proposal",),
+        stored=(("task.create", {"text": "Review the pricing proposal"}),),
         files_nothing=True,
     ),
     VoiceCase(

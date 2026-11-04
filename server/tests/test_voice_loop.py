@@ -646,3 +646,47 @@ async def test_a_held_ask_still_being_held_is_skipped_too(rig: Rig) -> None:
     await rig.hear("Jarvis, start a Pi session to find out why Flux is failing.")
     await rig.loop(skip=lambda: [(59_700, None)]).tick()
     assert rig.llm.calls == []
+
+
+# --- what the model is told, and what a repeat files (docs/plans/fast-tier.md, R2) ------------
+
+
+async def test_today_is_sent_with_its_weekday(rig: Rig) -> None:
+    from datetime import UTC, datetime
+
+    rig.llm.queue("VoiceRequest", VoiceRequest(target="none"))
+    await rig.hear("Jarvis, remind me on Friday to call the vendor.")
+    await rig.loop().tick()
+    today = datetime.now(UTC).date()
+    (call,) = rig.llm.calls
+    assert f"Today: {today:%A} {today.isoformat()}\n" in call.user
+
+
+def _task(due: str | None = None) -> VoiceRequest:
+    step: dict[str, Any] = {"kind": "task.create", "text": "Review the pricing proposal"}
+    if due:
+        step["due"] = due
+    return VoiceRequest.model_validate({"target": "action", "proposals": [step]})
+
+
+async def test_a_spoken_repeat_with_a_due_date_nobody_said_is_not_filed_again(rig: Rig) -> None:
+    rig.llm.queue("VoiceRequest", _task(), _task("2026-11-04"))
+    loop = rig.loop()
+    await rig.hear("Jarvis, add a task to review the pricing proposal.", at=10_000)
+    await loop.tick()
+    await rig.hear("Jarvis, add a task to review the pricing proposal.", at=60_000)
+    await loop.tick()
+    assert [a.payload for a in await rig.actions_filed()] == [
+        {"text": "Review the pricing proposal"}
+    ]
+    assert len(rig.replies) == 2  # told, not silently dropped
+
+
+async def test_a_spoken_repeat_with_a_new_date_said_is_filed(rig: Rig) -> None:
+    rig.llm.queue("VoiceRequest", _task(), _task("2026-11-06"))
+    loop = rig.loop()
+    await rig.hear("Jarvis, add a task to review the pricing proposal.", at=10_000)
+    await loop.tick()
+    await rig.hear("Jarvis, make that review the pricing proposal by Friday.", at=60_000)
+    await loop.tick()
+    assert len(await rig.actions_filed()) == 2
