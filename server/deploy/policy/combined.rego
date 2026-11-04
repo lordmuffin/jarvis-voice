@@ -15,6 +15,8 @@ required := [
 	# read and API ports from the app only.
 	["NetworkPolicy", "jarvis-live-streams-auth"],
 	["NetworkPolicy", "jarvis-live-mediamtx"],
+	# The app's LiteLLM key: without it litellm-proxy refuses the copilot and the final note.
+	["OnePasswordItem", "litellm-proxy-key"],
 ]
 
 present contains [d.contents.kind, d.contents.metadata.name] if some d in input

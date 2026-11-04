@@ -102,6 +102,12 @@ patches:
                           secretKeyRef:
                             name: jarvis-live-lab-db-app
                             key: connection
+  # Lab's own litellm-proxy key, never live's (policy/lab.rego).
+  - target: {kind: OnePasswordItem, name: litellm-proxy-key}
+    patch: |
+      - op: replace
+        path: /spec/itemPath
+        value: "vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live-lab"
   # No vault write PAT in lab at all, not merely unused.
   - patch: |
       $patch: delete

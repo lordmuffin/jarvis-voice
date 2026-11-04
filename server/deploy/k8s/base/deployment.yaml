@@ -88,6 +88,11 @@ spec:
             # starts before that field exists; /v1/homelab/ask then just returns its fallback.
             - name: JARVIS_LIVE_DPI_TOKEN_FILE
               value: /secrets/dpi/password
+            # This channel's own litellm-proxy key (onepassword-items.yaml). The proxy refuses
+            # a request without one (np-home-homelab docs/litellm-proxy-auth.md), and the
+            # copilot and the final note stop. Sent as the bearer by llm/client.py.
+            - name: JARVIS_LIVE_LITELLM_API_KEY_FILE
+              value: /secrets/litellm/password
           ports:
             - name: http
               containerPort: 8080
@@ -154,6 +159,9 @@ spec:
             - name: dpi-token
               mountPath: /secrets/dpi
               readOnly: true
+            - name: litellm-key
+              mountPath: /secrets/litellm
+              readOnly: true
             # notes-vault-pat: the app publishes finished notes to lordmuffin/Notes
             # itself (one branch + PR per session, merge from the dashboard).
             - name: github-token
@@ -216,6 +224,15 @@ spec:
             defaultMode: 0400
             items:
               - key: DPI_TOKEN_JARVIS
+                path: password
+        # Not optional: a missing key would silently stop every LiteLLM call, so the pod
+        # waits for it instead (the previous pod keeps serving during a rollout).
+        - name: litellm-key
+          secret:
+            secretName: litellm-proxy-key
+            defaultMode: 0400
+            items:
+              - key: password
                 path: password
         - name: github-token
           secret:

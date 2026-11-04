@@ -10,6 +10,7 @@ all := [
 	doc("PersistentVolumeClaim", "jarvis-dispatch-mirrors"),
 	doc("NetworkPolicy", "jarvis-live-streams-auth"),
 	doc("NetworkPolicy", "jarvis-live-mediamtx"),
+	doc("OnePasswordItem", "litellm-proxy-key"),
 ]
 
 test_everything_present_passes if {
@@ -124,4 +125,9 @@ test_cronjob_on_a_shared_rwx_claim_may_run_anywhere if {
 test_streams_without_their_fence_denied if {
 	some msg in deny with input as [d | some d in all; d.contents.metadata.name != "jarvis-live-streams-auth"]
 	contains(msg, "NetworkPolicy/jarvis-live-streams-auth")
+}
+
+test_a_channel_without_its_litellm_key_denied if {
+	some msg in deny with input as [d | some d in all; d.contents.kind != "OnePasswordItem"]
+	contains(msg, "OnePasswordItem/litellm-proxy-key")
 }

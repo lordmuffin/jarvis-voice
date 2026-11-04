@@ -23,3 +23,11 @@ deny contains msg if {
 	object.get(input.spec, "replicas", 1) != 0
 	msg := "Deployment/jarvis-live-mediamtx: live must run no stream ingest yet (replicas 0)"
 }
+
+# Live and lab each have their own LiteLLM key, so lab's can be revoked without touching live.
+deny contains msg if {
+	input.kind == "OnePasswordItem"
+	input.metadata.name == "litellm-proxy-key"
+	input.spec.itemPath != "vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live"
+	msg := sprintf("OnePasswordItem/litellm-proxy-key: live must use its own item, not %q", [input.spec.itemPath])
+}
