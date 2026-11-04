@@ -212,3 +212,13 @@ async def test_each_ask_is_stored_apart_from_the_transcript(rig: Rig) -> None:
     assert (p["model"], p["stt_tier"]) == ("qwen3.8-flash-next", "gamingpc")
     assert set(p["stages"]) == {"stt", "llm"}
     assert (p["start_ms"], p["end_ms"]) == (120_000, 122_000)
+
+
+async def test_the_ask_names_todays_weekday(rig: Rig) -> None:
+    from datetime import UTC, datetime
+
+    rig.llm.queue("AskAnswer", AskAnswer(reply="It is Wednesday."))
+    await rig.asked("What day is it?")
+    today = datetime.now(UTC).date()
+    (call,) = rig.llm.calls
+    assert call.user.startswith(f"Today: {today:%A} {today.isoformat()}\n")

@@ -118,6 +118,51 @@ def build_payload(p: ProposalIn, ctx: Context) -> dict[str, Any] | None:
     return None
 
 
+DATE_FIELDS = frozenset({"due", "at"})
+_NUMBERS = (
+    "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
+    "sixteen seventeen eighteen nineteen twenty thirty first second third fourth fifth sixth "
+    "seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth "
+    "seventeenth eighteenth nineteenth twentieth thirtieth"
+)
+_WHEN_WORDS = (
+    "monday tuesday wednesday thursday friday saturday sunday today tonight tomorrow yesterday "
+    "january february march april may june july august september october november december "
+    "noon midnight morning afternoon evening night o'clock minute minutes hour "
+    f"hours day days week weeks weekend month months year {_NUMBERS}"
+)
+_WHEN = re.compile(
+    r"\d|\b(?:" + "|".join(re.escape(w) for w in _WHEN_WORDS.split()) + r")\b", re.IGNORECASE
+)
+
+
+def says_when(said: str) -> bool:
+    """Did the speaker name a date or time? A digit, or a whole word that names a day, a month,
+    a time of day, a span (hour, week, month...) or a number up to thirty, spelt out or as an
+    ordinal. It errs towards yes: a "may" or a "first" that is not a date only means a repeat is
+    filed for the owner to reject, never that a request with a new date is dropped."""
+    return bool(_WHEN.search(said))
+
+
+def _same(a: Any, b: Any) -> bool:
+    if isinstance(a, str) and isinstance(b, str):
+        return _plain(a) == _plain(b)
+    return bool(a == b)
+
+
+def _plain(text: str) -> str:
+    return " ".join(text.casefold().split()).rstrip(".!?,;:")
+
+
+def adds_nothing(payload: dict[str, Any], stored: dict[str, Any], *, when_said: bool) -> bool:
+    """A repeat of ``stored`` (same kind): every field equals the stored one, case, spacing and
+    end punctuation aside, or is a date field the speaker gave no date or time for."""
+    return all(
+        (k in stored and _same(v, stored[k])) or (k in DATE_FIELDS and not when_said)
+        for k, v in payload.items()
+    )
+
+
 EVIDENCE_SLACK_MS = 2000
 MAX_EVIDENCE = 3
 
@@ -149,10 +194,15 @@ class ProposalState:
     proposals: list[Proposal] = field(default_factory=list)
     _next: int = 1
 
-    def apply(self, incoming: list[ProposalIn], ctx: Context) -> list[Proposal]:
+    def apply(
+        self, incoming: list[ProposalIn], ctx: Context, *, said: str | None = None
+    ) -> list[Proposal]:
         """Admit the valid, new proposals; returns those admitted (at most
-        ``MAX_NEW_PER_CYCLE`` per call and ``MAX_OPEN`` open overall)."""
+        ``MAX_NEW_PER_CYCLE`` per call and ``MAX_OPEN`` open overall). ``said`` is the spoken
+        request a voice proposal came from: a proposal that adds nothing it said is a repeat
+        (``adds_nothing``), even when the model filled in a date nobody gave."""
         known = {p.dedupe_key for p in self.proposals}
+        when_said = said is not None and says_when(said)
         admitted: list[Proposal] = []
         for p in incoming:
             if len(admitted) >= MAX_NEW_PER_CYCLE:
@@ -163,7 +213,13 @@ class ProposalState:
             if payload is None:
                 continue
             key = dedupe_key(p.kind, payload)
-            if key in known:
+            if key in known or (
+                said is not None
+                and any(
+                    x.kind == p.kind and adds_nothing(payload, x.payload, when_said=when_said)
+                    for x in self.proposals
+                )
+            ):
                 continue
             known.add(key)
             prop = Proposal(

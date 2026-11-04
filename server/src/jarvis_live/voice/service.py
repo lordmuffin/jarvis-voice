@@ -9,7 +9,7 @@ import re
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Protocol
 
 from sqlalchemy import select
@@ -48,7 +48,8 @@ Reply with JSON only:
 about Jarvis, or one you cannot understand.
 - title: a short imperative phrase, under 10 words (cloud, pi).
 - task: 1-4 sentences on what to do, in the speaker's terms (cloud, pi).
-- repo: for cloud, exactly one of the repositories listed, or null if it is not clear which.
+- repo: for cloud, exactly one of the repositories listed, only if the request names it or says \
+what it is for. Otherwise null: never pick one for its place in the list.
 - acceptance_criteria: for cloud, 1-6 short, checkable statements.
 - done_when: for cloud, one sentence.
 - proposals: for action, the steps. Kinds: task.create {text, due}; reminder.schedule {title, \
@@ -66,7 +67,12 @@ class Queue(Protocol):
     """One session's door into the action queue (``actions.intake.SessionProposals``)."""
 
     async def propose(
-        self, incoming: Sequence[ProposalIn], lines: Sequence[Line], *, proposed_by: str
+        self,
+        incoming: Sequence[ProposalIn],
+        lines: Sequence[Line],
+        *,
+        proposed_by: str,
+        said: str | None = None,
     ) -> int: ...
 
     async def known(self) -> list[str]: ...
@@ -80,6 +86,12 @@ class Queue(Protocol):
 class Outcome:
     reply: str | None
     filed: bool = False  # something now waits for the owner's approval
+
+
+def named_today(day: date) -> str:
+    """Today as the model is told it, weekday first: given only the date, every model R2 ran
+    counted "Friday" from a Wednesday wrong (docs/plans/fast-tier.md)."""
+    return f"{day:%A} {day.isoformat()}"
 
 
 def voice_user(
@@ -150,7 +162,7 @@ class VoicePass:
         self, session_id: uuid.UUID, heard: Heard, queue: Queue | None
     ) -> VoiceRequest | None:
         user = voice_user(
-            today=datetime.now(UTC).date().isoformat(),
+            today=named_today(datetime.now(UTC).date()),
             repos=self._cfg.work_repo_allowlist,
             commentable=queue.repos() if queue else (),
             known=await queue.known() if queue else [],
@@ -191,7 +203,9 @@ class VoicePass:
         if queue is None:
             return Outcome("Workflow actions are off here. Nothing was started.")
         steps = [p.model_copy(update={"evidence": _evidence(heard)}) for p in request.proposals]
-        filed = await queue.propose(steps, heard.lines, proposed_by=f"voice:{self._model}")
+        filed = await queue.propose(
+            steps, heard.lines, proposed_by=f"voice:{self._model}", said=heard.text
+        )
         if not filed:
             return Outcome("I could not turn that into an action. Nothing was started.")
         noun = "action" if filed == 1 else "actions"
@@ -241,4 +255,4 @@ def _evidence(heard: Heard) -> list[Evidence]:
     return [Evidence(start_ms=x.start_ms, text=x.text) for x in heard.lines]
 
 
-__all__ = ["Outcome", "Queue", "VoicePass", "from_words", "voice_user"]
+__all__ = ["Outcome", "Queue", "VoicePass", "from_words", "named_today", "voice_user"]
