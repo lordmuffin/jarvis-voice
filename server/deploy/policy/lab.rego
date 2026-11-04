@@ -110,3 +110,11 @@ deny contains msg if {
 	not input.spec.suspend == true
 	msg := "CronJob/jarvis-live-backup: lab's backup job must be suspended (lab is not backed up)"
 }
+
+# Lab has its own LiteLLM key (np-home-homelab docs/litellm-proxy-auth.md), never live's.
+deny contains msg if {
+	input.kind == "OnePasswordItem"
+	input.metadata.name == "litellm-proxy-key"
+	input.spec.itemPath != "vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live-lab"
+	msg := sprintf("OnePasswordItem/litellm-proxy-key: lab must use its own item, not %q", [input.spec.itemPath])
+}

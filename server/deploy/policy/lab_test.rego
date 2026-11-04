@@ -121,3 +121,14 @@ test_lab_backup_job_must_be_suspended if {
 test_lab_backup_job_suspended_is_fine if {
 	count(deny) == 0 with input as backup_job(true)
 }
+
+litellm_item(path) := {"kind": "OnePasswordItem", "metadata": {"name": "litellm-proxy-key", "namespace": "jarvis-live-lab"}, "spec": {"itemPath": path}}
+
+test_lab_uses_its_own_litellm_key if {
+	count(deny) == 0 with input as litellm_item("vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live-lab")
+}
+
+test_lab_with_lives_litellm_key_denied if {
+	some msg in deny with input as litellm_item("vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live")
+	contains(msg, "litellm-proxy-key")
+}

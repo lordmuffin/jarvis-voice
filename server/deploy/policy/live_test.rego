@@ -38,3 +38,14 @@ test_live_with_streams_off_passes if {
 		"spec": {"replicas": 0},
 	}
 }
+
+litellm_item(path) := {"kind": "OnePasswordItem", "metadata": {"name": "litellm-proxy-key", "namespace": "jarvis-live"}, "spec": {"itemPath": path}}
+
+test_live_uses_its_own_litellm_key if {
+	count(deny) == 0 with input as litellm_item("vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live")
+}
+
+test_live_with_labs_litellm_key_denied if {
+	some msg in deny with input as litellm_item("vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live-lab")
+	contains(msg, "litellm-proxy-key")
+}
