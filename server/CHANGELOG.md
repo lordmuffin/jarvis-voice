@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.37.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.36.1...server-v0.37.0) (2026-11-04)
+
+
+### Features
+
+* **server:** fix the voice request R2 found faulty, and dedupe voice repeats ([94ba3d1](https://github.com/lordmuffin/jarvis-voice/commit/94ba3d185cda019b254c3af5c7126ee48f9bfa54))
+* **server:** voice request R2 found faulty, and a voice dedupe ([f9932e8](https://github.com/lordmuffin/jarvis-voice/commit/f9932e8a787b82b1e2328cec19b9ba6f2ca30ef4))
+
 ## [0.36.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.36.0...server-v0.36.1) (2026-11-04)
 
 
