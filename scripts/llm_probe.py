@@ -64,6 +64,7 @@ real session goes through this. Output rows hold timings and token counts, never
 from __future__ import annotations
 
 import argparse
+import datetime
 import http.client
 import json
 import math
@@ -780,8 +781,12 @@ def voice_user(
 
 
 def voice_today() -> str:
-    """Today as the voice pass tells it, weekday first (``voice.service.named_today``)."""
-    return time.strftime("%A %Y-%m-%d", time.gmtime())
+    """Today and the next seven days as the voice pass tells them, weekday first, in UTC
+    (``voice.service.voice_today``)."""
+    today = datetime.datetime.now(datetime.UTC).date()
+    days = [today + datetime.timedelta(days=n) for n in range(8)]
+    named = [f"{d:%A} {d.isoformat()}" for d in days]
+    return f"{named[0]}\nNext seven days: {', '.join(named[1:])}"
 
 
 def build_voice_body(model: str, *, pair: int, today: str) -> dict[str, Any]:

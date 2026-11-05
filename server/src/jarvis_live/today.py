@@ -1,6 +1,6 @@
 """The owner's today, as every LLM caller names it: voice, the ask and the copilot."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
 
@@ -19,4 +19,12 @@ def owners_today(now: datetime, timezone: str) -> str:
     return named_today(owners_day(now, timezone))
 
 
-__all__ = ["named_today", "owners_day", "owners_today"]
+def named_week(now: datetime, timezone: str) -> str:
+    """The seven days after today on the owner's calendar, each by name: given Wednesday, Gemma
+    still counted "Friday" as the 7th (docs/plans/fast-tier.md). Counted in dates, not hours, so
+    a 23-hour day is not skipped."""
+    today = owners_day(now, timezone)
+    return ", ".join(named_today(today + timedelta(days=n)) for n in range(1, 8))
+
+
+__all__ = ["named_today", "named_week", "owners_day", "owners_today"]

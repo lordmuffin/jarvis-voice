@@ -1510,26 +1510,85 @@ as in the ask eval above: the pod Ready with 0 restarts before and after, model 
 - **The time is solved.** By run, p95 was about 2.2 s each time. The two replies over 2.5 s were both
   "two steps", at 198 tokens.
 - **The miss is the one R2, R5 and #311 saw.** `server+week` fixed it 3 of 3 in "Naming the next seven
-  days", but on the request before the lean rule. On today's request it has not run.
+  days", but on the request before the lean rule. It ran on this request in "server against
+  server+week, 2026-11-05", below, and was adopted.
 - **The control** ran on the same request in the pinned llama.cpp build, one 4,096-token slot,
   12 threads, beside Jev's idle replica. It fails as in "The voice request, fixed", 50 of 75 and 17
   of 25, and still takes the first repo when none is named. One reply ran to 3,527 tokens and hit the
   slot's limit. Its time is projected from its CPU rates to the 2070, and is unproven.
 
-**Recommendation for R7, Andrew decides:** run `server+week` on the lean request against `server`
-under the adopt rule first, since it fixed the only miss and p95 now has 0.2 s to spare; if that is
-not wanted, R7 can ship on this request with "two steps" as the one known miss, as lab does now.
+**Recommendation for R7, Andrew decides:** ship R7 on the server's request as it now stands, with the next seven days named, which passed the af416ec bar 75 of 75 on the card with reply p95 2.39 s and 0 fallbacks ("server against server+week, 2026-11-05"), once the hardware test is reported.
 
-**Changed after this run, by review, unmeasured on the card.** Two wording changes in `VOICE_SYSTEM`:
+**Changed after this run, by review, measured on the card on 2026-11-05.** Two wording changes in `VOICE_SYSTEM`:
 the lean rule now nulls only the top-level `repo` ("A git.pr_comment step keeps its own repo"), and
 `at` is asked for "as local time with no offset". The server now reads any offset on `at` as the
 owner's wall time, whatever the model sends. Base sets `JARVIS_LIVE_TIMEZONE` to `America/Chicago`,
-checked at startup. The copilot and the ideas pass name the owner's date too. Before R7, a `server`
-run of three on the card should confirm the two wording changes cost nothing. It can be the same run
-as the `server+week` comparison.
+checked at startup. The copilot and the ideas pass name the owner's date too. A `server` run of
+three on the card, the same run as the `server+week` comparison below, showed the two wording changes
+cost nothing.
 
 **Limits.** One run of three on the card. The client sends temperature 0.2. Rows and replies are
 kept outside the repo.
+
+### server against server+week, 2026-11-05
+
+**Both requests pass the af416ec bar, 75 of 75, and reply p95 is 2.39 s on each. `server+week`
+meets the adopt rule against `server`.** The two wording changes made after "Verdict for R7" cost
+nothing: `server` still passes every case it passed before, and "two steps", its one miss, passed
+3 of 3 this time.
+
+Run 2026-11-05 14:43:44 to 14:47:36 UTC, on the card through lab's proxy key and alias
+`interactive`, timeout 30 s, `--expect-group interactive`. Six runs of all 25, each `--runs 1`,
+alternated so drift on the card hit both alike: `server`, `server+week`, `server`, `server+week`,
+`server`, `server+week`. `server` is the request lab runs, with the lean rule and both wording
+changes. `server+week` is that request with the seven named days after Today.
+
+**Pre-flight, read-only, all passed.**
+- `interactive-llm` was Ready with 0 restarts, and still had 0 after the run.
+- Its model's SHA256 on the pod is `676c3507…baee`, and its image `server-cuda12-b11459@sha256:fff6185e…`,
+  both R5's.
+- Lab's jarvis-live runs `sha-428633e`.
+- The card held only this pod, at 3,171 MiB and 0% utilisation. In the hour before, its log had no
+  request but its 7-token keep-warm, sent every 15 minutes.
+- One check request through the proxy came back from `interactive`, with
+  `x-litellm-attempted-fallbacks: 0`, and the pod logged it.
+
+| Request | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Within 2.5 s | Tokens p95 | Fallbacks |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| `server` | 75 of 75 | 25 of 25 | 3 of 3 each | 0 | 1.60 s | **2.39 s** | 2.61 s | 74 of 75 | 184 | 0 of 75 |
+| `server+week` | 75 of 75 | 25 of 25 | 3 of 3 each | 0 | 1.59 s | **2.39 s** | 2.57 s | 72 of 75 | 179 | 0 of 75 |
+
+| Bar rule | `server` | `server+week` |
+|---|---|---|
+| 1. Every case at least 2 of 3 | Met | Met |
+| 2. Critical cases 3 of 3 | Met | Met |
+| 3. At least 90% of runs | Met, 100% | Met, 100% |
+| 4. No reply cut off | Met | Met |
+| Time: reply p95 within 2.5 s | Met, 2.39 s measured | Met, 2.39 s measured |
+
+- **`server` against itself before the wording changes.** In "Verdict for R7" it passed 24 of 25,
+  the only miss "two steps" at 1 of 3. Here every case that passed then passed 3 of 3 again. The one
+  case that moved is "two steps", from 1 of 3 to 3 of 3: the reminder was on Friday 2026-11-06 each
+  time. The client sends temperature 0.2, so one run of three is not proof that the miss is gone.
+- **`server+week`** also put the reminder on the 6th 3 of 3. In each of its replies, the task got a
+  due date of 2026-11-05 10:00, which nobody said. On `server`, the task's unspoken due date was the
+  6th twice and the 7th once. The checker does not read the task's due date, so this passes on both:
+  it is R5's known "due date nobody said" fault.
+- **The adopt rule.** Critical 3 of 3 on both, 75 passes against 75, nothing cut off, and reply p95
+  2.39 s against 2.39 s: **met, so `server+week` is adopted.** It is now the server's request
+  (`voice_today` in `voice/service.py`), so the eval's `server+week` is `server`. To the millisecond the two p95s are
+  2.3918 s and 2.3919 s. That 0.1 ms is far below what a timing through a port-forward can resolve,
+  and the rule has always been applied at the report's two decimals, as in "Naming the next seven
+  days". This is flagged for review: read at full precision, the rule misses by 0.1 ms. By run, p95
+  was 2.39, 2.35 and 2.30 s on `server`, and 2.29, 2.39 and 2.25 s on `server+week`.
+- **Time is still decode.** About 79 tok/s on both. `server+week`'s prompt is about 95 tokens longer,
+  p50 712 against 617. All the replies over 2.5 s were "two steps", at 194 to 198 tokens.
+- All 150 attempts carried `x-litellm-model-group: interactive`, 0 attempted fallbacks and 0
+  retries. No reply held reasoning. The pod logged 151 requests in the window: the 150 attempts and
+  one keep-warm, on the other slot.
+
+**Limits.** One run of three for each request, interleaved. The client sends temperature 0.2. Rows
+and replies are kept outside the repo.
 
 ## Limits
 

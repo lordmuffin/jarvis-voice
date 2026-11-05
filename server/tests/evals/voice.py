@@ -35,7 +35,7 @@ import sys
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
 
@@ -51,9 +51,9 @@ from jarvis_live.actions.state import (
     payload_sha256,
 )
 from jarvis_live.llm.client import LLM, LiteLLMClient
-from jarvis_live.today import named_today, owners_day
+from jarvis_live.today import named_today
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, voice_user
+from jarvis_live.voice.service import VOICE_SYSTEM, voice_today, voice_user
 from tests.evals.harness import due_matches
 from tests.evals.voice_cases import REPOS, TODAY, VOICE_CASES, Step, VoiceCase
 
@@ -98,24 +98,17 @@ assert _REPO_RULE in _OLD_SYSTEM and _REPO_NULL in VOICE_SYSTEM
 # slowest replies were actions, and about 75 of their ~190 tokens went to the cloud and pi fields,
 # which the server never reads for an action. Neither sets max_tokens: a cut-off fails the bar.
 # The lean rule met the adopt rule and is now in VOICE_SYSTEM, so "server+lean" is "server".
+# The week line met it on the card on 2026-11-05 (voice_today), so "server+week" is too.
 LEAN_RULE = (
     '- For action and none, leave the cloud and pi fields empty: title and task "", the top-level '
     "repo and done_when null, acceptance_criteria []. A git.pr_comment step keeps its own repo."
 )
 TASK_RULE = "- task: 1-4 sentences on what to do, in the speaker's terms (cloud, pi)."
 SHORT_TASK = "- task: 1-2 sentences on what to do, in the speaker's terms (cloud, pi)."
-# Added after stage 5, unmeasured on the card: reminder times as the owner's wall time
+# Added after stage 5, measured on the card on 2026-11-05: reminder times as the owner's wall time
 # (state.build_payload drops any offset anyway).
 LOCAL_AT = ", as local time with no offset"
 assert LEAN_RULE in VOICE_SYSTEM and TASK_RULE in VOICE_SYSTEM and LOCAL_AT in VOICE_SYSTEM
-
-
-def named_week(now: datetime, timezone: str) -> str:
-    """The seven days after today on the owner's calendar, each by name: given Wednesday, Gemma
-    still counted "Friday" as the 7th (docs/plans/fast-tier.md). Counted in dates, not hours, so
-    a 23-hour day is not skipped."""
-    today = owners_day(now, timezone)
-    return ", ".join(named_today(today + timedelta(days=n)) for n in range(1, 8))
 
 
 @dataclass(frozen=True)
@@ -131,12 +124,13 @@ DEFAULT_VARIANT = "server"
 VARIANTS = {
     v.name: v
     for v in (
-        Variant("server", named_day=True),
-        Variant("server+week", named_day=True, week=True),
-        Variant("server+lean", named_day=True),  # adopted: the server's request
+        Variant("server", named_day=True, week=True),
+        Variant("server+week", named_day=True, week=True),  # adopted: the server's request
+        Variant("server+lean", named_day=True, week=True),  # adopted: the server's request
         Variant(
             "server+short-task",
             named_day=True,
+            week=True,
             system=VOICE_SYSTEM.replace(TASK_RULE, SHORT_TASK),
         ),
         Variant("today", schema=_Flat, system=_OLD_SYSTEM),
@@ -304,9 +298,10 @@ async def run_case(
     variant: Variant = VARIANTS[DEFAULT_VARIANT],
     reversed_repos: bool = False,
 ) -> VoiceRequest:
-    today = named_today(date.fromisoformat(TODAY)) if variant.named_day else TODAY
     if variant.week:
-        today += f"\nNext seven days: {named_week(_NOW, 'UTC')}"
+        today = voice_today(_NOW, "UTC")
+    else:
+        today = named_today(date.fromisoformat(TODAY)) if variant.named_day else TODAY
     user = voice_user(
         today=today,
         repos=dict(reversed(REPOS.items())) if reversed_repos else REPOS,

@@ -74,9 +74,11 @@
 #     Done: fix/voice-request (#311), lab voice on interactive (#313), the warm-up (homelab #859).
 #     1-3. DONE by feat/voice-lab-run: chore/lab-voice-check, fix/voice-today-tz,
 #        chore/gemma-ask-evals and feat/voice-day-table, as one plan. See "Verdict for R7".
+#        The last card run is DONE by feat/voice-week-run: server against server+week, both 75 of 75,
+#        p95 2.39 s; server+week adopted as the server's request. Nothing else is left on the card for R7.
 #     4. My hardware test (above), on interactive, after step 1, and ask-report.
-#     5. My decisions: voice-commands.md section 5, and whether #311's miss is good enough for live
-#        or step 3 must pass first. Then uncomment R7.
+#     5. My decisions: voice-commands.md section 5, and whether to ship on the request that now
+#        passes the bar (feat/voice-week-run). Then uncomment R7. R7 waits only on 4 and 5.
 #     6. R7, feat/voice-on-live. Then the release PR, then a real session on live.
 #   Copilot on Gemma: feat/copilot-fallback-interactive (homelab, plan only), only if R1b fails on Flash
 #     and chore/gemma-ask-evals ran the copilot cases and they passed the 11 bar cases.
