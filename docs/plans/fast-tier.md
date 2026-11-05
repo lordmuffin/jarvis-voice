@@ -1480,6 +1480,49 @@ request served by `interactive` with no fallback.
 other. The `server` rows here are the request before this change. Rows and replies are kept outside
 the repo.
 
+### Verdict for R7
+
+**`gemma4-e4b` fails the af416ec bar on the server's request as it now stands, by one case, and
+meets 2.5 s.** It passed 73 of 75, 24 of 25 cases and every critical case 3 of 3, with nothing cut
+off. Rule 1 fails: "two steps" passed 1 of 3, "Friday at ten" on the 7th again. Reply p95 was 2.30 s
+measured, 73 of 75 within 2.5 s, with 0 fallbacks in 75 attempts.
+
+Run 2026-11-05 01:56 to 01:58 UTC, on the card through lab's proxy key and alias `interactive`,
+timeout 30 s, three runs of all 25, `--expect-group interactive`. The request is `server`, which now
+holds the lean rule from "Shorter replies" and the owner's date from the configured zone. Pre-flight
+as in the ask eval above: the pod Ready with 0 restarts before and after, model `676c3507…baee`, image
+`fff6185e…`, no requests on the card in the 10 minutes before, and a check request served by
+`interactive` with no fallback.
+
+| Model | Where | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Tokens p95 | Fallbacks |
+|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| `gemma4-e4b` | card, `interactive` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.54 s | **2.30 s** measured | 2.57 s | 176 | 0 of 75 |
+| `q25-3b`, control | local CPU | 50 of 75 | 17 of 25 | no | 1 | - | 1.71 s projected | - | 199 | n/a |
+
+| Bar rule | `gemma4-e4b` |
+|---|---|
+| 1. Every case at least 2 of 3 | **Fails**: "two steps" 1 of 3 |
+| 2. Critical cases 3 of 3 | Met |
+| 3. At least 90% of runs | Met, 97% |
+| 4. No reply cut off | Met |
+| Time: reply p95 within 2.5 s | Met, 2.30 s measured |
+
+- **The time is solved.** By run, p95 was about 2.2 s each time. The two replies over 2.5 s were both
+  "two steps", at 198 tokens.
+- **The miss is the one R2, R5 and #311 saw.** `server+week` fixed it 3 of 3 in "Naming the next seven
+  days", but on the request before the lean rule. On today's request it has not run.
+- **The control** ran on the same request in the pinned llama.cpp build, one 4,096-token slot,
+  12 threads, beside Jev's idle replica. It fails as in "The voice request, fixed", 50 of 75 and 17
+  of 25, and still takes the first repo when none is named. One reply ran to 3,527 tokens and hit the
+  slot's limit. Its time is projected from its CPU rates to the 2070, and is unproven.
+
+**Recommendation for R7, Andrew decides:** run `server+week` on the lean request against `server`
+under the adopt rule first, since it fixed the only miss and p95 now has 0.2 s to spare; if that is
+not wanted, R7 can ship on this request with "two steps" as the one known miss, as lab does now.
+
+**Limits.** One run of three on the card. The client sends temperature 0.2. Rows and replies are
+kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
