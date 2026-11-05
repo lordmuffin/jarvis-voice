@@ -43,6 +43,15 @@ def test_today_names_its_weekday() -> None:
     assert named_today(date(2026, 11, 7)) == "Saturday 2026-11-07"
 
 
+def test_a_spoken_time_without_an_offset_is_read_in_the_owners_timezone() -> None:
+    """A bare ISO time such as "at ten" is ten on the owner's clock, not UTC's."""
+    ctx = Context(NOW, "America/Chicago", lambda _: False, frozenset())
+    p = ProposalIn(kind="reminder.schedule", title="Call the vendor", at="2026-11-06T10:00:00")
+    payload = build_payload(p, ctx)
+    assert payload is not None
+    assert payload["at"] == "2026-11-06T16:00:00+00:00"
+
+
 def test_the_grammar_offers_exactly_the_kinds_the_prompt_names() -> None:
     assert set(_kinds()) == set(SPOKEN_KINDS) == set(VALID)
     for kind in VALID:
