@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/lordmuffin/jarvis-voice/compare/linux-v0.2.0...linux-v0.3.0) (2026-11-05)
+
+
+### Features
+
+* **linux:** hold to ask ([5caebd3](https://github.com/lordmuffin/jarvis-voice/commit/5caebd30831913154b66a36163eb0e73434a0820))
+* **linux:** hold to ask, spoken through headphones ([2aca2cf](https://github.com/lordmuffin/jarvis-voice/commit/2aca2cf35f4eef6d616fa99f2bf440bc1c1e3782))
+* **linux:** speak ask replies through headphones only ([9920ca2](https://github.com/lordmuffin/jarvis-voice/commit/9920ca2e93f6cc194ab024c86c11a0085daf62ec))
+
+
+### Documentation
+
+* **linux:** hold to ask, the headphones rule and a manual checklist ([b9f532d](https://github.com/lordmuffin/jarvis-voice/commit/b9f532dfc69cd411a08394a1b29252227c8d358b))
+
 ## [0.2.0](https://github.com/lordmuffin/jarvis-voice/compare/linux-v0.1.0...linux-v0.2.0) (2026-11-03)
 
 
