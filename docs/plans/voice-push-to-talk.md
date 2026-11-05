@@ -95,7 +95,8 @@ The normal pipeline carries on untouched. The audio is still stored and transcri
 **Recommended, decision 1:**
 
 - **Words that do not open with the wake phrase are a question.** A new `AskPass` sends them with the
-  last 180 s of transcript. It gets `{reply}` back and nothing else: **it has no way to file
+  last 180 s of transcript. For the owner it also sends a few passages of their Notes vault: see
+  [`voice-ask-vault.md`](voice-ask-vault.md). It gets `{reply}` back and nothing else: **it has no way to file
   anything.** The transcript holds other people's words, so joining it to filing in one call would
   let a caller talk Jarvis into proposing work, and `voice-commands.md` rules 2 and 3 forbid that.
 - **Words opening with "Jarvis" go to `VoicePass.run` unchanged:** same prompt, same gates, no
