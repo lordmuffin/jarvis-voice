@@ -453,7 +453,12 @@ private fun RecordControls(ui: RecordUi, actions: RecordActions, modifier: Modif
     }
 }
 
-/** Hold to ask: only once the server has offered it, so never in a local-only session. */
+/**
+ * Hold to ask: only once the server has offered it, so never in a local-only session. The reply and
+ * any note sit above the button: the controls are pinned to the bottom, so a caption that comes and
+ * goes (a press clears it, an answer brings it back) grows upward and never moves the button under
+ * the finger.
+ */
 @Composable
 private fun AskControl(ui: RecordUi, actions: RecordActions) {
     if (ui.askLocalOnly) {
@@ -467,15 +472,6 @@ private fun AskControl(ui: RecordUi, actions: RecordActions) {
         AskUi.Waiting -> R.string.live_ask_waiting
         else -> R.string.live_ask_hold
     }
-    InstButton(
-        stringResource(label),
-        onClick = { actions.onAsk(null) },
-        modifier = Modifier.fillMaxWidth(),
-        kind = if (ask == AskUi.Listening) ButtonKind.Primary else ButtonKind.Secondary,
-        size = ButtonSize.Lg,
-        enabled = !ui.askMuted,
-        onHold = actions.onAsk,
-    )
     val line = when {
         ui.askMuted -> stringResource(R.string.live_ask_muted)
         ask is AskUi.Speaking -> ask.text
@@ -494,6 +490,15 @@ private fun AskControl(ui: RecordUi, actions: RecordActions) {
         else -> null
     }
     if (!line.isNullOrBlank()) InstText(line, InstUi.type.caption)
+    InstButton(
+        stringResource(label),
+        onClick = { actions.onAsk(null) },
+        modifier = Modifier.fillMaxWidth(),
+        kind = if (ask == AskUi.Listening) ButtonKind.Primary else ButtonKind.Secondary,
+        size = ButtonSize.Lg,
+        enabled = !ui.askMuted,
+        onHold = actions.onAsk,
+    )
 }
 
 @Composable
