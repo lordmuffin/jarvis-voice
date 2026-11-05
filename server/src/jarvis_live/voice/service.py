@@ -23,7 +23,7 @@ from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
-from jarvis_live.today import owners_today
+from jarvis_live.today import named_week, owners_today
 from jarvis_live.voice.schema import VoiceRequest
 from jarvis_live.voice.wake import Heard
 from jarvis_live.workitems.rows import store_changes, to_item
@@ -89,6 +89,13 @@ class Queue(Protocol):
 class Outcome:
     reply: str | None
     filed: bool = False  # something now waits for the owner's approval
+
+
+def voice_today(now: datetime, timezone: str) -> str:
+    """Today and the seven days after it, as the voice request names them: with the days named,
+    "two steps" put Friday's reminder on the 6th 3 of 3 on the card (docs/plans/fast-tier.md).
+    Only voice carries the week; the ask and the copilot name today alone."""
+    return f"{owners_today(now, timezone)}\nNext seven days: {named_week(now, timezone)}"
 
 
 def voice_user(
@@ -162,7 +169,7 @@ class VoicePass:
         self, session_id: uuid.UUID, heard: Heard, queue: Queue | None
     ) -> VoiceRequest | None:
         user = voice_user(
-            today=owners_today(self._now(), self._cfg.timezone),
+            today=voice_today(self._now(), self._cfg.timezone),
             repos=self._cfg.work_repo_allowlist,
             commentable=queue.repos() if queue else (),
             known=await queue.known() if queue else [],

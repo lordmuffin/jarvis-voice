@@ -10,10 +10,11 @@ import pytest
 
 from jarvis_live.actions.schema import ProposalIn
 from jarvis_live.llm.client import LiteLLMClient
-from jarvis_live.today import named_today
+from jarvis_live.today import named_today, named_week
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM
+from jarvis_live.voice.service import VOICE_SYSTEM, voice_today
 from tests.evals.voice import (
+    _NOW,
     DECODE_3B_2070,
     DEFAULT_VARIANT,
     LEAN_RULE,
@@ -29,7 +30,6 @@ from tests.evals.voice import (
     card_rates,
     check,
     fell_back,
-    named_week,
     p95,
     pick,
     project,
@@ -272,14 +272,16 @@ async def test_the_default_is_the_request_the_server_sends_now() -> None:
 
 
 async def test_the_server_now_sends_what_r2_measured_as_named_day_kinds_repo() -> None:
-    """Stage 5's lean rule and the local-time wording: all the server's request adds to R2's."""
+    """Stage 5's lean rule, the local-time wording and the week line: all the server's request
+    adds to R2's."""
     sent = []
     for name in ("server", "named-day+kinds+repo"):
         llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
         await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=VARIANTS[name])
         sent.append((llm.calls[0], VARIANTS[name].schema.model_json_schema()))
     system = sent[0][0].system.replace(f"{LEAN_RULE}\n", "").replace(LOCAL_AT, "")
-    server = replace(sent[0][0], system=system)
+    user = sent[0][0].user.replace(f"Next seven days: {WEEK}\n", "")
+    server = replace(sent[0][0], system=system, user=user)
     assert (server, sent[0][1]) == sent[1]
     old = json.loads((FIXTURES / "voice_request_2026-11-03.json").read_text())["schema"]
     old.pop("$defs")
@@ -496,16 +498,17 @@ def test_the_next_seven_days_count_dates_across_a_clock_change() -> None:
     assert days[:2] == ["Sunday 2027-03-14", "Monday 2027-03-15"]
 
 
-async def test_the_week_variant_names_the_next_seven_days_and_changes_nothing_else() -> None:
+async def test_the_server_names_the_next_seven_days_and_the_week_variant_is_its_request() -> None:
+    # Adopted on the card, 2026-11-05: the server's request now carries the week line.
     sent = []
     for name in ("server", "server+week"):
         llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
         await run_case(llm, TWO, "m", timeout_s=9.0, variant=VARIANTS[name])
         sent.append(llm.calls[0])
     server, week = sent
-    assert f"Today: Wednesday {TODAY}\nNext seven days: {WEEK}\n\n" in week.user
-    assert week.user.replace(f"Next seven days: {WEEK}\n", "") == server.user
-    assert (week.system, week.schema, week.think) == (server.system, server.schema, server.think)
+    assert f"Today: Wednesday {TODAY}\nNext seven days: {WEEK}\n\n" in server.user
+    assert server.user.startswith(f"Today: {voice_today(_NOW, 'UTC')}\n\n")
+    assert week == server
     assert VARIANTS["server+week"].schema is VARIANTS["server"].schema
 
 

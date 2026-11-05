@@ -679,6 +679,27 @@ async def test_today_is_the_owners_date_in_their_timezone(
     assert f"Today: {today}\n" in call.user
 
 
+async def test_the_request_names_the_next_seven_days_on_the_owners_calendar(
+    sm: SM, tmp_path: Path
+) -> None:
+    """Adopted from the card run of 2026-11-05 (docs/plans/fast-tier.md): Wednesday evening in
+    Chicago, so the week starts on Thursday the 5th, not on the UTC date's Friday."""
+    from datetime import UTC, datetime
+
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    rig = Rig(sm, sid, tmp_path, timezone="America/Chicago")
+    rig.wall = lambda: datetime(2026, 11, 5, 5, 59, tzinfo=UTC)
+    rig.llm.queue("VoiceRequest", VoiceRequest(target="none"))
+    await rig.hear("Jarvis, remind me on Friday to call the vendor.")
+    await rig.loop().tick()
+    (call,) = rig.llm.calls
+    week = (
+        "Thursday 2026-11-05, Friday 2026-11-06, Saturday 2026-11-07, Sunday 2026-11-08, "
+        "Monday 2026-11-09, Tuesday 2026-11-10, Wednesday 2026-11-11"
+    )
+    assert call.user.startswith(f"Today: Wednesday 2026-11-04\nNext seven days: {week}\n\n")
+
+
 def _task(due: str | None = None) -> VoiceRequest:
     step: dict[str, Any] = {"kind": "task.create", "text": "Review the pricing proposal"}
     if due:
