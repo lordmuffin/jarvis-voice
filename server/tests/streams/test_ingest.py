@@ -67,8 +67,10 @@ class FakePaths:
     def __init__(self) -> None:
         self.online: dict[str, int] = {}
         self.fail = False
+        self.calls = 0
 
     async def online_paths(self) -> dict[str, int]:
+        self.calls += 1
         if self.fail:
             raise httpx.ConnectError("mediamtx is down")
         return dict(self.online)
@@ -349,6 +351,29 @@ async def test_mediamtx_being_unreachable_ends_nothing(
     paths.fail = True
     await asyncio.sleep(4.0)  # longer than the grace period
     assert N["steady"] in running.active and await _status(sm, row.id) == "live"
+
+
+async def test_no_poll_before_the_auth_hook_listens(
+    paths: FakePaths, make_ingest: Callable[..., StreamIngest]
+) -> None:
+    # MediaMTX asks the app's hook about every API call: a poll before the hook listens is
+    # refused, and MediaMTX answers it 401 (the startup 401s of 2026-11-05).
+    hook_listening = asyncio.Event()
+    ingest = make_ingest()
+    task = asyncio.create_task(ingest.run(hook_listening))
+    try:
+        await asyncio.sleep(0.5)  # five poll periods
+        assert paths.calls == 0
+        hook_listening.set()
+        await _eventually_async(lambda: _true(paths.calls > 0))
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        await ingest.shutdown()
+
+
+async def _true(value: bool) -> bool:
+    return value
 
 
 async def test_has_room_up_to_max_streams(

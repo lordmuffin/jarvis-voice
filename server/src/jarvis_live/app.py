@@ -371,7 +371,7 @@ def create_app(
                 client = httpx.AsyncClient()
             ingest, hook = wiring.build(cfg, sm, app.state.tickets, client)
             tasks.append(asyncio.create_task(hook.serve()))
-            tasks.append(asyncio.create_task(ingest.run()))
+            tasks.append(asyncio.create_task(ingest.run(hook.listening)))
         try:
             yield
         finally:
