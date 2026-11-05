@@ -1510,23 +1510,22 @@ as in the ask eval above: the pod Ready with 0 restarts before and after, model 
 - **The time is solved.** By run, p95 was about 2.2 s each time. The two replies over 2.5 s were both
   "two steps", at 198 tokens.
 - **The miss is the one R2, R5 and #311 saw.** `server+week` fixed it 3 of 3 in "Naming the next seven
-  days", but on the request before the lean rule. On today's request it has not run.
+  days", but on the request before the lean rule. It ran on this request in "server against
+  server+week, 2026-11-05", below, and was adopted.
 - **The control** ran on the same request in the pinned llama.cpp build, one 4,096-token slot,
   12 threads, beside Jev's idle replica. It fails as in "The voice request, fixed", 50 of 75 and 17
   of 25, and still takes the first repo when none is named. One reply ran to 3,527 tokens and hit the
   slot's limit. Its time is projected from its CPU rates to the 2070, and is unproven.
 
-**Recommendation for R7, Andrew decides:** run `server+week` on the lean request against `server`
-under the adopt rule first, since it fixed the only miss and p95 now has 0.2 s to spare; if that is
-not wanted, R7 can ship on this request with "two steps" as the one known miss, as lab does now.
+**Recommendation for R7, Andrew decides:** ship R7 on the server's request as it now stands, with the next seven days named, which passed the af416ec bar 75 of 75 on the card with reply p95 2.39 s and 0 fallbacks ("server against server+week, 2026-11-05"), once the hardware test is reported.
 
-**Changed after this run, by review, unmeasured on the card.** Two wording changes in `VOICE_SYSTEM`:
+**Changed after this run, by review, measured on the card on 2026-11-05.** Two wording changes in `VOICE_SYSTEM`:
 the lean rule now nulls only the top-level `repo` ("A git.pr_comment step keeps its own repo"), and
 `at` is asked for "as local time with no offset". The server now reads any offset on `at` as the
 owner's wall time, whatever the model sends. Base sets `JARVIS_LIVE_TIMEZONE` to `America/Chicago`,
-checked at startup. The copilot and the ideas pass name the owner's date too. Before R7, a `server`
-run of three on the card should confirm the two wording changes cost nothing. It can be the same run
-as the `server+week` comparison.
+checked at startup. The copilot and the ideas pass name the owner's date too. A `server` run of
+three on the card, the same run as the `server+week` comparison below, showed the two wording changes
+cost nothing.
 
 **Limits.** One run of three on the card. The client sends temperature 0.2. Rows and replies are
 kept outside the repo.
@@ -1576,7 +1575,8 @@ changes. `server+week` is that request with the seven named days after Today.
   6th twice and the 7th once. The checker does not read the task's due date, so this passes on both:
   it is R5's known "due date nobody said" fault.
 - **The adopt rule.** Critical 3 of 3 on both, 75 passes against 75, nothing cut off, and reply p95
-  2.39 s against 2.39 s: **met, so `server+week` is adopted.** To the millisecond the two p95s are
+  2.39 s against 2.39 s: **met, so `server+week` is adopted.** It is now the server's request
+  (`voice_today` in `voice/service.py`), so the eval's `server+week` is `server`. To the millisecond the two p95s are
   2.3918 s and 2.3919 s. That 0.1 ms is far below what a timing through a port-forward can resolve,
   and the rule has always been applied at the report's two decimals, as in "Naming the next seven
   days". This is flagged for review: read at full precision, the rule misses by 0.1 ms. By run, p95

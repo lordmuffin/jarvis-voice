@@ -63,6 +63,15 @@ Andrew's decision 4. Results, all in `fast-tier.md`:
 | 4b, shorter replies | The lean rule adopted: p95 2.28 s against 2.48 s, quality unchanged | "Shorter replies" |
 | Final run | Fails the bar by "two steps" 1 of 3; p95 2.30 s, 0 fallbacks; control as before | "Verdict for R7" |
 
+**The last card run, done 2026-11-05.** One more herd plan, `feat/voice-week-run`, ran `server`
+against `server+week` on the card, interleaved, three runs each, on the request lab now runs. Both
+passed the af416ec bar 75 of 75, 25 of 25 cases, critical 3 of 3, nothing cut off, reply p95 2.39 s
+each, 0 fallbacks. `server+week` met the adopt rule (p95 equal at two decimals, 0.1 ms apart at full
+precision) and is now the server's request, in the PR `feat(server): name the next seven days in the
+voice request`. The two wording changes made after "Verdict for R7" cost nothing. See "server against
+server+week, 2026-11-05" in `fast-tier.md`. R7 now waits only on stage 5, Andrew's hardware test, and
+his decisions 2 and 3.
+
 **Why stage 4 waits for stage 2:** both change `voice/service.py`, and PRs are never stacked.
 
 **Why stage 3 waits for stage 1:** the card takes one eval at a time, and lab's live path shares
