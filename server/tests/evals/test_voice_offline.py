@@ -1,7 +1,7 @@
 """The voice eval itself, against canned LLM output (no model needed)."""
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
@@ -23,6 +23,7 @@ from tests.evals.voice import (
     card_rates,
     check,
     fell_back,
+    named_week,
     p95,
     pick,
     project,
@@ -455,3 +456,45 @@ def test_a_run_can_be_limited_to_named_cases() -> None:
     assert pick([]) == VOICE_CASES
     with pytest.raises(SystemExit):
         pick(["no such case"])
+
+
+WEEK = (
+    "Thursday 2026-11-05, Friday 2026-11-06, Saturday 2026-11-07, Sunday 2026-11-08, "
+    "Monday 2026-11-09, Tuesday 2026-11-10, Wednesday 2026-11-11"
+)
+
+
+@pytest.mark.parametrize(
+    ("now", "zone", "first"),
+    [
+        (datetime(2026, 11, 5, 2, tzinfo=UTC), "America/Chicago", "Thursday 2026-11-05"),
+        (datetime(2026, 11, 5, 5, 59, tzinfo=UTC), "America/Chicago", "Thursday 2026-11-05"),
+        (datetime(2026, 11, 5, 6, tzinfo=UTC), "America/Chicago", "Friday 2026-11-06"),
+        (datetime(2026, 11, 5, 2, tzinfo=UTC), "UTC", "Friday 2026-11-06"),
+    ],
+)
+def test_the_next_seven_days_start_tomorrow_on_the_owners_calendar(
+    now: datetime, zone: str, first: str
+) -> None:
+    days = named_week(now, zone).split(", ")
+    assert len(days) == 7
+    assert days[0] == first
+
+
+def test_the_next_seven_days_count_dates_across_a_clock_change() -> None:
+    # 2027-03-14 has 23 hours in Chicago: adding 24 h to late on the 13th would skip it.
+    days = named_week(datetime(2027, 3, 14, 5, 30, tzinfo=UTC), "America/Chicago").split(", ")
+    assert days[:2] == ["Sunday 2027-03-14", "Monday 2027-03-15"]
+
+
+async def test_the_week_variant_names_the_next_seven_days_and_changes_nothing_else() -> None:
+    sent = []
+    for name in ("server", "server+week"):
+        llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+        await run_case(llm, TWO, "m", timeout_s=9.0, variant=VARIANTS[name])
+        sent.append(llm.calls[0])
+    server, week = sent
+    assert f"Today: Wednesday {TODAY}\nNext seven days: {WEEK}\n\n" in week.user
+    assert week.user.replace(f"Next seven days: {WEEK}\n", "") == server.user
+    assert (week.system, week.schema, week.think) == (server.system, server.schema, server.think)
+    assert VARIANTS["server+week"].schema is VARIANTS["server"].schema

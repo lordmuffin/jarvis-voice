@@ -35,7 +35,7 @@ import sys
 import time
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +52,7 @@ from jarvis_live.actions.state import (
 )
 from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, named_today, voice_user
+from jarvis_live.voice.service import VOICE_SYSTEM, named_today, owners_day, voice_user
 from tests.evals.harness import due_matches
 from tests.evals.voice_cases import REPOS, TODAY, VOICE_CASES, Step, VoiceCase
 
@@ -94,12 +94,21 @@ _OLD_SYSTEM: str = _OLD["system"]
 assert _REPO_RULE in _OLD_SYSTEM and _REPO_NULL in VOICE_SYSTEM
 
 
+def named_week(now: datetime, timezone: str) -> str:
+    """The seven days after today on the owner's calendar, each by name: given Wednesday, Gemma
+    still counted "Friday" as the 7th (docs/plans/fast-tier.md). Counted in dates, not hours, so
+    a 23-hour day is not skipped."""
+    today = owners_day(now, timezone)
+    return ", ".join(named_today(today + timedelta(days=n)) for n in range(1, 8))
+
+
 @dataclass(frozen=True)
 class Variant:
     name: str
     schema: type[VoiceRequest] = VoiceRequest
     named_day: bool = False
     system: str = VOICE_SYSTEM
+    week: bool = False  # a line after Today naming the next seven days
 
 
 DEFAULT_VARIANT = "server"
@@ -107,6 +116,7 @@ VARIANTS = {
     v.name: v
     for v in (
         Variant("server", named_day=True),
+        Variant("server+week", named_day=True, week=True),
         Variant("today", schema=_Flat, system=_OLD_SYSTEM),
         Variant("named-day", schema=_Flat, named_day=True, system=_OLD_SYSTEM),
         Variant("kinds", system=_OLD_SYSTEM),
@@ -273,6 +283,8 @@ async def run_case(
     reversed_repos: bool = False,
 ) -> VoiceRequest:
     today = named_today(date.fromisoformat(TODAY)) if variant.named_day else TODAY
+    if variant.week:
+        today += f"\nNext seven days: {named_week(_NOW, 'UTC')}"
     user = voice_user(
         today=today,
         repos=dict(reversed(REPOS.items())) if reversed_repos else REPOS,

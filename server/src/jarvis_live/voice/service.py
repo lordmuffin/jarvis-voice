@@ -95,9 +95,13 @@ def named_today(day: date) -> str:
     return f"{day:%A} {day.isoformat()}"
 
 
+def owners_day(now: datetime, timezone: str) -> date:
+    """Today's date on the owner's calendar: an evening request in US time is not tomorrow."""
+    return now.astimezone(ZoneInfo(timezone)).date()
+
+
 def owners_today(now: datetime, timezone: str) -> str:
-    """``named_today`` on the owner's calendar: an evening request in US time is not tomorrow."""
-    return named_today(now.astimezone(ZoneInfo(timezone)).date())
+    return named_today(owners_day(now, timezone))
 
 
 def voice_user(

@@ -1384,6 +1384,43 @@ There is no 180 s of filler: this is R5's "as written" ask.
 Times are measured around each HTTP attempt on the client, through a port-forward. The rows and
 replies are kept outside the repo.
 
+### Naming the next seven days
+
+**Naming the next seven days fixes Gemma's last miss, and it passes the af416ec bar on quality, 75
+of 75. It is not adopted: its reply p95 is 2.51 s against the server request's 2.48 s in the same
+stage, and the adopt rule needs equal or lower.** It stays an eval variant, `server+week`.
+
+The variant is the server's request with one line after Today: "Next seven days: Thursday
+2026-11-05, Friday 2026-11-06, ... Wednesday 2026-11-11". The days are counted on the owner's
+calendar from the same helper that names today, `owners_day`, so a 23-hour day is not skipped. The
+system prompt and the grammar are unchanged, and offline tests pin that. It adds about 95 prompt
+tokens.
+
+Run 2026-11-05 01:05 to 01:09 UTC, on the card through lab's proxy key and alias `interactive`, timeout
+30 s, three runs of all 25 each, `server` first. Pre-flight was as in the ask eval above: the pod was
+Ready with 0 restarts before and after, model `676c3507…baee`, image `fff6185e…`, the card quiet
+since 01:00 apart from a probe, and a check request served by `interactive` with no fallback.
+
+| Request | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Within 2.5 s | Tokens p95 | Fallbacks |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| `server` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.61 s | **2.48 s** | 2.50 s | 75 of 75 | 189 | 0 of 75 |
+| `server+week` | **75 of 75** | **25 of 25** | 3 of 3 each | 0 | 1.59 s | **2.51 s** | 2.60 s | 70 of 75 | 189 | 0 of 75 |
+
+- **The weekday miss is gone with the days named.** On `server`, "two steps" put "Friday at ten" on
+  2026-11-07 in 2 of 3 runs, as before. On `server+week` it was 2026-11-06 in 3 of 3.
+- **The adopt rule.** Critical 3 of 3 on both, passes 75 against 73, nothing cut off: met. Reply p95
+  2.51 s against 2.48 s: not met, by 0.03 s. By run, `server` had p95 2.44, 2.48 and 2.48 s, and
+  `server+week` 2.36, 2.51 and 2.50 s. The difference is within run-to-run noise, but the rule is
+  the rule.
+- **Time is decode.** Reply tokens are the same at p50 and p95 on both, at about 79 tok/s. The extra
+  prompt line costs about 0.04 s of prefill. Shorter replies are what would bring either request
+  under 2.5 s.
+- All 150 attempts carried `x-litellm-model-group: interactive`, 0 attempted fallbacks and 0
+  retries. No reply held reasoning.
+
+**Limits.** Three runs of each, one after the other, not interleaved. The client sends temperature
+0.2. Rows and replies are kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
