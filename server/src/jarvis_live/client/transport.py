@@ -22,6 +22,9 @@ import websockets
 from jarvis_live.client.outbox import CHANNELS, Outbox
 from jarvis_live.protocol import (
     Ack,
+    AskBegin,
+    AskEnd,
+    AskPlayed,
     ClientMessage,
     Cursor,
     DraftSegment,
@@ -39,6 +42,7 @@ CHANNEL_INDEX = {"mic": 0, "system": 1}
 FATAL_HTTP = (401, 403, 404)
 FATAL_WS_CLOSE = (4401, 4404)  # api/stream.py WS_UNAUTHORIZED, WS_NOT_FOUND
 SEND_BATCH = 16
+FEATURES = "voice_ask"  # opt in to voice_state and ask_reply, as the Mac and Android do
 
 
 @dataclass(frozen=True)
@@ -121,6 +125,10 @@ class ProducerConnection:
         self._control.append(draft)
         self.kick()
 
+    def send_ask(self, msg: AskBegin | AskEnd | AskPlayed) -> None:
+        self._control.append(msg)
+        self.kick()
+
     async def end(self, timeout: float = 30.0) -> bool:
         """Flush, send ``end``, wait for every ack (and briefly for ``final_note``/close).
 
@@ -194,7 +202,7 @@ class ProducerConnection:
 
     def _ws_url(self, ticket: str) -> str:
         base = self.server.replace("http://", "ws://", 1).replace("https://", "wss://", 1)
-        return f"{base}/v1/sessions/{self.session_id}/stream?ticket={ticket}"
+        return f"{base}/v1/sessions/{self.session_id}/stream?ticket={ticket}&features={FEATURES}"
 
     async def _run_once(self) -> None:
         ticket = await self._ticket()

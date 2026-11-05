@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.client.fake_stream import fake_stream as fake_stream
+
 
 def script(path: Path, body: str) -> Path:
     path.write_text("#!/bin/sh\n" + body)

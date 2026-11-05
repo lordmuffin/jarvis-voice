@@ -16,12 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from jarvis_live.client import capture, control
 from jarvis_live.client.config import ClientConfig, runtime_dir, state_dir
 from jarvis_live.client.local import NullTransport
 from jarvis_live.client.outbox import CHANNELS, Outbox, StoredFrame
 from jarvis_live.client.transport import ProducerConnection, create_session, session_create_body
-from jarvis_live.protocol import ServerMessage
+from jarvis_live.protocol import AskBegin, AskEnd, AskPlayed, AskReply, ServerMessage, VoiceState
 
 log = logging.getLogger("jarvis_live.client")
 Recorder = Callable[[str], Awaitable[list[str]]]
@@ -87,6 +89,13 @@ class _Run:
         self.capturers: list[capture.Capturer] = []
         self.history: collections.deque[dict[str, Any]] = collections.deque(maxlen=HISTORY)
         self.subscribers: set[asyncio.Queue[dict[str, Any] | None]] = set()
+        self.voice = False  # the server's latest voice_state: does this session take asks?
+        self.ask: str | None = None  # the id of the ask being held, between ask_begin and ask_end
+
+    def now_ms(self) -> int:
+        """Now on the mic frames' clock, the one the server lines asks up with."""
+        mic = next((c for c in self.capturers if c.channel == "mic"), None)
+        return mic.now_ms() if mic is not None else 0
 
 
 class Daemon:
@@ -307,7 +316,12 @@ class Daemon:
         while True:
             msg: ServerMessage = await run.sink.events.get()
             event = json.loads(msg.model_dump_json())
-            run.history.append(event)
+            if isinstance(msg, VoiceState):
+                run.voice = msg.available
+            # A reply belongs to the moment it answers, and the voice state is sent fresh to each
+            # subscriber: neither goes in the backlog, so a late subscriber never replays them.
+            if not isinstance(msg, VoiceState | AskReply):
+                run.history.append(event)
             for q in run.subscribers:
                 q.put_nowait(event)
 
@@ -341,6 +355,8 @@ class Daemon:
             "acked": run.outbox.acked_seqs(),
             "dashboard_url": None if local else f"{self.cfg.server}/sessions/{sid}",
             "restarts": run.restarts,
+            "voice": run.voice,
+            "ask": run.ask,
         }
 
     def _audio_state(self, run: _Run) -> tuple[str, str | None]:
@@ -367,6 +383,8 @@ class Daemon:
             await send(self._stop_result)
         elif cmd == "subscribe":
             await self._subscribe(send)
+        elif cmd in ("ask_begin", "ask_end", "ask_played"):
+            await send(self._ask(cmd, msg))
         else:
             await send({"error": f"unknown command {cmd!r}"})
 
@@ -378,8 +396,37 @@ class Daemon:
         for past in list(run.history):  # backlog first, then live
             await send(past)
         run.subscribers.add(q)
+        await send({"type": "voice_state", "available": run.voice})
         try:
             while (event := await q.get()) is not None:
                 await send(event)
         finally:
             run.subscribers.discard(q)
+
+    def _ask(self, cmd: str, msg: dict[str, Any]) -> dict[str, Any]:
+        """Hold to ask: mark the held key on the audio, or report what was done with a reply."""
+        run = self._run
+        if run is None or self.cfg.mode != "stream":
+            return {"error": "voice is not available: no streaming session"}
+        t_ms = run.now_ms()
+        if cmd == "ask_begin":
+            if not run.voice:
+                return {"error": "voice is not available in this session"}
+            if run.ask is not None:
+                return {"error": f"an ask is already open ({run.ask})"}
+            run.ask = uuid.uuid4().hex[:12]
+            run.sink.send_ask(AskBegin(id=run.ask, t_ms=t_ms))
+            return {"ok": True, "id": run.ask, "t_ms": t_ms}
+        if cmd == "ask_end":
+            if run.ask is None:
+                return {"error": "no ask is open"}
+            ask_id, run.ask = run.ask, None
+            run.sink.send_ask(AskEnd(id=ask_id, t_ms=t_ms))
+            return {"ok": True, "id": ask_id, "t_ms": t_ms}
+        fields = {k: msg[k] for k in ("id", "state", "latency_ms", "reason") if k in msg}
+        try:
+            played = AskPlayed(**fields, t_ms=t_ms)
+        except ValidationError as e:
+            return {"error": f"bad ask_played: {e.errors(include_url=False)}"}
+        run.sink.send_ask(played)
+        return {"ok": True}
