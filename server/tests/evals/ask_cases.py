@@ -161,7 +161,11 @@ class DateCase:
 
 
 _FRI = r"\b(?:november|nov\.?) 6(?:th)?\b|\b6th\b|\bsixth\b|\b2026-11-06\b|\b11/6\b|\bthe 6\b"
-_MON = r"\b(?:november|nov\.?) 9(?:th)?\b|\b9th\b|\bninth\b|\b2026-11-09\b|\b11/9\b|\bthe 9\b"
+# "Next Monday" asked on Thursday the 5th is ambiguous (Andrew, 2026-11-05): the 9th or the 16th.
+_MON = (
+    r"\b(?:november|nov\.?) (?:9|16)(?:th)?\b|\b(?:9|16)th\b|\b(?:ninth|sixteenth)\b"
+    r"|\b2026-11-(?:09|16)\b|\b11/(?:9|16)\b|\bthe (?:9|16)\b"
+)
 DEMO = (
     _l(10, "them", "So the demo for the client, we're doing it on Friday.", "Tomas"),
     _l(16, "me", "Friday works. I'll have the slides ready."),

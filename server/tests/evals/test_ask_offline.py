@@ -150,6 +150,25 @@ def test_a_date_answer_is_checked_against_the_right_date() -> None:
     assert grade_date(demo, "The demo is November 7.") != []
 
 
+def test_next_monday_from_a_thursday_accepts_the_ninth_or_the_sixteenth() -> None:
+    # Andrew, 2026-11-05: "next Monday" asked on Thursday the 5th can mean the 9th or the 16th.
+    monday = date_case("What is the date next Monday?")
+    for right in (
+        "Next Monday is November 9th.",
+        "It's the 9th.",
+        "2026-11-09.",
+        "Next Monday is November 16th.",
+        "November 16.",
+        "Monday the sixteenth.",
+        "It's 2026-11-16.",
+        "That's 11/16.",
+        "It's the 16.",
+    ):
+        assert grade_date(monday, right) == [], right
+    for wrong in ("November 10th.", "It's the 10th.", "November 19th.", "November 6th.", ""):
+        assert grade_date(monday, wrong) != [], wrong
+
+
 def test_the_date_set_is_reported_beside_the_bar_and_never_changes_it() -> None:
     report = AskReport()
     for c in ASK_CASES:
