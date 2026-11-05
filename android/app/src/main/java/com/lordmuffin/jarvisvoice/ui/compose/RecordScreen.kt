@@ -483,6 +483,7 @@ private fun AskControl(ui: RecordUi, actions: RecordActions) {
             ask.text.takeIf { it.isNotBlank() },
             when (ask.why) {
                 AskUi.Why.ROUTE -> stringResource(R.string.live_ask_why_route)
+                AskUi.Why.NO_OUTPUT -> stringResource(R.string.live_ask_why_no_output)
                 AskUi.Why.STALE -> stringResource(R.string.live_ask_why_stale)
                 AskUi.Why.NOTHING_HEARD -> stringResource(R.string.live_ask_why_nothing)
                 AskUi.Why.SPEECH_FAILED -> stringResource(R.string.live_ask_why_failed)

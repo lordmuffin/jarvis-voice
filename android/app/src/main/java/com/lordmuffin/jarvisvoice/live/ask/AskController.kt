@@ -19,7 +19,13 @@ sealed interface AskUi {
     data class Answered(val text: String, val spoken: Boolean, val why: Why? = null) : AskUi
 
     /** Why an answer was shown and not spoken. */
-    enum class Why { ROUTE, STALE, NOTHING_HEARD, SPEECH_FAILED, INTERRUPTED }
+    enum class Why {
+        /** Headphones only, and none are connected. */
+        ROUTE,
+        /** This device, but the phone reports no output for speech, or is older than Android 13. */
+        NO_OUTPUT,
+        STALE, NOTHING_HEARD, SPEECH_FAILED, INTERRUPTED,
+    }
 }
 
 /** Speech on this device. Callbacks may come on any thread. */
@@ -43,17 +49,31 @@ object OutputRoutes {
 
     /** Every output the speech would go to is closed, and there is at least one. */
     fun allClosed(types: List<Int>): Boolean = types.isNotEmpty() && types.all(::isClosed)
+
+    /**
+     * Why a reply may not be spoken on the outputs [types] (the route for the speech's attributes),
+     * or null when it may. Below Android 13 ([sdk] < 33) the route cannot be read, so text only.
+     */
+    fun blocked(through: SpeakThrough, types: List<Int>, sdk: Int): AskUi.Why? = when (through) {
+        SpeakThrough.HEADPHONES -> AskUi.Why.ROUTE.takeUnless { sdk >= READABLE_SDK && allClosed(types) }
+        SpeakThrough.DEVICE -> AskUi.Why.NO_OUTPUT.takeUnless { sdk >= READABLE_SDK && types.isNotEmpty() }
+    }
+
+    /** Android 13, the first with `getAudioDevicesForAttributes`. */
+    private const val READABLE_SDK = 33
 }
 
 /**
- * Hold to ask, on the phone: markers out on the audio frames' clock, the reply spoken only into
- * closed headphones, and what happened reported back. No Android here, so all of it is unit-tested;
- * the service supplies the speaker, the route check and the send.
+ * Hold to ask, on the phone: markers out on the audio frames' clock, the reply spoken where
+ * Settings → Speak answers through allows, and what happened reported back. The played reports are
+ * exact, because the server's echo guard trusts them: "started" at the first audio, then "done" when
+ * it ends, fails or is stopped; "skipped" only when nothing played. No Android here, so all of it is
+ * unit-tested; the service supplies the speaker, the route check and the send.
  */
 class AskController(
     private val send: (ClientMessage) -> Unit,
     private val speaker: AskSpeaker,
-    private val routeClosed: () -> Boolean,
+    private val routeBlocked: () -> AskUi.Why?,
     private val clock: () -> Long,
     /** Now, on the audio frames' clock. */
     private val streamMs: () -> Long,
@@ -67,7 +87,11 @@ class AskController(
     private var available = false
     private var current: String? = null
     private var releasedAt = 0L
-    private var playing: Pair<String, String>? = null  // id, text: handed to the speaker
+    private var playing: Playing? = null  // handed to the speaker
+
+    private class Playing(val id: String, val text: String) {
+        var heard = false
+    }
 
     fun onAvailable(value: Boolean) = synchronized(lock) {
         available = value
@@ -103,9 +127,8 @@ class AskController(
         when {
             text.isBlank() -> answered("", AskUi.Why.NOTHING_HEARD)
             clock() - releasedAt > staleMs -> skip(reply.id, text, "stale", AskUi.Why.STALE)
-            !routeClosed() -> skip(reply.id, text, "route", AskUi.Why.ROUTE)
-            else -> {
-                playing = reply.id to text
+            else -> routeBlocked()?.let { skip(reply.id, text, "route", it) } ?: run {
+                playing = Playing(reply.id, text)
                 speaker.speak(
                     text,
                     onFirstAudio = { firstAudio(reply.id, text) },
@@ -116,31 +139,41 @@ class AskController(
         }
     }
 
-    /** The output route changed. Leaving closed headphones stops speech at once. */
-    fun onRouteChanged(closed: Boolean) = synchronized(lock) {
-        if (closed) return
-        val (_, text) = playing ?: return
+    /**
+     * The output route changed; [blocked] is the check's answer for the new one. Under Headphones
+     * only, leaving closed headphones stops speech at once. Under This device, a move to another
+     * output keeps speaking; only a route with nothing to play on stops it.
+     */
+    fun onRouteChanged(blocked: AskUi.Why?) = synchronized(lock) {
+        if (blocked == null) return
+        val text = playing?.text ?: return
         stopPlaying(reason = "interrupted")
-        _ui.value = AskUi.Answered(text, spoken = false, why = AskUi.Why.INTERRUPTED)
+        val why = if (blocked == AskUi.Why.ROUTE) AskUi.Why.INTERRUPTED else blocked  // headphones out
+        _ui.value = AskUi.Answered(text, spoken = false, why = why)
     }
 
     private fun firstAudio(id: String, text: String) = synchronized(lock) {
-        if (playing?.first != id) return
+        val p = playing?.takeIf { it.id == id && !it.heard } ?: return
+        p.heard = true
         send(ClientMessage.AskPlayed(id, "started", streamMs(), latencyMs = clock() - releasedAt))
         _ui.value = AskUi.Speaking(text)
     }
 
     private fun finished(id: String, text: String) = synchronized(lock) {
-        if (playing?.first != id) return
+        val p = playing?.takeIf { it.id == id } ?: return
         playing = null
-        send(ClientMessage.AskPlayed(id, "done", streamMs()))
+        val now = streamMs()
+        // It played, so the server needs a window even if no audio callback came; no latency, unknown.
+        if (!p.heard) send(ClientMessage.AskPlayed(id, "started", now))
+        send(ClientMessage.AskPlayed(id, "done", now))
         _ui.value = AskUi.Answered(text, spoken = true)
     }
 
     private fun failed(id: String, text: String) = synchronized(lock) {
-        if (playing?.first != id) return
+        val p = playing?.takeIf { it.id == id } ?: return
         playing = null
-        send(ClientMessage.AskPlayed(id, "skipped", streamMs(), reason = "tts_failed"))
+        val state = if (p.heard) "done" else "skipped"  // part of it played: close that window
+        send(ClientMessage.AskPlayed(id, state, streamMs(), reason = "tts_failed"))
         answered(text, AskUi.Why.SPEECH_FAILED)
     }
 
@@ -153,12 +186,17 @@ class AskController(
         _ui.value = AskUi.Answered(text, spoken = false, why = why)
     }
 
-    /** Stops speech in progress. [reason] null: the connection is gone, so nothing is reported. */
+    /**
+     * Stops speech in progress. Audio had started: "done" now, with [reason], which closes the played
+     * window at the stop. None had: "skipped". [reason] null: the connection is gone, nothing is sent.
+     */
     private fun stopPlaying(reason: String?) {
-        val (id, _) = playing ?: return
+        val p = playing ?: return
         playing = null
         speaker.stop()
-        if (reason != null) send(ClientMessage.AskPlayed(id, "skipped", streamMs(), reason = reason))
+        if (reason == null) return
+        val state = if (p.heard) "done" else "skipped"
+        send(ClientMessage.AskPlayed(p.id, state, streamMs(), reason = reason))
     }
 
     companion object {

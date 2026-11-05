@@ -25,6 +25,7 @@
     <string name="live_ask_muted">Unmute to ask.</string>
     <string name="live_ask_local_only">Local only: Jarvis can\'t hear or speak.</string>
     <string name="live_ask_why_route">Shown, not spoken: no headphones.</string>
+    <string name="live_ask_why_no_output">Shown, not spoken: no audio output to speak on.</string>
     <string name="live_ask_why_stale">Shown, not spoken: it came too late.</string>
     <string name="live_ask_why_nothing">Nothing heard.</string>
     <string name="live_ask_why_failed">Shown, not spoken: speech is unavailable.</string>

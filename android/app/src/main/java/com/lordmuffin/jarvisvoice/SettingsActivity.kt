@@ -2,6 +2,7 @@ package com.lordmuffin.jarvisvoice
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
@@ -25,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import com.lordmuffin.jarvisvoice.live.LiveApiClient
 import com.lordmuffin.jarvisvoice.live.LiveHttpException
 import com.lordmuffin.jarvisvoice.live.LiveSettings
+import com.lordmuffin.jarvisvoice.live.ask.SpeakThrough
 import com.lordmuffin.jarvisvoice.ui.InstToast
 import com.lordmuffin.jarvisvoice.ui.ThemeMode
 import com.lordmuffin.jarvisvoice.ui.setTextWithChannel
@@ -130,6 +132,7 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btn_pick_input_device).setOnClickListener {
             showInputDevicePicker(deviceRouter)
         }
+        wireSpeakThrough(prefs)
 
         etHfToken.setText(prefs.getString("hf_token", ""))
         etHfToken.addTextChangedListener(object : TextWatcher {
@@ -341,6 +344,29 @@ class SettingsActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.settings_cancel, null)
             .show()
+    }
+
+    /** Settings → Speak answers through: where a held ask's reply plays. Read at each reply. */
+    private fun wireSpeakThrough(prefs: SharedPreferences) {
+        val choices = listOf(
+            SpeakThrough.DEVICE to getString(R.string.settings_speak_device),
+            SpeakThrough.HEADPHONES to getString(R.string.settings_speak_headphones),
+        )
+        val tv = findViewById<TextView>(R.id.tv_speak_through)
+        fun label(value: SpeakThrough) = choices.first { it.first == value }.second
+        tv.text = label(SpeakThrough.saved(prefs))
+        findViewById<Button>(R.id.btn_pick_speak_through).setOnClickListener {
+            val current = choices.indexOfFirst { it.first == SpeakThrough.saved(prefs) }
+            AlertDialog.Builder(this)
+                .setTitle(R.string.settings_speak_title)
+                .setSingleChoiceItems(choices.map { it.second }.toTypedArray(), current) { dialog, which ->
+                    SpeakThrough.save(prefs, choices[which].first)
+                    tv.text = choices[which].second
+                    dialog.dismiss()
+                }
+                .setNegativeButton(R.string.settings_cancel, null)
+                .show()
+        }
     }
 
     private fun refreshStats() {
