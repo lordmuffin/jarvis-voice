@@ -24,7 +24,7 @@ from jarvis_live.protocol import BYTES_PER_MS, AskOutcome
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
 from jarvis_live.stt.guards import is_hallucination, rms_level
 from jarvis_live.voice.ask import Clip, spoken
-from jarvis_live.voice.service import Queue, VoicePass, named_today
+from jarvis_live.voice.service import Queue, VoicePass, owners_today
 from jarvis_live.voice.wake import Heard, after_wake
 
 ASK_KIND = "voice_ask"  # copilot_items kind: one row per ask, never part of the transcript
@@ -180,7 +180,7 @@ class AskPass:
             from_ms = max(0, now_ms - int(self._cfg.voice_ask_window_s * 1000))
             lines = outside(await load_lines(db, session_id, from_ms), windows)
         user = ask_user(
-            today=named_today(self._now().date()),
+            today=owners_today(self._now(), self._cfg.timezone),
             transcript=render_lines(lines),
             question=question,
         )

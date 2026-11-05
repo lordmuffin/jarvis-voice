@@ -11,6 +11,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Protocol
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -94,6 +95,11 @@ def named_today(day: date) -> str:
     return f"{day:%A} {day.isoformat()}"
 
 
+def owners_today(now: datetime, timezone: str) -> str:
+    """``named_today`` on the owner's calendar: an evening request in US time is not tomorrow."""
+    return named_today(now.astimezone(ZoneInfo(timezone)).date())
+
+
 def voice_user(
     *, today: str, repos: dict[str, str], commentable: Sequence[str], known: list[str], said: str
 ) -> str:
@@ -165,7 +171,7 @@ class VoicePass:
         self, session_id: uuid.UUID, heard: Heard, queue: Queue | None
     ) -> VoiceRequest | None:
         user = voice_user(
-            today=named_today(self._now().date()),
+            today=owners_today(self._now(), self._cfg.timezone),
             repos=self._cfg.work_repo_allowlist,
             commentable=queue.repos() if queue else (),
             known=await queue.known() if queue else [],
@@ -258,4 +264,12 @@ def _evidence(heard: Heard) -> list[Evidence]:
     return [Evidence(start_ms=x.start_ms, text=x.text) for x in heard.lines]
 
 
-__all__ = ["Outcome", "Queue", "VoicePass", "from_words", "named_today", "voice_user"]
+__all__ = [
+    "Outcome",
+    "Queue",
+    "VoicePass",
+    "from_words",
+    "named_today",
+    "owners_today",
+    "voice_user",
+]
