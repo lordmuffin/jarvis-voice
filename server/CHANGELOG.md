@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.38.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.37.1...server-v0.38.0) (2026-11-05)
+
+
+### Features
+
+* **server:** name the next seven days in the voice request ([828c454](https://github.com/lordmuffin/jarvis-voice/commit/828c4542abf4a42ee7ed421842d11e5d7c416009))
+* **server:** name the next seven days in the voice request ([5763ed5](https://github.com/lordmuffin/jarvis-voice/commit/5763ed5e882a3c84aee3981f6160784c9d29cce1))
+* **server:** shorter voice replies ([50fdc80](https://github.com/lordmuffin/jarvis-voice/commit/50fdc80e8e69e0ee3ae8be4ac7942fe828c546cf))
+* **server:** voice on lab, timezone and day table ([428633e](https://github.com/lordmuffin/jarvis-voice/commit/428633e1810562c1a395974f5344719b4f99bfa2))
+
+
+### Bug Fixes
+
+* **server:** owner's timezone everywhere, and set it in base ([305a249](https://github.com/lordmuffin/jarvis-voice/commit/305a249421a64622a8c7c33cd3cabfa35cb62928))
+* **server:** poll MediaMTX only once the auth hook listens ([f93e80d](https://github.com/lordmuffin/jarvis-voice/commit/f93e80d5d64a2cf85fee8f0f5e49ee7f39090183))
+* **server:** reach the MediaMTX auth hook before the pod is Ready ([02b7bf8](https://github.com/lordmuffin/jarvis-voice/commit/02b7bf82c391202962dfd3d43190c34fd5f9c4a2))
+* **server:** stop the MediaMTX 401s at every startup ([73b80cf](https://github.com/lordmuffin/jarvis-voice/commit/73b80cffc08d27c5a101bf2ff28b71f4ef66e98c))
+
+
+### Documentation
+
+* **plans:** ask eval on gemma4-e4b ([381f137](https://github.com/lordmuffin/jarvis-voice/commit/381f137476a24335a5321643c82ae44110d7fe71))
+
 ## [0.37.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.37.0...server-v0.37.1) (2026-11-05)
 
 
