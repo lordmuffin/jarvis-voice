@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.39.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.38.0...server-v0.39.0) (2026-11-05)
+
+
+### Features
+
+* **server:** the ask names the next seven days ([9d3566b](https://github.com/lordmuffin/jarvis-voice/commit/9d3566b447f9023e4b167bc00d38550de1b645c2))
+* **server:** the ask names the next seven days ([f880562](https://github.com/lordmuffin/jarvis-voice/commit/f88056201dd14fa11cdbc1fc8290a615c47f6c20))
+* **server:** voice on in base, on interactive, for live and lab ([4c46165](https://github.com/lordmuffin/jarvis-voice/commit/4c46165b45daab0cd90c19ff2019c955f9d4c33d))
+* **server:** voice on live ([7b31e48](https://github.com/lordmuffin/jarvis-voice/commit/7b31e48ba676ac6ea99a32230f466597c83ef15c))
+
 ## [0.38.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.37.1...server-v0.38.0) (2026-11-05)
 
 
