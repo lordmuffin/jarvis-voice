@@ -145,6 +145,19 @@ On the Fold, Android 13 or later, with lab:
 | Connect earbuds, hold an ask, pull them out while it speaks | it carries on from the speaker |
 | Choose "Headphones only", nothing connected, hold an ask | text only, as before: "Shown, not spoken: no headphones" |
 
+### Ask button: check on a phone
+
+The ask button's reply and notes sit above it, so the button stays where it is in every state, and a
+hold lasts until the finger lifts. Its bounds in each state and the press order are tested on both
+displays (`AskButtonTest`); only a phone shows how a real finger feels. On the Fold, in a live
+session:
+
+| Test | Expect |
+|---|---|
+| Folded: hold, ask, release, ten times | the button never moves and never lets go early: every hold is heard until you lift your finger |
+| Unfolded: the same ten times | the same |
+| Ask something with a long answer, then hold again while it shows (folded and unfolded) | the long answer grows above the button and doesn't push it; the next hold starts under your finger and lasts until release |
+
 ---
 
 ## Wear OS companion
