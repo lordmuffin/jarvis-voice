@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.37.1](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.37.0...server-v0.37.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **server:** name the owner's date in the voice request and the ask ([c425632](https://github.com/lordmuffin/jarvis-voice/commit/c425632ebc0c8385dd1845eefcafe129d472c776))
+* **server:** name the owner's date in the voice request and the ask ([5172505](https://github.com/lordmuffin/jarvis-voice/commit/51725053fbe126fdb6cac6aab12c83f65a4c1e49))
+
 ## [0.37.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.36.1...server-v0.37.0) (2026-11-04)
 
 
