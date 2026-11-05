@@ -223,7 +223,15 @@ class Orchestrator:
             settings=self._cfg,
             sessionmaker=self._sm,
             bus=self._bus,
-            runner=AskPass(self._cfg, self._sm, self._llm, self._stt, runner),
+            runner=AskPass(
+                self._cfg,
+                self._sm,
+                self._llm,
+                self._stt,
+                runner,
+                # The owner's own vault, as for the copilot; AskPass checks the user again.
+                vault=self._vault if user_id == OWNER_USER_ID else NullVault(),
+            ),
             queue=proposals,
             position_ms=state.pipeline.position_ms,
         )

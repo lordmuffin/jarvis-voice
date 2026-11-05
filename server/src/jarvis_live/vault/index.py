@@ -35,8 +35,22 @@ _STOP = frozenset(
 )
 
 
+@dataclass(frozen=True)
+class Passage:
+    """The best chunk of one note, as a held ask reads it."""
+
+    path: str
+    title: str
+    heading: str
+    text: str
+
+
 class VaultContext(Protocol):
     async def search(self, topics: list[str], exclude: set[str], limit: int) -> list[Related]: ...
+
+    async def passages(self, query: str, limit: int, max_chars: int) -> list[Passage]:
+        """At most ``limit`` passages, one per note, best first, ``max_chars`` of text in all."""
+        ...
 
     async def resolve_name(self, name: str) -> str | None:
         """Wikilink target (file stem) of the indexed note called ``name``, or None."""
@@ -45,6 +59,9 @@ class VaultContext(Protocol):
 
 class NullVault:
     async def search(self, topics: list[str], exclude: set[str], limit: int) -> list[Related]:
+        return []
+
+    async def passages(self, query: str, limit: int, max_chars: int) -> list[Passage]:
         return []
 
     async def resolve_name(self, name: str) -> str | None:
@@ -152,6 +169,16 @@ def _snippet(heading: str, text: str) -> str:
     return f"{heading}: {body}" if heading else body
 
 
+def _cut(text: str, limit: int) -> str:
+    """``text`` on one line, cut at a word to at most ``limit`` characters."""
+    body = " ".join(text.split())
+    if len(body) <= limit:
+        return body
+    if limit < 2:
+        return ""
+    return body[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS files(path TEXT PRIMARY KEY, mtime_ns INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS chunks(
@@ -254,8 +281,11 @@ class VaultIndex:
 
     # --- querying ---------------------------------------------------------------------------
 
-    def search_sync(self, topics: list[str], exclude: set[str], limit: int) -> list[Related]:
-        hits: dict[str, Related] = {}
+    def _best_chunks(
+        self, topics: list[str], exclude: set[str], limit: int
+    ) -> list[tuple[str, str, str, str]]:
+        """``(path, title, heading, body)`` of the best chunk of up to ``limit`` notes."""
+        hits: dict[str, tuple[str, str, str, str]] = {}
         with self._connect() as db:
             for q in _fts_queries(topics):
                 rows = db.execute(
@@ -267,21 +297,47 @@ class VaultIndex:
                 for path, title, heading, body in rows:
                     if path in exclude or path in hits:
                         continue
-                    hits[path] = Related(
-                        path=path,
-                        title=title,
-                        snippet=_snippet(heading, body),
-                        uri=obsidian_uri(self.vault_name, path),
-                    )
+                    hits[path] = (path, title, heading, body)
                     if len(hits) >= limit:
                         return list(hits.values())
         return list(hits.values())
+
+    def search_sync(self, topics: list[str], exclude: set[str], limit: int) -> list[Related]:
+        return [
+            Related(
+                path=path,
+                title=title,
+                snippet=_snippet(heading, body),
+                uri=obsidian_uri(self.vault_name, path),
+            )
+            for path, title, heading, body in self._best_chunks(topics, exclude, limit)
+        ]
+
+    def passages_sync(self, query: str, limit: int, max_chars: int) -> list[Passage]:
+        """Each passage gets an even share of what ``max_chars`` has left, so a short one leaves
+        more for the next."""
+        rows = self._best_chunks([query], set(), limit) if limit > 0 else []
+        out: list[Passage] = []
+        left = max_chars
+        for i, (path, title, heading, body) in enumerate(rows):
+            text = _cut(body, left // (len(rows) - i))
+            if text:
+                out.append(Passage(path=path, title=title, heading=heading, text=text))
+                left -= len(text)
+        return out
 
     async def search(self, topics: list[str], exclude: set[str], limit: int) -> list[Related]:
         try:
             return await asyncio.to_thread(self.search_sync, topics, exclude, limit)
         except sqlite3.Error:
             log.exception("vault search failed")
+            return []
+
+    async def passages(self, query: str, limit: int, max_chars: int) -> list[Passage]:
+        try:
+            return await asyncio.to_thread(self.passages_sync, query, limit, max_chars)
+        except sqlite3.Error:
+            log.exception("vault passages failed")
             return []
 
     def resolve_name_sync(self, name: str) -> str | None:

@@ -188,6 +188,7 @@ produce no work items are not listened to: local-only, restricted, and other use
 | `JARVIS_LIVE_VOICE_PI_ENABLED` | Default off, and never on lab (`policy/lab.rego`). Needs `JARVIS_LIVE_ACTIONS_ENABLED`, `JARVIS_LIVE_DPI_BASE_URL`, its token, and dpi-backend's NetworkPolicy admitting this namespace. |
 | `JARVIS_LIVE_VOICE_MODEL` | Empty: the copilot model. |
 | `JARVIS_LIVE_VOICE_SETTLE_S`, `JARVIS_LIVE_VOICE_MAX_S` | How much quiet ends a request (10), and the longest one (90). |
+| `JARVIS_LIVE_VOICE_ASK_VAULT_ENABLED`, `_NOTES`, `_CHARS`, `_TIMEOUT_S` | A held ask in your own session also reads your Notes vault: on, 3 passages, 1500 characters in all, 1.0 s before it gives up and answers from the transcript. Never other users' sessions. See `docs/plans/voice-ask-vault.md`. |
 | `JARVIS_LIVE_DPI_MODEL`, `JARVIS_LIVE_DPI_WORK_CWD` | Model and working directory of a new Pi session. |
 
 ## Dispatch: approved work items as headless Claude Code
