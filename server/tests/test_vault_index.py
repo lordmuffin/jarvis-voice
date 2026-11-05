@@ -1,9 +1,16 @@
 import os
+import sqlite3
 from pathlib import Path, PurePosixPath
 
 import pytest
 
-from jarvis_live.vault.index import VaultIndex, is_excluded, obsidian_uri, parse_note
+from jarvis_live.vault.index import (
+    NullVault,
+    VaultIndex,
+    is_excluded,
+    obsidian_uri,
+    parse_note,
+)
 
 
 def _write(root: Path, rel: str, text: str) -> None:
@@ -131,3 +138,65 @@ def test_chunking_by_heading_and_size() -> None:
 
 def test_title_falls_back_to_filename() -> None:
     assert parse_note("just text\n", "Stem")[0] == "Stem"
+
+
+# --- passages: the chunks a held ask reads (docs/plans/voice-ask-vault.md) -------------------
+
+
+async def test_passages_are_the_best_chunk_of_each_note(vault: Path, tmp_path: Path) -> None:
+    _write(
+        vault,
+        "Meetings/Backup review.md",
+        "# Backup review\n\n## Schedule\n\nNightly backup schedule moved to 02:00.\n\n"
+        "## Retention\n\nBackup retention stays at thirty days.\n",
+    )
+    _write(vault, "20 Areas/Lunch.md", "# Lunch\n\nSandwiches on Friday.\n")
+    idx = _index(vault, tmp_path)
+    (top, *rest) = await idx.passages("what is the backup schedule?", 3, 1500)
+    assert (top.path, top.title, top.heading) == (
+        "Meetings/Backup review.md",
+        "Backup review",
+        "Schedule",
+    )
+    assert top.text == "Nightly backup schedule moved to 02:00."
+    assert "Meetings/Backup review.md" not in {p.path for p in rest}  # one passage per note
+    assert "20 Areas/Lunch.md" not in {p.path for p in rest}
+
+
+def test_passages_honour_the_exclusions(vault: Path, tmp_path: Path) -> None:
+    _write(vault, "Work/Private/Hush.md", "# Hush\n\nAcme renewal rumours.\n")
+    idx = _index(vault, tmp_path, exclude_globs=["Work/Private*"])
+    hits = idx.passages_sync("acme renewal", 10, 5000)
+    assert [p.path for p in hits] == ["20 Areas/Acme Renewal.md"]
+
+
+def test_passages_keep_within_the_limit_and_max_chars(vault: Path, tmp_path: Path) -> None:
+    for i in range(6):
+        body = " ".join(["roadmap planning detail"] * 40)
+        _write(vault, f"Extra/n{i}.md", f"# N{i}\n\n{body} {i}\n")
+    idx = _index(vault, tmp_path)
+    assert len(idx.passages_sync("roadmap planning", 3, 10_000)) == 3
+    capped = idx.passages_sync("roadmap planning", 6, 700)
+    assert capped and sum(len(p.text) for p in capped) <= 700
+    assert all(p.text.endswith("…") for p in capped)
+
+
+def test_no_words_no_passages(vault: Path, tmp_path: Path) -> None:
+    idx = _index(vault, tmp_path)
+    assert idx.passages_sync("is it?", 3, 1500) == []
+
+
+async def test_a_broken_index_gives_no_passages(
+    vault: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    idx = _index(vault, tmp_path)
+
+    def broken() -> sqlite3.Connection:
+        raise sqlite3.OperationalError("database disk image is malformed")
+
+    monkeypatch.setattr(idx, "_connect", broken)
+    assert await idx.passages("acme renewal", 3, 1500) == []
+
+
+async def test_the_null_vault_has_no_passages() -> None:
+    assert await NullVault().passages("acme renewal", 3, 1500) == []
