@@ -14,12 +14,16 @@ THE BAR, fixed before any model ran. 12 cases, three runs each:
 Time is reported, not judged: R5 judges the LLM part against 2.5 s on its own card."""
 
 from dataclasses import dataclass
+from datetime import date
 
-from jarvis_live.copilot.transcript import Line
+from jarvis_live.copilot.transcript import Line, render_lines
+from jarvis_live.voice.ask_pass import ask_user
+from jarvis_live.voice.service import named_today
 
 MAX_WORDS = 30
 RUNS = 3
 MIN_SHARE = 0.9
+TODAY = "2026-11-04"  # a Wednesday, as in the voice eval
 
 DONT_KNOW = (
     "didn't catch",
@@ -118,6 +122,15 @@ ASK_CASES: tuple[AskCase, ...] = (
         critical=True,
     ),
 )
+
+
+def eval_user(case: AskCase) -> str:
+    """The user message ``AskPass`` sends for ``case``, today named as the server names it."""
+    return ask_user(
+        today=named_today(date.fromisoformat(TODAY)),
+        transcript=render_lines(list(case.lines)),
+        question=case.question,
+    )
 
 
 def grade(case: AskCase, reply: str) -> list[str]:

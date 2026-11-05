@@ -1,8 +1,11 @@
 """The ask eval's own checks, with no model: the grader and the bar do what the docstring says."""
 
+from datetime import date
+
 from jarvis_live.copilot.transcript import render_lines
 from jarvis_live.voice.ask_pass import ask_user
-from tests.evals.ask_cases import ASK_CASES, MAX_WORDS, grade, passes_bar
+from jarvis_live.voice.service import named_today
+from tests.evals.ask_cases import ASK_CASES, MAX_WORDS, TODAY, eval_user, grade, passes_bar
 
 
 def case(name: str):  # type: ignore[no-untyped-def]
@@ -22,6 +25,16 @@ def test_every_case_renders_as_the_server_sends_it() -> None:
         )
         assert c.question in user
         assert c.lines[0].text in user
+
+
+def test_the_eval_names_today_as_the_server_does() -> None:
+    for c in ASK_CASES:
+        assert eval_user(c) == ask_user(
+            today=named_today(date.fromisoformat(TODAY)),
+            transcript=render_lines(list(c.lines)),
+            question=c.question,
+        )
+    assert "Today: Wednesday 2026-11-04\n" in eval_user(ASK_CASES[0])
 
 
 def test_a_right_short_answer_passes() -> None:

@@ -1328,6 +1328,62 @@ finished, it was moved to Recently deleted. No new proposals came from finalizin
 off to `VoicePass` is stored as `filed` whatever `VoicePass` replies. The dropped repeat therefore
 counts as `filed`, though nothing was filed.
 
+### The ask eval on gemma4-e4b, 2026-11-04
+
+**The ask still misses R6's bar, on the same cases, and naming the weekday moved nothing.** It
+passed 28 of 36, under the 90% the bar needs, with 3 cases below 2 of 3. Both critical cases passed
+3 of 3, and every reply was within 30 words. Per attempt, p50 was 0.46 s and p95 0.57 s. 0 of 36 fell
+back.
+
+Run 2026-11-05 00:58:47 to 00:59:06 UTC (Wednesday evening in Chicago). It went through lab's own
+proxy key and the alias `interactive`, with the 20 s ask timeout lab runs on. It is
+`test_ask_evals.py --live`: 12 cases, three runs each, against the bar in `ask_cases.py`, unchanged.
+
+**What it sends.** It sends what the server's ask now sends: the real `ASK_SYSTEM`, `ask_user` and
+`AskAnswer`, thinking off. The one change is "Today: Wednesday 2026-11-04". The eval used to send
+"Today: 2026-11-04", which the server stopped sending when the voice request was fixed. It now takes
+the date from `named_today`, as the voice eval does, and an offline test pins it to the server's form.
+There is no 180 s of filler: this is R5's "as written" ask.
+
+**Pre-flight, read-only, all passed.**
+- `interactive-llm` was Ready with 0 restarts, and still had 0 after the run.
+- Its model's SHA256 on the pod is `676c3507…baee`.
+- Its image is `server-cuda12-b11459@sha256:fff6185e…`. fast-tier.md records only R5's tag, not its
+  digest. Every `interactive-llm` ReplicaSet kept since 13:37 UTC on 2026-11-03, before R5's first
+  measurement, has this same digest.
+- The card held only this pod, at 3,163 MiB, with 0% utilisation. Its log had no request but health
+  probes since 00:32.
+- One check request through the proxy came back from `interactive`, with
+  `x-litellm-attempted-fallbacks: 0`, and the pod logged it.
+
+| Case | Passed | Reply |
+|---|---:|---|
+| Speech-to-text errors | 0 of 3 | "I did not catch who is running the server very." |
+| Common knowledge | 0 of 3 | "A leap year has thirty-six six days." |
+| Not in the transcript | 1 of 3 | "The transcript does not mention any decisions regarding hiring." |
+| The other 9, both critical cases among them | 3 of 3 each | |
+
+- **Against R5's 27 of 36,** this run is one better. That 27 had 180 s of transcript in front of each
+  question. The fairer comparison is R5's "as written", the same eval without the weekday. That run
+  got 29 of 36, so this run is one worse. The misses are R5's, with the same wording. "Not in the
+  transcript" passed R5's "as written" run and fails here, as it did in R5's 180 s run. Again, part of
+  the fault is the checker's phrase list, which has no "does not mention".
+- **The weekday did nothing that can be seen.** No case asks about a date. One case moving by a run
+  or two is within noise, since the client sends temperature 0.2.
+- **Fallbacks: none.** All 36 attempts returned 200 with `x-litellm-model-group: interactive`, 0
+  attempted fallbacks and 0 retries. The pod logged exactly 36 requests in the window. No attempt held
+  reasoning, and none was retried for invalid JSON.
+
+| Attempts | p50 | p95 | Max | Longest reply |
+|---:|---:|---:|---:|---:|
+| 36 | 0.46 s | 0.57 s | 0.63 s | 36 tokens |
+
+**Not run: the 17 copilot cases.** Andrew decided to skip them for this run.
+
+**Limits.** One run of 36, with no transcript padding, so the times are lower than R5's 180 s figure.
+Times are measured around each HTTP attempt on the client, through a port-forward. The rows and
+replies are kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
