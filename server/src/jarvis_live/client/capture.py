@@ -123,6 +123,15 @@ class Capturer:
         self.restarts = 0
         self.last_error: str | None = None
         self.last_frame_at: float | None = None  # time.monotonic() of the newest stored frame
+        self.position_ms = start_ms  # where the newest stored frame ends, on the frames' clock
+
+    def now_ms(self) -> int:
+        """Now, on the audio frames' clock: the end of the newest frame, moved on by the time
+        since it arrived (at most one frame, so a stalled recorder cannot run ahead)."""
+        if self.last_frame_at is None:
+            return self.position_ms
+        since = int((time.monotonic() - self.last_frame_at) * 1000)
+        return self.position_ms + min(max(since, 0), self.frame_ms)
 
     async def run(self) -> None:
         t0 = self._clock() - self._start_ms / 1000
@@ -192,6 +201,7 @@ class Capturer:
     def _store(self, pcm: bytes, t_ms: int) -> int:
         frame = self.outbox.append(self.channel, pcm, t_ms=t_ms)
         self.last_frame_at = time.monotonic()
+        self.position_ms = frame.t_ms + frame.duration_ms
         if self._on_frame:
             self._on_frame(frame)
         return frame.duration_ms

@@ -69,7 +69,7 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] = os.environ)
     md = sub.add_parser("models", help="on-device speech models").add_subparsers(
         dest="models_cmd", required=True
     )
-    md.add_parser("install", help="download and verify the pinned models (about 1.06 GB)")
+    md.add_parser("install", help="download and verify the pinned models (about 1.12 GB)")
 
     args = parser.parse_args(argv)
     if args.cmd == "eval":

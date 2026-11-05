@@ -3,7 +3,14 @@
 The rules are the Mac's: a lone right-hand modifier, hold waits out a threshold, a chord never
 starts dictation and cancels a hold that has begun, Esc cancels."""
 
-from jarvis_desktop.trigger import Action, DictationTrigger, TriggerKey, TriggerMode
+from jarvis_desktop.trigger import (
+    Action,
+    AskTrigger,
+    DictationTrigger,
+    Keys,
+    TriggerKey,
+    TriggerMode,
+)
 
 HOLD = DictationTrigger.HOLD_THRESHOLD
 TAP_MAX = DictationTrigger.TAP_MAX_DURATION
@@ -197,3 +204,152 @@ def test_right_hand_evdev_key_codes() -> None:
 
 def test_default_key_is_right_ctrl() -> None:
     assert TriggerKey.default() is TriggerKey.RIGHT_CTRL
+
+
+# --- hold to ask ------------------------------------------------------------------------------
+# The ask key is hold-only. It shares the keyboard with dictation through ``Keys``, which feeds
+# each key's press to the other trigger as other input, so the two can never both be held into
+# an action.
+
+DICTATE = TriggerKey.RIGHT_CTRL.code
+ASK = TriggerKey.RIGHT_ALT.code
+LETTER_C = 46
+
+
+def keys(mode: TriggerMode = TriggerMode.HOLD) -> Keys:
+    return Keys(DictationTrigger(TriggerKey.RIGHT_CTRL, mode), AskTrigger(TriggerKey.RIGHT_ALT))
+
+
+def test_ask_hold_begins_after_threshold_and_ends_on_release() -> None:
+    t = AskTrigger(TriggerKey.RIGHT_ALT)
+    assert t.key_down(10) is None
+    assert t.tick(10 + HOLD - 0.05) is None, "not before the threshold"
+    assert t.tick(10 + HOLD) is Action.ASK_BEGIN
+    assert t.tick(10 + HOLD + 1) is None, "begins once per press"
+    assert t.key_up(14) is Action.ASK_END
+
+
+def test_ask_tap_does_nothing() -> None:
+    t = AskTrigger(TriggerKey.RIGHT_ALT)
+    t.key_down(10)
+    assert t.key_up(10.1) is None
+    assert t.tick(10 + HOLD) is None, "a late timer after release is ignored"
+
+
+def test_ask_chord_never_begins() -> None:
+    """AltGr+e, Alt+Tab: a press that is part of a chord never asks."""
+    t = AskTrigger(TriggerKey.RIGHT_ALT)
+    t.key_down(10)
+    assert t.other_input() is None
+    assert t.tick(10 + HOLD) is None
+    assert t.key_up(11) is None
+
+
+def test_ask_once_begun_other_input_does_not_drop_it() -> None:
+    """There is no cancel on the wire: a begun ask always ends with its release."""
+    t = AskTrigger(TriggerKey.RIGHT_ALT)
+    t.key_down(10)
+    assert t.tick(10 + HOLD) is Action.ASK_BEGIN
+    assert t.other_input() is None
+    assert t.escape() is None
+    assert t.key_up(12) is Action.ASK_END
+
+
+def test_ask_autorepeat_keeps_the_first_press_time() -> None:
+    t = AskTrigger(TriggerKey.RIGHT_ALT)
+    t.key_down(10)
+    assert t.key_down(10 + HOLD - 0.05) is None
+    assert t.tick(10 + HOLD) is Action.ASK_BEGIN
+
+
+def test_ask_off_never_fires() -> None:
+    t = AskTrigger(TriggerKey.OFF)
+    assert t.key_down(10) is None
+    assert t.tick(11) is None
+    assert t.key_up(12) is None
+
+
+def test_keys_route_each_trigger_key() -> None:
+    k = keys()
+    assert k.key_down(ASK, 10) is None
+    assert k.tick(10 + HOLD) is Action.ASK_BEGIN
+    assert k.key_up(ASK, 12) is Action.ASK_END
+    assert k.key_down(DICTATE, 20) is None
+    assert k.tick(20 + HOLD) is Action.BEGIN
+    assert k.key_up(DICTATE, 22) is Action.COMMIT
+
+
+def test_keys_other_key_chords_both() -> None:
+    k = keys()
+    k.key_down(ASK, 10)
+    assert k.key_down(LETTER_C, 10.05) is None
+    assert k.tick(10 + HOLD) is None
+    assert k.key_up(LETTER_C, 10.1) is None
+    assert k.key_up(ASK, 11) is None
+
+
+def test_dictation_key_while_asking_neither_dictates_nor_drops_the_ask() -> None:
+    k = keys()
+    k.key_down(ASK, 10)
+    assert k.tick(10 + HOLD) is Action.ASK_BEGIN
+    assert k.key_down(DICTATE, 11) is None
+    assert k.tick(11 + HOLD) is None, "dictation never begins under a held ask"
+    assert k.key_up(DICTATE, 12) is None
+    assert k.key_up(ASK, 13) is Action.ASK_END
+
+
+def test_ask_key_while_dictating_cancels_dictation_and_never_asks() -> None:
+    k = keys()
+    k.key_down(DICTATE, 10)
+    assert k.tick(10 + HOLD) is Action.BEGIN
+    assert k.key_down(ASK, 11) is Action.CANCEL
+    assert k.tick(11 + HOLD) is None
+    assert k.key_up(ASK, 12) is None
+    assert k.key_up(DICTATE, 13) is None
+
+
+def test_both_keys_down_before_the_threshold_start_nothing() -> None:
+    k = keys()
+    k.key_down(DICTATE, 10)
+    k.key_down(ASK, 10.05)
+    assert k.tick(10 + HOLD) is None
+    assert k.tick(10.05 + HOLD) is None
+    assert k.key_up(DICTATE, 11) is None
+    assert k.key_up(ASK, 11) is None
+
+
+def test_ask_key_is_not_a_tap_for_tap_mode_dictation() -> None:
+    k = keys(TriggerMode.TAP)
+    k.key_down(ASK, 10)
+    assert k.key_up(ASK, 10.1) is None
+    k.key_down(DICTATE, 11)
+    assert k.key_up(DICTATE, 11.1) is Action.TOGGLE, "dictation's own tap is unchanged"
+
+
+def test_keys_escape_cancels_dictation_only() -> None:
+    k = keys()
+    k.key_down(ASK, 10)
+    k.tick(10 + HOLD)
+    assert k.escape() is Action.CANCEL, "dictation's Esc is unchanged"
+    assert k.key_up(ASK, 12) is Action.ASK_END
+
+
+def test_keys_mouse_button_chords_both() -> None:
+    k = keys()
+    k.key_down(ASK, 10)
+    assert k.other_input() is None
+    assert k.tick(10 + HOLD) is None
+
+
+def test_keys_with_the_same_key_for_both_turn_ask_off() -> None:
+    k = Keys(
+        DictationTrigger(TriggerKey.RIGHT_CTRL, TriggerMode.HOLD), AskTrigger(TriggerKey.RIGHT_CTRL)
+    )
+    assert k.ask.key is TriggerKey.OFF
+    k.key_down(DICTATE, 10)
+    assert k.tick(10 + HOLD) is Action.BEGIN
+
+
+def test_default_ask_key_avoids_dictation() -> None:
+    assert AskTrigger.default_key(TriggerKey.RIGHT_CTRL) is TriggerKey.RIGHT_ALT
+    assert AskTrigger.default_key(TriggerKey.RIGHT_ALT) is TriggerKey.RIGHT_META

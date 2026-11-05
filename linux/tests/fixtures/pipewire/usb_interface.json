@@ -1,0 +1,298 @@
+[
+ {
+  "id": 0,
+  "type": "PipeWire:Interface:Metadata",
+  "props": {
+   "metadata.name": "default"
+  },
+  "metadata": [
+   {
+    "subject": 0,
+    "key": "default.audio.sink",
+    "type": "Spa:String:JSON",
+    "value": {
+     "name": "alsa_output.usb-PreSonus_Revelator_Dynamic_0000000000-00.analog-surround-51"
+    }
+   }
+  ]
+ },
+ {
+  "id": 114,
+  "type": "PipeWire:Interface:Node",
+  "info": {
+   "props": {
+    "alsa.card": 3,
+    "alsa.card_name": "Revelator Dynamic",
+    "alsa.class": "generic",
+    "alsa.components": "USB194f:0d0a",
+    "alsa.device": 0,
+    "alsa.driver_name": "snd_usb_audio",
+    "alsa.id": "Dynamic",
+    "alsa.long_card_name": "PreSonus Revelator Dynamic at usb-0000:0e:00.3-2.4.3, high speed",
+    "alsa.mixer_name": "USB Mixer",
+    "alsa.name": "USB Audio",
+    "alsa.resolution_bits": 32,
+    "alsa.subclass": "generic-mix",
+    "alsa.subdevice": 0,
+    "alsa.subdevice_name": "subdevice #0",
+    "api.alsa.card.longname": "PreSonus Revelator Dynamic at usb-0000:0e:00.3-2.4.3, high speed",
+    "api.alsa.card.name": "Revelator Dynamic",
+    "api.alsa.path": "surround51:3",
+    "api.alsa.pcm.card": 3,
+    "api.alsa.pcm.stream": "playback",
+    "audio.channels": 6,
+    "audio.position": "[ FL, FR, RL, RR, FC, LFE ]",
+    "card.profile.device": 9,
+    "clock.quantum-limit": 8192,
+    "device.api": "alsa",
+    "device.bus": "usb",
+    "device.class": "sound",
+    "device.icon-name": "audio-card-analog",
+    "device.id": 156,
+    "device.profile.description": "Analog Surround 5.1",
+    "device.profile.name": "analog-surround-51",
+    "device.routes": 1,
+    "factory.name": "api.alsa.pcm.sink",
+    "library.name": "audioconvert/libspa-audioconvert",
+    "media.class": "Audio/Sink",
+    "node.description": "Revelator Dynamic Analog Surround 5.1",
+    "node.driver": true,
+    "node.loop.name": "data-loop.0",
+    "node.name": "alsa_output.usb-PreSonus_Revelator_Dynamic_0000000000-00.analog-surround-51",
+    "node.nick": "Revelator Dynamic",
+    "node.pause-on-idle": false,
+    "object.id": 114,
+    "object.path": "alsa:acp:Dynamic:9:playback",
+    "port.group": "playback",
+    "priority.driver": 1109,
+    "priority.session": 1109
+   }
+  }
+ },
+ {
+  "id": 156,
+  "type": "PipeWire:Interface:Device",
+  "info": {
+   "props": {
+    "alsa.card": 3,
+    "alsa.card_name": "Revelator Dynamic",
+    "alsa.components": "USB194f:0d0a",
+    "alsa.driver_name": "snd_usb_audio",
+    "alsa.id": "Dynamic",
+    "alsa.long_card_name": "PreSonus Revelator Dynamic at usb-0000:0e:00.3-2.4.3, high speed",
+    "alsa.mixer_name": "USB Mixer",
+    "api.acp.auto-port": false,
+    "api.acp.auto-profile": false,
+    "api.alsa.card": 3,
+    "api.alsa.card.longname": "PreSonus Revelator Dynamic at usb-0000:0e:00.3-2.4.3, high speed",
+    "api.alsa.card.name": "Revelator Dynamic",
+    "api.alsa.path": "hw:3",
+    "api.alsa.split-enable": true,
+    "api.alsa.use-acp": true,
+    "device.api": "alsa",
+    "device.bus": "usb",
+    "device.bus-id": "usb-PreSonus_Revelator_Dynamic_0000000000-00",
+    "device.bus-path": "pci-0000:0e:00.3-usb-0:2.4.3:1.0",
+    "device.description": "Revelator Dynamic",
+    "device.enum.api": "udev",
+    "device.icon-name": "audio-card-analog-usb",
+    "device.name": "alsa_card.usb-PreSonus_Revelator_Dynamic_0000000000-00",
+    "device.nick": "Revelator Dynamic",
+    "device.product.id": "0x0d0a",
+    "device.product.name": "Revelator Dynamic",
+    "device.string": 3,
+    "device.subsystem": "sound",
+    "device.vendor.id": "0x194f",
+    "device.vendor.name": "PreSonus Audio Electronics, Inc.",
+    "media.class": "Audio/Device",
+    "object.id": 156,
+    "object.path": "alsa:acp:Dynamic",
+    "spa.object.id": 8
+   },
+   "params": {
+    "Route": [
+     {
+      "index": 0,
+      "direction": "Input",
+      "name": "analog-input",
+      "description": "Analog Input",
+      "priority": 10000,
+      "available": "unknown",
+      "info": [
+       4,
+       "port.type",
+       "analog",
+       "card.profile.port",
+       "0",
+       "route.hw-mute",
+       "false",
+       "route.hw-volume",
+       "false"
+      ],
+      "profiles": [
+       21,
+       22,
+       24,
+       23,
+       1,
+       2,
+       10,
+       3,
+       4,
+       5,
+       11,
+       6,
+       16,
+       17,
+       19,
+       18,
+       7,
+       8,
+       12,
+       9
+      ],
+      "device": 2,
+      "props": {
+       "mute": false,
+       "channelVolumes": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "volumeBase": 1.0,
+       "volumeStep": 1.5e-05,
+       "channelMap": [
+        "FL",
+        "FR",
+        "LFE"
+       ],
+       "softVolumes": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "latencyOffsetNsec": 0
+      },
+      "devices": [
+       2,
+       3,
+       4,
+       5
+      ],
+      "profile": 7,
+      "save": false
+     },
+     {
+      "index": 1,
+      "direction": "Output",
+      "name": "analog-output",
+      "description": "Analog Output",
+      "priority": 9900,
+      "available": "unknown",
+      "info": [
+       4,
+       "port.type",
+       "analog",
+       "card.profile.port",
+       "1",
+       "route.hw-mute",
+       "false",
+       "route.hw-volume",
+       "false"
+      ],
+      "profiles": [
+       13,
+       1,
+       2,
+       10,
+       3,
+       14,
+       4,
+       5,
+       11,
+       6,
+       20,
+       16,
+       17,
+       19,
+       18,
+       15,
+       7,
+       8,
+       12,
+       9
+      ],
+      "device": 9,
+      "props": {
+       "mute": false,
+       "channelVolumes": [
+        0.941224,
+        0.941224,
+        0.941224,
+        0.941224,
+        0.941224,
+        0.941224
+       ],
+       "volumeBase": 1.0,
+       "volumeStep": 1.5e-05,
+       "channelMap": [
+        "FL",
+        "FR",
+        "RL",
+        "RR",
+        "FC",
+        "LFE"
+       ],
+       "softVolumes": [
+        0.941224,
+        0.941224,
+        0.941224,
+        0.941224,
+        0.941224,
+        0.941224
+       ],
+       "latencyOffsetNsec": 0
+      },
+      "devices": [
+       6,
+       7,
+       8,
+       9
+      ],
+      "profile": 7,
+      "save": true
+     }
+    ],
+    "Profile": [
+     {
+      "index": 7,
+      "name": "output:analog-surround-51+input:analog-surround-21",
+      "description": "Analog Surround 5.1 Output + Analog Surround 2.1 Input",
+      "priority": 1313,
+      "available": "unknown",
+      "classes": [
+       2,
+       [
+        "Audio/Source",
+        1,
+        "card.profile.devices",
+        [
+         2
+        ]
+       ],
+       [
+        "Audio/Sink",
+        1,
+        "card.profile.devices",
+        [
+         9
+        ]
+       ]
+      ],
+      "save": false
+     }
+    ]
+   }
+  }
+ }
+]

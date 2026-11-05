@@ -480,12 +480,23 @@ Every step is red then green per `TDD.md`; `make test` before done.
     streaming mode (G2).
    → **Phase 2 done test:** Meeting session from the tray, live in the dashboard.
 
+**Hold to ask** (`docs/plans/voice-push-to-talk.md`, Linux): **built, not yet reachable.**
+- `feat(server): the headless client can hold to ask` — `ask_begin` / `ask_end` / `ask_played`
+  control commands, `voice_state` and `ask_reply` on `subscribe`, `status` says `system`.
+- `feat(linux): hold to ask` and `feat(linux): speak ask replies through headphones only` —
+  `AskTrigger` and `Keys` in `trigger.py`, `ask.py`, `route.py`, `speech.py` (Piper, the `speech`
+  extra), the pill's ask wording in `presentation.py`, `ask_enabled` / `ask_key` in `settings.py`.
+- Reaches a key with PRs 5 to 7 (the monitor feeds `Settings.keys()`, the pill shows `ask_pill`).
+  Hardware rows: `linux/TESTING.md`.
+
 **Phase 3**
 13. `feat(web): compact panel view` — vitest + Playwright for `?view=panel`.
 14. `feat(linux): copilot panel window` — navigation interception (`obsidian://` goes outside),
     the on-top bridge, local-only placeholder.
 
 ## 8. `linux/TESTING.md` manual checklist (what CI can't run)
+
+`linux/TESTING.md` exists with hold to ask's rows; dictation's rows below join it with PR 9.
 
 Same shape as `macos/JarvisVoiceMac/TESTING.md` (PASS / FAIL / NOT RUN, build and date at the top).
 

@@ -1,6 +1,6 @@
 """Terminal rendering of server events for ``capture tail``."""
 
-from jarvis_live.protocol import Copilot, Error, FinalNote, Segment, ServerMessage
+from jarvis_live.protocol import AskReply, Copilot, Error, FinalNote, Segment, ServerMessage
 
 
 def _mmss(ms: int) -> str:
@@ -22,6 +22,8 @@ class TailRenderer:
             return self._copilot(msg)
         if isinstance(msg, FinalNote):
             return [f"final note: {msg.title} ({msg.path})"]
+        if isinstance(msg, AskReply):  # what Jarvis said back to a held ask, not transcript
+            return [f"  [ask] {msg.text or f'({msg.outcome})'}"]
         if isinstance(msg, Error):
             return [f"error {msg.code}: {msg.message}"]
         return []

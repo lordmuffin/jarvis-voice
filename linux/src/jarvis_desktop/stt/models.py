@@ -64,8 +64,39 @@ SILERO_VAD = ModelSpec(
     files=("silero_vad.onnx",),
 )
 
-#: What ``jarvis-voice models install`` fetches: the default engine, its CPU fallback, the VAD.
-ALL = (WHISPER_TURBO_Q5, PARAKEET_TDT_V2, SILERO_VAD)
+_PIPER_VOICES = (
+    "https://huggingface.co/rhasspy/piper-voices/resolve/"
+    "e7229f7d33a10e145e109b886d661984201ac3c4/en/en_US/lessac/medium/"
+)
+#: Piper's voice for spoken ask replies (speech.py), and the config Piper loads it with.
+PIPER_LESSAC_MEDIUM = ModelSpec(
+    name="piper-en_US-lessac-medium",
+    url=_PIPER_VOICES + "en_US-lessac-medium.onnx",
+    sha256="5efe09e69902187827af646e1a6e9d269dee769f9877d17b16b1b46eeaaf019f",
+    size=63_201_294,
+    archive=False,
+    files=("en_US-lessac-medium.onnx",),
+)
+PIPER_LESSAC_MEDIUM_CONFIG = ModelSpec(
+    name="piper-en_US-lessac-medium-config",
+    url=_PIPER_VOICES + "en_US-lessac-medium.onnx.json",
+    sha256="efe19c417bed055f2d69908248c6ba650fa135bc868b0e6abb3da181dab690a0",
+    size=4_885,
+    archive=False,
+    files=("en_US-lessac-medium.onnx.json",),
+)
+
+PIPER_VOICE = (PIPER_LESSAC_MEDIUM, PIPER_LESSAC_MEDIUM_CONFIG)
+
+#: What ``jarvis-voice models install`` fetches: the default engine, its CPU fallback, the VAD,
+#: and the voice that speaks ask replies.
+ALL = (
+    WHISPER_TURBO_Q5,
+    PARAKEET_TDT_V2,
+    SILERO_VAD,
+    PIPER_LESSAC_MEDIUM,
+    PIPER_LESSAC_MEDIUM_CONFIG,
+)
 
 
 def models_dir(env: Mapping[str, str] = os.environ) -> Path:

@@ -132,6 +132,7 @@ def test_the_shipped_pins_are_sha256_and_immutable_https_urls() -> None:
                 "https://github.com/k2-fsa/sherpa-onnx/releases/download/",
                 # A Hugging Face file pinned to a repo revision, never a moving branch.
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c",
+                "https://huggingface.co/rhasspy/piper-voices/resolve/e7229f7d",
             )
         ), spec.url
         assert "/resolve/main/" not in spec.url
@@ -144,5 +145,20 @@ def test_whisper_turbo_is_the_q5_ggml_file_benchmarked_in_the_plan() -> None:
     assert not spec.archive
 
 
-def test_the_default_set_is_whisper_first_then_the_fallback_and_vad() -> None:
-    assert models.ALL == (models.WHISPER_TURBO_Q5, models.PARAKEET_TDT_V2, models.SILERO_VAD)
+def test_the_default_set_is_whisper_first_then_the_fallback_vad_and_voice() -> None:
+    """The Piper voice speaks ask replies (voice-push-to-talk.md): the one the lab tests used."""
+    assert models.ALL == (
+        models.WHISPER_TURBO_Q5,
+        models.PARAKEET_TDT_V2,
+        models.SILERO_VAD,
+        models.PIPER_LESSAC_MEDIUM,
+        models.PIPER_LESSAC_MEDIUM_CONFIG,
+    )
+
+
+def test_the_piper_voice_is_lessac_medium_with_its_config() -> None:
+    voice, config = models.PIPER_LESSAC_MEDIUM, models.PIPER_LESSAC_MEDIUM_CONFIG
+    assert voice.files == ("en_US-lessac-medium.onnx",) and voice.size == 63_201_294
+    assert voice.sha256.startswith("5efe09e6")
+    assert config.files == ("en_US-lessac-medium.onnx.json",) and config.size == 4_885
+    assert not voice.archive and not config.archive
