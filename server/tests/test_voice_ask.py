@@ -169,26 +169,14 @@ def speaker_guard() -> EchoGuard:
     return guard
 
 
-_REWORDED = (
-    "is_echo compares raw tokens: Whisper's '6th'/'10' and 'friday's'/'demo's' do not match the "
-    "reply's 'sixth'/'ten' and 'friday'/'demo', so only 3 of 7 words count, under the 0.6 threshold"
-)
-
-
 @pytest.mark.parametrize(
     "heard",
     [
-        # Number forms only: 6 of the 8 distinct words still match, so it is caught today.
+        # Number forms only.
         "Friday is November 6th, the demo is at 10.",
-        pytest.param(
-            "Friday's November 6th. The demo's at 10.",
-            marks=pytest.mark.xfail(strict=True, reason=_REWORDED),
-        ),
+        "Friday's November 6th. The demo's at 10.",
         # ...and with one word misheard ("memo" for "demo").
-        pytest.param(
-            "Friday's November 6th. The memo's at 10.",
-            marks=pytest.mark.xfail(strict=True, reason=_REWORDED),
-        ),
+        "Friday's November 6th. The memo's at 10.",
     ],
     ids=["numbers", "numbers and contractions", "and one substituted word"],
 )
@@ -207,18 +195,8 @@ def test_echo_garbled_below_the_threshold_is_kept() -> None:
     [
         (12_000, 13_500),  # began while playing, ends 0.5 s after "done"
         (12_800, 15_000),  # began while playing, ends 2 s after "done"
-        pytest.param(
-            13_400,
-            14_500,
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason=(
-                    "the window ends at done + ECHO_PAD_MS (300 ms) and a segment must start "
-                    "before it: the speaker's tail, split into its own segment 400 ms after "
-                    "done, starts past it and is kept"
-                ),
-            ),
-        ),  # the speaker's last words, split off by the VAD, begin 0.4 s after "done"
+        # The speaker's last words, split off by the VAD, begin 0.4 s after "done".
+        (13_400, 14_500),
     ],
     ids=["ends 0.5 s late", "ends 2 s late", "starts 0.4 s late"],
 )
