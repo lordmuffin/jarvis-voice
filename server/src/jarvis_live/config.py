@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -125,7 +126,9 @@ class Settings(BaseSettings):
     # A live session counts as streaming while a producer is connected and audio arrived
     # within this window; otherwise viewers show it as offline.
     streaming_stale_s: float = 10.0
-    timezone: str = "UTC"  # for note filenames and `created`
+    # The owner's zone: the date voice, the ask and the copilot name, reminder times, note
+    # filenames and `created`. Checked at startup, so a typo fails the pod, not every request.
+    timezone: str = "UTC"
 
     # Gotify (no-op unless both are set)
     gotify_url: str = ""
@@ -335,6 +338,15 @@ class Settings(BaseSettings):
         v = v.strip().lower()
         if not v:
             raise ValueError("environment must not be empty")
+        return v
+
+    @field_validator("timezone")
+    @classmethod
+    def _known_zone(cls, v: str) -> str:
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError) as e:
+            raise ValueError(f"timezone {v!r} is not an IANA zone, e.g. America/Chicago") from e
         return v
 
     @field_validator("publish_subdir")

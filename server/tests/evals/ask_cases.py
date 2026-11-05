@@ -17,8 +17,8 @@ from dataclasses import dataclass
 from datetime import date
 
 from jarvis_live.copilot.transcript import Line, render_lines
+from jarvis_live.today import named_today
 from jarvis_live.voice.ask_pass import ask_user
-from jarvis_live.voice.service import named_today
 
 MAX_WORDS = 30
 RUNS = 3

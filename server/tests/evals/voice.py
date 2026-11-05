@@ -51,8 +51,9 @@ from jarvis_live.actions.state import (
     payload_sha256,
 )
 from jarvis_live.llm.client import LLM, LiteLLMClient
+from jarvis_live.today import named_today, owners_day
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, named_today, owners_day, voice_user
+from jarvis_live.voice.service import VOICE_SYSTEM, voice_user
 from tests.evals.harness import due_matches
 from tests.evals.voice_cases import REPOS, TODAY, VOICE_CASES, Step, VoiceCase
 
@@ -98,12 +99,15 @@ assert _REPO_RULE in _OLD_SYSTEM and _REPO_NULL in VOICE_SYSTEM
 # which the server never reads for an action. Neither sets max_tokens: a cut-off fails the bar.
 # The lean rule met the adopt rule and is now in VOICE_SYSTEM, so "server+lean" is "server".
 LEAN_RULE = (
-    '- For action and none, leave the cloud and pi fields empty: title and task "", repo and '
-    "done_when null, acceptance_criteria []."
+    '- For action and none, leave the cloud and pi fields empty: title and task "", the top-level '
+    "repo and done_when null, acceptance_criteria []. A git.pr_comment step keeps its own repo."
 )
 TASK_RULE = "- task: 1-4 sentences on what to do, in the speaker's terms (cloud, pi)."
 SHORT_TASK = "- task: 1-2 sentences on what to do, in the speaker's terms (cloud, pi)."
-assert LEAN_RULE in VOICE_SYSTEM and TASK_RULE in VOICE_SYSTEM
+# Added after stage 5, unmeasured on the card: reminder times as the owner's wall time
+# (state.build_payload drops any offset anyway).
+LOCAL_AT = ", as local time with no offset"
+assert LEAN_RULE in VOICE_SYSTEM and TASK_RULE in VOICE_SYSTEM and LOCAL_AT in VOICE_SYSTEM
 
 
 def named_week(now: datetime, timezone: str) -> str:

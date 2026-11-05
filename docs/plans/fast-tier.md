@@ -1520,6 +1520,14 @@ as in the ask eval above: the pod Ready with 0 restarts before and after, model 
 under the adopt rule first, since it fixed the only miss and p95 now has 0.2 s to spare; if that is
 not wanted, R7 can ship on this request with "two steps" as the one known miss, as lab does now.
 
+**Changed after this run, by review, unmeasured on the card.** Two wording changes in `VOICE_SYSTEM`:
+the lean rule now nulls only the top-level `repo` ("A git.pr_comment step keeps its own repo"), and
+`at` is asked for "as local time with no offset". The server now reads any offset on `at` as the
+owner's wall time, whatever the model sends. Base sets `JARVIS_LIVE_TIMEZONE` to `America/Chicago`,
+checked at startup. The copilot and the ideas pass name the owner's date too. Before R7, a `server`
+run of three on the card should confirm the two wording changes cost nothing. It can be the same run
+as the `server+week` comparison.
+
 **Limits.** One run of three on the card. The client sends temperature 0.2. Rows and replies are
 kept outside the repo.
 

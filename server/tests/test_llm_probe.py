@@ -579,7 +579,7 @@ def test_voice_user_renders_as_the_server_does() -> None:
 def test_voice_today_names_the_weekday_as_the_server_does() -> None:
     from datetime import UTC, datetime
 
-    from jarvis_live.voice.service import named_today
+    from jarvis_live.today import named_today
 
     assert probe.voice_today() == named_today(datetime.now(UTC).date())
 

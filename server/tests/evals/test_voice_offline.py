@@ -10,12 +10,14 @@ import pytest
 
 from jarvis_live.actions.schema import ProposalIn
 from jarvis_live.llm.client import LiteLLMClient
+from jarvis_live.today import named_today
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, named_today
+from jarvis_live.voice.service import VOICE_SYSTEM
 from tests.evals.voice import (
     DECODE_3B_2070,
     DEFAULT_VARIANT,
     LEAN_RULE,
+    LOCAL_AT,
     PREFILL_3B_2070,
     SHORT_TASK,
     TASK_RULE,
@@ -270,13 +272,14 @@ async def test_the_default_is_the_request_the_server_sends_now() -> None:
 
 
 async def test_the_server_now_sends_what_r2_measured_as_named_day_kinds_repo() -> None:
-    """With stage 5's lean rule added: it is the one line the server's request has over R2's."""
+    """Stage 5's lean rule and the local-time wording: all the server's request adds to R2's."""
     sent = []
     for name in ("server", "named-day+kinds+repo"):
         llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
         await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=VARIANTS[name])
         sent.append((llm.calls[0], VARIANTS[name].schema.model_json_schema()))
-    server = replace(sent[0][0], system=sent[0][0].system.replace(f"{LEAN_RULE}\n", ""))
+    system = sent[0][0].system.replace(f"{LEAN_RULE}\n", "").replace(LOCAL_AT, "")
+    server = replace(sent[0][0], system=system)
     assert (server, sent[0][1]) == sent[1]
     old = json.loads((FIXTURES / "voice_request_2026-11-03.json").read_text())["schema"]
     old.pop("$defs")

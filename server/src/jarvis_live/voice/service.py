@@ -9,9 +9,8 @@ import re
 import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -24,6 +23,7 @@ from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.notify.gotify import Notifier
+from jarvis_live.today import owners_today
 from jarvis_live.voice.schema import VoiceRequest
 from jarvis_live.voice.wake import Heard
 from jarvis_live.workitems.rows import store_changes, to_item
@@ -54,11 +54,11 @@ what it is for. Otherwise null: never pick one for its place in the list.
 - acceptance_criteria: for cloud, 1-6 short, checkable statements.
 - done_when: for cloud, one sentence.
 - proposals: for action, the steps. Kinds: task.create {text, due}; reminder.schedule {title, \
-body, at}, with at an ISO datetime resolved from Today; git.pr_comment {repo, pr, body}, only for \
-a repo under REPOSITORIES YOU MAY COMMENT ON and a PR number that was said. Do not repeat anything \
-under ALREADY PROPOSED.
-- For action and none, leave the cloud and pi fields empty: title and task "", repo and done_when \
-null, acceptance_criteria [].
+body, at}, with at an ISO datetime resolved from Today, as local time with no offset; \
+git.pr_comment {repo, pr, body}, only for a repo under REPOSITORIES YOU MAY COMMENT ON and a PR \
+number that was said. Do not repeat anything under ALREADY PROPOSED.
+- For action and none, leave the cloud and pi fields empty: title and task "", the top-level repo \
+and done_when null, acceptance_criteria []. A git.pr_comment step keeps its own repo.
 
 Use only what was said; do not invent requirements."""
 
@@ -89,21 +89,6 @@ class Queue(Protocol):
 class Outcome:
     reply: str | None
     filed: bool = False  # something now waits for the owner's approval
-
-
-def named_today(day: date) -> str:
-    """Today as the model is told it, weekday first: given only the date, every model R2 ran
-    counted "Friday" from a Wednesday wrong (docs/plans/fast-tier.md)."""
-    return f"{day:%A} {day.isoformat()}"
-
-
-def owners_day(now: datetime, timezone: str) -> date:
-    """Today's date on the owner's calendar: an evening request in US time is not tomorrow."""
-    return now.astimezone(ZoneInfo(timezone)).date()
-
-
-def owners_today(now: datetime, timezone: str) -> str:
-    return named_today(owners_day(now, timezone))
 
 
 def voice_user(
@@ -275,7 +260,5 @@ __all__ = [
     "Queue",
     "VoicePass",
     "from_words",
-    "named_today",
-    "owners_today",
     "voice_user",
 ]

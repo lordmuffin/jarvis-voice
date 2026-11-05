@@ -15,8 +15,9 @@ import pytest
 from jarvis_live.actions.schema import ProposalIn
 from jarvis_live.actions.state import Context, build_payload
 from jarvis_live.copilot.schema import CopilotDelta, FinalNote
+from jarvis_live.today import named_today
 from jarvis_live.voice.schema import SPOKEN_KINDS, VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, named_today
+from jarvis_live.voice.service import VOICE_SYSTEM
 
 FIXTURES = Path(__file__).parent / "fixtures"
 NOW = datetime(2026, 11, 4, 12, tzinfo=UTC)
@@ -116,3 +117,16 @@ def test_the_repo_rule_never_picks_a_repo_for_its_place_in_the_list() -> None:
         "or says what it is for. Otherwise null: never pick one for its place in the list."
     ) in VOICE_SYSTEM
     assert "null if it is not clear which" not in VOICE_SYSTEM
+
+
+def test_the_rule_for_empty_fields_keeps_a_pr_comments_own_repo() -> None:
+    # "repo ... null" for action once read as every repo, and a git.pr_comment needs its own.
+    from jarvis_live.voice.service import VOICE_SYSTEM
+
+    assert "git.pr_comment step keeps its own repo" in VOICE_SYSTEM
+
+
+def test_reminder_times_are_asked_for_as_local_times() -> None:
+    from jarvis_live.voice.service import VOICE_SYSTEM
+
+    assert "local time with no offset" in VOICE_SYSTEM

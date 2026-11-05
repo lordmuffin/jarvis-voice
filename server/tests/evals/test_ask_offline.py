@@ -3,8 +3,8 @@
 from datetime import date
 
 from jarvis_live.copilot.transcript import render_lines
+from jarvis_live.today import named_today
 from jarvis_live.voice.ask_pass import ask_user
-from jarvis_live.voice.service import named_today
 from tests.evals.ask_cases import ASK_CASES, MAX_WORDS, TODAY, eval_user, grade, passes_bar
 
 

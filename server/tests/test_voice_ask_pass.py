@@ -214,16 +214,6 @@ async def test_each_ask_is_stored_apart_from_the_transcript(rig: Rig) -> None:
     assert (p["start_ms"], p["end_ms"]) == (120_000, 122_000)
 
 
-async def test_the_ask_names_todays_weekday(rig: Rig) -> None:
-    from datetime import UTC, datetime
-
-    rig.llm.queue("AskAnswer", AskAnswer(reply="It is Wednesday."))
-    await rig.asked("What day is it?")
-    today = datetime.now(UTC).date()
-    (call,) = rig.llm.calls
-    assert call.user.startswith(f"Today: {today:%A} {today.isoformat()}\n")
-
-
 @pytest.mark.parametrize(("timezone", "at", "today"), TODAY_IN_ZONE)
 async def test_the_ask_names_the_owners_date_in_their_timezone(
     sm: SM, tmp_path: Path, timezone: str, at: tuple[int, ...], today: str
