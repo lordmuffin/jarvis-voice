@@ -1531,6 +1531,65 @@ as the `server+week` comparison.
 **Limits.** One run of three on the card. The client sends temperature 0.2. Rows and replies are
 kept outside the repo.
 
+### server against server+week, 2026-11-05
+
+**Both requests pass the af416ec bar, 75 of 75, and reply p95 is 2.39 s on each. `server+week`
+meets the adopt rule against `server`.** The two wording changes made after "Verdict for R7" cost
+nothing: `server` still passes every case it passed before, and "two steps", its one miss, passed
+3 of 3 this time.
+
+Run 2026-11-05 14:43:44 to 14:47:36 UTC, on the card through lab's proxy key and alias
+`interactive`, timeout 30 s, `--expect-group interactive`. Six runs of all 25, each `--runs 1`,
+alternated so drift on the card hit both alike: `server`, `server+week`, `server`, `server+week`,
+`server`, `server+week`. `server` is the request lab runs, with the lean rule and both wording
+changes. `server+week` is that request with the seven named days after Today.
+
+**Pre-flight, read-only, all passed.**
+- `interactive-llm` was Ready with 0 restarts, and still had 0 after the run.
+- Its model's SHA256 on the pod is `676c3507…baee`, and its image `server-cuda12-b11459@sha256:fff6185e…`,
+  both R5's.
+- Lab's jarvis-live runs `sha-428633e`.
+- The card held only this pod, at 3,171 MiB and 0% utilisation. In the hour before, its log had no
+  request but its 7-token keep-warm, sent every 15 minutes.
+- One check request through the proxy came back from `interactive`, with
+  `x-litellm-attempted-fallbacks: 0`, and the pod logged it.
+
+| Request | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Within 2.5 s | Tokens p95 | Fallbacks |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| `server` | 75 of 75 | 25 of 25 | 3 of 3 each | 0 | 1.60 s | **2.39 s** | 2.61 s | 74 of 75 | 184 | 0 of 75 |
+| `server+week` | 75 of 75 | 25 of 25 | 3 of 3 each | 0 | 1.59 s | **2.39 s** | 2.57 s | 72 of 75 | 179 | 0 of 75 |
+
+| Bar rule | `server` | `server+week` |
+|---|---|---|
+| 1. Every case at least 2 of 3 | Met | Met |
+| 2. Critical cases 3 of 3 | Met | Met |
+| 3. At least 90% of runs | Met, 100% | Met, 100% |
+| 4. No reply cut off | Met | Met |
+| Time: reply p95 within 2.5 s | Met, 2.39 s measured | Met, 2.39 s measured |
+
+- **`server` against itself before the wording changes.** In "Verdict for R7" it passed 24 of 25,
+  the only miss "two steps" at 1 of 3. Here every case that passed then passed 3 of 3 again. The one
+  case that moved is "two steps", from 1 of 3 to 3 of 3: the reminder was on Friday 2026-11-06 each
+  time. The client sends temperature 0.2, so one run of three is not proof that the miss is gone.
+- **`server+week`** also put the reminder on the 6th 3 of 3. In each of its replies, the task got a
+  due date of 2026-11-05 10:00, which nobody said. On `server`, the task's unspoken due date was the
+  6th twice and the 7th once. The checker does not read the task's due date, so this passes on both:
+  it is R5's known "due date nobody said" fault.
+- **The adopt rule.** Critical 3 of 3 on both, 75 passes against 75, nothing cut off, and reply p95
+  2.39 s against 2.39 s: **met, so `server+week` is adopted.** To the millisecond the two p95s are
+  2.3918 s and 2.3919 s. That 0.1 ms is far below what a timing through a port-forward can resolve,
+  and the rule has always been applied at the report's two decimals, as in "Naming the next seven
+  days". This is flagged for review: read at full precision, the rule misses by 0.1 ms. By run, p95
+  was 2.39, 2.35 and 2.30 s on `server`, and 2.29, 2.39 and 2.25 s on `server+week`.
+- **Time is still decode.** About 79 tok/s on both. `server+week`'s prompt is about 95 tokens longer,
+  p50 712 against 617. All the replies over 2.5 s were "two steps", at 194 to 198 tokens.
+- All 150 attempts carried `x-litellm-model-group: interactive`, 0 attempted fallbacks and 0
+  retries. No reply held reasoning. The pod logged 151 requests in the window: the 150 attempts and
+  one keep-warm, on the other slot.
+
+**Limits.** One run of three for each request, interleaved. The client sends temperature 0.2. Rows
+and replies are kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
