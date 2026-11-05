@@ -23,9 +23,8 @@ from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import BYTES_PER_MS, AskOutcome
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
 from jarvis_live.stt.guards import is_hallucination, rms_level
-from jarvis_live.today import owners_today
 from jarvis_live.voice.ask import Clip, spoken
-from jarvis_live.voice.service import Queue, VoicePass
+from jarvis_live.voice.service import Queue, VoicePass, voice_today
 from jarvis_live.voice.wake import Heard, after_wake
 
 ASK_KIND = "voice_ask"  # copilot_items kind: one row per ask, never part of the transcript
@@ -64,6 +63,13 @@ class AskResult:
     stt_tier: str | None = None
     stages: dict[str, float] = field(default_factory=dict)  # seconds
     row_id: int | None = None  # its copilot_items row, once stored
+
+
+def ask_today(now: datetime, timezone: str) -> str:
+    """The Today text, as the ask sends it and its eval builds it: today and the next seven days,
+    exactly as voice names them. Without the week, Gemma put "this Friday" on the 12th or the 20th
+    (docs/plans/fast-tier.md, "The ask with the next seven days")."""
+    return voice_today(now, timezone)
 
 
 def ask_user(*, today: str, transcript: str, question: str) -> str:
@@ -181,7 +187,7 @@ class AskPass:
             from_ms = max(0, now_ms - int(self._cfg.voice_ask_window_s * 1000))
             lines = outside(await load_lines(db, session_id, from_ms), windows)
         user = ask_user(
-            today=owners_today(self._now(), self._cfg.timezone),
+            today=ask_today(self._now(), self._cfg.timezone),
             transcript=render_lines(lines),
             question=question,
         )
@@ -235,4 +241,4 @@ async def _stream_end(db: AsyncSession, session_id: uuid.UUID) -> int:
     return int(end or 0)
 
 
-__all__ = ["ASK_KIND", "ASK_SYSTEM", "AskAnswer", "AskPass", "AskResult", "ask_user"]
+__all__ = ["ASK_KIND", "ASK_SYSTEM", "AskAnswer", "AskPass", "AskResult", "ask_today", "ask_user"]

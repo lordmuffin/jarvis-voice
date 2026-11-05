@@ -1682,6 +1682,103 @@ revoked with its own token (204, then 401 on reuse), and its local token was del
 **Limits.** One session, 30 asks and 5 requests, so the request percentiles rest on 5 rows. TTS
 speech in a quiet stream. The rows, replies and driver are kept outside the repo.
 
+### The ask with the next seven days, 2026-11-05
+
+**Naming the next seven days fixes "this Friday" on the ask: 9 of 9, against 0 of 9. The date set
+goes from 21 of 45 to 39 of 45, the bar from 87 to 90 of 108, and p95 from 0.60 to 0.63 s. As
+written, the adopt rule is not met.** Its first clause is "the bar's four rules all still met", and
+neither request meets the bar. Every other clause is met. Andrew decides whether that clause asks for
+the bar met, or for no rule worse than on `server`.
+
+Run 2026-11-05 17:53:34 to 17:58:30 UTC (Thursday 11:53 in Chicago). It is `test_ask_evals.py --live`
+through a port-forward to the proxy with lab's own key, alias `interactive`, and the 20 s ask
+timeout. Six pytest runs were alternated, one at a time: `server`, `server+week`, `server`,
+`server+week`, `server`, `server+week`. Each pytest run is one run of the bar (12 cases, three runs
+each) and of the date set (5 cases, three runs each), so each request had 108 bar attempts and 45
+date attempts. `server` is what `AskPass` sends: today only. `server+week` adds the "Next seven days"
+line exactly as the voice request carries it (`voice_today`). The bar in `ask_cases.py` did not
+change. The date set's "next Monday" accepts the 9th or the 16th, on Andrew's instruction before the
+run, since the question is ambiguous on a Thursday.
+
+**Pre-flight, read-only, all passed.**
+- `interactive-llm` was Ready with 0 restarts, and still had 0 after the run.
+- Its model's SHA256 on the pod is `676c3507…baee`, and its image `server-cuda12-b11459@sha256:fff6185e…`,
+  both R5's.
+- Lab's jarvis-live runs `sha-7b31e48`.
+- The card held only this pod, at 3,171 MiB and 0% utilisation. In the hour before, its log had no
+  request but the 15-minute keep-warm. No other request reached the pod in the 20 s before each run.
+- One check request through the proxy came back from `interactive`, with
+  `x-litellm-attempted-fallbacks: 0`, and the pod logged it.
+
+| Request | Bar passes | Per pytest run | Critical | Date set | Per pytest run | LLM p50 | p95 | Max | Words p95 | Max | Fallbacks |
+|---|---:|---|---|---:|---|---:|---:|---:|---:|---:|---:|
+| `server` | 87 of 108 | 28, 28, 31 of 36 | 9 of 9 each | 21 of 45 | 6, 7, 8 of 15 | 0.46 s | **0.60 s** | 0.69 s | 17 | 20 | 0 of 153 |
+| `server+week` | **90 of 108** | 30, 30, 30 of 36 | 9 of 9 each | **39 of 45** | 12, 12, 12 of 15 | 0.48 s | **0.63 s** | 0.75 s | 17 | 20 | 0 of 153 |
+
+| Bar rule, in each pytest run | `server` | `server+week` |
+|---|---|---|
+| 1. Every case at least 2 of 3 | **Missed** every run: speech-to-text errors 0 of 3; common knowledge 0 of 3 in two runs; not in the transcript 1 of 3 in every run | **Missed** every run: speech-to-text errors 0 of 3, common knowledge 0 of 3 |
+| 2. Critical cases 3 of 3 | Met | Met |
+| 3. At least 90% of runs | **Missed**: 78, 78 and 86% | **Missed**: 83% each run |
+| 4. Every reply within 30 words | Met, max 20 | Met, max 20 |
+
+The bar's misses are the ones every ask run since R5 has had: "I did not catch who is running the
+server very" and the leap year's "thirty-six six days". `server+week` passed "not in the transcript"
+9 of 9, where `server` passed it 3 of 9. With the client's temperature at 0.2, that may be noise.
+
+**The date set, case by case.**
+
+| Case | `server` | `server+week` |
+|---|---:|---:|
+| "What is the date this Friday?" | 0 of 9: "November 12th" 8 times, "November 20th" once | **9 of 9**: "November 6th" |
+| "What date is Friday?" | 9 of 9 | 9 of 9 |
+| "What day of the week is the sixth?" | 0 of 9: "I did not catch that information in the transcript" | 0 of 9: "Saturday", 7 times with "November 7th"; "Wednesday" twice |
+| "What is the date next Monday?" | 9 of 9 | 9 of 9 |
+| "What date is the demo?" | 3 of 9: 6 named only Friday and today's date | **9 of 9**: "Friday, November 6th" |
+
+- **Next Monday named the 9th in all 18 replies.** None named the 16th, so widening the check
+  changed no result.
+- **"The sixth" fails on both, and is worse with the week.** `server` says it does not know, and
+  `server+week` gives a wrong weekday with confidence. Most replies say "the sixth day", so it took
+  the question as a count of days, not as November 6th, though the list has "Friday 2026-11-06".
+  Neither weekday it named is the sixth day of the list either. This is the one date reply that
+  `server+week` makes worse.
+- **`server`'s "this Friday" is the lab miss, reproduced.** It was "November 20th" on the card's
+  test and once here. The other 8 were a week late, on the 12th.
+
+**The adopt rule, `server+week` against `server`.**
+
+| Clause | Result |
+|---|---|
+| The bar's four rules all still met | **Not met as written**: rules 1 and 3 are missed in every run, on both requests. No rule is worse on `server+week` than on `server` |
+| Bar passes equal or higher | Met, 90 against 87 |
+| Every critical case 3 of 3 | Met, 9 of 9 each |
+| Date set higher, "this Friday" 3 of 3 | Met, 39 against 21, "this Friday" 9 of 9 |
+| LLM p95 within 2.5 s | Met, 0.63 s |
+
+**Result: not adopted as the rule is written. Only the first clause fails, and it fails on `server`
+as well. Andrew decides whether it means "met" or "not worse".**
+
+**Recommendation: adopt `server+week`, reading clause 1 as "no rule worse than on `server`".** Both
+requests miss the bar on the same two cases, and the week fixes the lab miss. No server code changed
+in this PR: adopting is `ask_today` returning `voice_today(...)`, with "the sixth" watched.
+
+**Adopted, by Andrew's decision (2026-11-05).** He read clause 1 as "no bar rule worse than on
+`server`": the clause as written could not hold for either request, because the ask's bar already
+fails on `gemma4-e4b`. `AskPass` now sends the next seven days through `voice_today`, so the eval's
+`server+week` is `server`. Known cost: "What day of the week is the sixth?" now gets a confident
+wrong weekday instead of "did not catch".
+
+- **Time.** p95 by pytest run was 0.60, 0.61 and 0.61 s on `server`, and 0.64, 0.63 and 0.63 s on
+  `server+week`. The longer prompt costs about 0.03 s, far inside 2.5 s.
+- **Fallbacks: none.** All 306 attempts returned 200 with `x-litellm-model-group: interactive`, 0
+  attempted fallbacks and 0 retries. None was retried for invalid JSON. The pod logged exactly 306
+  requests in the window. LiteLLM's log has no error, timeout or fallback line for it.
+
+**Limits.** Three pytest runs of each request, interleaved, at temperature 0.2. The date set is 5
+questions on one transcript and one Thursday. The times are measured around each HTTP attempt on the
+client, through a port-forward. Rows and replies are kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and

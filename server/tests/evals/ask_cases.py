@@ -11,19 +11,48 @@ THE BAR, fixed before any model ran. 12 cases, three runs each:
 3. At least 90% of all runs pass.
 4. Every reply is within 30 words, as the prompt asks. (The server cuts at 40 regardless.)
 
-Time is reported, not judged: R5 judges the LLM part against 2.5 s on its own card."""
+Time is reported, not judged: R5 judges the LLM part against 2.5 s on its own card.
 
-from dataclasses import dataclass
-from datetime import date
+THE DATE SET is separate from the bar and never counted in it: date questions on a Thursday, so
+"this Friday" is tomorrow, each with its right date to check. Its result is printed beside the
+bar's, so a variant can be judged on both (docs/plans/fast-tier.md).
+
+A variant changes only the Today text: ``server`` is what ``AskPass`` sends, ``server+week`` adds
+the "Next seven days" line exactly as the voice request carries it."""
+
+import re
+import statistics
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from jarvis_live.copilot.transcript import Line, render_lines
-from jarvis_live.today import named_today
-from jarvis_live.voice.ask_pass import ask_user
+from jarvis_live.voice.ask_pass import ask_today, ask_user
+from jarvis_live.voice.service import voice_today
 
 MAX_WORDS = 30
 RUNS = 3
 MIN_SHARE = 0.9
-TODAY = "2026-11-04"  # a Wednesday, as in the voice eval
+ASK_NOW = datetime(2026, 11, 4, 12, tzinfo=UTC)  # a Wednesday, as in the voice eval
+DATE_NOW = datetime(2026, 11, 5, 12, tzinfo=UTC)  # a Thursday: "this Friday" is tomorrow
+ZONE = "UTC"
+
+
+@dataclass(frozen=True)
+class AskVariant:
+    name: str
+    today: Callable[[datetime, str], str]  # (now, timezone) -> the Today line's text
+
+
+DEFAULT_ASK_VARIANT = "server"
+ASK_VARIANTS = {
+    v.name: v
+    for v in (
+        AskVariant("server", ask_today),  # what AskPass sends
+        # Measured as the ask with the next seven days, then adopted: it is now "server".
+        AskVariant("server+week", voice_today),
+    )
+}
 
 DONT_KNOW = (
     "didn't catch",
@@ -124,10 +153,43 @@ ASK_CASES: tuple[AskCase, ...] = (
 )
 
 
-def eval_user(case: AskCase) -> str:
-    """The user message ``AskPass`` sends for ``case``, today named as the server names it."""
+@dataclass(frozen=True)
+class DateCase:
+    name: str
+    lines: tuple[Line, ...]
+    question: str
+    answer: str  # a regex the right reply matches, lowercased
+
+
+_FRI = r"\b(?:november|nov\.?) 6(?:th)?\b|\b6th\b|\bsixth\b|\b2026-11-06\b|\b11/6\b|\bthe 6\b"
+# "Next Monday" asked on Thursday the 5th is ambiguous (Andrew, 2026-11-05): the 9th or the 16th.
+_MON = (
+    r"\b(?:november|nov\.?) (?:9|16)(?:th)?\b|\b(?:9|16)th\b|\b(?:ninth|sixteenth)\b"
+    r"|\b2026-11-(?:09|16)\b|\b11/(?:9|16)\b|\bthe (?:9|16)\b"
+)
+DEMO = (
+    _l(10, "them", "So the demo for the client, we're doing it on Friday.", "Tomas"),
+    _l(16, "me", "Friday works. I'll have the slides ready."),
+    _l(24, "them", "And Priya joins remotely.", "Tomas"),
+)
+
+DATE_CASES: tuple[DateCase, ...] = (
+    DateCase("this friday", PLANNING, "What is the date this Friday?", _FRI),
+    DateCase("friday", PLANNING, "What date is Friday?", _FRI),
+    DateCase("the sixth", PLANNING, "What day of the week is the sixth?", r"\bfriday\b"),
+    DateCase("next monday", PLANNING, "What is the date next Monday?", _MON),
+    DateCase("the demo", DEMO, "What date is the demo?", _FRI),
+)
+
+
+def eval_user(
+    case: AskCase | DateCase,
+    variant: AskVariant = ASK_VARIANTS[DEFAULT_ASK_VARIANT],
+    now: datetime = ASK_NOW,
+) -> str:
+    """The user message ``AskPass`` sends for ``case`` at ``now``, with ``variant``'s Today."""
     return ask_user(
-        today=named_today(date.fromisoformat(TODAY)),
+        today=variant.today(now, ZONE),
         transcript=render_lines(list(case.lines)),
         question=case.question,
     )
@@ -160,3 +222,58 @@ def passes_bar(results: dict[str, list[bool]]) -> list[str]:
     if total and sum(total) / len(total) < MIN_SHARE:
         misses.append(f"{sum(total)} of {len(total)} runs, under {MIN_SHARE:.0%}")
     return misses
+
+
+def grade_date(case: DateCase, reply: str) -> list[str]:
+    """Why ``reply`` misses ``case``'s date; empty when it has it."""
+    text = reply.lower().replace("’", "'")
+    if not text.strip():
+        return ["empty reply"]
+    return [] if re.search(case.answer, text) else ["not the right date"]
+
+
+def _p(values: list[float], q: float) -> float:
+    if len(values) < 2:
+        return values[0] if values else 0.0
+    return statistics.quantiles(values, n=100, method="inclusive")[int(q) - 1]
+
+
+@dataclass
+class AskReport:
+    """Every run of a live ask eval, the bar's and the date set's, for the terminal summary."""
+
+    variant: str = DEFAULT_ASK_VARIANT
+    rows: list[tuple[str, str, bool, float, int]] = field(default_factory=list)
+
+    def add(self, kind: str, case: str, *, ok: bool, seconds: float, words: int) -> None:
+        self.rows.append((kind, case, ok, seconds, words))
+
+    def results(self, kind: str) -> dict[str, list[bool]]:
+        out: dict[str, list[bool]] = {}
+        for k, case, ok, _, _ in self.rows:
+            if k == kind:
+                out.setdefault(case, []).append(ok)
+        return out
+
+    def render(self) -> list[str]:
+        lines = [f"variant {self.variant}"]
+        bar = self.results("bar")
+        if bar:
+            runs = [r for rs in bar.values() for r in rs]
+            misses = passes_bar(bar)
+            lines.append(f"bar: {sum(runs)} of {len(runs)} runs, {len(bar)} cases")
+            lines.append("bar met" if not misses else f"bar missed: {'; '.join(misses)}")
+        dates = self.results("dates")
+        if dates:
+            runs = [r for rs in dates.values() for r in rs]
+            lines.append(f"date set: {sum(runs)} of {len(runs)} (reported, never in the bar)")
+            lines += [f"  {name}: {sum(rs)} of {len(rs)}" for name, rs in dates.items()]
+        secs = [r[3] for r in self.rows]
+        words = [float(r[4]) for r in self.rows]
+        lines.append(
+            f"LLM p50 {_p(secs, 50):.2f} s, p95 {_p(secs, 95):.2f} s; words p95 {_p(words, 95):.0f}"
+        )
+        return lines
+
+
+ASK_REPORT = AskReport()
