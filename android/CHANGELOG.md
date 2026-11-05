@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.24.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.23.1...android-v1.24.0) (2026-11-05)
+
+
+### Features
+
+* **android:** speak ask replies through the device by default ([3667ab6](https://github.com/lordmuffin/jarvis-voice/commit/3667ab646874cb4996e4de642c3565dfb14a2da9))
+* **android:** speak ask replies through the device by default ([8481159](https://github.com/lordmuffin/jarvis-voice/commit/84811593a19fe65e98cc04dc1d5974522f284576))
+
 ## [1.23.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.23.0...android-v1.23.1) (2026-11-05)
 
 
