@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.41.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.40.0...server-v0.41.0) (2026-11-05)
+
+
+### Features
+
+* **server:** answer held asks from the Notes vault ([8f917a4](https://github.com/lordmuffin/jarvis-voice/commit/8f917a4f99767efb08835ab12def2510bc04174b))
+* **server:** held asks read passages from the owner's Notes vault ([29d9d73](https://github.com/lordmuffin/jarvis-voice/commit/29d9d734acba3d4535f513c1ad6052e2c5d0ee21))
+* **server:** vault passages for the held ask ([1e76dd4](https://github.com/lordmuffin/jarvis-voice/commit/1e76dd4d3336639d84e634705f9f2e5e70dff04d))
+
+
+### Documentation
+
+* **server:** held asks answered from the Notes vault ([c20eccb](https://github.com/lordmuffin/jarvis-voice/commit/c20eccb2794d52dbeeaa7eb89eaf36550a877145))
+
 ## [0.40.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.39.0...server-v0.40.0) (2026-11-05)
 
 
