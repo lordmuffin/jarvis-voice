@@ -1,5 +1,7 @@
 """Hold to ask: the audio an ask is cut from (docs/plans/voice-push-to-talk.md). Pure parts."""
 
+import pytest
+
 from jarvis_live.voice.ask import AskAudio
 
 MS = 32  # bytes per ms of PCM16 16 kHz mono
@@ -147,3 +149,102 @@ def test_a_window_still_playing_is_open_ended() -> None:
     assert guard.is_echo(15_000, 16_000, "owns the survey due friday")
     guard.close(16_500)
     assert not guard.is_echo(30_000, 31_000, "owns the survey due friday")
+
+
+# --- Jarvis played on a phone speaker -------------------------------------------------------
+# Since #328 Android speaks a reply through the device, so the session's own mic hears it back
+# and Whisper writes it its own way. One reply, played from 10.0 s to 13.0 s ("done" at 13.0 s),
+# checked with the settings a session uses.
+
+from jarvis_live.voice.desk import ECHO_PAD_MS, ECHO_THRESHOLD  # noqa: E402
+
+REPLY = "Friday is November sixth, the demo is at ten."
+STARTED, DONE = 10_000, 13_000
+
+
+def speaker_guard() -> EchoGuard:
+    guard = EchoGuard(pad_ms=ECHO_PAD_MS, threshold=ECHO_THRESHOLD)
+    guard.add(STARTED, None, REPLY)
+    guard.close(DONE)
+    return guard
+
+
+_REWORDED = (
+    "is_echo compares raw tokens: Whisper's '6th'/'10' and 'friday's'/'demo's' do not match the "
+    "reply's 'sixth'/'ten' and 'friday'/'demo', so only 3 of 7 words count, under the 0.6 threshold"
+)
+
+
+@pytest.mark.parametrize(
+    "heard",
+    [
+        # Number forms only: 6 of the 8 distinct words still match, so it is caught today.
+        "Friday is November 6th, the demo is at 10.",
+        pytest.param(
+            "Friday's November 6th. The demo's at 10.",
+            marks=pytest.mark.xfail(strict=True, reason=_REWORDED),
+        ),
+        # ...and with one word misheard ("memo" for "demo").
+        pytest.param(
+            "Friday's November 6th. The memo's at 10.",
+            marks=pytest.mark.xfail(strict=True, reason=_REWORDED),
+        ),
+    ],
+    ids=["numbers", "numbers and contractions", "and one substituted word"],
+)
+def test_garbled_echo_inside_the_window_is_dropped(heard: str) -> None:
+    assert speaker_guard().is_echo(10_400, 13_200, heard)
+
+
+def test_echo_garbled_below_the_threshold_is_kept() -> None:
+    """Where the threshold breaks: so few of the reply's words survive that the segment can't be
+    told from someone talking, and keeping it is the safe side. A known leak, not a bug."""
+    assert not speaker_guard().is_echo(10_400, 13_200, "Fried a's number six. The memo sat on.")
+
+
+@pytest.mark.parametrize(
+    ("start_ms", "end_ms"),
+    [
+        (12_000, 13_500),  # began while playing, ends 0.5 s after "done"
+        (12_800, 15_000),  # began while playing, ends 2 s after "done"
+        pytest.param(
+            13_400,
+            14_500,
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason=(
+                    "the window ends at done + ECHO_PAD_MS (300 ms) and a segment must start "
+                    "before it: the speaker's tail, split into its own segment 400 ms after "
+                    "done, starts past it and is kept"
+                ),
+            ),
+        ),  # the speaker's last words, split off by the VAD, begin 0.4 s after "done"
+    ],
+    ids=["ends 0.5 s late", "ends 2 s late", "starts 0.4 s late"],
+)
+def test_echo_tail_past_done_is_dropped(start_ms: int, end_ms: int) -> None:
+    # The reply's own words, so only the timing is under test; the reworded forms are above.
+    assert speaker_guard().is_echo(start_ms, end_ms, "The demo is at ten.")
+
+
+@pytest.mark.parametrize(
+    "said",
+    [
+        "Wait, the demo is at ten? I thought it was at eleven.",
+        "The demo's at ten, got it.",
+        "Ten? Okay, thanks.",
+    ],
+    ids=["questions it", "acknowledges it", "short reply"],
+)
+def test_owner_speaking_right_after_the_reply_is_kept(said: str) -> None:
+    """Starts 200 ms after "done", inside the pad, and reuses the reply's words, as an answer to
+    it does. Dropping the owner's speech is worse than letting a Jarvis phrase through."""
+    assert not speaker_guard().is_echo(13_200, 15_000, said)
+
+
+def test_echo_tail_merged_with_owner_speech_is_kept() -> None:
+    """The speaker's tail and the owner's answer in one segment. It must be kept, for the owner's
+    words. The tail's words leak with it: a ``Transcription`` carries no word timings, so the
+    guard can only keep or drop a whole segment."""
+    heard = "The demo's at 10. Can we push it to eleven? Tomas is out until then."
+    assert not speaker_guard().is_echo(12_200, 16_500, heard)
