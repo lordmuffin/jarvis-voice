@@ -23,7 +23,7 @@ from jarvis_live.voice.service import VoicePass
 from tests.audio import silence, tone
 from tests.fakes import FakeLLM, FakeNotifier, add_segments
 from tests.test_actions_pi import SpyDpi
-from tests.test_voice_loop import context
+from tests.test_voice_loop import TODAY_IN_ZONE, context
 from tests.work_item_helpers import REPOS, SM, owner_with_session
 
 
@@ -46,7 +46,7 @@ class ScriptedSTT:
 
 
 class Rig:
-    def __init__(self, sm: SM, sid: uuid.UUID, tmp_path: Path, **cfg: Any) -> None:
+    def __init__(self, sm: SM, sid: uuid.UUID, tmp_path: Path, now: Any = None, **cfg: Any) -> None:
         self.sm, self.sid = sm, sid
         base: dict[str, Any] = {
             "voice_enabled": True,
@@ -61,8 +61,8 @@ class Rig:
         actions = ActionService(self.cfg, sm, {"pi.session": PiSessionExecutor(SpyDpi())}, context)
         self.actions = actions
         self.queue: Any = ActionIntake(actions, context).for_session(sid, OWNER_USER_ID)
-        voice = VoicePass(self.cfg, sm, self.llm, FakeNotifier())
-        self.ask = AskPass(self.cfg, sm, self.llm, self.stt, voice)
+        voice = VoicePass(self.cfg, sm, self.llm, FakeNotifier(), now=now)
+        self.ask = AskPass(self.cfg, sm, self.llm, self.stt, voice, now=now)
 
     async def asked(self, said: str, audio: bytes | None = None, skip: Any = ()) -> Any:
         self.stt.text = said
@@ -222,3 +222,17 @@ async def test_the_ask_names_todays_weekday(rig: Rig) -> None:
     today = datetime.now(UTC).date()
     (call,) = rig.llm.calls
     assert call.user.startswith(f"Today: {today:%A} {today.isoformat()}\n")
+
+
+@pytest.mark.parametrize(("timezone", "at", "today"), TODAY_IN_ZONE)
+async def test_the_ask_names_the_owners_date_in_their_timezone(
+    sm: SM, tmp_path: Path, timezone: str, at: tuple[int, ...], today: str
+) -> None:
+    from datetime import UTC, datetime
+
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    rig = Rig(sm, sid, tmp_path, now=lambda: datetime(*at, tzinfo=UTC), timezone=timezone)
+    rig.llm.queue("AskAnswer", AskAnswer(reply="It is Wednesday."))
+    await rig.asked("What day is it?")
+    (call,) = rig.llm.calls
+    assert call.user.startswith(f"Today: {today}\n")

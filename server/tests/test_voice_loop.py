@@ -99,6 +99,7 @@ class Rig:
         self.replies: list[str] = []
         self.now_ms = 0
         self.clock = FakeClock()
+        self.wall: Any = None  # the wall clock VoicePass reads Today from; None is the real one
         self.proposals: Any = ActionIntake(self.actions, context).for_session(sid, OWNER_USER_ID)
 
     def loop(self, skip: Any = list) -> VoiceLoop:
@@ -110,7 +111,7 @@ class Rig:
             OWNER_USER_ID,
             settings=self.cfg,
             sessionmaker=self.sm,
-            runner=VoicePass(self.cfg, self.sm, self.llm, self.notifier),
+            runner=VoicePass(self.cfg, self.sm, self.llm, self.notifier, now=self.wall),
             proposals=self.proposals,
             stream_ms=lambda: self.now_ms,
             reply=reply,
@@ -660,6 +661,33 @@ async def test_today_is_sent_with_its_weekday(rig: Rig) -> None:
     today = datetime.now(UTC).date()
     (call,) = rig.llm.calls
     assert f"Today: {today:%A} {today.isoformat()}\n" in call.user
+
+
+# One evening in Chicago, after DST ended on 1 November: 02:00Z to 05:59Z are still Wednesday
+# there, 06:00Z is its midnight. A UTC owner keeps the UTC date.
+TODAY_IN_ZONE = [
+    ("America/Chicago", (2026, 11, 5, 2, 0), "Wednesday 2026-11-04"),
+    ("America/Chicago", (2026, 11, 5, 5, 0), "Wednesday 2026-11-04"),
+    ("America/Chicago", (2026, 11, 5, 5, 59), "Wednesday 2026-11-04"),
+    ("America/Chicago", (2026, 11, 5, 6, 0), "Thursday 2026-11-05"),
+    ("UTC", (2026, 11, 5, 2, 0), "Thursday 2026-11-05"),
+]
+
+
+@pytest.mark.parametrize(("timezone", "at", "today"), TODAY_IN_ZONE)
+async def test_today_is_the_owners_date_in_their_timezone(
+    sm: SM, tmp_path: Path, timezone: str, at: tuple[int, ...], today: str
+) -> None:
+    from datetime import UTC, datetime
+
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    rig = Rig(sm, sid, tmp_path, timezone=timezone)
+    rig.wall = lambda: datetime(*at, tzinfo=UTC)
+    rig.llm.queue("VoiceRequest", VoiceRequest(target="none"))
+    await rig.hear("Jarvis, remind me on Friday to call the vendor.")
+    await rig.loop().tick()
+    (call,) = rig.llm.calls
+    assert f"Today: {today}\n" in call.user
 
 
 def _task(due: str | None = None) -> VoiceRequest:
