@@ -7,6 +7,10 @@ dictation and cancels a hold that already began. Whether dictation is running is
 controller's business, so a tap reports ``TOGGLE`` (or, in double-tap mode, ``TAP`` and
 ``DOUBLE_TAP``) and the controller decides between starting and stopping.
 
+Hold to ask (docs/plans/voice-push-to-talk.md) has its own key, hold only: ``AskTrigger``.
+``Keys`` routes evdev key codes to both triggers and feeds each trigger key's press to the other
+one as other input, so the two keys can never both be held into an action.
+
 Times are seconds on one monotonic clock (evdev event timestamps)."""
 
 from enum import Enum
@@ -22,6 +26,8 @@ class Action(Enum):
     TOGGLE = "toggle"
     TAP = "tap"
     DOUBLE_TAP = "double_tap"
+    ASK_BEGIN = "ask_begin"
+    ASK_END = "ask_end"
 
 
 class TriggerMode(Enum):
@@ -128,3 +134,107 @@ class DictationTrigger:
         """Esc cancels dictation in every mode."""
         self.other_input()
         return Action.CANCEL
+
+
+class AskTrigger:
+    """Hold to ask: a lone hold past ``HOLD_THRESHOLD`` begins an ask, its release ends it.
+
+    A chord before the threshold never begins one (AltGr+e, Alt+Tab). Once begun, other input
+    and Esc leave it alone: the wire has no cancel, so a begun ask always ends with its release."""
+
+    HOLD_THRESHOLD = DictationTrigger.HOLD_THRESHOLD
+    _TOLERANCE = DictationTrigger._TOLERANCE
+
+    def __init__(self, key: TriggerKey) -> None:
+        self.key = key
+        self.pressed_at: float | None = None
+        self._chorded = False
+        self._began = False
+
+    @staticmethod
+    def default_key(dictation: TriggerKey) -> TriggerKey:
+        """Right Alt, or Right Meta when Right Alt is dictation's key."""
+        return TriggerKey.RIGHT_META if dictation is TriggerKey.RIGHT_ALT else TriggerKey.RIGHT_ALT
+
+    @property
+    def is_pressed(self) -> bool:
+        return self.pressed_at is not None
+
+    def key_down(self, time: float) -> Action | None:
+        if self.key is TriggerKey.OFF or self.pressed_at is not None:
+            return None  # off, or an autorepeat of the held key
+        self.pressed_at = time
+        self._chorded = False
+        self._began = False
+        return None
+
+    def tick(self, time: float) -> Action | None:
+        if (
+            self.pressed_at is None
+            or self._chorded
+            or self._began
+            or time - self.pressed_at < self.HOLD_THRESHOLD - self._TOLERANCE
+        ):
+            return None
+        self._began = True
+        return Action.ASK_BEGIN
+
+    def key_up(self, time: float) -> Action | None:
+        if self.pressed_at is None:
+            return None
+        self.pressed_at = None
+        began, self._began = self._began, False
+        return Action.ASK_END if began else None
+
+    def other_input(self) -> Action | None:
+        if self.pressed_at is not None and not self._began:
+            self._chorded = True
+        return None
+
+    def escape(self) -> Action | None:
+        return self.other_input()
+
+
+class Keys:
+    """Both triggers on one keyboard. Feed it every key press and release (evdev codes), every
+    mouse button as ``other_input``, Esc as ``escape``, and ``tick`` once the hold threshold has
+    passed since a trigger key went down. At most one action comes back per call."""
+
+    def __init__(self, dictation: DictationTrigger, ask: AskTrigger) -> None:
+        if ask.key is dictation.key:
+            ask.key = TriggerKey.OFF  # one key can't do both; dictation keeps it
+        self.dictation = dictation
+        self.ask = ask
+
+    def key_down(self, code: int, time: float) -> Action | None:
+        if code == self.dictation.key.code:
+            self.ask.other_input()
+            action = self.dictation.key_down(time)
+            if self.ask.is_pressed:
+                self.dictation.other_input()  # a chord with the ask key: never dictates
+            return action
+        if code == self.ask.key.code:
+            action = self.dictation.other_input()  # cancels a dictation already under way
+            self.ask.key_down(time)
+            if self.dictation.is_pressed:
+                self.ask.other_input()
+            return action
+        return self.other_input()
+
+    def key_up(self, code: int, time: float) -> Action | None:
+        if code == self.dictation.key.code:
+            return self.dictation.key_up(time)
+        if code == self.ask.key.code:
+            return self.ask.key_up(time)
+        return None
+
+    def tick(self, time: float) -> Action | None:
+        return self.ask.tick(time) or self.dictation.tick(time)
+
+    def other_input(self) -> Action | None:
+        self.ask.other_input()
+        return self.dictation.other_input()
+
+    def escape(self) -> Action | None:
+        self.ask.escape()
+        return self.dictation.escape()
