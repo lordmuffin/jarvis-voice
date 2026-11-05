@@ -1,9 +1,10 @@
 """What the pill says. Pure: no Qt.
 
 Hold to ask, after the Mac's ``AskPresentation`` (macos/JarvisVoiceMac/Sources/UI/
-PresentationLogic.swift): listening while the key is held, thinking after release, then the
-reply's text for a few seconds. ``Tone`` names an Instrument role (``InstPill``'s tone), so the
-QML picks the colour from Instrument's tokens and nothing here is a colour, size or font."""
+PresentationLogic.swift): listening while the key is held, thinking after release, speaking
+while the reply plays, then its text for a few seconds, saying why if it was not spoken.
+``Tone`` names an Instrument role (``InstPill``'s tone), so the QML picks the colour from
+Instrument's tokens and nothing here is a colour, size or font."""
 
 from dataclasses import dataclass
 from enum import Enum
@@ -37,6 +38,7 @@ class AskPhase(Enum):
     IDLE = "idle"
     LISTENING = "listening"
     WAITING = "waiting"
+    SPEAKING = "speaking"
     REPLY = "reply"
     NOTHING_HEARD = "nothing_heard"
     NO_ANSWER = "no_answer"
@@ -45,16 +47,35 @@ class AskPhase(Enum):
     FAILED = "failed"
 
 
+class NotSpoken(Enum):
+    """Why a reply that could have been spoken is shown as text only."""
+
+    ROUTE = "route"  # the default sink is not headphones
+    TRANSCRIPT = "transcript"  # the session records what this box plays (--system)
+    INTERRUPTED = "interrupted"  # the headphones went while speaking
+    SPEECH_FAILED = "speech_failed"
+
+
+_NOTES = {
+    NotSpoken.ROUTE: "Not spoken: no headphones.",
+    NotSpoken.TRANSCRIPT: "Not spoken: this session records what the computer plays.",
+    NotSpoken.INTERRUPTED: "Stopped: headphones disconnected.",
+    NotSpoken.SPEECH_FAILED: "Not spoken: speech is unavailable.",
+}
+
+
 @dataclass(frozen=True)
 class AskView:
     phase: AskPhase
-    #: The reply for ``REPLY``, the error for ``FAILED``.
+    #: The reply for ``SPEAKING`` and ``REPLY``, the error for ``FAILED``.
     text: str = ""
+    #: For ``REPLY``: why it was not spoken; None if it was, or was never meant to be.
+    not_spoken: NotSpoken | None = None
 
     @property
     def dismiss_after(self) -> float | None:
         """Seconds until the pill hides by itself; None while the ask is still going."""
-        if self.phase in (AskPhase.IDLE, AskPhase.LISTENING, AskPhase.WAITING):
+        if self.phase in (AskPhase.IDLE, AskPhase.LISTENING, AskPhase.WAITING, AskPhase.SPEAKING):
             return None
         return REPLY_SECONDS if self.phase is AskPhase.REPLY else MESSAGE_SECONDS
 
@@ -78,8 +99,16 @@ def ask_pill(view: AskView, key: TriggerKey) -> PillContent | None:
             return PillContent("Listening", Tone.LIVE, f"Release {key_label(key)} to ask.")
         case AskPhase.WAITING:
             return PillContent("Thinking", Tone.PROGRESS, None)
+        case AskPhase.SPEAKING:
+            return PillContent("Speaking", Tone.LIVE, _head(view.text.strip()))
         case AskPhase.REPLY:
-            return PillContent("Jarvis", Tone.NEUTRAL, _head(view.text.strip()))
+            text = _head(view.text.strip())
+            if view.not_spoken is None:
+                return PillContent("Jarvis", Tone.NEUTRAL, text)
+            note = f"{text} {_NOTES[view.not_spoken]}"
+            if view.not_spoken is NotSpoken.SPEECH_FAILED:
+                return PillContent("Not spoken", Tone.ERROR, note)
+            return PillContent("Text only", Tone.NEUTRAL, note)
         case AskPhase.NOTHING_HEARD:
             return PillContent("Didn't catch that", Tone.NEUTRAL, None)
         case AskPhase.NO_ANSWER:

@@ -15,6 +15,11 @@ dependencies = [
 [project.scripts]
 jarvis-voice = "jarvis_desktop.app:main"
 
+[project.optional-dependencies]
+speech = [
+    "piper-tts==1.8.0",
+]
+
 [dependency-groups]
 dev = [
     "pytest",
@@ -52,5 +57,5 @@ select = ["E", "F", "I", "UP", "B"]
 strict = true
 
 [[tool.mypy.overrides]]
-module = ["sherpa_onnx"]  # ships no type information
+module = ["sherpa_onnx", "piper"]  # no type information; piper is the optional speech extra
 ignore_missing_imports = true

@@ -60,7 +60,7 @@ Copy the folder to the Linux box to score it there.
 ## Speech models and scoring
 
 ```sh
-uv run jarvis-voice models install   # Whisper turbo + Parakeet + Silero VAD, about 1.06 GB, SHA-256 pinned
+uv run jarvis-voice models install   # Whisper turbo + Parakeet + Silero VAD + the Piper voice, about 1.12 GB, SHA-256 pinned
 uv run jarvis-voice eval score       # Whisper turbo on the pulled eval set (--engine parakeet for the fallback)
 ```
 

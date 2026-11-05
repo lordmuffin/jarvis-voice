@@ -2,12 +2,14 @@
 
 import pytest
 
+from jarvis_desktop.dictation_text import ELLIPSIS
 from jarvis_desktop.presentation import (
     MESSAGE_SECONDS,
     REPLY_MAX_LENGTH,
     REPLY_SECONDS,
     AskPhase,
     AskView,
+    NotSpoken,
     PillContent,
     Tone,
     ask_pill,
@@ -93,3 +95,34 @@ def test_key_labels() -> None:
 
 def test_tones_are_instrument_roles_not_colours() -> None:
     assert {t.value for t in Tone} == {"neutral", "live", "progress", "error"}
+
+
+def test_speaking_shows_the_reply_and_stays_up() -> None:
+    view = AskView(AskPhase.SPEAKING, "It's 3 pm.")
+    assert ask_pill(view, KEY) == PillContent("Speaking", Tone.LIVE, "It's 3 pm.")
+    assert view.dismiss_after is None, "until the speech ends"
+
+
+@pytest.mark.parametrize(
+    ("why", "label", "tone", "note"),
+    [
+        (NotSpoken.ROUTE, "Text only", Tone.NEUTRAL, "Not spoken: no headphones."),
+        (
+            NotSpoken.TRANSCRIPT,
+            "Text only",
+            Tone.NEUTRAL,
+            "Not spoken: this session records what the computer plays.",
+        ),
+        (NotSpoken.INTERRUPTED, "Text only", Tone.NEUTRAL, "Stopped: headphones disconnected."),
+        (NotSpoken.SPEECH_FAILED, "Not spoken", Tone.ERROR, "Not spoken: speech is unavailable."),
+    ],
+)
+def test_a_reply_not_spoken_says_why(why: NotSpoken, label: str, tone: Tone, note: str) -> None:
+    shown = ask_pill(AskView(AskPhase.REPLY, "It's 3 pm.", why), KEY)
+    assert shown == PillContent(label, tone, f"It's 3 pm. {note}")
+
+
+def test_the_note_survives_a_long_reply() -> None:
+    shown = ask_pill(AskView(AskPhase.REPLY, "word " * 100, NotSpoken.ROUTE), KEY)
+    assert shown is not None and shown.text is not None
+    assert shown.text.endswith(f"{ELLIPSIS} Not spoken: no headphones.")
