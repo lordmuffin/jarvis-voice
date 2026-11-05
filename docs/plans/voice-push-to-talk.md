@@ -175,9 +175,34 @@ speaker reaches the session's own mic. What keeps it out now:
    before sound, the safe side) and one close after playback, on every path.
 3. **Only one reply plays at a time,** and a new ask stops the last, so windows do not stack.
 
-The residual risk is a reply that STT garbles past the 60 % overlap, or whose tail lands in a segment
-the owner keeps talking into: those words reach the transcript. Under "Headphones only" the old route
-gate applies as before.
+**What the guard catches on a speaker (2026-11-05),** each a case in `server/tests/test_voice_ask.py`
+("Jarvis played on a phone speaker"):
+
+- **Whisper's rewording of the reply.** Words are compared in one form: numbers up to twenty, in
+  words or digits, cardinal or ordinal, are one token ("sixth", "6th", "6"), and contractions are
+  split ("Friday's" is "Friday is", "don't" is "do not"). So "Friday's November 6th. The demo's at
+  10." matches "Friday is November sixth, the demo is at ten.", even with one word misheard.
+- **The reply's last words, split off after it ended.** A segment that starts after `done`, up to
+  300 ms pad plus a 200 ms speaker tail, is dropped only if *every* word is the reply's. The owner
+  answering right after ("The demo's at ten, got it.") reuses reply words but adds their own, so it
+  is kept. A segment that starts while the reply plays keeps the 60 % rule.
+- **Kept, as before:** speech over Jarvis, a garble below 60 %, and the owner speaking inside the pad.
+
+What still leaks:
+
+- **A reply's tail merged into a segment the owner keeps talking into.** The segment is mostly the
+  owner, so it is kept whole, tail included. Removing just the tail's words needs word timings,
+  which `Transcription` does not carry (it would mean Whisper's verbose output); not done.
+- **A split-off tail with a word misheard** (e.g. "the memo is at ten" after `done`) is kept, by
+  the "every word" rule. That is the safe side.
+- **Owner speech made only of reply words right after `done`** (just "Ten.") is dropped.
+- **A reply garbled past the thresholds,** and numbers above twenty in words ("thirty-first"),
+  which are not normalised.
+
+These are unit cases on transcripts. Whether the Fold's speaker and mic in a real room produce the
+same segments is still to check on the device.
+
+Under "Headphones only" the old route gate applies as before.
 
 On Linux the second defence does not hold: `--system` records the default sink's monitor, which
 hears every stream, the app's own included. So a Linux session that records system audio is text

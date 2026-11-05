@@ -151,10 +151,39 @@ def spoken(text: str, max_words: int) -> str:
 # --- Jarvis heard by a mic ------------------------------------------------------------------
 
 _WORD = re.compile(r"[a-z0-9']+")
+_NUMBERS = (
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen "
+    "fifteen sixteen seventeen eighteen nineteen twenty"
+).split()
+_ORDINALS = (
+    "zeroth first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth "
+    "thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth"
+).split()
+# One form for a number however Whisper writes it: "sixth", "6th", "six" and "6" are all "6".
+_NUMBER = {w: str(n) for words in (_NUMBERS, _ORDINALS) for n, w in enumerate(words)}
+_ORDINAL_DIGITS = re.compile(r"(\d+)(?:st|nd|rd|th)")
+_CONTRACTION = {"s": "is", "re": "are", "ll": "will", "ve": "have", "m": "am", "d": "would"}
+_NOT = {"ca": "can", "wo": "will", "sha": "shall"}
+# How much later than the pad a reply's last words may start after "done", for a reply played on
+# a phone speaker: tests/test_voice_ask.py's tail, split off by the VAD, starts 400 ms after done;
+# 200 ms past desk.py's 300 ms pad keeps it with 100 ms to spare and closes the window at 500 ms.
+# Only a segment that is all the reply's words counts there, so the owner answering is kept.
+SPEAKER_TAIL_MS = 200
+
+
+def _split(word: str) -> list[str]:
+    """A contraction as its words: "demo's" is "demo is", "don't" is "do not"."""
+    if word.endswith("n't"):
+        stem = word[:-3]
+        return [_NOT.get(stem, stem), "not"]
+    stem, _, rest = word.partition("'")
+    return [stem, _CONTRACTION[rest]] if rest in _CONTRACTION else [stem]
 
 
 def _tokens(text: str) -> set[str]:
-    return set(_WORD.findall(text.lower()))
+    """The words of ``text`` in one form, so Whisper's rewording of the same words matches."""
+    words = (w for raw in _WORD.findall(text.lower().replace("\u2019", "'")) for w in _split(raw))
+    return {_NUMBER.get(w, _ORDINAL_DIGITS.sub(r"\1", w)) for w in words if w}
 
 
 @dataclass
@@ -167,10 +196,15 @@ class _Played:
 class EchoGuard:
     """Drops a segment that is Jarvis's own reply picked up by a mic. Only inside the window the
     client says it played, and only when most of the segment's words are the reply's: speech
-    over Jarvis is real, and kept."""
+    over Jarvis is real, and kept.
 
-    def __init__(self, *, pad_ms: int, threshold: float) -> None:
+    A segment that starts after the reply was done (up to ``pad_ms + tail_ms`` after) is the
+    speaker's last words only if every one of its words is the reply's: the owner answering
+    reuses the reply's words too, and adds their own."""
+
+    def __init__(self, *, pad_ms: int, threshold: float, tail_ms: int = SPEAKER_TAIL_MS) -> None:
         self._pad = pad_ms
+        self._tail = tail_ms
         self._threshold = threshold
         self._played: deque[_Played] = deque(maxlen=MAX_WINDOWS)
 
@@ -188,8 +222,12 @@ class EchoGuard:
         if not words:
             return False
         for p in self._played:
-            until = p.end_ms + self._pad if p.end_ms is not None else None
-            overlaps = end_ms > p.start_ms - self._pad and (until is None or start_ms < until)
-            if overlaps and len(words & p.words) / len(words) >= self._threshold:
+            if end_ms <= p.start_ms - self._pad:
+                continue
+            share = len(words & p.words) / len(words)
+            if p.end_ms is None or start_ms < p.end_ms:
+                if share >= self._threshold:
+                    return True
+            elif start_ms < p.end_ms + self._pad + self._tail and share == 1:
                 return True
         return False
