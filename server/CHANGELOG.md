@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.40.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.39.0...server-v0.40.0) (2026-11-05)
+
+
+### Features
+
+* **linux:** hold to ask, spoken through headphones ([2aca2cf](https://github.com/lordmuffin/jarvis-voice/commit/2aca2cf35f4eef6d616fa99f2bf440bc1c1e3782))
+* **server:** the capture daemon's status says whether it records system audio ([58cbe25](https://github.com/lordmuffin/jarvis-voice/commit/58cbe25e05707e07c7aa147e74993d33345e903b))
+* **server:** the headless client can hold to ask ([bfc30a8](https://github.com/lordmuffin/jarvis-voice/commit/bfc30a875b8a9d451a8d395161c53f1004eb3a10))
+
 ## [0.39.0](https://github.com/lordmuffin/jarvis-voice/compare/server-v0.38.0...server-v0.39.0) (2026-11-05)
 
 
