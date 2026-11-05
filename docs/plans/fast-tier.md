@@ -1264,6 +1264,70 @@ and 2 in `Tasks.herd`. Move 3 is step 4 and stops with it.
 - **Task 21 and this plan agree** on Prometheus's placement, and `llm-path-alerts.md` already expects
   this alert in its directory.
 
+## Lab voice check, 2026-11-04
+
+**Lab's held asks and spoken requests are answered by `interactive`, as #313 intended.** All 10 holds
+named `interactive`, and none fell back to `heavy`. The LLM stage was p95 0.72 s on the asks and
+2.18 s on the spoken requests. The repeat was dropped by the dedupe. Three faults remain:
+
+- The weekday landed on the right date only because the UTC day happened to be that weekday.
+- The reminder's time is in UTC.
+- The request naming no repo was given the first listed repo.
+
+**Setup.** Lab ran `sha-64ed88d`, which contains 973ed48 (#313). Its ConfigMap has
+`JARVIS_LIVE_VOICE_MODEL=interactive` and no timezone, so the server works in UTC. One session ran from
+the owner's test device with `features=voice_ask`. It streamed 14 s of context speech, then 10 holds
+32 s apart, each with a clip from a local TTS voice. The 5 spoken requests were held asks opening with
+"Jarvis", so they reached `VoicePass` unchanged and their stage times were stored. The driver sent
+`ask_played` with the time from release to `ask_reply`, so `first_audio` below has no speech synthesis
+in it.
+
+**When.** Sent 2026-11-05 00:25:18 to 00:30:06 UTC, which is Wednesday 2026-11-04 18:25 to 18:30 in
+America/Chicago. **The server named today "Thursday 2026-11-05"**, from `datetime.now(UTC)`. The
+owner's day was Wednesday the 4th. Stage 2 fixes this.
+
+`jarvis-live ask-report --days 1`, run on the lab pod. Only this device had asks that day:
+
+| Device | Model | n | Played | stt p50 / p95, s | llm p50 / p95, s | first_audio p50 / p95, s | Outcomes |
+|---|---|---|---|---|---|---|---|
+| test device | interactive | 10 | 10 | 0.61 / 0.81 | 0.72 / 2.18 | 1.53 / 2.82 | answer 6, filed 4 |
+
+The same rows, split by kind. Percentiles are by nearest rank on 5 rows, so p95 is the slowest:
+
+| Kind | llm p50 | llm p95 | Release to reply p50 | p95 |
+|---|---:|---:|---:|---:|
+| Held ask | 0.57 s | 0.72 s | 1.33 s | 1.53 s |
+| Spoken request | 1.85 s | 2.18 s | 2.51 s | 2.82 s |
+
+| Said | Got | Right? |
+|---|---|---|
+| "add a task to review the pricing proposal" | `task.create` "Review pricing proposal", due 2026-11-05 | Filed. The due date was never said: R5's known miss |
+| "remind me on Thursday at ten to call the dentist" | `reminder.schedule` at `2026-11-05T10:00:00+00:00` | **The date is right only by chance, and the time is wrong.** Thursday the 5th is the owner's Thursday. But the model got it as "today", the UTC day, not as tomorrow from a Wednesday. 10:00 UTC is 04:00 in Chicago, six hours early |
+| The task again | "I could not turn that into an action. Nothing was started." | **Dropped by the dedupe.** The same request sent 3 times through `interactive` returned the same task each time, with the same unspoken due date. So the model repeated it and `ProposalState` removed it |
+| "add a task to email Sam. Actually, scratch that, never mind." | `none`, then the ask pass: "I did not catch that." | Nothing filed. It took two LLM calls, 1.56 s in total |
+| "start a cloud session to fix the flaky login test" | Draft work item, repo `lordmuffin/jarvis-voice` | **No.** No repo was named, and the model took the first one listed. This is R5's "repo not clear" miss, on 1 sample |
+
+The asks: the three answered from the transcript were right. Asks 4 and 5 came over 180 s after the
+context, so they had no transcript. The leap year got "thirty-six six days", the common-knowledge miss
+R5 saw. The logo question got "I did not catch that in the transcript", which is right.
+
+**Fallbacks: none.**
+- The `interactive-llm` log shows 11 chat requests in the window besides its health probes. That is
+  5 asks, 5 requests and the take-back's second call. None was slower than 2.2 s, well inside the
+  alias's 5 s timeout.
+- LiteLLM's log has no error for `interactive`. Three check requests sent through the proxy with
+  lab's key carried `x-litellm-model-group: interactive` and `x-litellm-attempted-fallbacks: 0`.
+- Its 20 error lines in the window were Flash (`qwen3.8-flash-next`) timing out mid-stream. One cost
+  this session a copilot cycle. That is the copilot's path, not voice.
+
+**Cleaned up.** Both proposals were rejected and the work item discarded. Once the session had
+finished, it was moved to Recently deleted. No new proposals came from finalizing.
+
+**Limits.** 5 rows of each kind, one session. TTS speech in a quiet stream, with no Whisper queue.
+`first_audio` is the driver's release to reply, so device speech start is not in it. An ask that hands
+off to `VoicePass` is stored as `filed` whatever `VoicePass` replies. The dropped repeat therefore
+counts as `filed`, though nothing was filed.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
