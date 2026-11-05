@@ -2,7 +2,7 @@ package main
 
 mediamtx(yml) := {"kind": "ConfigMap", "metadata": {"name": "jarvis-live-mediamtx"}, "data": {"mediamtx.yml": yml}}
 
-good_yml := "authMethod: http\nauthHTTPAddress: http://jarvis-live:9101/mediamtx/auth\nauthHTTPExclude: []\napi: true\n"
+good_yml := "authMethod: http\nauthHTTPAddress: http://jarvis-live-streams-auth:9101/mediamtx/auth\nauthHTTPExclude: []\napi: true\n"
 
 test_mediamtx_with_the_auth_hook_passes if {
 	count(deny) == 0 with input as mediamtx(good_yml)

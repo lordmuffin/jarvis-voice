@@ -131,3 +131,45 @@ test_a_channel_without_its_litellm_key_denied if {
 	some msg in deny with input as [d | some d in all; d.contents.kind != "OnePasswordItem"]
 	contains(msg, "OnePasswordItem/litellm-proxy-key")
 }
+
+mediamtx(addr) := {"contents": {
+	"kind": "ConfigMap",
+	"metadata": {"name": "jarvis-live-mediamtx"},
+	"data": {"mediamtx.yml": sprintf("authMethod: http\nauthHTTPAddress: %s\n", [addr])},
+}}
+
+svc(name, spec) := {"contents": {"kind": "Service", "metadata": {"name": name}, "spec": spec}}
+
+hook_spec := {"publishNotReadyAddresses": true, "ports": [{"name": "streams-auth", "port": 9101}]}
+
+test_hook_on_a_service_that_publishes_not_ready_pods_passes if {
+	count(deny) == 0 with input as array.concat(all, [
+		mediamtx("http://jarvis-live-streams-auth:9101/mediamtx/auth"),
+		svc("jarvis-live-streams-auth", hook_spec),
+	])
+}
+
+# The 2026-11-05 startup 401s: the hook went through the app's Service, which has no endpoint
+# until the pod is Ready, so MediaMTX refused the app's first API calls.
+test_hook_on_a_service_of_ready_pods_only_denied if {
+	ready_only := {"ports": [{"name": "streams-auth", "port": 9101}]}
+	some msg in deny with input as array.concat(all, [
+		mediamtx("http://jarvis-live:9101/mediamtx/auth"),
+		svc("jarvis-live", ready_only),
+	])
+	contains(msg, "Service/jarvis-live")
+	contains(msg, "publishNotReadyAddresses")
+}
+
+test_hook_on_a_missing_service_denied if {
+	some msg in deny with input as array.concat(all, [mediamtx("http://nowhere:9101/mediamtx/auth")])
+	contains(msg, "nowhere")
+}
+
+test_hook_on_a_port_the_service_lacks_denied if {
+	some msg in deny with input as array.concat(all, [
+		mediamtx("http://jarvis-live-streams-auth:9999/mediamtx/auth"),
+		svc("jarvis-live-streams-auth", hook_spec),
+	])
+	contains(msg, "9999")
+}
