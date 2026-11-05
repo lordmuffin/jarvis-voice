@@ -106,7 +106,11 @@ class StreamIngest:
         """May ``path`` publish? A stream already running may always reconnect."""
         return path in self.active or len(self.active) < self._max
 
-    async def run(self) -> None:
+    async def run(self, hook_listening: asyncio.Event | None = None) -> None:
+        """Poll MediaMTX until cancelled. MediaMTX asks the app's auth hook about every API
+        call, so a poll before ``hook_listening`` is set would be refused with a 401."""
+        if hook_listening is not None:
+            await hook_listening.wait()
         while True:
             try:
                 await self.tick()

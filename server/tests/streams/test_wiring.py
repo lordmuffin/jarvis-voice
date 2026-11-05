@@ -83,6 +83,25 @@ async def test_the_ingest_mints_producer_tickets_for_the_keys_owner(
     assert redeemed is not None and (redeemed.role, redeemed.user_id) == ("producer", user)
 
 
+async def test_the_hook_server_says_when_it_listens(sm: SM, tmp_path: object) -> None:
+    port = _free_port()
+    cfg = Settings(
+        database_url="postgresql+asyncpg://x/y",
+        data_dir=tmp_path,  # type: ignore[arg-type]
+        streams_auth_port=port,
+    )
+    async with httpx.AsyncClient() as client:
+        _ingest, hook = build(cfg, sm, TicketStore(), client)
+        assert not hook.listening.is_set()
+        task = asyncio.create_task(hook.serve())
+        try:
+            await asyncio.wait_for(hook.listening.wait(), 5)
+            assert _listening(port)  # set once MediaMTX can connect, not before
+        finally:
+            hook.should_exit = True
+            await asyncio.wait_for(task, 5)
+
+
 async def test_cli_creates_lists_and_revokes_stream_keys(
     postgres_url: str, sm: SM, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -121,7 +121,9 @@ and the app turns each stream with an ingest key into a live session. How to use
   "false"); the lab overlay turns both on. `policy/live.rego` fails a live render that turns it
   on, so promoting it is a deliberate edit, not a side effect of a release.
 - **Who may publish or read** is the app's: MediaMTX asks its auth hook (port 9101, never on the
-  Ingress) about every request. A publish needs that path's ingest key
+  Ingress) about every request, through Service `jarvis-live-streams-auth`. That Service
+  publishes not-ready addresses, so the hook answers before the pod is Ready (else the app's
+  first API polls are refused with a 401; `policy/combined.rego` checks it). A publish needs that path's ingest key
   (`jarvis-live stream-key create`); reading and the API need a credential the app generates
   at start. `policy/streams.rego` keeps `authMethod: http` and no exclusions.
 - **How far it is reachable** is the homelab's: the Service here is ClusterIP. The homelab adds

@@ -99,3 +99,38 @@ deny contains msg if {
 	not beside_app(spec)
 	msg := sprintf("CronJob/%s mounts ReadWriteOnce %s with the app, so it needs podAffinity to Deployment/jarvis-live's pods on kubernetes.io/hostname", [d.contents.metadata.name, c])
 }
+
+# MediaMTX asks the auth hook about every API call, so the hook must answer from the moment the
+# app's process listens, before the pod is Ready: the app polls MediaMTX's API from its first
+# second. A Service that routes to Ready pods only refuses MediaMTX until then, and the app's
+# first polls come back 401 (2026-11-05). The hook's Service must publish not-ready addresses.
+hook_target := regex.find_all_string_submatch_n(`^https?://([^:/]+):([0-9]+)/`, cfg.authHTTPAddress, 1)[0] if {
+	some d in input
+	d.contents.kind == "ConfigMap"
+	d.contents.metadata.name == "jarvis-live-mediamtx"
+	cfg := yaml.unmarshal(d.contents.data["mediamtx.yml"])
+}
+
+hook_services contains d.contents if {
+	some d in input
+	d.contents.kind == "Service"
+	d.contents.metadata.name == hook_target[1]
+}
+
+deny contains msg if {
+	hook_target
+	count(hook_services) == 0
+	msg := sprintf("MediaMTX's auth hook goes to Service/%s, which is missing from the rendered overlay", [hook_target[1]])
+}
+
+deny contains msg if {
+	some s in hook_services
+	not object.get(s.spec, "publishNotReadyAddresses", false)
+	msg := sprintf("MediaMTX's auth hook goes to Service/%s, which needs publishNotReadyAddresses: true (else MediaMTX is refused until the pod is Ready)", [s.metadata.name])
+}
+
+deny contains msg if {
+	some s in hook_services
+	not to_number(hook_target[2]) in {p.port | some p in s.spec.ports}
+	msg := sprintf("MediaMTX's auth hook goes to port %s, which Service/%s does not have", [hook_target[2], s.metadata.name])
+}

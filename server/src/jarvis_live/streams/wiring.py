@@ -1,7 +1,9 @@
 """Builds the stream ingest and its auth hook from settings (``app.py`` runs them)."""
 
+import asyncio
 import contextlib
 import secrets
+import socket
 import uuid
 from collections.abc import Iterator
 
@@ -20,7 +22,17 @@ READER_USER = "jarvis-ingest"
 
 class _HookServer(uvicorn.Server):
     """A second uvicorn server inside the app's process: it must leave signal handling to the
-    main one, or SIGTERM would stop only the hook."""
+    main one, or SIGTERM would stop only the hook. ``listening`` is set once MediaMTX can
+    connect: the ingest polls MediaMTX only after that (each poll is a call to this hook)."""
+
+    def __init__(self, config: uvicorn.Config) -> None:
+        super().__init__(config)
+        self.listening = asyncio.Event()
+
+    async def startup(self, sockets: list[socket.socket] | None = None) -> None:
+        await super().startup(sockets)
+        if self.started:
+            self.listening.set()
 
     @contextlib.contextmanager
     def capture_signals(self) -> Iterator[None]:
@@ -29,7 +41,7 @@ class _HookServer(uvicorn.Server):
 
 def build(
     cfg: Settings, sm: keys.SM, tickets: TicketStore, client: httpx.AsyncClient
-) -> tuple[StreamIngest, uvicorn.Server]:
+) -> tuple[StreamIngest, _HookServer]:
     # Generated per process: MediaMTX gets it from no config, only from this server's reads.
     reader = ReaderCredential(READER_USER, secrets.token_urlsafe(24))
     paths = MediaMtx(cfg.streams_mediamtx_api, reader, client, rtsp=cfg.streams_mediamtx_rtsp)

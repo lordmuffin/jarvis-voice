@@ -18,7 +18,3 @@ spec:
       port: 9100
       targetPort: metrics
       protocol: TCP
-    - name: streams-auth
-      port: 9101
-      targetPort: streams-auth
-      protocol: TCP

@@ -2,7 +2,7 @@
 # into a live session (server/src/jarvis_live/streams/, docs/obs.md).
 #
 #   publisher --SRT 8890/udp, RTMP 1935--> MediaMTX --RTSP 8554, API 9997--> jarvis-live
-#                                          MediaMTX --auth hook 9101-------> jarvis-live
+#                                          MediaMTX --auth hook 9101-------> jarvis-live-streams-auth
 #
 # Off in base (replicas 0, JARVIS_LIVE_STREAMS_ENABLED "false"); the lab overlay turns it on and
 # policy/live.rego keeps live off. This Service stays ClusterIP: exposing SRT and RTMP on the
@@ -20,7 +20,7 @@ data:
     # Every publish, read and API call is decided by the app (policy/streams.rego):
     # publish needs the path's ingest key, read and API the app's own per-process credential.
     authMethod: http
-    authHTTPAddress: http://jarvis-live:9101/mediamtx/auth
+    authHTTPAddress: http://jarvis-live-streams-auth:9101/mediamtx/auth
     authHTTPExclude: []
     api: true
     apiAddress: :9997
@@ -143,6 +143,28 @@ spec:
       port: 8890
       targetPort: srt
       protocol: UDP
+---
+# The app's auth hook, on a Service of its own that routes to the app's pod before it is Ready.
+# MediaMTX asks the hook about every API call, and the app polls the API from its first second;
+# through the app's Service (Ready pods only) MediaMTX was refused for the pod's first ~10 s and
+# the app's first polls came back 401 (2026-11-05). The hook listens before the first poll
+# (streams/wiring.py), so a not-ready pod can answer. policy/combined.rego keeps it this way.
+apiVersion: v1
+kind: Service
+metadata:
+  name: jarvis-live-streams-auth
+  labels:
+    app: jarvis-live
+spec:
+  type: ClusterIP
+  publishNotReadyAddresses: true
+  selector:
+    app: jarvis-live
+  ports:
+    - name: streams-auth
+      port: 9101
+      targetPort: streams-auth
+      protocol: TCP
 ---
 # The app's pods: the app and metrics ports as before (the Ingress, Prometheus); the stream
 # auth hook from MediaMTX only.
