@@ -21,6 +21,35 @@ The plan assumes the recommended answer to each. Say so if you want otherwise.
 | 4 | **Is a held ask allowed in a meeting?** | Yes, as design §4.1 says. "Meeting-silent" means Jarvis never speaks unprompted | On a Mac call, the other people hear your question, because your mic feeds the call. Design open question 5 is still open. Type-to-ask is not in this plan |
 | 5 | **How does the Mac build reach the Mac?** | You build the branch in Xcode on the Mac, using `macos/JarvisVoiceMac/TESTING.md` | CI runs `swift test` only. The app is built only for a `macos-v*` tag, and getting one means merging the release PR, which also promotes the server. That is safe, because `VOICE_ENABLED` is false on live, but it is a heavier way to try a build |
 
+## Decision 2026-11-05: Android speaks through the device
+
+**Andrew's decision, replacing "Headphones only" on Android.** On the Fold with nothing connected a
+held ask came back "Shown, not spoken: no headphones", and he wants it spoken. So on Android a held
+ask's reply is now spoken on whatever the phone's media audio plays on, the built-in speaker
+included, **by default** (new installs and upgrades alike).
+
+- **The setting:** Settings → Audio → *Speak answers through*: **This device** (the default) or
+  **Headphones only**, which is the old rule unchanged (`OutputRoutes.allClosed`). It is read on
+  every reply, so a change applies to the next one.
+- **This device:** speaks on any media route Android reports. A route change while speaking keeps
+  speaking (pull the earbuds and it carries on from the speaker); only an empty route stops it, shown
+  as "Shown, not spoken: no audio output to speak on." Below Android 13 the route cannot be read, so
+  both settings stay text only, as before.
+- **Played reports are exact,** because EchoGuard trusts them: `started` at the first audio, then
+  exactly one close, `done` when audio played (also when it was then interrupted, superseded or
+  failed, with the reason) and `skipped` only when nothing played. Losing audio focus now closes the
+  window instead of leaving it open.
+- **The Mac and Linux are unchanged: headphones only.** Andrew's decision covers Android alone: the
+  problem was the phone with nothing connected. On a Mac call a speaker reply would be heard by the
+  other people through the mic, which decision 4 already flags for the question itself. On Linux a
+  `--system` session hears every stream, the app's own included, so the second defence in [Where the words
+  go](#where-the-words-go) does not exist there and the route gate is most of what is left. Neither has been asked for.
+- **The platform echo canceller is not switched on.** `AudioCapture` creates an
+  `AcousticEchoCanceler` but leaves it as the platform set it. Enabling it only while a reply plays
+  would change the recording mid-stream (the filter must converge, so the first words leak) and treat
+  speech over Jarvis differently; enabling it always would change what every session records. A Fold
+  experiment comparing echo drops with it on is the way to decide, not a JVM test.
+
 ## What I found
 
 Read from the code and the cluster on 2026-11-03. Figures are labelled by how far they can be trusted.
@@ -128,15 +157,36 @@ New files in `server/src/jarvis_live/voice/`. All of it runs off the audio path.
   heard it. It reaches the copilot and the note like anything else you say.
 - **The text** shows on the client that asked. The dashboard does not show it in this slice.
 
-Three defences keep speech out: the [route gate](#headphones-only), playing from our own process on
+~~Three defences keep speech out: the [route gate](#headphones-only), playing from our own process on
 the Mac, and `echo.py`. The design's text filter runs on both channels, because Mac system audio is
-where a leak would land.
+where a leak would land.~~ **Replaced for Android on 2026-11-05** (see
+[the decision](#decision-2026-11-05-android-speaks-through-the-device)); it still holds for the Mac.
+
+**On Android, under "This device" (the default), the route gate is gone,** so the reply from the
+speaker reaches the session's own mic. What keeps it out now:
+
+1. **The echo guard** (`EchoGuard` in `voice/ask.py`): a segment that overlaps the played window,
+   plus 300 ms, and whose words are at least 60 % the reply's is dropped. Speech over Jarvis is kept.
+   It is now the main defence, not the last one.
+2. **Exact played reports.** The window is the server's stream position when `started` and the
+   closing report arrive, so a missing or late close would leave it open, and a missing `started`
+   would leave no window at all. The client sends `started` at the first synthesized audio (slightly
+   before sound, the safe side) and one close after playback, on every path.
+3. **Only one reply plays at a time,** and a new ask stops the last, so windows do not stack.
+
+The residual risk is a reply that STT garbles past the 60 % overlap, or whose tail lands in a segment
+the owner keeps talking into: those words reach the transcript. Under "Headphones only" the old route
+gate applies as before.
 
 On Linux the second defence does not hold: `--system` records the default sink's monitor, which
 hears every stream, the app's own included. So a Linux session that records system audio is text
 only, as the daemon's `status` reports it, and the route gate and `echo.py` are the defences left.
 
 ### Headphones only
+
+On Android this table is now the **Headphones only** setting, no longer the default: see [the
+decision](#decision-2026-11-05-android-speaks-through-the-device). The Mac and Linux columns still
+apply as written.
 
 | | Android | macOS | Linux |
 |---|---|---|---|
