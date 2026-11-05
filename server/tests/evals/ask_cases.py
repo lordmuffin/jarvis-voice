@@ -49,7 +49,8 @@ ASK_VARIANTS = {
     v.name: v
     for v in (
         AskVariant("server", ask_today),  # what AskPass sends
-        AskVariant("server+week", voice_today),  # with the next seven days, as voice names them
+        # Measured as the ask with the next seven days, then adopted: it is now "server".
+        AskVariant("server+week", voice_today),
     )
 }
 

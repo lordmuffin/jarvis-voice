@@ -94,19 +94,19 @@ def test_the_default_variant_is_the_server() -> None:
         assert eval_user(c, ASK_VARIANTS["server"]) == eval_user(c)
 
 
-def test_server_week_adds_only_the_next_seven_days_as_voice_names_them() -> None:
+def test_server_week_is_now_server() -> None:
+    # Adopted after "The ask with the next seven days": AskPass sends the week as voice names it,
+    # so the variant that measured it is what the server sends.
+    assert ASK_VARIANTS["server"].today(DATE_NOW, "UTC") == voice_today(DATE_NOW, "UTC")
+    for d in DATE_CASES:
+        assert eval_user(d, ASK_VARIANTS["server+week"], DATE_NOW) == eval_user(
+            d, ASK_VARIANTS["server"], DATE_NOW
+        )
+    for c in ASK_CASES:
+        assert eval_user(c, ASK_VARIANTS["server+week"]) == eval_user(c, ASK_VARIANTS["server"])
     week = f"Next seven days: {named_week(DATE_NOW, 'UTC')}"
     assert week.startswith("Next seven days: Friday 2026-11-06, Saturday 2026-11-07")
-    for d in DATE_CASES:
-        server = eval_user(d, ASK_VARIANTS["server"], DATE_NOW)
-        with_week = eval_user(d, ASK_VARIANTS["server+week"], DATE_NOW)
-        head, rest = server.split("\n", 1)
-        assert with_week == f"{head}\n{week}\n{rest}"
-    for c in ASK_CASES:
-        server, with_week = (eval_user(c, ASK_VARIANTS[v]) for v in ("server", "server+week"))
-        head, rest = server.split("\n", 1)
-        assert with_week == f"{head}\nNext seven days: {named_week(ASK_NOW, 'UTC')}\n{rest}"
-    assert ASK_VARIANTS["server+week"].today(DATE_NOW, "UTC") == voice_today(DATE_NOW, "UTC")
+    assert eval_user(DATE_CASES[0], ASK_VARIANTS["server"], DATE_NOW).split("\n")[1] == week
 
 
 def test_the_date_set_is_its_own_with_a_thursday_today() -> None:

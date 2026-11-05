@@ -23,9 +23,8 @@ from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import BYTES_PER_MS, AskOutcome
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
 from jarvis_live.stt.guards import is_hallucination, rms_level
-from jarvis_live.today import owners_today
 from jarvis_live.voice.ask import Clip, spoken
-from jarvis_live.voice.service import Queue, VoicePass
+from jarvis_live.voice.service import Queue, VoicePass, voice_today
 from jarvis_live.voice.wake import Heard, after_wake
 
 ASK_KIND = "voice_ask"  # copilot_items kind: one row per ask, never part of the transcript
@@ -67,8 +66,10 @@ class AskResult:
 
 
 def ask_today(now: datetime, timezone: str) -> str:
-    """The Today line's text, as the ask sends it and its eval builds it."""
-    return owners_today(now, timezone)
+    """The Today text, as the ask sends it and its eval builds it: today and the next seven days,
+    exactly as voice names them. Without the week, Gemma put "this Friday" on the 12th or the 20th
+    (docs/plans/fast-tier.md, "The ask with the next seven days")."""
+    return voice_today(now, timezone)
 
 
 def ask_user(*, today: str, transcript: str, question: str) -> str:

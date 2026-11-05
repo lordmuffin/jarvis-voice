@@ -1763,6 +1763,12 @@ as well. Andrew decides whether it means "met" or "not worse".**
 requests miss the bar on the same two cases, and the week fixes the lab miss. No server code changed
 in this PR: adopting is `ask_today` returning `voice_today(...)`, with "the sixth" watched.
 
+**Adopted, by Andrew's decision (2026-11-05).** He read clause 1 as "no bar rule worse than on
+`server`": the clause as written could not hold for either request, because the ask's bar already
+fails on `gemma4-e4b`. `AskPass` now sends the next seven days through `voice_today`, so the eval's
+`server+week` is `server`. Known cost: "What day of the week is the sixth?" now gets a confident
+wrong weekday instead of "did not catch".
+
 - **Time.** p95 by pytest run was 0.60, 0.61 and 0.61 s on `server`, and 0.64, 0.63 and 0.63 s on
   `server+week`. The longer prompt costs about 0.03 s, far inside 2.5 s.
 - **Fallbacks: none.** All 306 attempts returned 200 with `x-litellm-model-group: interactive`, 0

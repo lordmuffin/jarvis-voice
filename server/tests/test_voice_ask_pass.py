@@ -226,3 +226,21 @@ async def test_the_ask_names_the_owners_date_in_their_timezone(
     await rig.asked("What day is it?")
     (call,) = rig.llm.calls
     assert call.user.startswith(f"Today: {today}\n")
+
+
+async def test_the_ask_names_the_next_seven_days_in_the_owners_zone(sm: SM, tmp_path: Path) -> None:
+    # Without the week, "What is the date this Friday?" got the 12th or the 20th on a Thursday
+    # (fast-tier.md, "The ask with the next seven days"). Wednesday evening in Chicago.
+    from datetime import UTC, datetime
+
+    sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    at = datetime(2026, 11, 5, 2, 0, tzinfo=UTC)
+    rig = Rig(sm, sid, tmp_path, now=lambda: at, timezone="America/Chicago")
+    rig.llm.queue("AskAnswer", AskAnswer(reply="Friday is November 6th."))
+    await rig.asked("What is the date this Friday?")
+    (call,) = rig.llm.calls
+    assert call.user.startswith(
+        "Today: Wednesday 2026-11-04\n"
+        "Next seven days: Thursday 2026-11-05, Friday 2026-11-06, Saturday 2026-11-07, "
+        "Sunday 2026-11-08, Monday 2026-11-09, Tuesday 2026-11-10, Wednesday 2026-11-11\n\n"
+    )
