@@ -357,6 +357,7 @@ class Daemon:
             "restarts": run.restarts,
             "voice": run.voice,
             "ask": run.ask,
+            "system": bool(run.meta.get("system")),  # recording what this box plays, too
         }
 
     def _audio_state(self, run: _Run) -> tuple[str, str | None]:

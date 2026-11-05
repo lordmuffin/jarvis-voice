@@ -381,3 +381,16 @@ async def test_status_is_recording_once_audio_flows(tmp_path: Path, no_network: 
     await _until(recording)
     await control.request(runtime_dir(env) / "ctl.sock", {"cmd": "stop"}, timeout=30)
     await asyncio.wait_for(task, 10)
+
+
+@pytest.mark.parametrize("system", [False, True])
+async def test_status_says_whether_the_session_records_what_this_box_plays(
+    tmp_path: Path, no_network: list[str], system: bool
+) -> None:
+    """The desktop app speaks an ask's reply only when it can't land on the system channel."""
+    d, env = _daemon(tmp_path, ClientConfig(mode="local"), opts=SessionOptions(system=system))
+    task = asyncio.create_task(d.run())
+    st = await _until_up(env, task)
+    assert st["system"] is system
+    await control.request(runtime_dir(env) / "ctl.sock", {"cmd": "stop"}, timeout=30)
+    await asyncio.wait_for(task, 10)
