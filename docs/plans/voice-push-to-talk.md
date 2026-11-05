@@ -132,20 +132,25 @@ Three defences keep speech out: the [route gate](#headphones-only), playing from
 the Mac, and `echo.py`. The design's text filter runs on both channels, because Mac system audio is
 where a leak would land.
 
+On Linux the second defence does not hold: `--system` records the default sink's monitor, which
+hears every stream, the app's own included. So a Linux session that records system audio is text
+only, as the daemon's `status` reports it, and the route gate and `echo.py` are the defences left.
+
 ### Headphones only
 
-| | Android | macOS |
-|---|---|---|
-| Read the real route | `getAudioDevicesForAttributes` (API 33+). Below that, text only | `kAudioHardwarePropertyDefaultOutputDevice`, transport type and data source |
-| Closed | Wired, USB headset, A2DP, BLE headset, hearing aid | Headphone jack, Bluetooth, USB |
-| Never | Built-in speaker, earpiece, BLE speaker, HDMI, anything unknown | Built-in speakers, HDMI, DisplayPort, AirPlay, anything unknown |
-| Route changes while speaking | `AudioDeviceCallback`: stop at once | Property listener: stop at once |
+| | Android | macOS | Linux |
+|---|---|---|---|
+| Read the real route | `getAudioDevicesForAttributes` (API 33+). Below that, text only | `kAudioHardwarePropertyDefaultOutputDevice`, transport type and data source | `pw-dump`: the default sink, its device's form factor, bus, profile and active port |
+| Closed | Wired, USB headset, A2DP, BLE headset, hearing aid | Headphone jack, Bluetooth, USB | Headphone jack reporting a plug, USB headset or headphones, Bluetooth headset or headphones on A2DP or HFP |
+| Never | Built-in speaker, earpiece, BLE speaker, HDMI, anything unknown | Built-in speakers, HDMI, DisplayPort, AirPlay, anything unknown | Speakers, HDMI, DisplayPort, USB interfaces and line outs (no form factor), virtual sinks, LE Audio, anything unknown, and every `--system` session |
+| Route changes while speaking | `AudioDeviceCallback`: stop at once | Property listener: stop at once | Polls `pw-dump` every 0.1 s: stop at once. The stream is pinned to the sink with `node.dont-reconnect` |
 
 **The check fails closed.** The route decides from a pure function on each platform, tested on every
 type. With no closed route the answer is text only, reported as `skipped: route`.
 
 **Residual risk, decision 3:** a Bluetooth speaker or car reads as A2DP. A USB speaker on the Mac reads
-as USB.
+as USB. On Linux a Bluetooth speakerphone that reports form factor headset (the
+Anker PowerConf S3 does) reads as closed; a device that says `speaker` is refused.
 
 ### Android
 
@@ -170,6 +175,19 @@ as USB.
 - Route classification lives in `JarvisLiveKit`, so `swift test` covers it. New rows in `TESTING.md`.
 - **Unverified until tried on hardware:** how a second engine behaves beside `MicCapture`'s voice
   processing, including ducking.
+
+### Linux
+
+- `jarvis-voice` drives the headless client's daemon (`ask_begin`, `ask_end`, `ask_played` on its
+  control socket); the daemon holds the stream and the `voice_ask` feature. No second client.
+- **Piper** (`piper-tts`, optional `speech` extra, GPL-3.0, not vendored) with
+  `en_US-lessac-medium`, SHA-256 pinned in `jarvis-voice models install`, synthesised in the app a
+  sentence at a time into a `pw-cat` child it owns. Warmed on the session's first `voice_state`.
+- **The key:** Right Alt held alone past 0.2 s, or Right Meta when dictation has Right Alt;
+  configurable, never dictation's key. No cancel once begun.
+- **Not yet reachable:** the evdev monitor, pill and app loop are `linux-desktop.md` PRs 4 to 7.
+  The ask flow, route gate and speaker are tested with fakes; the hardware rows are in
+  `linux/TESTING.md`.
 
 ### Local-only
 
@@ -305,3 +323,4 @@ Filled in by Task 8.
 |---|---|---:|---:|---:|---:|---:|
 | Pixel Fold | | | | | | |
 | Mac | | | | | | |
+| Linux desktop | | | | | | |
