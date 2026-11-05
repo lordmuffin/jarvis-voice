@@ -19,6 +19,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -72,6 +74,7 @@ enum class ButtonSize { Sm, Md, Lg }
 /**
  * Instrument pill button. The drawn pill is the token height (32 / 36 / 52dp); the tap area is never
  * smaller than 48dp. A disabled button is dashed and greyed, and the caller gives the reason beside it.
+ * A hold button keeps its outline in every kind, since it changes kind while held.
  */
 @Composable
 fun InstButton(
@@ -102,12 +105,13 @@ fun InstButton(
         kind == ButtonKind.Secondary -> c.text
         else -> c.text2
     }
-    val outline = enabled && kind == ButtonKind.Secondary || !enabled
+    val outline = !enabled || kind == ButtonKind.Secondary || onHold != null
     val dashed = !enabled
     val control = c.control
     val stroke = sp.hairline
     val dash = sp.s4
     val gap = sp.s4 / 2
+    val hold by rememberUpdatedState(onHold)
     Box(
         modifier
             .heightIn(min = sp.touchTarget)
@@ -115,11 +119,13 @@ fun InstButton(
             .clip(InstUi.shapes.pill)
             .then(
                 if (onHold != null && enabled) {
+                    // Keyed on nothing: a new callback mid-press (the press itself recomposes the caller)
+                    // must not restart the gesture and end the hold under the finger.
                     Modifier
-                        .pointerInput(onHold) {
+                        .pointerInput(Unit) {
                             detectTapGestures(onPress = {
-                                onHold(true)
-                                try { tryAwaitRelease() } finally { onHold(false) }
+                                hold?.invoke(true)
+                                try { tryAwaitRelease() } finally { hold?.invoke(false) }
                             })
                         }
                         .semantics {

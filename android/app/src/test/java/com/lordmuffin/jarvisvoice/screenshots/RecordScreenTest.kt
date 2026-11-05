@@ -39,6 +39,18 @@ class RecordScreenTest(private val variant: Variant) {
         "record_recording_ask_text",
         Fixtures.recording.copy(ask = AskUi.Answered("Priya runs the survey, due Friday.", spoken = false, why = AskUi.Why.ROUTE)),
     )
+    @Test fun recordingListening() = shot("record_recording_ask_listening", Fixtures.recording.copy(ask = AskUi.Listening))
+    @Test fun recordingAnsweredLong() = shot(
+        "record_recording_ask_long",
+        Fixtures.recording.copy(
+            ask = AskUi.Answered(
+                "Priya runs the survey and it is due on Friday; Sam owns the follow-up with the vendor, and the budget " +
+                    "review moved to next Tuesday after the offsite, so the slides need to be ready by Monday.",
+                spoken = true,
+            ),
+        ),
+    )
+    @Test fun recordingAskMuted() = shot("record_recording_ask_muted", Fixtures.recording.copy(ask = AskUi.Ready, askMuted = true))
     @Test fun recordingLocalOnlyCannotAsk() = shot("record_recording_ask_local", Fixtures.recording.copy(askLocalOnly = true))
 
     companion object {
