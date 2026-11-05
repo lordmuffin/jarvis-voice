@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.23.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.23.0...android-v1.23.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **android:** one phone microphone in the picker, and it is the default ([ed6cc50](https://github.com/lordmuffin/jarvis-voice/commit/ed6cc505bb270d039097a9c9f3cc3a9829a73bba))
+* **android:** one phone microphone in the picker, and it is the default ([2ea597d](https://github.com/lordmuffin/jarvis-voice/commit/2ea597dc78af806c541354947daf0eb5efbc09e0))
+
 ## [1.23.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.22.1...android-v1.23.0) (2026-11-03)
 
 
