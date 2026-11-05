@@ -329,20 +329,13 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showInputDevicePicker(deviceRouter: AudioDeviceRouter) {
-        val devices = deviceRouter.getInputDevices()
-        val labels  = listOf(getString(R.string.settings_mic_default)) + devices.map { deviceRouter.deviceLabel(it) }
-        val savedId = deviceRouter.getSavedDeviceId()
-        val currentIndex = if (savedId == AudioDeviceRouter.DEVICE_DEFAULT) 0
-                           else devices.indexOfFirst { it.id == savedId }.let { if (it < 0) 0 else it + 1 }
+        val entries = deviceRouter.entries()
+        val currentIndex = entries.indexOfFirst { it.key == deviceRouter.savedKey() }
 
         AlertDialog.Builder(this)
             .setTitle(R.string.settings_mic_title)
-            .setSingleChoiceItems(labels.toTypedArray(), currentIndex) { dialog, which ->
-                if (which == 0) {
-                    deviceRouter.saveDeviceId(AudioDeviceRouter.DEVICE_DEFAULT)
-                } else {
-                    deviceRouter.saveDeviceId(devices[which - 1].id)
-                }
+            .setSingleChoiceItems(entries.map { it.label }.toTypedArray(), currentIndex) { dialog, which ->
+                deviceRouter.saveKey(entries[which].key)
                 tvInputDevice.text = deviceRouter.currentLabel()
                 dialog.dismiss()
             }

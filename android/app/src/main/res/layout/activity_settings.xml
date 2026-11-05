@@ -704,7 +704,7 @@
                         style="@style/Settings.RowDesc"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/settings_mic_default"
+                        android:text="@string/settings_mic_phone"
                         android:textColor="@color/inst_accent"
                         android:layout_marginTop="@dimen/inst_space_4"/>
                 </LinearLayout>

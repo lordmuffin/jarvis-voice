@@ -117,6 +117,17 @@ Errors that used to fail silently now show on the pill:
 | ⚑ Mic in use | A Jarvis Live session has the microphone | — |
 | ✕ Speech model unavailable | No speech model is downloaded or the engine failed to start | Opens Settings → STT Model |
 
+### Microphone: check on a phone
+
+Settings → Microphone lists the phone's built-in mics as one **Phone microphone** row, first, then each connected Bluetooth, wired or USB headset once. The choice is saved by a stable key (not Android's device id) and resolved each time capture starts; a headset that is gone falls back to the phone microphone, with a `Mic` line in the debug log. The rules are JVM-tested (`MicChoiceTest`); the device behaviour is checked by hand. On the Fold, after upgrading over an older install:
+
+| Test | Expect |
+|---|---|
+| Nothing connected, open Settings → Microphone | one "Phone microphone" row, and it is selected (an old "System Default" or device choice was moved to it) |
+| Nothing connected, hold an ask and speak | the question is heard, and the answer is shown as text ("no headphones"), not spoken |
+| Connect earbuds, open the picker again | the earbuds are listed once, after "Phone microphone" |
+| Choose the earbuds, disconnect them, dictate | it hears you through the phone microphone; the debug log says the earbuds are not connected |
+
 ---
 
 ## Wear OS companion
