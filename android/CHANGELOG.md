@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.24.1](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.24.0...android-v1.24.1) (2026-11-05)
+
+
+### Bug Fixes
+
+* **android:** the ask button stays put and keeps the press ([c1e3c80](https://github.com/lordmuffin/jarvis-voice/commit/c1e3c8053905e7db47e73322c8cfd47e2bc9806a))
+* **android:** the ask button stays put and keeps the press ([8a8fca1](https://github.com/lordmuffin/jarvis-voice/commit/8a8fca156c0d909d3f75b21c27beed468f638573))
+
 ## [1.24.0](https://github.com/lordmuffin/jarvis-voice/compare/android-v1.23.1...android-v1.24.0) (2026-11-05)
 
 
