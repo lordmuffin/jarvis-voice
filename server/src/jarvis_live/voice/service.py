@@ -7,7 +7,7 @@ else's in the room, so they are quoted to the LLM as data and shown to the appro
 
 import re
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Protocol
@@ -123,11 +123,14 @@ class VoicePass:
         sessionmaker: "async_sessionmaker[AsyncSession]",
         llm: LLM,
         notifier: Notifier,
+        *,
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         self._cfg = settings
         self._sm = sessionmaker
         self._llm = llm
         self._notifier = notifier
+        self._now = now or (lambda: datetime.now(UTC))
 
     @property
     def _model(self) -> str:
@@ -162,7 +165,7 @@ class VoicePass:
         self, session_id: uuid.UUID, heard: Heard, queue: Queue | None
     ) -> VoiceRequest | None:
         user = voice_user(
-            today=named_today(datetime.now(UTC).date()),
+            today=named_today(self._now().date()),
             repos=self._cfg.work_repo_allowlist,
             commentable=queue.repos() if queue else (),
             known=await queue.known() if queue else [],

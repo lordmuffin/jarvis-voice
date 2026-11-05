@@ -6,7 +6,7 @@ returns words and nothing else, so what other people said can never file anythin
 
 import time
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
@@ -97,12 +97,15 @@ class AskPass:
         llm: LLM,
         stt: STTBackend,
         voice: VoicePass,
+        *,
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         self._cfg = settings
         self._sm = sessionmaker
         self._llm = llm
         self._stt = stt
         self._voice = voice
+        self._now = now or (lambda: datetime.now(UTC))
 
     @property
     def model(self) -> str:
@@ -177,7 +180,7 @@ class AskPass:
             from_ms = max(0, now_ms - int(self._cfg.voice_ask_window_s * 1000))
             lines = outside(await load_lines(db, session_id, from_ms), windows)
         user = ask_user(
-            today=named_today(datetime.now(UTC).date()),
+            today=named_today(self._now().date()),
             transcript=render_lines(lines),
             question=question,
         )
