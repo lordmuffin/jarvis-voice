@@ -24,6 +24,15 @@ deny contains msg if {
 	msg := "Deployment/jarvis-live-mediamtx: live must run no stream ingest yet (replicas 0)"
 }
 
+# A Pi session is a real agent on the homelab. Live starts none until dpi-backend admits jarvis-live
+# and Andrew turns it on (docs/plans/voice-commands.md). Only "false" counts as off: the app reads
+# "1", "yes" or "on" as true too.
+deny contains msg if {
+	input.kind == "ConfigMap"
+	object.get(input.data, "JARVIS_LIVE_VOICE_PI_ENABLED", "false") != "false"
+	msg := sprintf("ConfigMap/%s: live must not start Pi sessions yet (JARVIS_LIVE_VOICE_PI_ENABLED)", [input.metadata.name])
+}
+
 # Live and lab each have their own LiteLLM key, so lab's can be revoked without touching live.
 deny contains msg if {
 	input.kind == "OnePasswordItem"

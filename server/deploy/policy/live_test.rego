@@ -49,3 +49,20 @@ test_live_with_labs_litellm_key_denied if {
 	some msg in deny with input as litellm_item("vaults/HomeLab/items/LiteLLM Proxy Key - jarvis-live-lab")
 	contains(msg, "litellm-proxy-key")
 }
+
+live_cm(d) := {"kind": "ConfigMap", "metadata": {"name": "jarvis-live-config", "namespace": "jarvis-live"}, "data": d}
+
+test_live_must_not_start_pi_sessions if {
+	some msg in deny with input as live_cm({"JARVIS_LIVE_VOICE_PI_ENABLED": "true"})
+	contains(msg, "Pi")
+}
+
+# The app reads any of pydantic's true spellings as on, so only "false" counts as off.
+test_live_pi_sessions_on_by_another_spelling_denied if {
+	some msg in deny with input as live_cm({"JARVIS_LIVE_VOICE_PI_ENABLED": "1"})
+	contains(msg, "Pi")
+}
+
+test_live_with_pi_sessions_off_passes if {
+	count(deny) == 0 with input as live_cm({"JARVIS_LIVE_VOICE_PI_ENABLED": "false"})
+}
