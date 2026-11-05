@@ -24,6 +24,7 @@ from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import Copilot
+from jarvis_live.today import owners_day
 from jarvis_live.vault.index import VaultContext
 
 SNAPSHOT = "snapshot"
@@ -65,6 +66,7 @@ class CopilotLoop:
         set_llm_ok: Callable[[bool], None] = lambda ok: None,
         clock: Clock | None = None,
         proposals: SessionProposals | None = None,
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         self.session_id = session_id
         self._cfg = settings
@@ -73,6 +75,7 @@ class CopilotLoop:
         self._llm = llm
         self._vault = vault
         self._stream_ms = stream_ms
+        self._now = now or (lambda: datetime.now(UTC))
         self._set_llm_ok = set_llm_ok
         self._clock = clock or RealClock()
         self._proposals = proposals  # set only where the owner can review them
@@ -132,7 +135,7 @@ class CopilotLoop:
             ).scalar_one_or_none()
         made = await self._proposals.known() if self._proposals else []
         user = copilot_user(
-            today=datetime.now(UTC).date().isoformat(),
+            today=owners_day(self._now(), self._cfg.timezone).isoformat(),
             title=title,
             state_json=self.state.prompt_json(made),
             related="\n".join(f"- {r.title} [{r.path}]: {r.snippet}" for r in self.state.related),

@@ -1264,6 +1264,273 @@ and 2 in `Tasks.herd`. Move 3 is step 4 and stops with it.
 - **Task 21 and this plan agree** on Prometheus's placement, and `llm-path-alerts.md` already expects
   this alert in its directory.
 
+## Lab voice check, 2026-11-04
+
+**Lab's held asks and spoken requests are answered by `interactive`, as #313 intended.** All 10 holds
+named `interactive`, and none fell back to `heavy`. The LLM stage was p95 0.72 s on the asks and
+2.18 s on the spoken requests. The repeat was dropped by the dedupe. Three faults remain:
+
+- The weekday landed on the right date only because the UTC day happened to be that weekday.
+- The reminder's time is in UTC.
+- The request naming no repo was given the first listed repo.
+
+**Setup.** Lab ran `sha-64ed88d`, which contains 973ed48 (#313). Its ConfigMap has
+`JARVIS_LIVE_VOICE_MODEL=interactive` and no timezone, so the server works in UTC. One session ran from
+the owner's test device with `features=voice_ask`. It streamed 14 s of context speech, then 10 holds
+32 s apart, each with a clip from a local TTS voice. The 5 spoken requests were held asks opening with
+"Jarvis", so they reached `VoicePass` unchanged and their stage times were stored. The driver sent
+`ask_played` with the time from release to `ask_reply`, so `first_audio` below has no speech synthesis
+in it.
+
+**When.** Sent 2026-11-05 00:25:18 to 00:30:06 UTC, which is Wednesday 2026-11-04 18:25 to 18:30 in
+America/Chicago. **The server named today "Thursday 2026-11-05"**, from `datetime.now(UTC)`. The
+owner's day was Wednesday the 4th. Stage 2 fixes this.
+
+`jarvis-live ask-report --days 1`, run on the lab pod. Only this device had asks that day:
+
+| Device | Model | n | Played | stt p50 / p95, s | llm p50 / p95, s | first_audio p50 / p95, s | Outcomes |
+|---|---|---|---|---|---|---|---|
+| test device | interactive | 10 | 10 | 0.61 / 0.81 | 0.72 / 2.18 | 1.53 / 2.82 | answer 6, filed 4 |
+
+The same rows, split by kind. Percentiles are by nearest rank on 5 rows, so p95 is the slowest:
+
+| Kind | llm p50 | llm p95 | Release to reply p50 | p95 |
+|---|---:|---:|---:|---:|
+| Held ask | 0.57 s | 0.72 s | 1.33 s | 1.53 s |
+| Spoken request | 1.85 s | 2.18 s | 2.51 s | 2.82 s |
+
+| Said | Got | Right? |
+|---|---|---|
+| "add a task to review the pricing proposal" | `task.create` "Review pricing proposal", due 2026-11-05 | Filed. The due date was never said: R5's known miss |
+| "remind me on Thursday at ten to call the dentist" | `reminder.schedule` at `2026-11-05T10:00:00+00:00` | **The date is right only by chance, and the time is wrong.** Thursday the 5th is the owner's Thursday. But the model got it as "today", the UTC day, not as tomorrow from a Wednesday. 10:00 UTC is 04:00 in Chicago, six hours early |
+| The task again | "I could not turn that into an action. Nothing was started." | **Dropped by the dedupe.** The same request sent 3 times through `interactive` returned the same task each time, with the same unspoken due date. So the model repeated it and `ProposalState` removed it |
+| "add a task to email Sam. Actually, scratch that, never mind." | `none`, then the ask pass: "I did not catch that." | Nothing filed. It took two LLM calls, 1.56 s in total |
+| "start a cloud session to fix the flaky login test" | Draft work item, repo `lordmuffin/jarvis-voice` | **No.** No repo was named, and the model took the first one listed. This is R5's "repo not clear" miss, on 1 sample |
+
+The asks: the three answered from the transcript were right. Asks 4 and 5 came over 180 s after the
+context, so they had no transcript. The leap year got "thirty-six six days", the common-knowledge miss
+R5 saw. The logo question got "I did not catch that in the transcript", which is right.
+
+**Fallbacks: none.**
+- The `interactive-llm` log shows 11 chat requests in the window besides its health probes. That is
+  5 asks, 5 requests and the take-back's second call. None was slower than 2.2 s, well inside the
+  alias's 5 s timeout.
+- LiteLLM's log has no error for `interactive`. Three check requests sent through the proxy with
+  lab's key carried `x-litellm-model-group: interactive` and `x-litellm-attempted-fallbacks: 0`.
+- Its 20 error lines in the window were Flash (`qwen3.8-flash-next`) timing out mid-stream. One cost
+  this session a copilot cycle. That is the copilot's path, not voice.
+
+**Cleaned up.** Both proposals were rejected and the work item discarded. Once the session had
+finished, it was moved to Recently deleted. No new proposals came from finalizing.
+
+**Limits.** 5 rows of each kind, one session. TTS speech in a quiet stream, with no Whisper queue.
+`first_audio` is the driver's release to reply, so device speech start is not in it. An ask that hands
+off to `VoicePass` is stored as `filed` whatever `VoicePass` replies. The dropped repeat therefore
+counts as `filed`, though nothing was filed.
+
+### The ask eval on gemma4-e4b, 2026-11-04
+
+**The ask still misses R6's bar, on the same cases, and naming the weekday moved nothing.** It
+passed 28 of 36, under the 90% the bar needs, with 3 cases below 2 of 3. Both critical cases passed
+3 of 3, and every reply was within 30 words. Per attempt, p50 was 0.46 s and p95 0.57 s. 0 of 36 fell
+back.
+
+Run 2026-11-05 00:58:47 to 00:59:06 UTC (Wednesday evening in Chicago). It went through lab's own
+proxy key and the alias `interactive`, with the 20 s ask timeout lab runs on. It is
+`test_ask_evals.py --live`: 12 cases, three runs each, against the bar in `ask_cases.py`, unchanged.
+
+**What it sends.** It sends what the server's ask now sends: the real `ASK_SYSTEM`, `ask_user` and
+`AskAnswer`, thinking off. The one change is "Today: Wednesday 2026-11-04". The eval used to send
+"Today: 2026-11-04", which the server stopped sending when the voice request was fixed. It now takes
+the date from `named_today`, as the voice eval does, and an offline test pins it to the server's form.
+There is no 180 s of filler: this is R5's "as written" ask.
+
+**Pre-flight, read-only, all passed.**
+- `interactive-llm` was Ready with 0 restarts, and still had 0 after the run.
+- Its model's SHA256 on the pod is `676c3507…baee`.
+- Its image is `server-cuda12-b11459@sha256:fff6185e…`. fast-tier.md records only R5's tag, not its
+  digest. Every `interactive-llm` ReplicaSet kept since 13:37 UTC on 2026-11-03, before R5's first
+  measurement, has this same digest.
+- The card held only this pod, at 3,163 MiB, with 0% utilisation. Its log had no request but health
+  probes since 00:32.
+- One check request through the proxy came back from `interactive`, with
+  `x-litellm-attempted-fallbacks: 0`, and the pod logged it.
+
+| Case | Passed | Reply |
+|---|---:|---|
+| Speech-to-text errors | 0 of 3 | "I did not catch who is running the server very." |
+| Common knowledge | 0 of 3 | "A leap year has thirty-six six days." |
+| Not in the transcript | 1 of 3 | "The transcript does not mention any decisions regarding hiring." |
+| The other 9, both critical cases among them | 3 of 3 each | |
+
+- **Against R5's 27 of 36,** this run is one better. That 27 had 180 s of transcript in front of each
+  question. The fairer comparison is R5's "as written", the same eval without the weekday. That run
+  got 29 of 36, so this run is one worse. The misses are R5's, with the same wording. "Not in the
+  transcript" passed R5's "as written" run and fails here, as it did in R5's 180 s run. Again, part of
+  the fault is the checker's phrase list, which has no "does not mention".
+- **The weekday did nothing that can be seen.** No case asks about a date. One case moving by a run
+  or two is within noise, since the client sends temperature 0.2.
+- **Fallbacks: none.** All 36 attempts returned 200 with `x-litellm-model-group: interactive`, 0
+  attempted fallbacks and 0 retries. The pod logged exactly 36 requests in the window. No attempt held
+  reasoning, and none was retried for invalid JSON.
+
+| Attempts | p50 | p95 | Max | Longest reply |
+|---:|---:|---:|---:|---:|
+| 36 | 0.46 s | 0.57 s | 0.63 s | 36 tokens |
+
+**Not run: the 17 copilot cases.** Andrew decided to skip them for this run.
+
+**Limits.** One run of 36, with no transcript padding, so the times are lower than R5's 180 s figure.
+Times are measured around each HTTP attempt on the client, through a port-forward. The rows and
+replies are kept outside the repo.
+
+### Naming the next seven days
+
+**Naming the next seven days fixes Gemma's last miss, and it passes the af416ec bar on quality, 75
+of 75. It is not adopted: its reply p95 is 2.51 s against the server request's 2.48 s in the same
+stage, and the adopt rule needs equal or lower.** It stays an eval variant, `server+week`.
+
+The variant is the server's request with one line after Today: "Next seven days: Thursday
+2026-11-05, Friday 2026-11-06, ... Wednesday 2026-11-11". The days are counted on the owner's
+calendar from the same helper that names today, `owners_day`, so a 23-hour day is not skipped. The
+system prompt and the grammar are unchanged, and offline tests pin that. It adds about 95 prompt
+tokens.
+
+Run 2026-11-05 01:05 to 01:09 UTC, on the card through lab's proxy key and alias `interactive`, timeout
+30 s, three runs of all 25 each, `server` first. Pre-flight was as in the ask eval above: the pod was
+Ready with 0 restarts before and after, model `676c3507…baee`, image `fff6185e…`, the card quiet
+since 01:00 apart from a probe, and a check request served by `interactive` with no fallback.
+
+| Request | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Within 2.5 s | Tokens p95 | Fallbacks |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| `server` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.61 s | **2.48 s** | 2.50 s | 75 of 75 | 189 | 0 of 75 |
+| `server+week` | **75 of 75** | **25 of 25** | 3 of 3 each | 0 | 1.59 s | **2.51 s** | 2.60 s | 70 of 75 | 189 | 0 of 75 |
+
+- **The weekday miss is gone with the days named.** On `server`, "two steps" put "Friday at ten" on
+  2026-11-07 in 2 of 3 runs, as before. On `server+week` it was 2026-11-06 in 3 of 3.
+- **The adopt rule.** Critical 3 of 3 on both, passes 75 against 73, nothing cut off: met. Reply p95
+  2.51 s against 2.48 s: not met, by 0.03 s. By run, `server` had p95 2.44, 2.48 and 2.48 s, and
+  `server+week` 2.36, 2.51 and 2.50 s. The difference is within run-to-run noise, but the rule is
+  the rule.
+- **Time is decode.** Reply tokens are the same at p50 and p95 on both, at about 79 tok/s. The extra
+  prompt line costs about 0.04 s of prefill. Shorter replies are what would bring either request
+  under 2.5 s.
+- All 150 attempts carried `x-litellm-model-group: interactive`, 0 attempted fallbacks and 0
+  retries. No reply held reasoning.
+
+**Limits.** Three runs of each, one after the other, not interleaved. The client sends temperature
+0.2. Rows and replies are kept outside the repo.
+
+### Shorter replies
+
+**One prompt rule brings reply p95 to 2.28 s, against 2.48 s for the server's request in the same
+stage, with quality unchanged. It met the adopt rule and is now the server's request.** The rule:
+"For action and none, leave the cloud and pi fields empty: title and task "", repo and done_when
+null, acceptance_criteria []." No max_tokens was set, and nothing was cut off.
+
+**Where the tokens went.** From stage 4's 75 `server` replies, with each reply's tokens shared out by
+the characters of each field:
+
+| Kind | Replies | Tokens p50 | p95 | title | task | repo | criteria | done_when | proposals |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cloud | 18 | 134 | 168 | 13 | 36 | 10 | 44 | 22 | - |
+| pi | 15 | 119 | 133 | 13 | 36 | 7 | 33 | 23 | - |
+| action | 24 | 134 | 189 | 13 | 30 | 7 | 16 | 9 | 58 |
+| none | 18 | 80 | 89 | 11 | 33 | 5 | 9 | 6 | 6 |
+
+The slowest 5% were all actions: "PR comment", "two steps" and "repo not allowed for a comment", at
+185 to 192 tokens. An action reply spent about 75 tokens on title, task, repo, criteria and
+done_when, which the server never reads for an action. A "none" reply spent about 60 on them. The
+prompt already said those fields were for cloud and pi, and Gemma filled them anyway.
+
+**The candidates.** Each was built as an eval variant on the server's request: the system prompt
+changed and nothing else, which offline tests pin.
+
+- `server+lean`: the rule above, added as the last bullet.
+- `server+short-task`: "task: 1-2 sentences" in place of "1-4 sentences", for cloud and pi.
+
+Run 2026-11-05 01:25 to 01:31 UTC, on the card through lab's proxy key and alias `interactive`,
+timeout 30 s, three runs of all 25 each, in the order `server`, `server+lean` and
+`server+short-task`. Pre-flight as in the ask eval above: the pod Ready with 0 restarts, model
+`676c3507…baee`, image `fff6185e…`, no other traffic on the card for the 5 minutes before, and a check
+request served by `interactive` with no fallback.
+
+| Request | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Within 2.5 s | Tokens p50 | p95 | Fallbacks |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `server` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.60 s | 2.48 s | 2.62 s | 72 of 75 | 121 | 189 | 0 of 75 |
+| `server+lean` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.57 s | **2.28 s** | 2.61 s | 73 of 75 | 118 | **174** | 0 of 75 |
+| `server+short-task` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.54 s | 2.42 s | 2.44 s | 75 of 75 | 117 | 183 | 0 of 75 |
+
+- **The adopt rule, one at a time.** `server+lean` against `server`: critical 3 of 3, 73 passes against
+  73, nothing cut off, p95 2.28 s against 2.48 s. Met, so **adopted**. By run its p95 was 2.28, 2.22
+  and 2.14 s, against 2.46, 2.50 and 2.48 s for `server`. `server+short-task` then stands against
+  the adopted request: 2.42 s against 2.28 s, so it is **not adopted**. It met the rule against the
+  old request, but the two were not measured together, so they are not combined.
+- **What the lean rule changed.** Every "none" reply came back empty, at 60 tokens in place of 80
+  to 91. Pi replies left criteria and done_when empty (the server reads only title and task for
+  Pi), and p50 fell from 122 to 84 tokens. Action replies still wrote a title and task, but shorter
+  criteria took the PR comment cases off the tail. "Two steps" is now the slowest reply, at 188 to
+  198 tokens, so the max barely moved.
+- The only miss on all three is still "two steps", 1 of 3: "Friday at ten" on the 7th. The
+  `server+week` line above fixes it. It was not run on top of the lean request here.
+- All 225 attempts carried `x-litellm-model-group: interactive`, 0 attempted fallbacks and 0
+  retries. No reply held reasoning. Decode was about 79 tok/s on all three.
+
+**Limits.** Token shares are by characters, not a tokenizer. Three runs of each, one after the
+other. The `server` rows here are the request before this change. Rows and replies are kept outside
+the repo.
+
+### Verdict for R7
+
+**`gemma4-e4b` fails the af416ec bar on the server's request as it now stands, by one case, and
+meets 2.5 s.** It passed 73 of 75, 24 of 25 cases and every critical case 3 of 3, with nothing cut
+off. Rule 1 fails: "two steps" passed 1 of 3, "Friday at ten" on the 7th again. Reply p95 was 2.30 s
+measured, 73 of 75 within 2.5 s, with 0 fallbacks in 75 attempts.
+
+Run 2026-11-05 01:56 to 01:58 UTC, on the card through lab's proxy key and alias `interactive`,
+timeout 30 s, three runs of all 25, `--expect-group interactive`. The request is `server`, which now
+holds the lean rule from "Shorter replies" and the owner's date from the configured zone. Pre-flight
+as in the ask eval above: the pod Ready with 0 restarts before and after, model `676c3507…baee`, image
+`fff6185e…`, no requests on the card in the 10 minutes before, and a check request served by
+`interactive` with no fallback.
+
+| Model | Where | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Tokens p95 | Fallbacks |
+|---|---|---:|---:|---|---:|---:|---:|---:|---:|---:|
+| `gemma4-e4b` | card, `interactive` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.54 s | **2.30 s** measured | 2.57 s | 176 | 0 of 75 |
+| `q25-3b`, control | local CPU | 50 of 75 | 17 of 25 | no | 1 | - | 1.71 s projected | - | 199 | n/a |
+
+| Bar rule | `gemma4-e4b` |
+|---|---|
+| 1. Every case at least 2 of 3 | **Fails**: "two steps" 1 of 3 |
+| 2. Critical cases 3 of 3 | Met |
+| 3. At least 90% of runs | Met, 97% |
+| 4. No reply cut off | Met |
+| Time: reply p95 within 2.5 s | Met, 2.30 s measured |
+
+- **The time is solved.** By run, p95 was about 2.2 s each time. The two replies over 2.5 s were both
+  "two steps", at 198 tokens.
+- **The miss is the one R2, R5 and #311 saw.** `server+week` fixed it 3 of 3 in "Naming the next seven
+  days", but on the request before the lean rule. On today's request it has not run.
+- **The control** ran on the same request in the pinned llama.cpp build, one 4,096-token slot,
+  12 threads, beside Jev's idle replica. It fails as in "The voice request, fixed", 50 of 75 and 17
+  of 25, and still takes the first repo when none is named. One reply ran to 3,527 tokens and hit the
+  slot's limit. Its time is projected from its CPU rates to the 2070, and is unproven.
+
+**Recommendation for R7, Andrew decides:** run `server+week` on the lean request against `server`
+under the adopt rule first, since it fixed the only miss and p95 now has 0.2 s to spare; if that is
+not wanted, R7 can ship on this request with "two steps" as the one known miss, as lab does now.
+
+**Changed after this run, by review, unmeasured on the card.** Two wording changes in `VOICE_SYSTEM`:
+the lean rule now nulls only the top-level `repo` ("A git.pr_comment step keeps its own repo"), and
+`at` is asked for "as local time with no offset". The server now reads any offset on `at` as the
+owner's wall time, whatever the model sends. Base sets `JARVIS_LIVE_TIMEZONE` to `America/Chicago`,
+checked at startup. The copilot and the ideas pass name the owner's date too. Before R7, a `server`
+run of three on the card should confirm the two wording changes cost nothing. It can be the same run
+as the `server+week` comparison.
+
+**Limits.** One run of three on the card. The client sends temperature 0.2. Rows and replies are
+kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and

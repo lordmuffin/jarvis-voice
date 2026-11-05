@@ -94,3 +94,13 @@ def test_dispatch_image_follows_the_server_commit_unless_set() -> None:
     )
     pinned = Settings(git_sha="0123456789", dispatch_image="ghcr.io/x/runner:1.2.3")
     assert pinned.dispatch_runner_image == "ghcr.io/x/runner:1.2.3"
+
+
+@pytest.mark.parametrize("bad", ["America/Chicgo", "CST", "Not/AZone", ""])
+def test_an_unknown_timezone_is_refused_at_startup(bad: str) -> None:
+    with pytest.raises(ValueError, match="timezone"):
+        Settings(timezone=bad)
+
+
+def test_a_real_timezone_is_kept() -> None:
+    assert Settings(timezone="America/Chicago").timezone == "America/Chicago"

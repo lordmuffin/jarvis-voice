@@ -8,10 +8,9 @@ import httpx
 import pytest
 
 from jarvis_live.config import Settings
-from jarvis_live.copilot.transcript import render_lines
 from jarvis_live.llm.client import LiteLLMClient, LLMError
-from jarvis_live.voice.ask_pass import ASK_SYSTEM, AskAnswer, ask_user
-from tests.evals.ask_cases import ASK_CASES, RUNS, AskCase, grade
+from jarvis_live.voice.ask_pass import ASK_SYSTEM, AskAnswer
+from tests.evals.ask_cases import ASK_CASES, RUNS, AskCase, eval_user, grade
 
 pytestmark = pytest.mark.live
 
@@ -21,9 +20,7 @@ async def test_ask_case(case: AskCase) -> None:
     cfg = Settings()
     assert cfg.litellm_base_url, "set JARVIS_LIVE_LITELLM_BASE_URL"
     model = cfg.voice_model or cfg.copilot_model
-    user = ask_user(
-        today="2026-11-04", transcript=render_lines(list(case.lines)), question=case.question
-    )
+    user = eval_user(case)
     passed = 0
     async with httpx.AsyncClient() as http:
         llm = LiteLLMClient(cfg.litellm_base_url, http, api_key_file=cfg.litellm_api_key_file)

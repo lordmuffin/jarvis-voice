@@ -108,6 +108,21 @@ async def test_a_pass_does_not_pay_for_reasoning(sm: SM) -> None:
     assert [c.think for c in llm.calls] == [False]
 
 
+async def test_a_pass_names_the_owners_date_in_their_timezone(sm: SM) -> None:
+    from datetime import UTC, datetime
+
+    sid = await owner_session(sm)
+    await add_segments(sm, sid, DIARY[:9])
+    llm = FakeLLM().queue("IdeasDelta", IdeasDelta())
+    cfg = CFG.model_copy(update={"timezone": "America/Chicago"})
+    wednesday_evening = datetime(2026, 11, 5, 2, 0, tzinfo=UTC)  # 20:00 in Chicago
+
+    await IdeasPass(cfg, sm, llm, now=lambda: wednesday_evening).run(sid)
+
+    assert "2026-11-04" in llm.calls[0].user
+    assert "2026-11-05" not in llm.calls[0].user
+
+
 async def test_the_next_pass_reads_only_new_lines_plus_overlap_and_clusters(sm: SM) -> None:
     sid = await owner_session(sm)
     await add_segments(sm, sid, DIARY[:9])

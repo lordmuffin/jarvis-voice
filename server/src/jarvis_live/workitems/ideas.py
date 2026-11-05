@@ -9,6 +9,7 @@ decides what is kept. One more pass runs when the session ends, before the note 
 import asyncio
 import json
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select
@@ -21,6 +22,7 @@ from jarvis_live.db.models import CopilotItem, SegmentRow, WorkItem
 from jarvis_live.db.models import Session as SessionRow
 from jarvis_live.llm.client import LLM, LLMError
 from jarvis_live.logging_setup import session_logger
+from jarvis_live.today import owners_day
 from jarvis_live.workitems.rows import store_changes, to_item
 from jarvis_live.workitems.schema import IdeasDelta
 from jarvis_live.workitems.state import CLOSED, OPEN, IdeasState, number_lines
@@ -93,11 +95,17 @@ class IdeasPass:
     the orchestrator never runs two at once for a session."""
 
     def __init__(
-        self, settings: Settings, sessionmaker: "async_sessionmaker[AsyncSession]", llm: LLM
+        self,
+        settings: Settings,
+        sessionmaker: "async_sessionmaker[AsyncSession]",
+        llm: LLM,
+        *,
+        now: Callable[[], datetime] | None = None,
     ) -> None:
         self._cfg = settings
         self._sm = sessionmaker
         self._llm = llm
+        self._now = now or (lambda: datetime.now(UTC))
 
     async def run(self, session_id: uuid.UUID) -> bool:
         """Returns True if any work item was created or changed."""
@@ -120,7 +128,7 @@ class IdeasPass:
         lines = lines[-cfg.ideas_max_lines :]
         transcript, refs = number_lines(lines)
         user = ideas_user(
-            today=datetime.now(UTC).date().isoformat(),
+            today=owners_day(self._now(), cfg.timezone).isoformat(),
             repos=cfg.work_repo_allowlist,
             open_json=_open_json(rows),
             closed=[r.title for r in rows if r.state in CLOSED],

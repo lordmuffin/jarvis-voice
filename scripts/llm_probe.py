@@ -586,9 +586,11 @@ what it is for. Otherwise null: never pick one for its place in the list.
 - acceptance_criteria: for cloud, 1-6 short, checkable statements.
 - done_when: for cloud, one sentence.
 - proposals: for action, the steps. Kinds: task.create {text, due}; reminder.schedule {title, \
-body, at}, with at an ISO datetime resolved from Today; git.pr_comment {repo, pr, body}, only for \
-a repo under REPOSITORIES YOU MAY COMMENT ON and a PR number that was said. Do not repeat anything \
-under ALREADY PROPOSED.
+body, at}, with at an ISO datetime resolved from Today, as local time with no offset; \
+git.pr_comment {repo, pr, body}, only for a repo under REPOSITORIES YOU MAY COMMENT ON and a PR \
+number that was said. Do not repeat anything under ALREADY PROPOSED.
+- For action and none, leave the cloud and pi fields empty: title and task "", the top-level repo \
+and done_when null, acceptance_criteria []. A git.pr_comment step keeps its own repo.
 
 Use only what was said; do not invent requirements."""
 

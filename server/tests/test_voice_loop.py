@@ -652,21 +652,11 @@ async def test_a_held_ask_still_being_held_is_skipped_too(rig: Rig) -> None:
 # --- what the model is told, and what a repeat files (docs/plans/fast-tier.md, R2) ------------
 
 
-async def test_today_is_sent_with_its_weekday(rig: Rig) -> None:
-    from datetime import UTC, datetime
-
-    rig.llm.queue("VoiceRequest", VoiceRequest(target="none"))
-    await rig.hear("Jarvis, remind me on Friday to call the vendor.")
-    await rig.loop().tick()
-    today = datetime.now(UTC).date()
-    (call,) = rig.llm.calls
-    assert f"Today: {today:%A} {today.isoformat()}\n" in call.user
-
-
-# One evening in Chicago, after DST ended on 1 November: 02:00Z and 05:59Z are still Wednesday
+# One evening in Chicago, after DST ended on 1 November: 02:00Z to 05:59Z are still Wednesday
 # there, 06:00Z is its midnight. A UTC owner keeps the UTC date.
 TODAY_IN_ZONE = [
     ("America/Chicago", (2026, 11, 5, 2, 0), "Wednesday 2026-11-04"),
+    ("America/Chicago", (2026, 11, 5, 5, 0), "Wednesday 2026-11-04"),
     ("America/Chicago", (2026, 11, 5, 5, 59), "Wednesday 2026-11-04"),
     ("America/Chicago", (2026, 11, 5, 6, 0), "Thursday 2026-11-05"),
     ("UTC", (2026, 11, 5, 2, 0), "Thursday 2026-11-05"),

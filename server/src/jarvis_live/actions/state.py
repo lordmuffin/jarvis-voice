@@ -96,9 +96,9 @@ def build_payload(p: ProposalIn, ctx: Context) -> dict[str, Any] | None:
             at = datetime.fromisoformat(p.at)
         except ValueError:
             return None
-        if at.tzinfo is None:
-            at = at.replace(tzinfo=ZoneInfo(ctx.timezone))
-        at = at.astimezone(UTC)
+        # The models are told only the owner's date, never a zone, so an offset on `at` is
+        # invented ("ten" as 10:00Z): the wall time is always read in the owner's zone.
+        at = at.replace(tzinfo=ZoneInfo(ctx.timezone)).astimezone(UTC)
         if at <= ctx.now or at > ctx.now + timedelta(days=MAX_REMINDER_DAYS):
             return None
         out = {"title": title, "at": at.isoformat()}

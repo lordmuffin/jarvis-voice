@@ -46,12 +46,14 @@ class Rig:
         self.llm_ok_calls: list[bool] = []
         self.events: list[Any] = []
         self.sub = self.bus.subscribe(str(sid))
+        self.settings = Settings()
+        self.now: Any = None
         self.loop = self.make()
 
     def make(self) -> CopilotLoop:
         return CopilotLoop(
             self.sid,
-            settings=Settings(),
+            settings=self.settings,
             sessionmaker=self.sm,
             bus=self.bus,
             llm=self.llm,
@@ -59,6 +61,7 @@ class Rig:
             stream_ms=lambda: self.stream_ms,
             set_llm_ok=self.llm_ok_calls.append,
             clock=self.clock,
+            now=self.now,
         )
 
     async def segs(self, n: int, start: int | None = None) -> None:
@@ -101,6 +104,25 @@ async def test_runs_after_three_new_segments(rig: Rig) -> None:
     assert len(rig.llm.calls) == 1
     await rig.loop.tick()  # nothing new since
     assert len(rig.llm.calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("timezone", "today"),
+    [("America/Chicago", "Today: 2026-11-04\n"), ("UTC", "Today: 2026-11-05\n")],
+)
+async def test_a_cycle_names_the_owners_date_in_their_timezone(
+    rig: Rig, timezone: str, today: str
+) -> None:
+    from datetime import UTC, datetime
+
+    rig.settings = Settings(timezone=timezone)
+    rig.now = lambda: datetime(2026, 11, 5, 2, 0, tzinfo=UTC)  # Wednesday evening in Chicago
+    rig.loop = rig.make()
+    await rig.loop.tick()  # restore (nothing yet)
+    await rig.segs(3)
+    await rig.loop.tick()
+    (call,) = rig.llm.calls
+    assert today in call.user
 
 
 async def test_a_cycle_does_not_pay_for_reasoning(rig: Rig) -> None:

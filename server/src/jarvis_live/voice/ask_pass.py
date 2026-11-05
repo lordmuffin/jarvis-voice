@@ -23,8 +23,9 @@ from jarvis_live.logging_setup import session_logger
 from jarvis_live.protocol import BYTES_PER_MS, AskOutcome
 from jarvis_live.stt.backend import STTBackend, STTUnavailable
 from jarvis_live.stt.guards import is_hallucination, rms_level
+from jarvis_live.today import owners_today
 from jarvis_live.voice.ask import Clip, spoken
-from jarvis_live.voice.service import Queue, VoicePass, owners_today
+from jarvis_live.voice.service import Queue, VoicePass
 from jarvis_live.voice.wake import Heard, after_wake
 
 ASK_KIND = "voice_ask"  # copilot_items kind: one row per ask, never part of the transcript

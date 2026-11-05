@@ -33,6 +33,10 @@ data:
   JARVIS_LIVE_COPILOT_MODEL: "qwen3.8-flash-next"
   JARVIS_LIVE_FINAL_MODEL: "heavy"
 
+  # The owner's zone (IANA name, checked at startup): the date voice, the ask and the copilot
+  # name, spoken reminder times, note filenames and `created`. Unset, all of them use UTC.
+  JARVIS_LIVE_TIMEZONE: "America/Chicago"
+
   JARVIS_LIVE_GOTIFY_URL: "http://gotify.gotify.svc.cluster.local"
   # Also the base of the Pocket ID callback (<url>/auth/callback); https makes the
   # web session cookie Secure. Every host it names needs its callback registered in

@@ -1,5 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from jarvis_live.actions.schema import Evidence, ProposalIn
 from jarvis_live.actions.state import (
     MAX_NEW_PER_CYCLE,
@@ -78,6 +80,20 @@ def test_naive_reminder_time_uses_the_display_timezone() -> None:
     st = ProposalState()
     [p] = st.apply(
         [ProposalIn(kind="reminder.schedule", title="t", at="2026-11-03T09:00:00", evidence=EV)],
+        ctx(timezone="America/Chicago"),
+    )
+    assert p.payload["at"] == "2026-11-03T15:00:00+00:00"
+
+
+@pytest.mark.parametrize(
+    "at", ["2026-11-03T09:00:00Z", "2026-11-03T09:00:00+00:00", "2026-11-03T09:00:00-08:00"]
+)
+def test_an_offset_on_a_reminder_time_is_read_as_the_owners_wall_time(at: str) -> None:
+    # The models are told only the owner's date, never a zone, so an offset they add is
+    # invented: "Friday at ten" with a Z must still ring at ten in Chicago.
+    st = ProposalState()
+    [p] = st.apply(
+        [ProposalIn(kind="reminder.schedule", title="t", at=at, evidence=EV)],
         ctx(timezone="America/Chicago"),
     )
     assert p.payload["at"] == "2026-11-03T15:00:00+00:00"

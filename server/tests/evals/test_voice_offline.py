@@ -1,7 +1,8 @@
 """The voice eval itself, against canned LLM output (no model needed)."""
 
 import json
-from datetime import date
+from dataclasses import replace
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import httpx
@@ -9,12 +10,17 @@ import pytest
 
 from jarvis_live.actions.schema import ProposalIn
 from jarvis_live.llm.client import LiteLLMClient
+from jarvis_live.today import named_today
 from jarvis_live.voice.schema import VoiceRequest
-from jarvis_live.voice.service import VOICE_SYSTEM, named_today
+from jarvis_live.voice.service import VOICE_SYSTEM
 from tests.evals.voice import (
     DECODE_3B_2070,
     DEFAULT_VARIANT,
+    LEAN_RULE,
+    LOCAL_AT,
     PREFILL_3B_2070,
+    SHORT_TASK,
+    TASK_RULE,
     VARIANTS,
     Recorder,
     Row,
@@ -23,6 +29,7 @@ from tests.evals.voice import (
     card_rates,
     check,
     fell_back,
+    named_week,
     p95,
     pick,
     project,
@@ -265,12 +272,15 @@ async def test_the_default_is_the_request_the_server_sends_now() -> None:
 
 
 async def test_the_server_now_sends_what_r2_measured_as_named_day_kinds_repo() -> None:
+    """Stage 5's lean rule and the local-time wording: all the server's request adds to R2's."""
     sent = []
     for name in ("server", "named-day+kinds+repo"):
         llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
         await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=VARIANTS[name])
         sent.append((llm.calls[0], VARIANTS[name].schema.model_json_schema()))
-    assert sent[0] == sent[1]
+    system = sent[0][0].system.replace(f"{LEAN_RULE}\n", "").replace(LOCAL_AT, "")
+    server = replace(sent[0][0], system=system)
+    assert (server, sent[0][1]) == sent[1]
     old = json.loads((FIXTURES / "voice_request_2026-11-03.json").read_text())["schema"]
     old.pop("$defs")
     old["properties"]["proposals"]["items"] = VoiceRequest.model_json_schema()["properties"][
@@ -455,3 +465,69 @@ def test_a_run_can_be_limited_to_named_cases() -> None:
     assert pick([]) == VOICE_CASES
     with pytest.raises(SystemExit):
         pick(["no such case"])
+
+
+WEEK = (
+    "Thursday 2026-11-05, Friday 2026-11-06, Saturday 2026-11-07, Sunday 2026-11-08, "
+    "Monday 2026-11-09, Tuesday 2026-11-10, Wednesday 2026-11-11"
+)
+
+
+@pytest.mark.parametrize(
+    ("now", "zone", "first"),
+    [
+        (datetime(2026, 11, 5, 2, tzinfo=UTC), "America/Chicago", "Thursday 2026-11-05"),
+        (datetime(2026, 11, 5, 5, 59, tzinfo=UTC), "America/Chicago", "Thursday 2026-11-05"),
+        (datetime(2026, 11, 5, 6, tzinfo=UTC), "America/Chicago", "Friday 2026-11-06"),
+        (datetime(2026, 11, 5, 2, tzinfo=UTC), "UTC", "Friday 2026-11-06"),
+    ],
+)
+def test_the_next_seven_days_start_tomorrow_on_the_owners_calendar(
+    now: datetime, zone: str, first: str
+) -> None:
+    days = named_week(now, zone).split(", ")
+    assert len(days) == 7
+    assert days[0] == first
+
+
+def test_the_next_seven_days_count_dates_across_a_clock_change() -> None:
+    # 2027-03-14 has 23 hours in Chicago: adding 24 h to late on the 13th would skip it.
+    days = named_week(datetime(2027, 3, 14, 5, 30, tzinfo=UTC), "America/Chicago").split(", ")
+    assert days[:2] == ["Sunday 2027-03-14", "Monday 2027-03-15"]
+
+
+async def test_the_week_variant_names_the_next_seven_days_and_changes_nothing_else() -> None:
+    sent = []
+    for name in ("server", "server+week"):
+        llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+        await run_case(llm, TWO, "m", timeout_s=9.0, variant=VARIANTS[name])
+        sent.append(llm.calls[0])
+    server, week = sent
+    assert f"Today: Wednesday {TODAY}\nNext seven days: {WEEK}\n\n" in week.user
+    assert week.user.replace(f"Next seven days: {WEEK}\n", "") == server.user
+    assert (week.system, week.schema, week.think) == (server.system, server.schema, server.think)
+    assert VARIANTS["server+week"].schema is VARIANTS["server"].schema
+
+
+async def _sent(name: str) -> tuple[str, str, object, bool]:
+    llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    await run_case(llm, TWO, "m", timeout_s=9.0, variant=VARIANTS[name])
+    call = llm.calls[0]
+    return call.system, call.user, call.schema, call.think
+
+
+async def test_the_server_sends_the_lean_rule_and_the_lean_variant_is_the_servers_request() -> None:
+    # Adopted in stage 5: an action or none reply no longer spends tokens on the session fields.
+    assert VOICE_SYSTEM.count(LEAN_RULE) == 1
+    assert f"{LEAN_RULE}\n\nUse only what was said" in VOICE_SYSTEM
+    assert await _sent("server+lean") == await _sent("server")
+    for word in ("action", "none", "title", "task", "acceptance_criteria", "done_when"):
+        assert word in LEAN_RULE
+
+
+async def test_the_short_task_variant_only_shortens_the_task_rule() -> None:
+    system, user, schema, think = await _sent("server+short-task")
+    server = await _sent("server")
+    assert TASK_RULE in VOICE_SYSTEM and SHORT_TASK not in VOICE_SYSTEM
+    assert system == server[0].replace(TASK_RULE, SHORT_TASK)
+    assert (user, schema, think) == server[1:]

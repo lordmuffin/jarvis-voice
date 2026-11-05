@@ -46,6 +46,23 @@ uncommented.
 - Stages 7 and 8 are held.
 - R1b (`chore/copilot-replay-busy`) is unchanged and still waits for a weekday with agents busy.
 
+## Stages 1 to 4, run as one plan
+
+Stages 1 to 4 ran on 2026-11-04 and 05 as one herd plan, on one branch, `feat/voice-lab-run`, and
+land in one PR, `feat(server): voice on lab, timezone and day table`. Stage 4 split into its two
+halves, the day table and shorter replies, and a final run on the card closed it. Stage 2 is in the
+same PR, so stage 4's wait for it to merge did not apply. The 17 copilot cases were skipped, by
+Andrew's decision 4. Results, all in `fast-tier.md`:
+
+| Stage | Result | Where |
+|---|---|---|
+| 1, lab voice check | 5 asks and 5 spoken requests on lab, all on `interactive`, 0 fallbacks; the repeat was deduped | "Lab voice check, 2026-11-04" |
+| 2, today from the zone | Voice and the ask name the owner's date from `JARVIS_LIVE_TIMEZONE`. Lab sets none, so it stays UTC there | The PR and `server/tests/test_voice_loop.py` |
+| 3, ask eval on the card | 28 of 36, below the ask bar, as R5 was; p95 0.57 s, 0 fallbacks | "The ask eval on gemma4-e4b, 2026-11-04" |
+| 4a, the next seven days | 75 of 75 as `server+week`, but p95 2.51 s against 2.48 s: not adopted | "Naming the next seven days" |
+| 4b, shorter replies | The lean rule adopted: p95 2.28 s against 2.48 s, quality unchanged | "Shorter replies" |
+| Final run | Fails the bar by "two steps" 1 of 3; p95 2.30 s, 0 fallbacks; control as before | "Verdict for R7" |
+
 **Why stage 4 waits for stage 2:** both change `voice/service.py`, and PRs are never stacked.
 
 **Why stage 3 waits for stage 1:** the card takes one eval at a time, and lab's live path shares
