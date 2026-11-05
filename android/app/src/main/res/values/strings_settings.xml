@@ -101,6 +101,10 @@
     <string name="settings_mic_phone">Phone microphone</string>
     <string name="settings_mic_change">Change</string>
     <string name="settings_mic_help">Select your earbud or headset mic. Bluetooth devices must be connected before tapping Change.</string>
+    <string name="settings_speak_title">Speak answers through</string>
+    <string name="settings_speak_device">This device</string>
+    <string name="settings_speak_headphones">Headphones only</string>
+    <string name="settings_speak_help">Hold-to-ask replies in a Live session. This device plays them wherever the phone\'s audio goes, the speaker included. Headphones only keeps them in your ears, and shows the answer as text otherwise.</string>
     <string name="settings_cancel">Cancel</string>
 
     <!-- Appearance -->

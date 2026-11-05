@@ -124,9 +124,26 @@ Settings → Microphone lists the phone's built-in mics as one **Phone microphon
 | Test | Expect |
 |---|---|
 | Nothing connected, open Settings → Microphone | one "Phone microphone" row, and it is selected (an old "System Default" or device choice was moved to it) |
-| Nothing connected, hold an ask and speak | the question is heard, and the answer is shown as text ("no headphones"), not spoken |
+| Nothing connected, hold an ask and speak | the question is heard, and the answer is spoken from the phone speaker (Settings → Speak answers through is "This device", the default) |
 | Connect earbuds, open the picker again | the earbuds are listed once, after "Phone microphone" |
 | Choose the earbuds, disconnect them, dictate | it hears you through the phone microphone; the debug log says the earbuds are not connected |
+
+### Held ask on the speaker: check on a phone
+
+A held ask's reply is spoken on whatever the phone's media audio plays on, the built-in speaker
+included, unless Settings → Audio → **Speak answers through** is **Headphones only**. The speaker's
+voice reaches the session's own mic, and the server's echo guard is what keeps it out of the
+transcript, so this is checked in a room. The route rule and the played reports are JVM-tested
+(`SpeakThroughTest`, `AskControllerTest`, `UtteranceTest`); this is the part only a phone can show.
+On the Fold, Android 13 or later, with lab:
+
+| Test | Expect |
+|---|---|
+| Nothing connected, "This device". Start a live session and keep talking (or play speech nearby) so segments flow; hold an ask, release | the reply is spoken from the speaker, and its text shows with no "Shown, not spoken" line |
+| Same session, keep talking right after the reply ends | your own words appear in the transcript as usual |
+| Afterwards, open the session's transcript (dashboard or note) | none of Jarvis's reply words are in it; your question is, as ordinary speech |
+| Connect earbuds, hold an ask, pull them out while it speaks | it carries on from the speaker |
+| Choose "Headphones only", nothing connected, hold an ask | text only, as before: "Shown, not spoken: no headphones" |
 
 ---
 

@@ -725,6 +725,51 @@
                 android:text="@string/settings_mic_help"
                 android:layout_marginTop="@dimen/inst_space_4"/>
 
+            <LinearLayout
+                style="@style/Settings.Panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/inst_space_8"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        style="@style/Settings.RowTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_speak_title"/>
+
+                    <TextView
+                        android:id="@+id/tv_speak_through"
+                        style="@style/Settings.RowDesc"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/settings_speak_device"
+                        android:textColor="@color/inst_accent"
+                        android:layout_marginTop="@dimen/inst_space_4"/>
+                </LinearLayout>
+
+                <Button
+                    android:id="@+id/btn_pick_speak_through"
+                    style="@style/Widget.Inst.Button.Secondary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:minHeight="@dimen/inst_space_48"
+                    android:text="@string/settings_mic_change"/>
+            </LinearLayout>
+
+            <TextView
+                style="@style/Settings.Help"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_speak_help"
+                android:layout_marginTop="@dimen/inst_space_4"/>
+
             <View
                 android:layout_width="match_parent"
                 android:layout_height="@dimen/inst_space_16"/>

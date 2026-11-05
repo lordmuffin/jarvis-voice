@@ -21,30 +21,17 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class TtsAskSpeaker(context: Context) : AskSpeaker {
     private val audio = context.getSystemService(AudioManager::class.java)
-    private val attributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_MEDIA)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-        .build()
+    private val attributes = ATTRIBUTES
     private val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
         .setAudioAttributes(attributes)
         .setOnAudioFocusChangeListener { change ->
-            if (change == AudioManager.AUDIOFOCUS_LOSS) stop()
+            if (change == AudioManager.AUDIOFOCUS_LOSS) loseFocus()
         }
         .build()
 
     @Volatile private var ready = false
     private lateinit var tts: TextToSpeech
-    @Volatile private var callbacks: Callbacks? = null
-
-    private class Callbacks(
-        val id: String,
-        val onFirstAudio: () -> Unit,
-        val onDone: () -> Unit,
-        val onError: () -> Unit,
-    ) {
-        val heard = AtomicBoolean(false)
-        val ended = AtomicBoolean(false)
-    }
+    @Volatile private var current: Utterance? = null
 
     init {
         tts = TextToSpeech(context) { status ->
@@ -68,7 +55,8 @@ class TtsAskSpeaker(context: Context) : AskSpeaker {
             override fun onError(utteranceId: String?, errorCode: Int) = end(utteranceId, ok = false)
 
             override fun onStop(utteranceId: String?, interrupted: Boolean) {
-                callbacks?.takeIf { it.id == utteranceId }?.ended?.set(true)
+                // Our own stop() already reported; a stop from elsewhere is the end of what played.
+                current?.takeIf { it.id == utteranceId }?.lostFocus()
                 release()
             }
         })
@@ -89,15 +77,23 @@ class TtsAskSpeaker(context: Context) : AskSpeaker {
     override fun speak(text: String, onFirstAudio: () -> Unit, onDone: () -> Unit, onError: () -> Unit) {
         if (!ready || tts.voice?.isNetworkConnectionRequired != false) return onError()
         val id = "ask-${System.nanoTime()}"
-        callbacks = Callbacks(id, onFirstAudio, onDone, onError)
+        current = Utterance(id, onFirstAudio, onDone, onError)
         audio.requestAudioFocus(focus)
         if (tts.speak(text, TextToSpeech.QUEUE_FLUSH, Bundle(), id) == TextToSpeech.ERROR) end(id, ok = false)
     }
 
     override fun stop() {
-        callbacks?.ended?.set(true)
+        current?.cancel()
         if (::tts.isInitialized) tts.stop()
         release()
+    }
+
+    /** Another app took the audio: stop, and tell the caller how far the reply got. */
+    private fun loseFocus() {
+        val u = current
+        if (::tts.isInitialized) tts.stop()
+        release()
+        u?.lostFocus()
     }
 
     fun destroy() {
@@ -106,22 +102,54 @@ class TtsAskSpeaker(context: Context) : AskSpeaker {
     }
 
     private fun first(id: String?) {
-        val c = callbacks?.takeIf { it.id == id } ?: return
-        if (!c.ended.get() && c.heard.compareAndSet(false, true)) c.onFirstAudio()
+        current?.takeIf { it.id == id }?.audio()
     }
 
     private fun end(id: String?, ok: Boolean) {
-        val c = callbacks?.takeIf { it.id == id } ?: return
+        val u = current?.takeIf { it.id == id } ?: return
         release()
-        if (!c.ended.compareAndSet(false, true)) return
-        if (ok) c.onDone() else c.onError()
+        u.finish(ok)
     }
 
     private fun release() {
         audio.abandonAudioFocusRequest(focus)
     }
 
-    private companion object {
-        const val TAG = "AskSpeaker"
+    companion object {
+        private const val TAG = "AskSpeaker"
+
+        /** A spoken reply: media usage and speech content, on the speaker as in headphones. */
+        val ATTRIBUTES: AudioAttributes = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_MEDIA)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+            .build()
     }
+}
+
+/**
+ * One reply's reports to the caller: [onFirstAudio] once, then exactly one of [onDone] or [onError],
+ * and nothing after the caller's own [cancel]. Losing audio focus ends what played as done, or, if
+ * nothing had, as an error: either way the caller always hears how it ended.
+ */
+internal class Utterance(
+    val id: String,
+    private val onFirstAudio: () -> Unit,
+    private val onDone: () -> Unit,
+    private val onError: () -> Unit,
+) {
+    private val heard = AtomicBoolean(false)
+    private val ended = AtomicBoolean(false)
+
+    fun audio() {
+        if (!ended.get() && heard.compareAndSet(false, true)) onFirstAudio()
+    }
+
+    fun finish(ok: Boolean) {
+        if (!ended.compareAndSet(false, true)) return
+        if (ok) onDone() else onError()
+    }
+
+    fun lostFocus() = finish(ok = heard.get())
+
+    fun cancel() = ended.set(true)
 }

@@ -25,6 +25,7 @@ import com.lordmuffin.jarvisvoice.VoiceOverlayService
 import com.lordmuffin.jarvisvoice.live.ask.AskController
 import com.lordmuffin.jarvisvoice.live.ask.AskUi
 import com.lordmuffin.jarvisvoice.live.ask.OutputRoute
+import com.lordmuffin.jarvisvoice.live.ask.SpeakThrough
 import com.lordmuffin.jarvisvoice.live.ask.TtsAskSpeaker
 import com.lordmuffin.jarvisvoice.live.protocol.AudioFrame
 import com.lordmuffin.jarvisvoice.live.protocol.Channel
@@ -373,11 +374,12 @@ class LiveSessionService : Service() {
     private fun openAsk(r: Run, conn: LiveConnection): AskController {
         val speaker = TtsAskSpeaker(this)
         lateinit var ask: AskController
-        val route = OutputRoute(this) { closed -> ask.onRouteChanged(closed) }
+        val prefs = getSharedPreferences(VoiceOverlayService.PREF_FILE, MODE_PRIVATE)
+        val route = OutputRoute(this, through = { SpeakThrough.saved(prefs) }) { blocked -> ask.onRouteChanged(blocked) }
         ask = AskController(
             send = { conn.sendAsk(it) },
             speaker = speaker,
-            routeClosed = route::isClosed,
+            routeBlocked = route::blocked,
             clock = SystemClock::elapsedRealtime,
             streamMs = { r.lastTMs + AudioFrame.FRAME_MS },
         )
