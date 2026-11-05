@@ -243,6 +243,12 @@ class Settings(BaseSettings):
     voice_ask_tail_ms: int = 400  # how long to wait for the frame carrying the release
     voice_ask_max_s: float = 30.0  # the longest hold
     voice_ask_max_words: int = 40  # a reply is cut to this, on a sentence where one fits
+    # The owner's asks also read their Notes vault (docs/plans/voice-ask-vault.md). Kept small:
+    # long prompts at a steady rate have OOMed the small model, so do not raise these.
+    voice_ask_vault_enabled: bool = True
+    voice_ask_vault_notes: int = 3  # passages, one per note
+    voice_ask_vault_chars: int = 1500  # passage text in all
+    voice_ask_vault_timeout_s: float = 1.0  # a slower search is no notes, not a slower answer
     work_repos: str = ""
     # The prompt template. Unset: /app/prompts/templates/work-item.md (the image), then the
     # repo's prompts/templates/work-item.md.

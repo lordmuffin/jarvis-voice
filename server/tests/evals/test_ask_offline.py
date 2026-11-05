@@ -74,7 +74,7 @@ async def sent_by_ask_pass(
     monkeypatch.setattr(ask_pass, "_stream_end", stream_end)
     llm = FakeLLM().queue("AskAnswer", AskAnswer(reply="Fine."))
     rig = AskPass(Settings(timezone="UTC"), _NoDB, llm, None, None, now=lambda: now)  # type: ignore[arg-type]
-    await rig._ask(uuid.uuid4(), (), question)
+    await rig._ask(uuid.uuid4(), uuid.uuid4(), (), question)
     (call,) = llm.calls
     return call.user
 

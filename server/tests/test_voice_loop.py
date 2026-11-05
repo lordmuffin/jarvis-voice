@@ -30,6 +30,7 @@ from jarvis_live.db.models import (
 from jarvis_live.llm.client import LLMError
 from jarvis_live.orchestrator import Orchestrator
 from jarvis_live.users import create_user
+from jarvis_live.vault.index import NullVault
 from jarvis_live.voice.loop import VoiceLoop, own_lines
 from jarvis_live.voice.schema import VoiceRequest
 from jarvis_live.voice.service import VoicePass
@@ -629,6 +630,31 @@ async def test_a_session_jarvis_may_not_act_for_is_not_listened_to(
 
     assert sid not in orch._voices
     assert [c for c in llm.calls if c.schema == "VoiceRequest"] == []
+    for t in orch._copilots.values():
+        t.cancel()
+
+
+@pytest.mark.parametrize("owner", [True, False])
+async def test_only_the_owners_held_asks_are_given_the_vault(
+    sm: SM, tmp_path: Path, owner: bool
+) -> None:
+    """The vault is the owner's own notes: an admin's session is served, but never reads it."""
+    clock = FakeClock()
+    orch = orchestrator(sm, tmp_path, clock, FakeLLM())
+    if owner:
+        sid, _ = await owner_with_session(sm, OWNER_USER_ID)
+    else:
+        admin = await create_user(sm, f"admin {uuid.uuid4().hex[:6]}", is_admin=True)
+        device, _ = await new_device(sm, user_id=admin.id)
+        sid = await make_session(sm, device)
+
+    orch.on_start(live(sid))
+    await settle(orch, clock)
+
+    vault = orch._desks[sid]._runner._vault  # type: ignore[attr-defined]
+    assert (vault is orch._vault) is owner
+    assert isinstance(vault, NullVault) is not owner
+    await orch.stop_voice(sid)
     for t in orch._copilots.values():
         t.cancel()
 

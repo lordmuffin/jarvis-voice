@@ -208,7 +208,7 @@ def serve(port: int) -> MetricsServer:
 
 @_safe
 def voice_ask_stage(stage: str, seconds: float) -> None:
-    """``stage``: wait, stt or llm."""
+    """``stage``: wait, stt, vault or llm."""
     _ASK_STAGE.labels(stage).observe(seconds)
 
 
