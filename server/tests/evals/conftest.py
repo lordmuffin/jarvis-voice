@@ -7,6 +7,7 @@ import pytest_asyncio
 
 from tests.evals.actions import PRIVATE_DIR, REPORT_PATH
 from tests.evals.actions import REPORT as ACTION_REPORT
+from tests.evals.ask_cases import ASK_REPORT
 from tests.evals.harness import REPORT
 
 
@@ -20,6 +21,11 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
     if REPORT.rows:
         terminalreporter.section("copilot eval report")
         for line in REPORT.render():
+            terminalreporter.write_line(line)
+
+    if ASK_REPORT.rows:
+        terminalreporter.section("ask eval: the bar, and the date set beside it")
+        for line in ASK_REPORT.render():
             terminalreporter.write_line(line)
 
     if ACTION_REPORT.rows:

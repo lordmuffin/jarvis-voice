@@ -66,6 +66,11 @@ class AskResult:
     row_id: int | None = None  # its copilot_items row, once stored
 
 
+def ask_today(now: datetime, timezone: str) -> str:
+    """The Today line's text, as the ask sends it and its eval builds it."""
+    return owners_today(now, timezone)
+
+
 def ask_user(*, today: str, transcript: str, question: str) -> str:
     return (
         f"Today: {today}\n\n"
@@ -181,7 +186,7 @@ class AskPass:
             from_ms = max(0, now_ms - int(self._cfg.voice_ask_window_s * 1000))
             lines = outside(await load_lines(db, session_id, from_ms), windows)
         user = ask_user(
-            today=owners_today(self._now(), self._cfg.timezone),
+            today=ask_today(self._now(), self._cfg.timezone),
             transcript=render_lines(lines),
             question=question,
         )
@@ -235,4 +240,4 @@ async def _stream_end(db: AsyncSession, session_id: uuid.UUID) -> int:
     return int(end or 0)
 
 
-__all__ = ["ASK_KIND", "ASK_SYSTEM", "AskAnswer", "AskPass", "AskResult", "ask_user"]
+__all__ = ["ASK_KIND", "ASK_SYSTEM", "AskAnswer", "AskPass", "AskResult", "ask_today", "ask_user"]

@@ -31,6 +31,11 @@ from tests.fakes import new_device
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption("--live", action="store_true", help="run tests that hit a real Whisper")
+    parser.addoption(
+        "--ask-variant",
+        default="server",
+        help="the ask eval's request variant (tests/evals/ask_cases.py ASK_VARIANTS)",
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
