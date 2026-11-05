@@ -1590,6 +1590,98 @@ changes. `server+week` is that request with the seven named days after Today.
 **Limits.** One run of three for each request, interleaved. The client sends temperature 0.2. Rows
 and replies are kept outside the repo.
 
+## Voice stand-in test on lab, 2026-11-05
+
+**This stands in for Andrew's device test, and does not replace it.** It drives lab's voice path from
+the capture-side protocol with recorded TTS clips, the way "Lab voice check, 2026-11-04" did. It does
+not cover the apps, the mic, Bluetooth or Wear. The device test (30 asks each on the Fold and the Mac)
+is still owed before the release that turns voice on.
+
+**Every hold was answered, every one by `interactive`, and none fell back to `heavy`.** On the 30
+asks the LLM stage was p50 0.57 s and p95 0.75 s. On the 5 spoken requests it was p50 1.93 s and
+p95 3.41 s. The p95 is the slowest of five: one request that had a 1.9 s prefill stall on the pod
+(below). The repeat was dropped. "Monday at ten" landed on Monday 2026-11-09 at 10:00 in Chicago. The
+task got a due date nobody said, R5's known miss. The request naming no repo now gets no repo.
+
+**Setup.**
+- Read-only pre-checks, all passed. Lab's jarvis-live ran `sha-1b1749e`. Its ConfigMap had
+  `JARVIS_LIVE_VOICE_MODEL=interactive`, `JARVIS_LIVE_TIMEZONE=America/Chicago` and
+  `JARVIS_LIVE_VOICE_PI_ENABLED=false`. `interactive-llm` was Ready with 0 restarts. The card held
+  only that pod, at 3,171 MiB and 0% utilisation. In the 15 minutes before, its log had no request
+  but the 7-token keep-warm.
+- One session from a test device minted for this run, with `features=voice_ask`. It streamed six
+  context passages of meeting speech, about 7 s each. Each passage was followed by five held asks
+  about it, so every ask had transcript inside the 180 s window. After each of the first five blocks
+  came one spoken request. That makes 35 holds, 32 s apart.
+- Clips came from a local TTS voice (Piper, `en_US-lessac-medium`) in a quiet stream. The spoken
+  requests were held asks opening with "Jarvis", so they reached `VoicePass` unchanged. The driver
+  sent `ask_played` with the time from release to `ask_reply`, so `first_audio` has no speech
+  synthesis in it.
+- The five requests are the last check's, except one. The reminder says "Monday" where the last
+  check said "Thursday", because this ran on a Thursday, when "Thursday" has no single right date.
+- Sent 2026-11-05 16:34:20 to 16:54:04 UTC, which is Thursday 10:34 to 10:54 in America/Chicago.
+
+`jarvis-live ask-report --days 1`, run on the lab pod. Its other row, the 2026-11-04 check, is left out:
+
+| Device | Model | n | Played | stt p50 / p95, s | llm p50 / p95, s | first_audio p50 / p95, s | Outcomes |
+|---|---|---|---|---|---|---|---|
+| this test device | interactive | 35 | 35 | 0.59 / 0.83 | 0.60 / 2.12 | 1.30 / 2.63 | answer 31, filed 4 |
+
+The same 35 rows from the session's `voice_ask` items, split by kind. Percentiles are by nearest
+rank, so on 5 rows p95 is the slowest:
+
+| Kind | n | stt p50 / p95 | llm p50 / p95 | Max llm | Release to reply p50 / p95 |
+|---|---:|---:|---:|---:|---:|
+| Held ask | 30 | 0.53 / 0.75 s | 0.57 / 0.75 s | 0.79 s | 1.25 / 1.52 s |
+| Spoken request | 5 | 0.72 / 0.93 s | 1.93 / 3.41 s | 3.41 s | 2.57 / 4.27 s |
+
+| Said | Got | Right? |
+|---|---|---|
+| "add a task to review the pricing proposal" | `task.create` "Review the pricing proposal", due 2026-11-05 | Filed. **The due date was never said**: R5's known miss, again on the day it was asked |
+| "remind me on Monday at ten to call the dentist" | `reminder.schedule` at `2026-11-09T16:00:00+00:00` | **Yes.** That is Monday 2026-11-09 10:00 CST in Chicago. Both the date and the time are fixed since the last check |
+| The task again | "I could not turn that into an action. Nothing was started." | **Dropped by the dedupe.** Stored as `filed`, as before |
+| "add a task to email Sam. Actually, scratch that, never mind." | "I did not catch that request." | Nothing filed. Two LLM calls on the pod, 0.86 s and 0.45 s |
+| "start a cloud session to fix the flaky login test" | Draft work item "Fix Flecky login test", **repo null** | **Better.** No repo was named, and none was taken. The last check got the first listed repo. "Flecky" is Whisper's |
+
+**The asks.** 29 of 30 were right from the transcript: names, numbers, "what was just said", and
+the summaries. All five summaries covered only the latest passage, because the window is 180 s, so
+"Summarize the meeting so far" summed up the last two minutes. That is the window working as
+designed, but a person may expect more. The four date asks:
+
+- "What date is Friday?" got "November 6th, 2026". Right.
+- "What is the date of the demo?" got "Friday, November 6th, 2026". Right.
+- "What day of the week is Friday the sixth?" got "Friday the 6th will be a Friday". True, but no use.
+- **"What is the date this Friday?" got "November 20th, 2026". Wrong.** The ask names today, not the
+  next seven days as the voice request now does, so the model counts on its own.
+
+**Fallbacks: none.**
+- The `interactive-llm` log shows 37 chat requests in the window besides health probes. 36 line up
+  with the holds: one for each, and two for the take-back. The 37th was 27 tokens at 16:45:01, on
+  the 15-minute keep-warm's schedule. Nothing else used the card during the session.
+- Every stored row names `interactive`. LiteLLM's log has 402 lines in the window and no error,
+  timeout or fallback line. There was no proxy key in this run, so no `x-litellm-*` headers were
+  read. The evidence that `interactive` served each hold is the pod's log, one request per hold.
+- **The slow request.** The no-repo request's LLM stage took 3.41 s. On the pod, its prompt eval
+  was 1.90 s for 19 new tokens (10 tok/s, against about 700 tok/s on the next request). That came
+  just after llama.cpp evicted a prompt-cache entry to make room. Decode was normal, 93 tokens at
+  78 tok/s. It was inside the alias's 5 s timeout and did not fall back. It was one sample, and the
+  cause was not found.
+
+**Cleaned up.** Both proposals were rejected, and the work item was discarded. No scheduled reminder
+was created after 16:30 UTC. The finished session was moved to Recently deleted. The test device was
+revoked with its own token (204, then 401 on reuse), and its local token was deleted.
+
+**What this does not cover.**
+- The Mac and Android apps, their hold gesture, the mic and room noise.
+- Bluetooth headsets, Wear and playing the reply aloud. `first_audio` here is release to reply text,
+  with no TTS and no device speech start.
+- Real voices, accents and several speakers. Whisper under load from other sessions.
+- Approving from the push link.
+- Live itself: the action queue on real proposals, Gotify replies, and the owner's real sessions.
+
+**Limits.** One session, 30 asks and 5 requests, so the request percentiles rest on 5 rows. TTS
+speech in a quiet stream. The rows, replies and driver are kept outside the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and
