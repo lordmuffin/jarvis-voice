@@ -93,6 +93,18 @@ _REPO_NULL = (
 _OLD_SYSTEM: str = _OLD["system"]
 assert _REPO_RULE in _OLD_SYSTEM and _REPO_NULL in VOICE_SYSTEM
 
+# Stage 5's reply-length candidates (docs/plans/fast-tier.md, "Shorter replies"). On the card the
+# slowest replies were actions, and about 75 of their ~190 tokens went to the cloud and pi fields,
+# which the server never reads for an action. Neither sets max_tokens: a cut-off fails the bar.
+# The lean rule met the adopt rule and is now in VOICE_SYSTEM, so "server+lean" is "server".
+LEAN_RULE = (
+    '- For action and none, leave the cloud and pi fields empty: title and task "", repo and '
+    "done_when null, acceptance_criteria []."
+)
+TASK_RULE = "- task: 1-4 sentences on what to do, in the speaker's terms (cloud, pi)."
+SHORT_TASK = "- task: 1-2 sentences on what to do, in the speaker's terms (cloud, pi)."
+assert LEAN_RULE in VOICE_SYSTEM and TASK_RULE in VOICE_SYSTEM
+
 
 def named_week(now: datetime, timezone: str) -> str:
     """The seven days after today on the owner's calendar, each by name: given Wednesday, Gemma
@@ -117,6 +129,12 @@ VARIANTS = {
     for v in (
         Variant("server", named_day=True),
         Variant("server+week", named_day=True, week=True),
+        Variant("server+lean", named_day=True),  # adopted: the server's request
+        Variant(
+            "server+short-task",
+            named_day=True,
+            system=VOICE_SYSTEM.replace(TASK_RULE, SHORT_TASK),
+        ),
         Variant("today", schema=_Flat, system=_OLD_SYSTEM),
         Variant("named-day", schema=_Flat, named_day=True, system=_OLD_SYSTEM),
         Variant("kinds", system=_OLD_SYSTEM),

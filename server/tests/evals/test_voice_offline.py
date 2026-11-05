@@ -1,6 +1,7 @@
 """The voice eval itself, against canned LLM output (no model needed)."""
 
 import json
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -14,7 +15,10 @@ from jarvis_live.voice.service import VOICE_SYSTEM, named_today
 from tests.evals.voice import (
     DECODE_3B_2070,
     DEFAULT_VARIANT,
+    LEAN_RULE,
     PREFILL_3B_2070,
+    SHORT_TASK,
+    TASK_RULE,
     VARIANTS,
     Recorder,
     Row,
@@ -266,12 +270,14 @@ async def test_the_default_is_the_request_the_server_sends_now() -> None:
 
 
 async def test_the_server_now_sends_what_r2_measured_as_named_day_kinds_repo() -> None:
+    """With stage 5's lean rule added: it is the one line the server's request has over R2's."""
     sent = []
     for name in ("server", "named-day+kinds+repo"):
         llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
         await run_case(llm, CLOUD, "m", timeout_s=9.0, variant=VARIANTS[name])
         sent.append((llm.calls[0], VARIANTS[name].schema.model_json_schema()))
-    assert sent[0] == sent[1]
+    server = replace(sent[0][0], system=sent[0][0].system.replace(f"{LEAN_RULE}\n", ""))
+    assert (server, sent[0][1]) == sent[1]
     old = json.loads((FIXTURES / "voice_request_2026-11-03.json").read_text())["schema"]
     old.pop("$defs")
     old["properties"]["proposals"]["items"] = VoiceRequest.model_json_schema()["properties"][
@@ -498,3 +504,27 @@ async def test_the_week_variant_names_the_next_seven_days_and_changes_nothing_el
     assert week.user.replace(f"Next seven days: {WEEK}\n", "") == server.user
     assert (week.system, week.schema, week.think) == (server.system, server.schema, server.think)
     assert VARIANTS["server+week"].schema is VARIANTS["server"].schema
+
+
+async def _sent(name: str) -> tuple[str, str, object, bool]:
+    llm = FakeLLM().queue("VoiceRequest", VoiceRequest())
+    await run_case(llm, TWO, "m", timeout_s=9.0, variant=VARIANTS[name])
+    call = llm.calls[0]
+    return call.system, call.user, call.schema, call.think
+
+
+async def test_the_server_sends_the_lean_rule_and_the_lean_variant_is_the_servers_request() -> None:
+    # Adopted in stage 5: an action or none reply no longer spends tokens on the session fields.
+    assert VOICE_SYSTEM.count(LEAN_RULE) == 1
+    assert f"{LEAN_RULE}\n\nUse only what was said" in VOICE_SYSTEM
+    assert await _sent("server+lean") == await _sent("server")
+    for word in ("action", "none", "title", "task", "acceptance_criteria", "done_when"):
+        assert word in LEAN_RULE
+
+
+async def test_the_short_task_variant_only_shortens_the_task_rule() -> None:
+    system, user, schema, think = await _sent("server+short-task")
+    server = await _sent("server")
+    assert TASK_RULE in VOICE_SYSTEM and SHORT_TASK not in VOICE_SYSTEM
+    assert system == server[0].replace(TASK_RULE, SHORT_TASK)
+    assert (user, schema, think) == server[1:]

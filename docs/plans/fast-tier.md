@@ -1421,6 +1421,65 @@ since 01:00 apart from a probe, and a check request served by `interactive` with
 **Limits.** Three runs of each, one after the other, not interleaved. The client sends temperature
 0.2. Rows and replies are kept outside the repo.
 
+### Shorter replies
+
+**One prompt rule brings reply p95 to 2.28 s, against 2.48 s for the server's request in the same
+stage, with quality unchanged. It met the adopt rule and is now the server's request.** The rule:
+"For action and none, leave the cloud and pi fields empty: title and task "", repo and done_when
+null, acceptance_criteria []." No max_tokens was set, and nothing was cut off.
+
+**Where the tokens went.** From stage 4's 75 `server` replies, with each reply's tokens shared out by
+the characters of each field:
+
+| Kind | Replies | Tokens p50 | p95 | title | task | repo | criteria | done_when | proposals |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| cloud | 18 | 134 | 168 | 13 | 36 | 10 | 44 | 22 | - |
+| pi | 15 | 119 | 133 | 13 | 36 | 7 | 33 | 23 | - |
+| action | 24 | 134 | 189 | 13 | 30 | 7 | 16 | 9 | 58 |
+| none | 18 | 80 | 89 | 11 | 33 | 5 | 9 | 6 | 6 |
+
+The slowest 5% were all actions: "PR comment", "two steps" and "repo not allowed for a comment", at
+185 to 192 tokens. An action reply spent about 75 tokens on title, task, repo, criteria and
+done_when, which the server never reads for an action. A "none" reply spent about 60 on them. The
+prompt already said those fields were for cloud and pi, and Gemma filled them anyway.
+
+**The candidates.** Each was built as an eval variant on the server's request: the system prompt
+changed and nothing else, which offline tests pin.
+
+- `server+lean`: the rule above, added as the last bullet.
+- `server+short-task`: "task: 1-2 sentences" in place of "1-4 sentences", for cloud and pi.
+
+Run 2026-11-05 01:25 to 01:31 UTC, on the card through lab's proxy key and alias `interactive`,
+timeout 30 s, three runs of all 25 each, in the order `server`, `server+lean` and
+`server+short-task`. Pre-flight as in the ask eval above: the pod Ready with 0 restarts, model
+`676c3507…baee`, image `fff6185e…`, no other traffic on the card for the 5 minutes before, and a check
+request served by `interactive` with no fallback.
+
+| Request | Passed | Cases | Critical | Cut off | Reply p50 | p95 | Max | Within 2.5 s | Tokens p50 | p95 | Fallbacks |
+|---|---:|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| `server` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.60 s | 2.48 s | 2.62 s | 72 of 75 | 121 | 189 | 0 of 75 |
+| `server+lean` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.57 s | **2.28 s** | 2.61 s | 73 of 75 | 118 | **174** | 0 of 75 |
+| `server+short-task` | 73 of 75 | 24 of 25 | 3 of 3 each | 0 | 1.54 s | 2.42 s | 2.44 s | 75 of 75 | 117 | 183 | 0 of 75 |
+
+- **The adopt rule, one at a time.** `server+lean` against `server`: critical 3 of 3, 73 passes against
+  73, nothing cut off, p95 2.28 s against 2.48 s. Met, so **adopted**. By run its p95 was 2.28, 2.22
+  and 2.14 s, against 2.46, 2.50 and 2.48 s for `server`. `server+short-task` then stands against
+  the adopted request: 2.42 s against 2.28 s, so it is **not adopted**. It met the rule against the
+  old request, but the two were not measured together, so they are not combined.
+- **What the lean rule changed.** Every "none" reply came back empty, at 60 tokens in place of 80
+  to 91. Pi replies left criteria and done_when empty (the server reads only title and task for
+  Pi), and p50 fell from 122 to 84 tokens. Action replies still wrote a title and task, but shorter
+  criteria took the PR comment cases off the tail. "Two steps" is now the slowest reply, at 188 to
+  198 tokens, so the max barely moved.
+- The only miss on all three is still "two steps", 1 of 3: "Friday at ten" on the 7th. The
+  `server+week` line above fixes it. It was not run on top of the lean request here.
+- All 225 attempts carried `x-litellm-model-group: interactive`, 0 attempted fallbacks and 0
+  retries. No reply held reasoning. Decode was about 79 tok/s on all three.
+
+**Limits.** Token shares are by characters, not a tokenizer. Three runs of each, one after the
+other. The `server` rows here are the request before this change. Rows and replies are kept outside
+the repo.
+
 ## Limits
 
 - Before step 3, no inference reached the engine. Step 3 sent inference to Flash and `jev-llm`, and

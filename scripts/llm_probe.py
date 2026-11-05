@@ -589,6 +589,8 @@ what it is for. Otherwise null: never pick one for its place in the list.
 body, at}, with at an ISO datetime resolved from Today; git.pr_comment {repo, pr, body}, only for \
 a repo under REPOSITORIES YOU MAY COMMENT ON and a PR number that was said. Do not repeat anything \
 under ALREADY PROPOSED.
+- For action and none, leave the cloud and pi fields empty: title and task "", repo and done_when \
+null, acceptance_criteria [].
 
 Use only what was said; do not invent requirements."""
 
