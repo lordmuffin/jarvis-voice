@@ -62,6 +62,28 @@ deny contains msg if {
 	msg := sprintf("JARVIS_LIVE_COPILOT_MODEL is %q, expected %q", [model, copilot_model])
 }
 
+# Voice and hold-to-ask run on pve's card through LiteLLM's interactive alias (gemma4-e4b, falling
+# back to heavy), on both channels: lab from 2026-11-04, live from R7 (docs/plans/fast-tier.md, "server
+# against server+week"). Empty would send voice to the copilot's model, which has no fallback.
+voice_model := "interactive"
+
+deny contains msg if {
+	some d in input
+	d.contents.kind == "ConfigMap"
+	d.contents.metadata.name == "jarvis-live-config"
+	object.get(d.contents.data, "JARVIS_LIVE_VOICE_ENABLED", "false") != "true"
+	msg := "JARVIS_LIVE_VOICE_ENABLED must be true on every channel"
+}
+
+deny contains msg if {
+	some d in input
+	d.contents.kind == "ConfigMap"
+	d.contents.metadata.name == "jarvis-live-config"
+	model := object.get(d.contents.data, "JARVIS_LIVE_VOICE_MODEL", "")
+	model != voice_model
+	msg := sprintf("JARVIS_LIVE_VOICE_MODEL is %q, expected %q", [model, voice_model])
+}
+
 # A CronJob that mounts a ReadWriteOnce claim the app also mounts can only start on the app's
 # node. Eligible nodes are not enough: the 2026-11-03 backup sat in ContainerCreating on another
 # node for an hour, waiting for a detach that never comes while the app runs.

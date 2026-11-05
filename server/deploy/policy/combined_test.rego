@@ -22,7 +22,11 @@ test_dispatch_without_its_fence_denied if {
 	contains(msg, "NetworkPolicy/jarvis-dispatch")
 }
 
-cm(values) := {"contents": {"kind": "ConfigMap", "metadata": {"name": "jarvis-live-config"}, "data": values}}
+# Every channel's config map turns voice on through interactive (base configmap.yaml); a test
+# overrides only the settings it is about.
+voice_on := {"JARVIS_LIVE_VOICE_ENABLED": "true", "JARVIS_LIVE_VOICE_MODEL": "interactive"}
+
+cm(values) := {"contents": {"kind": "ConfigMap", "metadata": {"name": "jarvis-live-config"}, "data": object.union(voice_on, values)}}
 
 deploy(env) := {"contents": {
 	"kind": "Deployment",
@@ -56,6 +60,32 @@ test_copilot_on_flash_passes if {
 test_copilot_on_a_best_effort_alias_denied if {
 	some msg in deny with input as array.concat(all, [cm({"JARVIS_LIVE_COPILOT_MODEL": "fast-chat"})])
 	contains(msg, "JARVIS_LIVE_COPILOT_MODEL")
+}
+
+test_voice_on_interactive_passes if {
+	count(deny) == 0 with input as array.concat(all, [cm({})])
+}
+
+test_voice_off_on_a_channel_denied if {
+	some msg in deny with input as array.concat(all, [cm({"JARVIS_LIVE_VOICE_ENABLED": "false"})])
+	contains(msg, "JARVIS_LIVE_VOICE_ENABLED")
+}
+
+test_voice_unset_on_a_channel_denied if {
+	unset := {"contents": {"kind": "ConfigMap", "metadata": {"name": "jarvis-live-config"}, "data": {"JARVIS_LIVE_VOICE_MODEL": "interactive"}}}
+	some msg in deny with input as array.concat(all, [unset])
+	contains(msg, "JARVIS_LIVE_VOICE_ENABLED")
+}
+
+# Empty sends voice to the copilot's model: Flash, with no fallback.
+test_voice_on_the_copilots_model_denied if {
+	some msg in deny with input as array.concat(all, [cm({"JARVIS_LIVE_VOICE_MODEL": ""})])
+	contains(msg, "interactive")
+}
+
+test_voice_on_heavy_denied if {
+	some msg in deny with input as array.concat(all, [cm({"JARVIS_LIVE_VOICE_MODEL": "heavy"})])
+	contains(msg, "interactive")
 }
 
 pvc(name, mode) := {"contents": {"kind": "PersistentVolumeClaim", "metadata": {"name": name}, "spec": {"accessModes": [mode]}}}

@@ -34,7 +34,7 @@ uncommented.
 | 3 | `chore/gemma-ask-evals`: R6's ask eval on the card. The copilot cases run only if Andrew says so | jarvis-voice | Stage 1 done | Yes |
 | 4 | `feat/voice-day-table`: give the next seven dates by name, shorten replies if needed, rerun the bar | jarvis-voice | Stage 2 merged, and Andrew decides Gemma must pass first | Yes, after stage 3 |
 | 5 | Andrew's hardware test on `interactive` (30 asks per device), then ask-report | — | Stage 1 done | As lab traffic |
-| 6 | `feat/voice-on-live` (R7): voice on in base, `VOICE_MODEL` `interactive` | jarvis-voice | Stage 5 done, plus decisions 2 and 3 below | No |
+| 6 | `feat/voice-on-live` (R7): voice on in base, `VOICE_MODEL` `interactive` | jarvis-voice | **Done** by `feat(server): voice on live`, see "R7" below; stage 5 still owed before the release | No |
 | 7 | `feat/copilot-fallback-interactive`: a plan only | homelab-gitops | R1b fails on Flash, **and** stage 3 shows the 11 copilot bar cases passing | No |
 | 8 | `chore/whisper-memory`: read-only | homelab-gitops | Only if Andrew wants Whisper beside `interactive` | No |
 
@@ -72,6 +72,55 @@ voice request`. The two wording changes made after "Verdict for R7" cost nothing
 server+week, 2026-11-05" in `fast-tier.md`. R7 now waits only on stage 5, Andrew's hardware test, and
 his decisions 2 and 3.
 
+## R7: voice on in base, 2026-11-05
+
+**Stage 6 is done by `feat(server): voice on live`** (herd plan `feat/voice-on-live`, two stages, one
+PR). Stage 5, Andrew's device test, was replaced for now by an agent stand-in on lab, and is still
+owed before the release that turns voice on for live.
+
+- **Stand-in, stage 1 of that plan.** One lab session from a test device and the capture-side
+  protocol, with TTS clips: 30 held asks and 5 spoken requests, all 35 answered by `interactive`,
+  0 fallbacks. Asks llm p95 0.75 s, requests llm p95 3.41 s (one 1.9 s prefill stall). The repeat
+  was deduped, "Monday at ten" landed on the right Chicago date, the no-repo request got no repo.
+  One date ask, "What is the date this Friday?", was wrong: the ask names only today. See "Voice
+  stand-in test on lab, 2026-11-05" in `fast-tier.md`. It does not cover the apps, the mic,
+  Bluetooth, Wear, TTS playback, approving from the push link, or live itself.
+- **What changed.** Base sets `JARVIS_LIVE_VOICE_ENABLED` `true` and `JARVIS_LIVE_VOICE_MODEL`
+  `interactive`. Lab's two patches for them are gone, so lab renders as before. The interactive pin
+  moved from `lab.rego` to `combined.rego`, and now also requires voice on, on both channels.
+  `live.rego` refuses `JARVIS_LIVE_VOICE_PI_ENABLED` unless it is `"false"`.
+- **The result live ships on:** "server against server+week, 2026-11-05" in `fast-tier.md`, the
+  request with the next seven days named. 75 of 75, 25 of 25 cases, critical 3 of 3, reply p95
+  2.39 s, 0 fallbacks. Andrew accepted the adopt rule's reading at two decimals (2.3919 s against
+  2.3918 s), which is decision 2.
+- **Decision 3, section 5:** keep the dashboard tap. A spoken request is filed and waits for
+  approval from the push link. No spoken confirmation, no auto-run class.
+
+**What live gains that lab did not exercise.**
+
+- **The action queue and the voice dedupe on real proposals.** Lab's queue held only test
+  proposals, which were rejected. On live a spoken step sits beside the owner's real ones, and the
+  dedupe compares against them. **But live does not set `JARVIS_LIVE_ACTIONS_ENABLED`** (only
+  lab's overlay does, and live's running config map has no such key). Until it is on, a spoken
+  task, reminder or PR comment on live answers "Workflow actions are off here" and files nothing.
+  Turning it on also turns on the copilot's and the finalizer's proposals on live, with the
+  vault's write credential behind them: Andrew's decision, in its own PR.
+- **Gotify replies to the owner.** A filed request pushes "Jarvis: waiting for your approval" to
+  the owner, unprefixed and linking to live's dashboard. On live today only a cloud request files
+  (a draft work item: dispatch is off there).
+- **The owner's real sessions**: real meetings, real voices, other sessions on Whisper, and the
+  180 s ask window over a real conversation.
+- **The Chicago zone on live's notes.** Live's notes, reminders and the date voice names all come
+  from `JARVIS_LIVE_TIMEZONE`, against the owner's real calendar.
+
+**What follows, in order.**
+
+1. Andrew's device test on lab: 30 asks each on the Fold and the Mac, then `jarvis-live
+   ask-report`. It is what the stand-in did not cover.
+2. The release PR. Merging it promotes this to live.
+3. A real session on live that answers a spoken request and a held ask through `interactive`,
+   which is R7's DONE WHEN.
+
 **Why stage 4 waits for stage 2:** both change `voice/service.py`, and PRs are never stacked.
 
 **Why stage 3 waits for stage 1:** the card takes one eval at a time, and lab's live path shares
@@ -84,8 +133,9 @@ his decisions 2 and 3.
 
 1. Merging every PR, including each release PR.
 2. **Whether #311's one-case, 0.01 s miss is good enough for live**, or stage 4 must pass first. Lab is
-   decided.
-3. Turning voice on in live, and section 5 of `voice-commands.md`.
+   decided. **Decided 2026-11-05:** live ships on "server against server+week", accepted at two decimals.
+3. Turning voice on in live, and section 5 of `voice-commands.md`. **Decided 2026-11-05:** voice on, and keep
+   the dashboard tap.
 4. Whether stage 3 runs the 17 copilot cases now, or waits for R1b.
 5. Whether the copilot falls back to Gemma, and where that would live: LiteLLM or the server.
 6. Whether Whisper should be able to run beside `interactive` on pve. The REPLAN keeps it on the gaming PC.

@@ -1,6 +1,10 @@
 # Plan: speak to Jarvis during a recording
 
-Status: **built, off by default.** Lab turns voice on; live waits for the decision in §5.
+Status: **on for both channels in base, through `interactive`** (R7, `feat(server): voice on live`).
+Lab has run it since 2026-11-04. Live gets it with the release after that PR, which waits for
+Andrew's device test on lab. §5 is decided: keep the dashboard tap. Pi sessions stay off on both
+channels. On live, spoken tasks, reminders and PR comments need `JARVIS_LIVE_ACTIONS_ENABLED`,
+which live does not set yet, so there they answer "Workflow actions are off here" (see below).
 Source: session 89087a2c, 2026-10-31 ("go off and create a cloud session or a pie session or
 whatever and just do work on my behalf in my workflows").
 
@@ -41,7 +45,7 @@ repo can start. It is not Claude Code on the web.
 
 1. **Voice proposes, it never authorizes.** `copilot-actions.md` §4.2 and §10 and
    `copilot-to-claude-code.md` §4 and §5 rule out auto-run, and speech is not authentication:
-   anyone in the room, or a speaker near the mic, can say "Jarvis". §5 is the open decision.
+   anyone in the room, or a speaker near the mic, can say "Jarvis". §5 records the decision to keep it.
 2. **Only your own voice.** Mic channel only, and never a voice diarization has labelled as
    someone else. Words on the system channel, such as a caller saying "Jarvis, ...", are ignored.
 3. **`pi.session` exists only behind the wake phrase.** It is dropped from anything an LLM emits
@@ -107,18 +111,34 @@ a request makes the LLM answer `none`.
 
 Then set `JARVIS_LIVE_VOICE_PI_ENABLED`.
 
-## 5. The decision this leaves open
+## 5. The decision: keep the tap
 
 The request was "just do work on my behalf". This build stops one step short: nothing starts
-until you approve it from the dashboard, because a recorded rule says so and a voice is not a
-credential. Removing that step is your call, not a code review's. The options:
+until you approve it, because a recorded rule says so and a voice is not a credential.
 
-- **Keep it (recommended for now).** Say it, then tap the link in the push.
+**Decided by Andrew, 2026-11-05: keep it.** A spoken request is filed and waits for approval from
+the link in the push, on live as on lab. There is no spoken confirmation and no auto-run class.
+Rule 1 stands unchanged.
+
+The options that were not taken, kept for a later decision:
+
 - **Spoken confirmation.** Jarvis reads the request back and you confirm. This needs talkback,
   and it still is not authentication: whoever spoke first can confirm too.
 - **Auto-run for a low-risk class** such as read-only Pi sessions, which pi-durable supports
   (`readOnly`). This is the smallest real relaxation of the rule, and it would mean amending
   `copilot-actions.md` §4.2.
+
+## On live: what needs more than this
+
+- **Workflow steps.** A spoken task, reminder or PR comment is filed through the action queue,
+  which runs only with `JARVIS_LIVE_ACTIONS_ENABLED`. Lab's overlay sets it. Base and live do not,
+  and live's running config map has no such key, so there `_file_actions` answers "Workflow
+  actions are off here. Nothing was started." Turning it on in base also turns on the copilot's
+  and the finalizer's proposals on live, where the vault kinds have a real write credential.
+  That is Andrew's call, in its own PR.
+- **Cloud sessions** need only work items, which base turns on: they file a draft work item on
+  live. Dispatch is off on live, so it stays a draft to copy.
+- **Pi sessions** need the homelab steps above, and an edit to `policy/live.rego`.
 
 ## Out of scope
 
