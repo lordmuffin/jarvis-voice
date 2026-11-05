@@ -98,7 +98,7 @@
     <!-- Audio input -->
     <string name="settings_audio_header">Audio Input</string>
     <string name="settings_mic_title">Microphone</string>
-    <string name="settings_mic_default">System Default</string>
+    <string name="settings_mic_phone">Phone microphone</string>
     <string name="settings_mic_change">Change</string>
     <string name="settings_mic_help">Select your earbud or headset mic. Bluetooth devices must be connected before tapping Change.</string>
     <string name="settings_cancel">Cancel</string>

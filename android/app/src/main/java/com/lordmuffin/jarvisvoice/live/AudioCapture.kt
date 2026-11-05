@@ -147,7 +147,7 @@ class AudioCapture(context: Context, private val builtInMicOnly: Boolean = false
                 if (running) onError(t)
             }
         }, "jarvis-live-capture").also { it.start() }
-        DebugLog.i(TAG, "capture started device=${preferred?.let { deviceRouter.deviceLabel(it) } ?: "default"}")
+        DebugLog.i(TAG, "capture started device=${preferred?.let { deviceRouter.deviceLabel(it) } ?: "chosen by Android"}")
     }
 
     /** Stops capture and waits for the capture thread to deliver its last frame. */
