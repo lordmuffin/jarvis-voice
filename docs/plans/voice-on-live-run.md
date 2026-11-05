@@ -85,6 +85,11 @@ owed before the release that turns voice on for live.
   One date ask, "What is the date this Friday?", was wrong: the ask names only today. See "Voice
   stand-in test on lab, 2026-11-05" in `fast-tier.md`. It does not cover the apps, the mic,
   Bluetooth, Wear, TTS playback, approving from the push link, or live itself.
+- **The ask with the next seven days ran before the release that turns voice on.** On the card,
+  2026-11-05, naming the week fixed "this Friday" (9 of 9 against 0 of 9) and took the date set from
+  21 to 39 of 45, p95 0.63 s. The adopt rule was not met as written (neither request meets the bar),
+  so the ask still names only today; Andrew decides. See "The ask with the next seven days,
+  2026-11-05" in `fast-tier.md`.
 - **What changed.** Base sets `JARVIS_LIVE_VOICE_ENABLED` `true` and `JARVIS_LIVE_VOICE_MODEL`
   `interactive`. Lab's two patches for them are gone, so lab renders as before. The interactive pin
   moved from `lab.rego` to `combined.rego`, and now also requires voice on, on both channels.

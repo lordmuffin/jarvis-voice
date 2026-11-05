@@ -1759,6 +1759,10 @@ server very" and the leap year's "thirty-six six days". `server+week` passed "no
 **Result: not adopted as the rule is written. Only the first clause fails, and it fails on `server`
 as well. Andrew decides whether it means "met" or "not worse".**
 
+**Recommendation: adopt `server+week`, reading clause 1 as "no rule worse than on `server`".** Both
+requests miss the bar on the same two cases, and the week fixes the lab miss. No server code changed
+in this PR: adopting is `ask_today` returning `voice_today(...)`, with "the sixth" watched.
+
 - **Time.** p95 by pytest run was 0.60, 0.61 and 0.61 s on `server`, and 0.64, 0.63 and 0.63 s on
   `server+week`. The longer prompt costs about 0.03 s, far inside 2.5 s.
 - **Fallbacks: none.** All 306 attempts returned 200 with `x-litellm-model-group: interactive`, 0
