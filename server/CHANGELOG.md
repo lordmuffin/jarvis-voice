@@ -10,6 +10,12 @@
 * **server:** vault passages for the held ask ([1e76dd4](https://github.com/lordmuffin/jarvis-voice/commit/1e76dd4d3336639d84e634705f9f2e5e70dff04d))
 
 
+### Bug Fixes
+
+* **server:** EchoGuard catches a reply heard back from a phone speaker ([1574197](https://github.com/lordmuffin/jarvis-voice/commit/1574197ed4342b3cd28914c8cf34423f98365435))
+* **server:** EchoGuard catches a reply heard back from a phone speaker ([01e1cfa](https://github.com/lordmuffin/jarvis-voice/commit/01e1cfa289f0d37856c6394167be17cc021860f1))
+
+
 ### Documentation
 
 * **server:** held asks answered from the Notes vault ([c20eccb](https://github.com/lordmuffin/jarvis-voice/commit/c20eccb2794d52dbeeaa7eb89eaf36550a877145))
