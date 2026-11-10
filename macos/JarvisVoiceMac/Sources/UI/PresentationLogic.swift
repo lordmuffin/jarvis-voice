@@ -226,6 +226,12 @@ struct HUDContent: Equatable {
 /// Pause/resume decisions, kept out of the view and the model so they can be tested without audio.
 enum PauseControl {
     static func label(isPaused: Bool) -> String { isPaused ? "Resume Session" : "Pause Session" }
+    /// The panel button: a glyph in the narrow strip, glyph and words when there is room.
+    static func panelLabel(isPaused: Bool, strip: Bool) -> String {
+        let glyph = isPaused ? "\u{25B6}" : "\u{23F8}"
+        return strip ? glyph : "\(glyph) \(label(isPaused: isPaused))"
+    }
+    static func accessibilityLabel(isPaused: Bool) -> String { isPaused ? "Resume session" : "Pause session" }
     /// Pause and resume only mean something while a session is recording.
     static func isAvailable(isRecording: Bool) -> Bool { isRecording }
     /// A marker or an ask needs live audio, so neither is offered while paused.

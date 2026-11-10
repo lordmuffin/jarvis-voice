@@ -113,6 +113,7 @@ final class AppModel {
             case .toggleSession: if pressed { Task { await self.toggle() } }
             case .marker: if pressed { self.addMarker() }
             case .ask: self.holdAsk(pressed)
+            case .pause: if pressed { self.togglePause() }
             }
         }
         dictation.startMonitoring()

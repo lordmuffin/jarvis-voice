@@ -10,6 +10,15 @@ final class PauseTests: XCTestCase {
         XCTAssertEqual(PauseControl.label(isPaused: true), "Resume Session")
     }
 
+    func testPanelButtonIsAGlyphInTheStripAndWordsWhenWide() {
+        XCTAssertEqual(PauseControl.panelLabel(isPaused: false, strip: true), "\u{23F8}")
+        XCTAssertEqual(PauseControl.panelLabel(isPaused: true, strip: true), "\u{25B6}")
+        XCTAssertEqual(PauseControl.panelLabel(isPaused: false, strip: false), "\u{23F8} Pause Session")
+        XCTAssertEqual(PauseControl.panelLabel(isPaused: true, strip: false), "\u{25B6} Resume Session")
+        XCTAssertEqual(PauseControl.accessibilityLabel(isPaused: false), "Pause session")
+        XCTAssertEqual(PauseControl.accessibilityLabel(isPaused: true), "Resume session")
+    }
+
     func testPauseOnlyWhileRecording() {
         XCTAssertTrue(PauseControl.isAvailable(isRecording: true))
         XCTAssertFalse(PauseControl.isAvailable(isRecording: false))
