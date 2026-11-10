@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.17.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.16.0...macos-v0.17.0) (2026-11-10)
+
+
+### Features
+
+* **macos:** add pause button to Jarvis Live ([d7a0dfa](https://github.com/lordmuffin/jarvis-voice/commit/d7a0dfa9735f586ebf000e42b7b09afd42259665))
+* **macos:** pause and resume buttons in the menu and Copilot panel ([cb47f51](https://github.com/lordmuffin/jarvis-voice/commit/cb47f516017f9b5c08be461b63fa90f1ddb62ef9))
+* **macos:** pause and resume the recorder without ending the session ([3d6c1e1](https://github.com/lordmuffin/jarvis-voice/commit/3d6c1e1484fa63598229d3d92396fdb66d04d856))
+
 ## [0.16.0](https://github.com/lordmuffin/jarvis-voice/compare/macos-v0.15.1...macos-v0.16.0) (2026-11-03)
 
 
