@@ -74,6 +74,9 @@ final class AppModel {
     private(set) var localSessions: [LocalSession] = []
     private(set) var uploadingSessionId: String?
     private(set) var sessionClock: SessionClock?
+    /// Capture keeps running but its audio is dropped in `ChannelPipeline.process`; the session, its
+    /// connection and the clock carry on. Only meaningful while `phase == .recording`.
+    private(set) var isPaused = false
     private(set) var sessionIsLocalOnly = false
     /// The running session is local because the server couldn't be reached at the start.
     private(set) var sessionFellBack = false
@@ -110,6 +113,7 @@ final class AppModel {
             case .toggleSession: if pressed { Task { await self.toggle() } }
             case .marker: if pressed { self.addMarker() }
             case .ask: self.holdAsk(pressed)
+            case .pause: if pressed { self.togglePause() }
             }
         }
         dictation.startMonitoring()
@@ -231,6 +235,7 @@ final class AppModel {
     func start() async {
         guard phase == .idle else { return }
         phase = .starting
+        isPaused = false
         notice = nil
         systemState = .idle
         markers = []
@@ -263,6 +268,7 @@ final class AppModel {
             if localOnly { endLocalSession() }
             notice = error.localizedDescription
             phase = .idle
+            isPaused = false
             sessionClock = nil
             sessionIsLocalOnly = false
             sessionFellBack = false
@@ -272,6 +278,7 @@ final class AppModel {
     func stop() async {
         guard phase == .recording, let run else { return }
         phase = .stopping
+        isPaused = false
         elapsedTicker?.cancel()
         await tearDown(run, writeFile: run.localOnly)
         if run.localOnly { endLocalSession() }
@@ -279,6 +286,16 @@ final class AppModel {
         phase = .idle
         elapsedSeconds = 0
         refreshLocalSessions()
+    }
+
+    func pause() { setPaused(true) }
+    func resume() { setPaused(false) }
+    func togglePause() { setPaused(!isPaused) }
+
+    private func setPaused(_ value: Bool) {
+        guard PauseControl.isAvailable(isRecording: isRecording), let run, value != isPaused else { return }
+        for pipeline in run.pipelines.values { pipeline.setPaused(value) }
+        isPaused = value
     }
 
     /// Opens the network again and looks at where the Mac is, which was not checked meanwhile.
@@ -300,7 +317,7 @@ final class AppModel {
     }
 
     func addMarker() {
-        guard isRecording, let run else { return }
+        guard PauseControl.acceptsMarkerOrAsk(isRecording: isRecording, isPaused: isPaused), let run else { return }
         let tMs = run.clock.elapsedMs()
         let label = "Marker \(markers.count + 1)"
         markers.append((tMs, label))
@@ -313,7 +330,9 @@ final class AppModel {
 
     /// ⌃⌥A down and up. The marker times are on the audio frames' clock, which is this session clock.
     func holdAsk(_ down: Bool) {
-        guard isRecording, let run, let controller = run.ask?.controller else { return }
+        guard PauseControl.acceptsMarkerOrAsk(isRecording: isRecording, isPaused: isPaused),
+            let run, let controller = run.ask?.controller
+        else { return }
         let tMs = run.clock.elapsedMs()
         if down { controller.down(tMs: tMs) } else { controller.up(tMs: tMs) }
     }

@@ -170,6 +170,13 @@ struct CopilotPanelView: View {
                 .disabled(!model.isRecording)
                 .help(model.isRecording ? "" : "Start a session first.")
                 .accessibilityLabel("Add marker")
+                Button { model.togglePause() } label: {
+                    Text(PauseControl.panelLabel(isPaused: model.isPaused, strip: layout == .strip))
+                }
+                .buttonStyle(InstButtonStyle())
+                .disabled(!PauseControl.isAvailable(isRecording: model.isRecording))
+                .help(model.isRecording ? "" : "Start a session first.")
+                .accessibilityLabel(PauseControl.accessibilityLabel(isPaused: model.isPaused))
                 Button { Task { await model.stop() } } label: {
                     Text(layout == .strip ? "\u{25A0}" : "\u{25A0} Stop Session")
                 }
@@ -180,6 +187,9 @@ struct CopilotPanelView: View {
             }
             HStack(spacing: 8) {
                 connectionChip
+                if model.isPaused {
+                    InstChip(text: "Paused", tone: .progress)
+                }
                 if showsTranscriptionOffline {
                     InstChip(text: "\u{2691} Transcription offline", tone: .progress)
                 }

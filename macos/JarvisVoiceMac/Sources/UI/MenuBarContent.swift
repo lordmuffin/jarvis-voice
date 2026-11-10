@@ -12,7 +12,7 @@ struct MenuBarContent: View {
         if let serverText {
             Text(serverText)
         }
-        Text(MenuText.status(link: model.link, isRecording: model.isRecording))
+        Text(MenuText.status(link: model.link, isRecording: model.isRecording, isPaused: model.isPaused))
         Text("STT: \(sttText)")
         if let progress = model.assetProgress {
             Text("Installing speech model \(Int(progress * 100))%")
@@ -27,6 +27,11 @@ struct MenuBarContent: View {
         .disabled(model.isBusy)
         .help(model.isBusy ? "Another action is running." : "")
         if model.isBusy { Text("Another action is running.") }
+
+        Button(PauseControl.label(isPaused: model.isPaused)) { model.togglePause() }
+            .keyboardShortcut("p", modifiers: [.control, .option])
+            .disabled(!PauseControl.isAvailable(isRecording: model.isRecording))
+            .help(model.isRecording ? "" : "Start a session first.")
 
         Picker("Mode", selection: $model.mode) {
             ForEach(AppModel.Mode.allCases) { Text($0.title).tag($0) }

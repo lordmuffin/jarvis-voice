@@ -4,13 +4,13 @@ import Foundation
 /// System-wide hotkeys through Carbon's `RegisterEventHotKey`, which needs no privacy permission.
 @MainActor
 final class HotKeys {
-    enum Action: UInt32 { case toggleSession = 1, marker = 2, ask = 3 }
+    enum Action: UInt32 { case toggleSession = 1, marker = 2, ask = 3, pause = 4 }
 
     private var refs: [EventHotKeyRef] = []
     private var installed = false
     nonisolated(unsafe) private static var handler: (@MainActor (Action, Bool) -> Void)?
 
-    /// ⌃⌥J start/stop, ⌃⌥M marker, ⌃⌥A hold to ask. The handler gets `true` on press and `false`
+    /// ⌃⌥J start/stop, ⌃⌥M marker, ⌃⌥A hold to ask, ⌃⌥P pause/resume. The handler gets `true` on press and `false`
     /// on release; only hold to ask uses the release.
     func register(_ handler: @escaping @MainActor (Action, Bool) -> Void) {
         Self.handler = handler
@@ -37,6 +37,7 @@ final class HotKeys {
         add(keyCode: UInt32(kVK_ANSI_J), modifiers: modifiers, action: .toggleSession)
         add(keyCode: UInt32(kVK_ANSI_M), modifiers: modifiers, action: .marker)
         add(keyCode: UInt32(kVK_ANSI_A), modifiers: modifiers, action: .ask)
+        add(keyCode: UInt32(kVK_ANSI_P), modifiers: modifiers, action: .pause)
     }
 
     private func add(keyCode: UInt32, modifiers: UInt32, action: Action) {
