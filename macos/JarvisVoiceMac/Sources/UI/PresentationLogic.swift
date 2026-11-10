@@ -223,9 +223,19 @@ struct HUDContent: Equatable {
     }
 }
 
+/// Pause/resume decisions, kept out of the view and the model so they can be tested without audio.
+enum PauseControl {
+    static func label(isPaused: Bool) -> String { isPaused ? "Resume Session" : "Pause Session" }
+    /// Pause and resume only mean something while a session is recording.
+    static func isAvailable(isRecording: Bool) -> Bool { isRecording }
+    /// A marker or an ask needs live audio, so neither is offered while paused.
+    static func acceptsMarkerOrAsk(isRecording: Bool, isPaused: Bool) -> Bool { isRecording && !isPaused }
+}
+
 /// Menu strings that depend only on values, kept out of the view.
 enum MenuText {
-    static func status(link: AppModel.Link, isRecording: Bool) -> String {
+    static func status(link: AppModel.Link, isRecording: Bool, isPaused: Bool = false) -> String {
+        if isRecording && isPaused { return "\u{23F8} Paused" }
         switch link {
         case .connected: "\u{25CF} Live"
         case .reconnecting: "\u{25D0} Reconnecting\u{2026}"
