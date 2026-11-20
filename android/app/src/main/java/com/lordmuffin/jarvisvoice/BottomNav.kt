@@ -11,7 +11,7 @@ import com.lordmuffin.jarvisvoice.live.LiveActivity
 
 object BottomNav {
 
-    enum class Tab { RECORD, HISTORY, CHAT, SETTINGS, MODELS, AGENT }
+    enum class Tab { RECORD, HISTORY, CHAT, SETTINGS, MODELS, AGENT, CALLS }
 
     fun wire(activity: AppCompatActivity, active: Tab) {
         val root = activity.findViewById<LinearLayout>(R.id.bottom_nav_root) ?: return
