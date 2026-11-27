@@ -46,6 +46,7 @@ from jarvis_live.llm.client import LLM, LiteLLMClient
 from jarvis_live.notify.gotify import GotifyNotifier, Notifier
 from jarvis_live.oidc import OIDCClient
 from jarvis_live.orchestrator import Orchestrator
+from jarvis_live.publish.forgejo import ForgejoClient
 from jarvis_live.publish.github import GitHubClient
 from jarvis_live.publish.service import PublishService
 from jarvis_live.retention import run_retention_loop
@@ -178,10 +179,22 @@ def create_app(
         if gh is None and cfg.publish_enabled:
             if client is None:
                 client = httpx.AsyncClient()
-            assert cfg.github_token_file is not None
-            gh = GitHubClient(
-                client, api=cfg.github_api, repo=cfg.publish_repo, token_file=cfg.github_token_file
-            )
+            if cfg.publish_provider == "forgejo":
+                assert cfg.publish_forgejo_token_file is not None
+                gh = ForgejoClient(
+                    client,
+                    url=cfg.forgejo_url,
+                    repo=cfg.publish_repo,
+                    token_file=cfg.publish_forgejo_token_file,
+                )
+            else:
+                assert cfg.github_token_file is not None
+                gh = GitHubClient(
+                    client,
+                    api=cfg.github_api,
+                    repo=cfg.publish_repo,
+                    token_file=cfg.github_token_file,
+                )
         publisher = PublishService(cfg, sm, gh)
         dispatch: DispatchService | None = None
         runner: Dispatcher | None = dispatcher
