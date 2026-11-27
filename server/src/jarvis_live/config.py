@@ -206,6 +206,10 @@ class Settings(BaseSettings):
     publish_repo: str = ""
     github_token_file: Path | None = None
     github_api: str = "https://api.github.com"
+    # "forgejo": publish to the same repo on ``forgejo_url`` instead (PRs on Forgejo), with a
+    # token that has write:repository, in ``publish_forgejo_token_file``.
+    publish_provider: Literal["github", "forgejo"] = "github"
+    publish_forgejo_token_file: Path | None = None
     publish_base_branch: str = "main"
     publish_subdir: str = "00 Inbox/AI Output"  # vault folder the outbox maps onto
     publish_branch_prefix: str = "jarvis-live/"
@@ -336,6 +340,10 @@ class Settings(BaseSettings):
 
     @property
     def publish_enabled(self) -> bool:
+        if self.publish_provider == "forgejo":
+            return bool(
+                self.publish_repo and self.forgejo_url and self.publish_forgejo_token_file
+            )
         return bool(self.publish_repo and self.github_token_file)
 
     @field_validator("environment")

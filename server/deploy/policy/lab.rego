@@ -20,7 +20,11 @@ deny contains msg if {
 
 deny contains msg if {
 	input.kind == "ConfigMap"
-	some key in {"JARVIS_LIVE_PUBLISH_REPO", "JARVIS_LIVE_GITHUB_TOKEN_FILE"}
+	some key in {
+		"JARVIS_LIVE_PUBLISH_REPO",
+		"JARVIS_LIVE_GITHUB_TOKEN_FILE",
+		"JARVIS_LIVE_PUBLISH_FORGEJO_TOKEN_FILE",
+	}
 	input.data[key]
 	msg := sprintf("ConfigMap/%s: lab must not publish (%s is set)", [input.metadata.name, key])
 }
